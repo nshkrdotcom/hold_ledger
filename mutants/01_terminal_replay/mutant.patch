@@ -1,0 +1,24 @@
+--- a/lib/hold_ledger/ledger.ex
++++ b/lib/hold_ledger/ledger.ex
+@@ -76,7 +76,7 @@
+   @doc "Admit one positive fresh request if both independent limits permit it."
+   def request({amount_limit, hold_limit, used_amount, used_holds, entries} = state, key, amount)
+       when is_integer(key) and is_integer(amount) and amount > 0 do
+-    case find(entries, key) do
++    case lookup_request(entries, key) do
+       {:ok, {_, ^amount, _}} ->
+         {state, :duplicate, []}
+ 
+@@ -225,4 +225,12 @@
+   @doc "A transport acknowledgment never establishes processor authorization."
+   def transport_ack(state, key) when is_integer(key), do: {state, :stale, []}
+   def transport_ack(state, _), do: {state, :malformed, []}
++
++  # Deliberate defective lookup: released keys are mistaken for fresh keys.
++  defp lookup_request(entries, key) do
++    case find(entries, key) do
++      {:ok, {_, _, status}} when status in [:declined, :voided] -> :not_found
++      other -> other
++    end
++  end
+ end

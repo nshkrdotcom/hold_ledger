@@ -1,0 +1,15 @@
+--- a/lib/hold_ledger/ledger.ex
++++ b/lib/hold_ledger/ledger.ex
+@@ -131,9 +131,9 @@
+       :not_found ->
+         {state, :not_found, []}
+ 
+-      {:ok, {_, _, :sent}} ->
+-        {{amount_limit, hold_limit, used_amount, used_holds, set_status(entries, key, :unknown)},
+-         :marked_unknown, []}
++      {:ok, {_, amount, :sent}} ->
++        {{amount_limit, hold_limit, used_amount - amount, used_holds - 1,
++          set_status(entries, key, :unknown)}, :marked_unknown, []}
+ 
+       _ ->
+         {state, :stale, []}

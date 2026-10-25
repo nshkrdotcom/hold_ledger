@@ -1,0 +1,288 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <!-- Main Hexagon Clipping Mask (Leaves exterior 100% transparent) -->
+    <clipPath id="hex-clip">
+      <polygon points="100,4.27296588 182.89553806,52.13648294 182.89553806,147.86351706 100,195.72703412 17.10446194,147.86351706 17.10446194,52.13648294" />
+    </clipPath>
+
+    <!-- Core Vault Clipping for Interior Facets -->
+    <clipPath id="core-cube-clip">
+      <polygon points="100,65.37532808 129.94015748,82.68766404 129.94015748,117.31233596 100,134.62467192 70.05984252,117.31233596 70.05984252,82.68766404" />
+    </clipPath>
+
+    <!-- Deep Space / Vault Gradients -->
+    <radialGradient id="bg-glow" cx="50%" cy="48%" r="65%">
+      <stop offset="0%" stop-color="#181336" />
+      <stop offset="45%" stop-color="#0c0e21" />
+      <stop offset="85%" stop-color="#050711" />
+      <stop offset="100%" stop-color="#020308" />
+    </radialGradient>
+
+    <!-- Outer Hex Metallic Bezel -->
+    <linearGradient id="bezel-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="25%" stop-color="#818cf8" />
+      <stop offset="50%" stop-color="#c084fc" />
+      <stop offset="75%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <linearGradient id="bezel-inner" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0e1726" />
+      <stop offset="50%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <!-- Caliper & Bracket Metallics -->
+    <linearGradient id="arm-metal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155" />
+      <stop offset="50%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <linearGradient id="arm-steel" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#475569" />
+      <stop offset="50%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#090d16" />
+    </linearGradient>
+
+    <!-- Glowing Energy Conduits: Cyan (Proof/Holds) & Gold (Value/Amount) -->
+    <linearGradient id="cyan-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#67e8f9" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <linearGradient id="amber-glow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="40%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <linearGradient id="purple-laser" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e879f9" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+
+    <!-- Isometric Core Facet Gradients -->
+    <linearGradient id="facet-top" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+      <stop offset="40%" stop-color="#4f46e5" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#1e1b4b" stop-opacity="0.95" />
+    </linearGradient>
+
+    <linearGradient id="facet-left" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="60%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <linearGradient id="facet-right" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="40%" stop-color="#0e7490" />
+      <stop offset="100%" stop-color="#082f49" />
+    </linearGradient>
+
+    <!-- Filters for Specular Highlights and Radiance -->
+    <filter id="laser-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.54593176" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="intense-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4.07349081" result="blur1" />
+      <feGaussianBlur stdDeviation="1.52755906" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur1" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- ================= MAIN CLIPPED CONTAINER ================= -->
+  <g clip-path="url(#hex-clip)">
+    <!-- Base Background -->
+    <polygon points="100,4.27296588 182.89553806,52.13648294 182.89553806,147.86351706 100,195.72703412 17.10446194,147.86351706 17.10446194,52.13648294" fill="url(#bg-glow)" />
+
+    <!-- Isometric Tech Grid Lines -->
+    <g stroke="#334155" stroke-width="0.50918635" stroke-opacity="0.25">
+      <line x1="100" y1="4.27296588" x2="100" y2="195.72703412" />
+      <line x1="17.10446194" y1="52.13648294" x2="182.89553806" y2="147.86351706" />
+      <line x1="17.10446194" y1="147.86351706" x2="182.89553806" y2="52.13648294" />
+      <circle cx="100" cy="100" r="77.39632546" fill="none" stroke="#1e293b" stroke-width="0.76377953" stroke-dasharray="3.05511811 6.11023622" />
+      <circle cx="100" cy="100" r="54.99212598" fill="none" stroke="#334155" stroke-width="0.50918635" stroke-opacity="0.4" />
+    </g>
+
+    <!-- Ambient Core Plasma -->
+    <circle cx="100" cy="97.96325459" r="42.77165354" fill="url(#purple-laser)" opacity="0.18" filter="url(#intense-glow)" />
+    <circle cx="100" cy="97.96325459" r="22.40419948" fill="url(#cyan-glow)" opacity="0.22" filter="url(#intense-glow)" />
+
+    <!-- ================= DUAL LIMIT GAUGES (The Two Caps) ================= -->
+    <!-- Left Flank: Amount Capacity Arc (Golden Amber) -->
+    <g filter="url(#laser-glow)">
+      <path d="M 51.11811024,64.35695538 A 59.0656168,59.0656168 0 0,0 51.11811024,135.64304462" fill="none" stroke="url(#amber-glow)" stroke-width="2.54593176" stroke-linecap="round" />
+      <!-- Calibrated Ticks along Amount Bound -->
+      <path d="M 41.95275591,71.4855643 L 47.04461942,74.54068241 M 36.86089239,84.72440945 L 42.97112861,86.76115486 M 34.82414698,100 L 40.9343832,100 M 36.86089239,115.27559055 L 42.97112861,113.23884514 M 41.95275591,128.5144357 L 47.04461942,125.45931759"
+            fill="none" stroke="#f59e0b" stroke-width="1.27296588" stroke-linecap="round" opacity="0.7" />
+      <!-- Amount Limit Target Diamond -->
+      <polygon points="51.11811024,64.35695538 54.17322835,61.30183727 57.22834646,64.35695538 54.17322835,67.41207349" fill="#fef08a" />
+    </g>
+
+    <!-- Right Flank: Hold Slot Capacity Counter (Cyan / Emerald) -->
+    <g filter="url(#laser-glow)">
+      <path d="M 148.88188976,64.35695538 A 59.0656168,59.0656168 0 0,1 148.88188976,135.64304462" fill="none" stroke="url(#cyan-glow)" stroke-width="2.54593176" stroke-linecap="round" stroke-dasharray="8.14698163 4.07349081" />
+      <!-- Slot Cells (Representing Discrete Simultaneous Hold Allocations) -->
+      <rect x="153.97375328" y="75.55905512" width="3.56430446" height="7.12860892" rx="1.0183727" transform="rotate(20 156.01049869 78.61417323)" fill="#38bdf8" opacity="0.8" />
+      <rect x="159.0656168" y="96.43569554" width="3.56430446" height="7.12860892" rx="1.0183727" fill="#38bdf8" />
+      <rect x="153.97375328" y="117.31233596" width="3.56430446" height="7.12860892" rx="1.0183727" transform="rotate(-20 156.01049869 120.36745407)" fill="#06b6d4" opacity="0.8" />
+      <!-- Free Slot Sentinel -->
+      <polygon points="148.88188976,135.64304462 145.82677165,138.69816273 142.77165354,135.64304462 145.82677165,132.58792651" fill="#67e8f9" />
+    </g>
+
+    <!-- ================= APPEND-LOG JOURNAL (The Ordered Tail) ================= -->
+    <!-- Sequenced disk_log records forming a durable base -->
+    <g opacity="0.85">
+      <path d="M 100,134.62467192 L 100,173.32283465" stroke="url(#cyan-glow)" stroke-width="1.52755906" stroke-dasharray="2.03674541 3.05511811" />
+      <!-- Journal Micro-Entries -->
+      <polygon points="87.77952756,144.80839895 112.22047244,144.80839895 116.29396325,148.88188976 83.70603675,148.88188976" fill="#1e293b" stroke="#38bdf8" stroke-width="0.76377953" />
+      <polygon points="85.74278215,152.95538058 114.25721785,152.95538058 118.33070866,157.02887139 81.66929134,157.02887139" fill="#0f172a" stroke="#0ea5e9" stroke-width="0.76377953" />
+      <polygon points="83.70603675,161.1023622 116.29396325,161.1023622 120.36745407,165.17585302 79.63254593,165.17585302" fill="#090d16" stroke="#f59e0b" stroke-width="0.76377953" />
+      <!-- Durable Sync Node -->
+      <circle cx="100" cy="173.32283465" r="2.54593176" fill="#fbbf24" filter="url(#laser-glow)" />
+      <circle cx="100" cy="173.32283465" r="5.09186352" fill="none" stroke="#f59e0b" stroke-width="0.76377953" opacity="0.6" />
+    </g>
+
+    <!-- ================= CENTRAL ISOMETRIC LEDGER CORE ================= -->
+    <!-- Outer Isometric Matrix Box -->
+    <g>
+      <!-- Top Face (Active Verification Plane / Lean Model) -->
+      <polygon points="100,65.37532808 129.94015748,82.68766404 100,100 70.05984252,82.68766404" fill="url(#facet-top)" stroke="#67e8f9" stroke-width="0.76377953" />
+      <!-- Left Face (Holding Balance & Value Store) -->
+      <polygon points="70.05984252,82.68766404 100,100 100,134.62467192 70.05984252,117.31233596" fill="url(#facet-left)" stroke="#4338ca" stroke-width="0.76377953" />
+      <!-- Right Face (State Partition & Key History) -->
+      <polygon points="100,100 129.94015748,82.68766404 129.94015748,117.31233596 100,134.62467192" fill="url(#facet-right)" stroke="#0e7490" stroke-width="0.76377953" />
+
+      <!-- Top Face Engravings: Invariant Diamond & Logic Turnstile Symbolism -->
+      <polygon points="100,71.4855643 119.34908136,82.68766404 100,93.88976378 80.65091864,82.68766404" fill="none" stroke="#a5f3fc" stroke-width="0.76377953" opacity="0.6" />
+      <path d="M 93.88976378,82.68766404 L 106.11023622,82.68766404 M 100,76.57742782 L 100,88.79790026" stroke="#ffffff" stroke-width="1.0183727" stroke-linecap="round" opacity="0.7" />
+
+      <!-- Left Face: Partitioned Ledger Cells (Holds In Storage) -->
+      <path d="M 76.57742782,92.87139108 L 94.90813648,103.56430446 M 76.57742782,101.0183727 L 94.90813648,111.71128609 M 76.57742782,109.16535433 L 94.90813648,119.85826772" stroke="#6366f1" stroke-width="0.76377953" opacity="0.4" />
+      <line x1="83.70603675" y1="96.94488189" x2="83.70603675" y2="114.25721785" stroke="#fbbf24" stroke-width="1.22204724" stroke-linecap="round" filter="url(#laser-glow)" />
+
+      <!-- Right Face: Idempotency Key Chains & Transition Tracks -->
+      <circle cx="112.22047244" cy="100" r="1.52755906" fill="#38bdf8" />
+      <circle cx="120.36745407" cy="104.58267717" r="1.52755906" fill="#38bdf8" />
+      <circle cx="112.22047244" cy="112.22047244" r="1.52755906" fill="#34d399" />
+      <circle cx="120.36745407" cy="116.80314961" r="1.52755906" fill="#34d399" />
+      <path d="M 112.22047244,100 L 120.36745407,104.58267717 L 120.36745407,116.80314961 L 112.22047244,112.22047244 Z" fill="none" stroke="#0891b2" stroke-width="0.76377953" stroke-dasharray="1.52755906 1.52755906" />
+    </g>
+
+    <!-- ================= THE "HOLD" CALIPERS (Locking Armature) ================= -->
+    <!-- Triple interlocking precision claws that rigidly capture the core -->
+
+    <!-- Top Pincer Arm (Restraining Downward Shift) -->
+    <g filter="url(#laser-glow)">
+      <polygon points="93.88976378,30.75065617 106.11023622,30.75065617 110.18372703,47.04461942 100,63.33858268 89.81627297,47.04461942" fill="url(#arm-metal)" stroke="#475569" stroke-width="0.76377953" />
+      <polygon points="96.94488189,32.78740157 103.05511811,32.78740157 106.11023622,46.02624672 100,55.19160105 93.88976378,46.02624672" fill="url(#arm-steel)" />
+      <!-- Power Conduit -->
+      <line x1="100" y1="32.78740157" x2="100" y2="51.11811024" stroke="url(#cyan-glow)" stroke-width="1.52755906" stroke-linecap="round" />
+      <!-- Caliper Contact Tip -->
+      <circle cx="100" cy="63.33858268" r="1.52755906" fill="#e0f2fe" />
+    </g>
+
+    <!-- Lower-Left Caliper Arm (Securing Amount Limit) -->
+    <g>
+      <polygon points="34.82414698,134.62467192 45.00787402,144.80839895 64.35695538,134.62467192 71.4855643,116.29396325 59.26509186,118.33070866" fill="url(#arm-metal)" stroke="#475569" stroke-width="0.76377953" />
+      <polygon points="39.9160105,135.64304462 47.04461942,141.75328084 61.30183727,133.60629921 65.37532808,120.36745407 57.22834646,121.38582677" fill="url(#arm-steel)" />
+      <!-- Energy Conduit to Core -->
+      <line x1="42.97112861" y1="137.67979003" x2="63.33858268" y2="124.44094488" stroke="url(#amber-glow)" stroke-width="1.52755906" stroke-linecap="round" filter="url(#laser-glow)" />
+      <!-- Gripper Node -->
+      <polygon points="70.05984252,117.31233596 67.41207349,114.25721785 71.4855643,111.20209974 73.52230971,115.27559055" fill="#fef08a" filter="url(#laser-glow)" />
+    </g>
+
+    <!-- Lower-Right Caliper Arm (Securing Slot Quota) -->
+    <g>
+      <polygon points="165.17585302,134.62467192 154.99212598,144.80839895 135.64304462,134.62467192 128.5144357,116.29396325 140.73490814,118.33070866" fill="url(#arm-metal)" stroke="#475569" stroke-width="0.76377953" />
+      <polygon points="160.0839895,135.64304462 152.95538058,141.75328084 138.69816273,133.60629921 134.62467192,120.36745407 142.77165354,121.38582677" fill="url(#arm-steel)" />
+      <!-- Energy Conduit to Core -->
+      <line x1="157.02887139" y1="137.67979003" x2="136.66141732" y2="124.44094488" stroke="url(#cyan-glow)" stroke-width="1.52755906" stroke-linecap="round" filter="url(#laser-glow)" />
+      <!-- Gripper Node -->
+      <polygon points="129.94015748,117.31233596 132.58792651,114.25721785 128.5144357,111.20209974 126.47769029,115.27559055" fill="#67e8f9" filter="url(#laser-glow)" />
+    </g>
+
+    <!-- ================= SUSPENDED SINGULARITY GEM ================= -->
+    <!-- The Held Authorization Asset at Center Nexus (100, 98) -->
+    <g filter="url(#intense-glow)">
+      <!-- Octahedral Floating Gem -->
+      <!-- Upper Pyramid -->
+      <polygon points="100,83.70603675 113.23884514,96.94488189 100,105.09186352 86.76115486,96.94488189" fill="url(#amber-glow)" opacity="0.95" />
+      <!-- Lower Facet -->
+      <polygon points="86.76115486,96.94488189 100,105.09186352 113.23884514,96.94488189 100,112.22047244" fill="#d97706" opacity="0.9" />
+      <!-- Inner Pure Light Core -->
+      <polygon points="100,88.79790026 107.12860892,96.94488189 100,102.03674541 92.87139108,96.94488189" fill="#ffffff" />
+    </g>
+
+    <!-- Specular Micro-Flares / Stars of Exact Invariance -->
+    <g fill="#ffffff" opacity="0.9">
+      <!-- Center Star -->
+      <path d="M 100,91.85301837 Q 100,96.94488189 105.09186352,96.94488189 Q 100,96.94488189 100,102.03674541 Q 100,96.94488189 94.90813648,96.94488189 Q 100,96.94488189 100,91.85301837 Z" />
+      <!-- Top Crest Star -->
+      <path d="M 100,18.53018373 Q 100,21.58530184 103.05511811,21.58530184 Q 100,21.58530184 100,24.64041995 Q 100,21.58530184 96.94488189,21.58530184 Q 100,21.58530184 100,18.53018373 Z" />
+      <!-- Precision Glints on Hull -->
+      <circle cx="70.05984252" cy="82.68766404" r="1.22204724" />
+      <circle cx="129.94015748" cy="82.68766404" r="1.22204724" />
+      <circle cx="100" cy="134.62467192" r="1.22204724" />
+    </g>
+
+    <!-- Proof Target Compass (Apex Crown Glyph) -->
+    <g stroke="#38bdf8" stroke-width="0.76377953" fill="none" opacity="0.8">
+      <polygon points="100,13.43832021 106.11023622,21.58530184 100,27.69553806 93.88976378,21.58530184" stroke="#818cf8" />
+      <circle cx="100" cy="21.58530184" r="1.0183727" fill="#c084fc" />
+      <line x1="85.74278215" y1="21.58530184" x2="93.88976378" y2="21.58530184" />
+      <line x1="106.11023622" y1="21.58530184" x2="114.25721785" y2="21.58530184" />
+    </g>
+
+    <!-- ================= INNER CONCENTRIC REINFORCEMENT FRAME ================= -->
+    <!-- Nested Precision Hexagon Stroke -->
+    <polygon points="100,12.41994751 175.8687664,56.20997375 175.8687664,143.79002625 100,187.58005249 24.1312336,143.79002625 24.1312336,56.20997375"
+             fill="none" stroke="url(#bezel-inner)" stroke-width="3.05511811" opacity="0.7" />
+    <polygon points="100,15.47506562 173.22099738,57.73753281 173.22099738,142.26246719 100,184.52493438 26.77900262,142.26246719 26.77900262,57.73753281"
+             fill="none" stroke="#475569" stroke-width="0.50918635" stroke-dasharray="4.07349081 2.03674541 1.0183727 2.03674541" opacity="0.6" />
+  </g>
+
+  <!-- ================= PERIMETER BEZEL & CORNER BOLTS ================= -->
+  <!-- Outer Hexagon Border (Unclipped for Razor Sharp 200px Profile) -->
+  <polygon points="100,4.27296588 182.89553806,52.13648294 182.89553806,147.86351706 100,195.72703412 17.10446194,147.86351706 17.10446194,52.13648294"
+           fill="none" stroke="url(#bezel-grad)" stroke-width="2.54593176" stroke-linejoin="round" />
+
+  <!-- 6 Hardened Kinetic Corner Brackets (Vault Hardware) -->
+  <g fill="#0f172a" stroke="url(#bezel-grad)" stroke-width="1.22204724" stroke-linejoin="round">
+    <!-- North Bolt -->
+    <path d="M 92.87139108,8.34645669 L 100,4.27296588 L 107.12860892,8.34645669 L 103.05511811,14.45669291 L 96.94488189,14.45669291 Z" />
+    <!-- North-East Bolt -->
+    <path d="M 173.32283465,47.04461942 L 182.89553806,52.13648294 L 179.43307087,61.30183727 L 171.28608924,58.24671916 Z" />
+    <!-- South-East Bolt -->
+    <path d="M 179.43307087,138.69816273 L 182.89553806,147.86351706 L 173.32283465,152.95538058 L 171.28608924,141.75328084 Z" />
+    <!-- South Bolt -->
+    <path d="M 107.12860892,191.65354331 L 100,195.72703412 L 92.87139108,191.65354331 L 96.94488189,185.54330709 L 103.05511811,185.54330709 Z" />
+    <!-- South-West Bolt -->
+    <path d="M 26.67716535,152.95538058 L 17.10446194,147.86351706 L 20.56692913,138.69816273 L 28.71391076,141.75328084 Z" />
+    <!-- North-West Bolt -->
+    <path d="M 20.56692913,61.30183727 L 17.10446194,52.13648294 L 26.67716535,47.04461942 L 28.71391076,58.24671916 Z" />
+  </g>
+
+  <!-- Golden Rivet Accents at Each Corner -->
+  <g fill="#fef08a" opacity="0.95">
+    <circle cx="100" cy="9.87401575" r="1.0183727" />
+    <circle cx="176.37795276" cy="53.66404199" r="1.0183727" />
+    <circle cx="176.37795276" cy="146.33595801" r="1.0183727" />
+    <circle cx="100" cy="190.12598425" r="1.0183727" />
+    <circle cx="23.62204724" cy="146.33595801" r="1.0183727" />
+    <circle cx="23.62204724" cy="53.66404199" r="1.0183727" />
+  </g>
+</svg>

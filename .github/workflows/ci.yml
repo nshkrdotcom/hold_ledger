@@ -1,0 +1,71 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      verify_laws:
+        description: Run uncached proofs and six independent export checkers
+        type: boolean
+        default: false
+      run_mutants:
+        description: Run the expensive isolated mutation examples
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ledger
+      - name: Format, compile and ordinary tests
+        run: |
+          uv run --locked python scripts/local_run.py mix format --check-formatted
+          uv run --locked python scripts/local_run.py mix compile --warnings-as-errors
+          uv run --locked python scripts/local_run.py mix test --exclude laws
+      - name: Static analysis
+        run: |
+          uv run --locked python scripts/local_run.py mix credo --strict
+          uv run --locked python scripts/local_run.py mix dialyzer
+      - name: Proof tooling and law catalog
+        run: |
+          uv run --locked python -m unittest discover -s tooling_tests -v
+          uv run --locked python scripts/run_laws.py --supported-only --inspect-only
+          uv run --locked python scripts/run_mutants.py
+      - name: Demo, guides and package
+        run: |
+          mix run scripts/demo.exs
+          mix docs --warnings-as-errors
+          mix hex.build
+
+  formal:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_laws }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ledger
+      - run: uv run --locked python scripts/onboard.py --profile proofs
+      - run: uv run --locked python scripts/run_laws.py --supported-only --stage full --report tmp/verification/checked.json
+
+  mutants:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_mutants }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ledger
+      - run: uv run --locked python scripts/onboard.py --profile proofs
+      - run: uv run --locked python scripts/run_mutants.py --execute --report tmp/verification/mutants.json

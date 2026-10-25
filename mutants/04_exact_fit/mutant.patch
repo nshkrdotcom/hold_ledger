@@ -1,0 +1,11 @@
+--- a/lib/hold_ledger/ledger.ex
++++ b/lib/hold_ledger/ledger.ex
+@@ -88,7 +88,7 @@
+           used_holds >= hold_limit ->
+             {state, :insufficient_holds, []}
+ 
+-          amount > amount_limit - used_amount ->
++          amount >= amount_limit - used_amount ->
+             {state, :insufficient_amount, []}
+ 
+           true ->

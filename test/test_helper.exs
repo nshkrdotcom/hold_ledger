@@ -1,0 +1,5 @@
+ExUnit.start()
+Code.require_file("support/fixtures.ex", __DIR__)
+Code.require_file("support/generators.ex", __DIR__)
+Code.require_file("support/coverage.ex", __DIR__)
+Code.require_file("support/proof_case.ex", __DIR__)

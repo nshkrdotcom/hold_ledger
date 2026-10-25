@@ -1,0 +1,15 @@
+{
+  "platform": "linux-x86_64",
+  "lean_toolchain": "leanprover/lean4:v4.35.0",
+  "elan": {
+    "version": "4.2.4",
+    "url": "https://github.com/leanprover/elan/releases/download/v4.2.4/elan-x86_64-unknown-linux-gnu.tar.gz",
+    "sha256": "42b94d4244e8353142c456ec0e4ca6528fd898a6c604d4059f494e706e431f63"
+  },
+  "lean": {
+    "version": "4.35.0",
+    "url": "https://github.com/leanprover/lean4/releases/download/v4.35.0/lean-4.35.0-linux.tar.zst",
+    "sha256": "7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d",
+    "directory": "lean-4.35.0-linux"
+  }
+}

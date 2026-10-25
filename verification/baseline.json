@@ -1,0 +1,674 @@
+{
+  "source_commit": "b34fd6a6ce5f9966355917bed3fdc9459fe182f1",
+  "lynx_commit": "4a7e9db0655b67b6b9fc1e5511eb3fe12625b52c",
+  "lean_version": "4.35.0",
+  "scope": "Historical 26-group baseline for the source and Lynx commits recorded here; see guides/verification.md for the completed 29-group full run with the current Lynx pin.",
+  "source_sha256": {
+    "lean-toolchain": "ca5f1f601d34c49079e38d7e7041eb0f2a9c227fbc1df0f404820069a052330c",
+    "lib/hold_ledger/ledger.ex": "b4bc1bbfb2afe01c0fb0ee019293588c8dbc74c2268e3eac01046283a9021275",
+    "lib/hold_ledger/spec.ex": "807666ab78cab4543406de2499044e3e39b0c8ef319c522370e319170ec6090b",
+    "mix.lock": "df8b971cb69e0e3766c783fe546566bb4b50664e8d6ea88883b445bcb056edfa"
+  },
+  "unproved": [
+    "PO-B5/declined",
+    "PO-B5/voided",
+    "PO-C3"
+  ],
+  "ordinary_checks": 119,
+  "properties": 22,
+  "eligible_examples": 220000,
+  "runtime_fault_tests": 26,
+  "laws": {
+    "l1_find": {
+      "id": "L1",
+      "source_sha256": "5f8fa562e89a71f91c21ea233be36c1d4dea8ac8a8daf050cc5ea2bcd25662c3",
+      "proof_seconds": 7.865,
+      "exports": [
+        {
+          "sha256": "9dda9807a40856d4b7675b810ac8def6dfa91c3c0d03b31feab946eb5e28b512",
+          "bytes": 28289015,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "l2_identity": {
+      "id": "L2",
+      "source_sha256": "dc3dc478c3aaf545125b470895f7fcd55fd133ac5eb25c801b9e2546d668d619",
+      "proof_seconds": 10.174,
+      "exports": [
+        {
+          "sha256": "4fe0aaa3eaae57883e19f93370d287193c9f620b384bc0260bac5dbb5542741a",
+          "bytes": 29911333,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "l3_accounting": {
+      "id": "L3",
+      "source_sha256": "c2b6488cf37ceabb60585285d50d1ff696aa3becad54a5fe3c11d63e296de0af",
+      "proof_seconds": 35.024,
+      "exports": [
+        {
+          "sha256": "c92ef02218823e051c186b8594c7c75c3d00b9f7efe5a65e242dac33837eda9c",
+          "bytes": 31444243,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "l4_structure": {
+      "id": "L4",
+      "source_sha256": "85ac951df8ca31ef227429cd048af1b6019a4d7dd927d6811087edeb4e9aced2",
+      "proof_seconds": 9.126,
+      "exports": [
+        {
+          "sha256": "8b4a5ac58d3cf50f91033174648d7bd26e47a4dadd4c16cee849d94ec928b0ea",
+          "bytes": 24120685,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "l5_fresh": {
+      "id": "L5",
+      "source_sha256": "922e1ef055ac01fd7a4d874ae41f59b5082335aa97a66114778eaa35dea46680",
+      "proof_seconds": 14.958,
+      "exports": [
+        {
+          "sha256": "9067a1ab9b019e8aa1fd6c2531bfd84217851dfc2432cf6185d1221b27b9bf8a",
+          "bytes": 30561111,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "l6_restart": {
+      "id": "L6",
+      "source_sha256": "0a52fa413b2ce28a43475e12b5008a20ba3e1664f39006813a79881782a33599",
+      "proof_seconds": 11.476,
+      "exports": [
+        {
+          "sha256": "34754d35e5960bc33577435c9a65008a2298206a9fa66136fbefd95bab78b5ed",
+          "bytes": 30137672,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_a1": {
+      "id": "PO-A1",
+      "source_sha256": "0fef3c9007972a98aaa8992d2e5b1a912410ab49e314e214351cac46d05b9c6d",
+      "proof_seconds": 30.481,
+      "exports": [
+        {
+          "sha256": "1e85ee6e1bc971d1c25f876907345e0420c1e42c37c0be7ccac9ecad01a62a2e",
+          "bytes": 33627376,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_a2": {
+      "id": "PO-A2",
+      "source_sha256": "e0f61146b0721491e467bb0c515b900a8d6747a2bdf576e14d0ed08dcb3f903e",
+      "proof_seconds": 27.825,
+      "exports": [
+        {
+          "sha256": "39adc1ee02cff3df46ebc58863c4f1e41da08c2be952703f00e469c50cf7af05",
+          "bytes": 34767190,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_a3": {
+      "id": "PO-A3",
+      "source_sha256": "5db264ff816f302523d784a2d3f1b8cdfc88ea23915c11215e1aa6ce2920ff90",
+      "proof_seconds": 51.239,
+      "exports": [
+        {
+          "sha256": "eee4c6ce1087f8ac418509eb297f9de830da81165817f334da0df611ee65a59d",
+          "bytes": 36058373,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_a4_conflict": {
+      "id": "PO-A4",
+      "source_sha256": "6803fcf820f3a3ba5a13163c6e1fd0b8b6c67c7aa883201ccbed6856897b1986",
+      "proof_seconds": 15.524,
+      "exports": [
+        {
+          "sha256": "2628d30722ec1a11151f164c0d642b962de2e5ba5318edc2036dc82b5c848924",
+          "bytes": 30677308,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_a4_duplicate": {
+      "id": "PO-A4",
+      "source_sha256": "eb2375f7cbc02ba3368394737956fcf9b35c235f8f027e43fdf540fb57e7633b",
+      "proof_seconds": 15.01,
+      "exports": [
+        {
+          "sha256": "c7196e48a02f8da3bfd69a090668a5386ef93ef6d02b52a039fb25bfb80d10e5",
+          "bytes": 30596657,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b1_dispatch": {
+      "id": "PO-B1/dispatch",
+      "source_sha256": "dce88259fce41d6cd9c263dd17f95e243bbd34816e5e54d2e575a2142a9d515f",
+      "proof_seconds": 26.87,
+      "exports": [
+        {
+          "sha256": "d0c025fc2859d3706d780d9c458e00f90d6ea378197b1fe4a0920ef3ae336688",
+          "bytes": 33994946,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b1_processor_result": {
+      "id": "PO-B1/processor_result",
+      "source_sha256": "ebec08d279357ac059d44f52bd8659228d2ab0c177cb32af5e3af06c962dc326",
+      "proof_seconds": 32.586,
+      "exports": [
+        {
+          "sha256": "1514e6155333e580a0b3155c2167c9d0aa4e387dcfac4993c9b3001421a16628",
+          "bytes": 35026756,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b1_restart": {
+      "id": "PO-B1/restart",
+      "source_sha256": "32c5283851e3c318a6af065063816b1f205cdcd27b73b7f9ad24d13c45b419e7",
+      "proof_seconds": 22.174,
+      "exports": [
+        {
+          "sha256": "7d8125cb100a916e14e00486690bce0286249d3705e525c905a43baf1144ee1e",
+          "bytes": 32743031,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b1_retry": {
+      "id": "PO-B1/retry",
+      "source_sha256": "c2978f2073ff80e7a68f83a14e66b3fcf1a65fd289c06762545a19b845315aa6",
+      "proof_seconds": 24.71,
+      "exports": [
+        {
+          "sha256": "eca3c4b57db7e68c6690defcba25cf962c2f53f6abc4f262d00fb41f442cc1de",
+          "bytes": 33995743,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b1_timeout": {
+      "id": "PO-B1/timeout",
+      "source_sha256": "afb1bd82ecf721c82c394c7d0a0a987a45b46c9336eedbfd523a61bf1f9be1d7",
+      "proof_seconds": 24.576,
+      "exports": [
+        {
+          "sha256": "65a6f9db4c9c2f396e3882baedf97633b1352dbee0284132c2265560085e13b2",
+          "bytes": 33983158,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b1_void": {
+      "id": "PO-B1/void",
+      "source_sha256": "6ae6296221f6a47ff322f2ba2f774f690e5d3080f3c6366c16d05c549647e7a7",
+      "proof_seconds": 30.424,
+      "exports": [
+        {
+          "sha256": "bf60ec39aa16e6101761484e719a6bcd457dca42750a26642446e52a97e5e288",
+          "bytes": 35299627,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b2": {
+      "id": "PO-B2",
+      "source_sha256": "0b074cff55691e20709f7f4abc42402da64f65aa9ca4fbc90e582f28eb0009cc",
+      "proof_seconds": 172.086,
+      "exports": [
+        {
+          "sha256": "0ef6d0f0e2308e47622360b4de60776d217fa48d0652b9afdfe17d094162f5f0",
+          "bytes": 49702675,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b3": {
+      "id": "PO-B3",
+      "source_sha256": "41cdec8666cd69e7a8ade5ba3268ac6bce1847518b706cbacfc23de0a29fc3f6",
+      "proof_seconds": 308.014,
+      "exports": [
+        {
+          "sha256": "50cc8a3efc142d436929f33f72bf423f01e122fb08cb0be00000851dde2608ed",
+          "bytes": 57192266,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": true
+        }
+      ]
+    },
+    "po_b4": {
+      "id": "PO-B4",
+      "source_sha256": "146600e4779f6690979beebd6e754417cdfcf07a9ff018f2ce59c2535065633b",
+      "proof_seconds": 90.551,
+      "exports": [
+        {
+          "sha256": "da38dd67650f225f630bbd3980ae54094b608a718a004bb52f1b33e321c25737",
+          "bytes": 42106782,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b6": {
+      "id": "PO-B6",
+      "source_sha256": "412a7bb70b5ef93b3120a80a2537adad29b1454d5a7b6344d30a84edcf13f1b2",
+      "proof_seconds": 80.542,
+      "exports": [
+        {
+          "sha256": "4ee713fbe6ed0bae105be9d8a0ddf359056894be11562fe64d441fd2e07d4ded",
+          "bytes": 40246045,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_b7": {
+      "id": "PO-B7",
+      "source_sha256": "c6845d83fdfde742bd38dcbbaa68a29e7c1068820b7fa79459b1bf39d42a15fc",
+      "proof_seconds": 13.704,
+      "exports": [
+        {
+          "sha256": "476348521ee71f2b15535159bec52dff0d4ca492eac42967c5f6b42d958d1ea2",
+          "bytes": 31680670,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_c1": {
+      "id": "PO-C1",
+      "source_sha256": "5a446aa07857764646aad66649fd31e4fe4855da012a960a43f9208f0e30ba9d",
+      "proof_seconds": 159.099,
+      "exports": [
+        {
+          "sha256": "5e6200fa6dd81bd0a14c19295a5079621102c84415048efe0c50eb685be1f4b1",
+          "bytes": 44216463,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_c2": {
+      "id": "PO-C2",
+      "source_sha256": "594b0dc058208d2cc74523eb786d5d1fb1ec663d212665bbeb694516a3ddfb3c",
+      "proof_seconds": 170.019,
+      "exports": [
+        {
+          "sha256": "d0164a415987be0623ecf6dd554f147eff6b96f64217e52e1980bcf78c0a3913",
+          "bytes": 45153629,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_i": {
+      "id": "PO-I",
+      "source_sha256": "da92a61e7445da71a6be700ab71fb06ec5bde2046f78c892a7697703863feff9",
+      "proof_seconds": 12.994,
+      "exports": [
+        {
+          "sha256": "4022efe89b9cbde42462a6a177809167348b5f54db8b681a2c685b557220ffeb",
+          "bytes": 30085028,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    },
+    "po_s": {
+      "id": "PO-S",
+      "source_sha256": "f0696eed68d0a03534217eb5c2c6b4ca4c50e5f692b6643c247d35a04a33127f",
+      "proof_seconds": 156.412,
+      "exports": [
+        {
+          "sha256": "78e4788d9f4c4fc83eb8f22052c7c8670bf6515d3f8b7cf70cffd13c339edd0a",
+          "bytes": 42833735,
+          "checkers": {
+            "Lean default": true,
+            "Lean paranoid": true,
+            "con-leche": true,
+            "con-ron": true,
+            "lean4lean": true,
+            "nanoda": true
+          },
+          "axioms": [
+            "propext",
+            "Quot.sound",
+            "Classical.choice"
+          ],
+          "nanoda_serial_retry": false
+        }
+      ]
+    }
+  },
+  "law_catalog_sha256_at_baseline": "37f6979a5d9912ef299046f15fe021e537160d2e019f4c39b1e55eafe25abe2b"
+}

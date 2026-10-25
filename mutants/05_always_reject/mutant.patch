@@ -1,0 +1,12 @@
+--- a/lib/hold_ledger/ledger.ex
++++ b/lib/hold_ledger/ledger.ex
+@@ -92,8 +92,7 @@
+             {state, :insufficient_amount, []}
+ 
+           true ->
+-            {{amount_limit, hold_limit, used_amount + amount, used_holds + 1,
+-              [{key, amount, :reserved} | entries]}, :admitted, []}
++            {state, :insufficient_amount, []}
+         end
+     end
+   end

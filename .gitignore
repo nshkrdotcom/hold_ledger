@@ -1,0 +1,32 @@
+# Elixir and Lean products
+/_build/
+/deps/
+/tmp/
+/cover/
+/.elixir_ls/
+/.fetch/
+*.beam
+*.ez
+*.dump
+erl_crash.dump
+
+# uv-managed Python tools
+/.venv/
+/__pycache__/
+*.py[cod]
+/.pytest_cache/
+
+# Local state and credentials
+/.local/
+/.env
+/.env.*
+!/.env.example
+*.log
+*.sqlite*
+/.DS_Store
+/.idea/
+/.vscode/
+
+# Generated documentation and Hex package archives
+/doc/
+/hold_ledger-*.tar

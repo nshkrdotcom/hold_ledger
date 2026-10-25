@@ -1,0 +1,11 @@
+--- a/lib/hold_ledger/ledger.ex
++++ b/lib/hold_ledger/ledger.ex
+@@ -159,7 +159,7 @@
+ 
+       {:ok, {_, amount, :unknown}} ->
+         {{amount_limit, hold_limit, used_amount, used_holds, set_status(entries, key, :sent)},
+-         :retried, [{:authorize, key, amount}]}
++         :retried, [{:authorize, key + 1, amount}]}
+ 
+       _ ->
+         {state, :stale, []}

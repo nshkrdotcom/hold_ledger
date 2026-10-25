@@ -1,0 +1,14 @@
+[project]
+name = "hold-ledger-tools"
+version = "0.0.0"
+description = "Repository-local Lean provisioning and proof checking for Hold Ledger"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "zstandard==0.25.0",
+]

@@ -1,0 +1,38 @@
+name: Prepare pinned Hold Ledger tools
+description: Install exact BEAM, uv/Python and repository-local pinned Lean/Lake
+runs:
+  using: composite
+  steps:
+    - name: Install BEAM runtime
+      uses: erlef/setup-beam@v1.24.1
+      with:
+        otp-version: '29.1.2'
+        elixir-version: '1.20.4'
+        version-type: strict
+    - name: Install pinned uv and Python (source/toolchain keyed cache)
+      uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      with:
+        version: '0.12.6'
+        python-version: '3.13.15'
+        enable-cache: true
+        cache-dependency-glob: |
+          uv.lock
+          pyproject.toml
+          mix.lock
+          mix.exs
+          .tool-versions
+          .python-version
+          lean-toolchain
+          scripts/toolchains.json
+          lib/**/*.ex
+          test/laws/*.exs
+    - name: Validate runtime, install locked helpers and local Lean/Lake
+      shell: bash
+      run: |
+        set -euo pipefail
+        uv sync --locked
+        uv run --locked python scripts/onboard.py --profile runtime
+        uv run --locked python scripts/onboard.py --profile runtime --provision
+        uv run --locked python scripts/local_run.py mix deps.get
+        git diff --exit-code -- mix.lock
+        uv run --locked python scripts/verify_pins.py

@@ -1,0 +1,16 @@
+--- a/lib/hold_ledger/ledger.ex
++++ b/lib/hold_ledger/ledger.ex
+@@ -223,6 +223,12 @@
+   def void(state, _), do: {state, :malformed, []}
+ 
+   @doc "A transport acknowledgment never establishes processor authorization."
+-  def transport_ack(state, key) when is_integer(key), do: {state, :stale, []}
++  def transport_ack({cap, slots, used, holds, entries} = state, key) when is_integer(key) do
++    case find(entries, key) do
++      {:ok, {_, _, :sent}} ->
++        {{cap, slots, used, holds, set_status(entries, key, :authorized)}, :authorized, []}
++      _ -> {state, :stale, []}
++    end
++  end
+   def transport_ack(state, _), do: {state, :malformed, []}
+ end
