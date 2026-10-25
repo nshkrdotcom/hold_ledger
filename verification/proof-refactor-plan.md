@@ -89,7 +89,7 @@ The completion changes also replace stale exclusions in README, verification/cra
 
 ### Final acceptance result
 
-The source was committed and pushed as `08c25a4`. The subsequent detached cold
+The source snapshot is identified by recorded file hashes. The subsequent detached cold
 full run completed successfully on 2026-10-25: all 29 groups, all six checker
 configurations, and the permitted-axiom audit passed. The run is preserved in
 `tmp/verification/background-20261025T082451459426Z/`. Native proof/export took

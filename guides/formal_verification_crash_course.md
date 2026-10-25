@@ -439,7 +439,7 @@ Development proof attempts and full acceptance are different checks. See [Verifi
 ## 8. Frequently Asked Questions
 
 ### Why not write the whole ledger in Lean and extract Elixir code?
-This project keeps the ledger and its journaled OTP runtime in Elixir. Lynx lets it state and prove laws about translated pure functions without maintaining a separate hand-written Lean implementation of the reducer. The runtime continues to use GenServer, supervision, and `:disk_log`, with behavior tested separately.
+This project keeps the ledger and its journaled OTP runtime in Elixir. Lynx lets it state and prove laws about translated pure functions without maintaining a separate hand-written Lean implementation of the reducer. The runtime continues to use GenServer, supervision, and the owned framed journal, with behavior tested separately.
 
 Extraction and foreign-function integration are other design choices; this project does not establish that they are impossible or inherently unsuitable.
 
@@ -465,7 +465,7 @@ Tests, specified laws, proof maintenance, and operational checks remain compleme
 ---
 
 ## 9. Next Steps
-* Read [**Architecture Guide**](architecture.md) for how the pure core connects to GenServer and `:disk_log`.
+* Read [**Architecture Guide**](architecture.md) for how the pure core connects to GenServer and the owned framed journal.
 * Read [**Specification Guide**](specification.md) for every event, status, and transition rule.
 * Read [**Verification Guide**](verification.md) for checker commands, axiom configurations, and benchmark costs.
 * Run the interactive demo:

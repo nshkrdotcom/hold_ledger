@@ -12,8 +12,9 @@ defmodule HoldLedger.TransitionTest do
     assert Ledger.step(TestFixtures.zero(), {:request, 1, 1}) ==
              {TestFixtures.zero(), :insufficient_holds, []}
 
-    assert_raise FunctionClauseError, fn -> Ledger.init(-1, 1) end
-    assert_raise FunctionClauseError, fn -> Ledger.init(1, :unbounded) end
+    for {amount, holds} <- [{-1, 1}, {1, :unbounded}] do
+      assert_raise FunctionClauseError, fn -> Ledger.init(amount, holds) end
+    end
   end
 
   test "fresh exact-fit admission prepends one reserved entry and increments both counters" do

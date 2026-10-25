@@ -36,7 +36,6 @@ end
 {:ok, server} =
   Server.start_link(
     path: path,
-    journal_name: :hold_ledger_demo,
     caps: {100, 5},
     processor: {Sim, sim}
   )
@@ -64,9 +63,7 @@ show.("before stop", :sent)
 {:ok, server} =
   Server.start_link(
     path: path,
-    journal_name: :hold_ledger_demo,
     caps: {100, 5},
-    chunk_size: 2,
     processor: {Sim, sim}
   )
 
@@ -114,7 +111,6 @@ show.("at capacity", {elem(Server.state(server), 2), elem(Server.state(server), 
 {:ok, server_off} =
   Server.start_link(
     path: Path.join(dir, "dedupe-off.log"),
-    journal_name: :hold_ledger_demo_dedupe_off,
     caps: {50, 2},
     processor: {Sim, sim_off}
   )

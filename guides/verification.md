@@ -21,10 +21,7 @@ and the permitted-axiom audit. A launched or partially completed run is not
 acceptance. Keep the generated report with the exact source hashes for any
 claim about a particular checkout.
 
-The cold full run on 2026-10-25 accepted all 29 groups at source revision
-`08c25a4` with this Lynx pin, before repository history was consolidated into
-one initial commit. All source hashes recorded by that run match the current
-checkout; the original revision remains in the local evidence for provenance.
+The recorded cold full run on 2026-10-25 accepted all 29 groups with this Lynx pin. Source-file hashes and export hash/size identify the checked program; removed repository history is not required for that identity. Compare those hashes before carrying the result forward.
 All six checker configurations accepted the export;
 the axiom dependencies were exactly `propext`, `Quot.sound`, `Classical.choice`.
 The [human review guide](human_review.md#full-run-evidence-inspected) records the
@@ -32,7 +29,7 @@ export hash and evidence location, alongside the source assessment and the
 decisions that still require human approval.
 
 The retained `verification/baseline.json` is historical evidence for an earlier
-26-group run on source commit `b34fd6a6ce5f9966355917bed3fdc9459fe182f1` and
+26-group run identified by its source hashes and
 Lynx `4a7e9db0655b67b6b9fc1e5511eb3fe12625b52c`. It includes export and source
 hashes, checker and axiom results, 119 ordinary checks, 22 properties/220,000
 examples and 26 runtime tests. Its three then-unproved obligations and its
@@ -197,3 +194,7 @@ Lean blocks gives 3,939 lines, versus 9,276 embedded Lean lines before the
 refactor (including the three unfinished attempts): a 57.5% source reduction.
 This includes module headers and proof helpers, and differs from the historical
 baseline's proof-body-only counting convention.
+
+## CI acceptance gate
+
+The workflow always runs change detection and a final formal gate on push/PR. Proof-relevant changes require a cold full 29-group run, fresh exports, all six checker configurations and allowed-axiom audit. Failed detection or a required skipped/cancelled/failed formal job fails the gate. Missing diff-base data conservatively requires verification. Documentation-only changes may pass without a new proof claim. Native mutation experiments remain dispatchable separately. Hosting branch protection must require the stable `formal-gate` check; workflow code does not configure that setting. Reports and exports are retained as CI artifacts, including failure diagnostics.

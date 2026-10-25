@@ -1,182 +1,288 @@
 defmodule HoldLedger.Journal do
   @moduledoc """
-  A single-owner, append/sync-first `:disk_log` journal in `:halt`/`:internal` mode.
+  Single-owner journal with application-owned framing and exact-byte integrity.
 
-  Every record carries a one-based sequence and SHA-256 predecessor chain.
-  `replay/2` consumes *every* chunk before declaring the log usable. An invalid
-  frame, discontinuity, bad byte count, or disk_log read error is fatal; no
-  recovered prefix is silently installed as the ledger. In particular, OTP may
-  open a truncated log successfully and only report corruption on a later read.
-
-  The chain detects missing/corrupted records in an existing log, but cannot
-  authenticate a wholesale replacement with a fresh log. Filesystem ordering,
-  durable flushes, and physical media remain external assumptions.
+  A file begins with `HOLDJNL1`. Each frame has a payload length, sequence,
+  predecessor digest, header digest, payload, and full digest. Header integrity
+  is verified before trusting lengths. Replay folds every frame before enabling
+  writes. Complete-prefix rollback requires an external freshness anchor.
   """
+  @magic "HOLDJNL1"
+  @zero <<0::256>>
+  @max_payload 65_536
+  @header_size 76
+  defstruct [:path, :file, :lock, next_seq: 1, digest: @zero, ready?: false, offset: 8]
+  @type t :: %__MODULE__{}
 
-  @initial_digest :binary.copy(<<0>>, 32)
-  @record_tag :hold_ledger_event_v1
-
-  defstruct [:name, :path, next_seq: 1, digest: @initial_digest, ready?: false]
-
-  @type t :: %__MODULE__{
-          name: atom(),
-          path: String.t(),
-          next_seq: pos_integer(),
-          digest: binary()
-        }
-
-  @doc "Open a log by an explicitly supplied atom name and pathname. No repair is attempted."
-  @spec open(keyword()) :: {:ok, t()} | {:error, term()}
   def open(opts) do
-    name = Keyword.fetch!(opts, :name)
     path = Keyword.fetch!(opts, :path)
 
-    if not is_atom(name) or not is_binary(path) or path == "" do
-      {:error, :invalid_journal_options}
+    if is_binary(path) and path != "" do
+      open_path(Path.expand(path))
     else
-      open_log(name, path)
+      {:error, :invalid_journal_options}
     end
   end
 
-  defp open_log(name, path) do
-    with :ok <- File.mkdir_p(Path.dirname(path)) do
-      case :disk_log.open(
-             name: name,
-             file: String.to_charlist(path),
-             type: :halt,
-             format: :internal,
-             repair: false
-           ) do
-        {:ok, ^name} ->
-          {:ok, %__MODULE__{name: name, path: path}}
+  defp open_path(path) do
+    lock = {__MODULE__, path}
 
-        {:repaired, ^name, recovered, bad} ->
-          :disk_log.close(name)
-          {:error, {:unexpected_repair, recovered, bad}}
+    if :global.whereis_name(lock) == :undefined and :global.register_name(lock, self()) == :yes do
+      case open_file(path) do
+        {:ok, file} ->
+          {:ok, %__MODULE__{path: path, file: file, lock: lock}}
 
-        {:error, reason} ->
-          {:error, {:open_failed, reason}}
+        {:error, _} = error ->
+          :global.unregister_name(lock)
+          error
+      end
+    else
+      {:error, :journal_owned}
+    end
+  end
 
-        other ->
-          {:error, {:open_unexpected, other}}
+  defp open_file(path) do
+    with :ok <- File.mkdir_p(Path.dirname(path)),
+         {:ok, file} <- :file.open(String.to_charlist(path), [:binary, :read, :write]) do
+      case initialize_file(file, path) do
+        :ok ->
+          {:ok, file}
+
+        {:error, _} = error ->
+          :file.close(file)
+          error
       end
     end
   end
 
-  @doc "Check and collect every chunk in order, returning events and an append-ready handle."
-  @spec replay(t(), keyword()) :: {:ok, list(), t()} | {:error, term()}
-  def replay(journal, opts \\ [])
+  defp initialize_file(file, path) do
+    case :file.pread(file, 0, 8) do
+      :eof ->
+        with :ok <- :file.pwrite(file, 0, @magic),
+             :ok <- :file.sync(file),
+             do: sync_directory(path)
 
-  def replay(%__MODULE__{ready?: false} = journal, opts) do
-    chunk_size = Keyword.get(opts, :chunk_size, 128)
+      {:ok, @magic} ->
+        :ok
 
-    if is_integer(chunk_size) and chunk_size > 0 do
-      read_chunks(journal, :start, chunk_size, [], 0)
-    else
-      {:error, :invalid_chunk_size}
+      _ ->
+        {:error, :invalid_journal_header}
     end
   end
 
-  def replay(%__MODULE__{}, _opts), do: {:error, :already_replayed}
+  @doc "Fold verified frames without materializing the complete event history."
+  def fold(%{ready?: false} = journal, acc, fun), do: read_frame(journal, acc, fun)
+  def fold(_, _, _), do: {:error, :already_replayed}
 
-  @doc "Persist a term and sync it before advancing the in-memory cursor."
-  @spec append_sync(t(), term(), keyword()) :: {:ok, t()} | {:error, term()}
+  def replay(journal) do
+    case fold(journal, [], fn event, acc -> [event | acc] end) do
+      {:ok, events, next} -> {:ok, Enum.reverse(events), next}
+      error -> error
+    end
+  end
+
   def append_sync(journal, event, opts \\ [])
 
-  def append_sync(%__MODULE__{ready?: true} = journal, event, opts) do
-    fault = Keyword.get(opts, :fault)
-    seq = journal.next_seq
-    prev = journal.digest
-    digest = digest_record(seq, prev, event)
-    record = {@record_tag, seq, prev, event, digest}
-
-    if fault == :append do
-      {:error, {:append_failed, :injected}}
+  def append_sync(%{ready?: true} = journal, event, opts) do
+    if HoldLedger.Event.valid?(event) do
+      payload = :erlang.term_to_binary(event, [:deterministic])
+      append_payload(journal, payload, Keyword.get(opts, :fault))
     else
-      append_record(journal, record, fault, digest)
+      {:error, :invalid_event}
     end
   end
 
-  def append_sync(%__MODULE__{}, _event, _opts), do: {:error, :replay_required}
+  def append_sync(_, _, _), do: {:error, :replay_required}
 
-  defp append_record(journal, record, fault, digest) do
-    case :disk_log.log(journal.name, record) do
-      :ok -> sync_record(journal, fault, digest)
-      {:error, reason} -> {:error, {:append_failed, reason}}
+  defp append_payload(_journal, payload, _) when byte_size(payload) > @max_payload,
+    do: {:error, :event_too_large}
+
+  defp append_payload(_journal, _payload, :append), do: {:error, {:append_failed, :injected}}
+
+  defp append_payload(journal, payload, fault) do
+    prefix = <<byte_size(payload)::32, journal.next_seq::64, journal.digest::binary>>
+    header = prefix <> hash(prefix)
+    digest = hash(header <> payload)
+    frame = header <> payload <> digest
+
+    with :ok <- :file.pwrite(journal.file, journal.offset, frame),
+         :ok <- sync_append(journal.file, fault) do
+      {:ok,
+       %{
+         journal
+         | next_seq: journal.next_seq + 1,
+           digest: digest,
+           offset: journal.offset + byte_size(frame)
+       }}
     end
   end
 
-  defp sync_record(journal, fault, digest) do
-    result =
-      case fault do
-        :sync -> {:error, :injected_sync_failure}
-        :disk_full -> {:error, :simulated_disk_full}
-        _ -> :disk_log.sync(journal.name)
-      end
+  defp sync_append(_, :sync),
+    do: {:error, {:sync_failed, :injected_sync_failure, :ambiguous_disk_append}}
 
-    case result do
-      :ok -> {:ok, %{journal | next_seq: journal.next_seq + 1, digest: digest}}
-      {:error, reason} -> {:error, {:sync_failed, reason, :ambiguous_disk_append}}
-    end
+  defp sync_append(_, :disk_full),
+    do: {:error, {:sync_failed, :simulated_disk_full, :ambiguous_disk_append}}
+
+  defp sync_append(file, _), do: :file.sync(file)
+
+  def close(journal) do
+    result = :file.close(journal.file)
+    :global.unregister_name(journal.lock)
+    result
   end
 
-  @spec close(t()) :: :ok | {:error, term()}
-  def close(%__MODULE__{name: name}), do: :disk_log.close(name)
-
-  defp read_chunks(journal, continuation, chunk_size, reversed, count) do
-    case :disk_log.chunk(journal.name, continuation, chunk_size) do
+  defp read_frame(journal, acc, fun) do
+    case :file.pread(journal.file, journal.offset, @header_size) do
       :eof ->
-        {:ok, Enum.reverse(reversed), %{journal | ready?: true}}
+        {:ok, acc, %{journal | ready?: true}}
+
+      {:ok, header} when byte_size(header) == @header_size ->
+        read_payload(journal, header, acc, fun)
+
+      {:ok, _} ->
+        {:error, {:incomplete_tail, journal.offset}}
 
       {:error, reason} ->
-        {:error, {:chunk_read_failed, count, reason}}
-
-      {_, _items, bad_bytes} when bad_bytes != 0 ->
-        {:error, {:corrupt_chunk_bytes, count, bad_bytes}}
-
-      {next, items, 0} when is_list(items) ->
-        verify_chunk(journal, next, items, chunk_size, reversed, count)
-
-      {next, items} when is_list(items) ->
-        verify_chunk(journal, next, items, chunk_size, reversed, count)
-
-      other ->
-        {:error, {:unexpected_chunk, count, other}}
+        {:error, {:read_failed, journal.offset, reason}}
     end
   end
 
-  defp verify_chunk(journal, continuation, items, chunk_size, reversed, count) do
-    case Enum.reduce_while(items, {:ok, journal, reversed, count}, &verify_record/2) do
-      {:ok, next_journal, new_reversed, new_count} ->
-        read_chunks(next_journal, continuation, chunk_size, new_reversed, new_count)
-
-      {:error, _} = error ->
-        error
-    end
-  end
-
-  defp verify_record(record, {:ok, current, acc, n}) do
-    case check_record(current, record) do
-      {:ok, event, next} -> {:cont, {:ok, next, [event | acc], n + 1}}
-      {:error, reason} -> {:halt, {:error, {:invalid_record, n + 1, reason}}}
-    end
-  end
-
-  defp check_record(
-         %__MODULE__{next_seq: seq, digest: prev} = journal,
-         {@record_tag, actual_seq, actual_prev, event, actual_digest}
+  defp read_payload(
+         journal,
+         <<size::32, seq::64, prev::binary-size(32), checksum::binary-size(32)>> = header,
+         acc,
+         fun
        ) do
+    prefix = binary_part(header, 0, 44)
+
     cond do
-      actual_seq != seq -> {:error, {:sequence_mismatch, seq, actual_seq}}
-      actual_prev != prev -> {:error, :predecessor_mismatch}
-      actual_digest != digest_record(seq, prev, event) -> {:error, :digest_mismatch}
-      true -> {:ok, event, %{journal | next_seq: seq + 1, digest: actual_digest}}
+      hash(prefix) != checksum -> {:error, {:corrupt_header, journal.offset}}
+      size > @max_payload -> {:error, {:invalid_length, journal.offset}}
+      seq != journal.next_seq -> {:error, {:sequence_mismatch, journal.next_seq, seq}}
+      prev != journal.digest -> {:error, :predecessor_mismatch}
+      true -> decode_frame(journal, header, size, acc, fun)
     end
   end
 
-  defp check_record(_journal, _record), do: {:error, :malformed_frame}
+  defp decode_frame(journal, header, size, acc, fun) do
+    case :file.pread(journal.file, journal.offset + @header_size, size + 32) do
+      {:ok, <<payload::binary-size(^size), digest::binary-size(32)>>} ->
+        if hash(header <> payload) == digest do
+          apply_frame(journal, payload, digest, acc, fun)
+        else
+          {:error, {:digest_mismatch, journal.offset}}
+        end
 
-  defp digest_record(seq, prev, event) do
-    :crypto.hash(:sha256, :erlang.term_to_binary({@record_tag, seq, prev, event}))
+      {:error, reason} ->
+        {:error, {:read_failed, journal.offset, reason}}
+
+      _ ->
+        {:error, {:incomplete_tail, journal.offset}}
+    end
   end
+
+  defp apply_frame(journal, payload, digest, acc, fun) do
+    case decode(payload) do
+      {:ok, event} ->
+        next = %{
+          journal
+          | next_seq: journal.next_seq + 1,
+            digest: digest,
+            offset: journal.offset + @header_size + byte_size(payload) + 32
+        }
+
+        read_frame(next, fun.(event, acc), fun)
+
+      :error ->
+        {:error, {:invalid_payload, journal.offset}}
+    end
+  end
+
+  defp decode(payload), do: HoldLedger.Event.decode(payload)
+
+  @doc "Read-only integrity inspection; never executes effects or repairs files."
+  def inspect_file(path) do
+    with {:ok, file} <- :file.open(String.to_charlist(path), [:binary, :read]) do
+      result =
+        case :file.pread(file, 0, 8) do
+          {:ok, @magic} -> fold(%__MODULE__{file: file}, 0, &count_event/2)
+          _ -> {:error, :invalid_journal_header}
+        end
+
+      :file.close(file)
+
+      inspection_result(result)
+    end
+  end
+
+  defp count_event(_, count), do: count + 1
+
+  defp inspection_result({:ok, count, journal}),
+    do: {:ok, %{records: count, verified_bytes: journal.offset, digest: journal.digest}}
+
+  defp inspection_result(error), do: error
+
+  @doc "Copy a verified prefix to a new path only when the final frame is incomplete."
+  def recover_tail(source, destination, opts \\ []) do
+    lock = {__MODULE__, Path.expand(source)}
+
+    if :global.whereis_name(lock) == :undefined and :global.register_name(lock, self()) == :yes do
+      try do
+        case inspect_file(source) do
+          {:error, {:incomplete_tail, offset}} -> copy_prefix(source, destination, offset, opts)
+          {:ok, _} -> {:error, :no_incomplete_tail}
+          error -> error
+        end
+      after
+        :global.unregister_name(lock)
+      end
+    else
+      {:error, :journal_owned}
+    end
+  end
+
+  defp copy_prefix(source, destination, offset, opts) do
+    with {:ok, input} <- :file.open(String.to_charlist(source), [:read, :binary]) do
+      result = create_recovered(input, destination, offset, opts)
+      :file.close(input)
+      result
+    end
+  end
+
+  defp create_recovered(input, destination, offset, opts) do
+    with {:ok, output} <-
+           :file.open(String.to_charlist(destination), [:write, :binary, :exclusive]) do
+      result =
+        with {:ok, ^offset} <- :file.copy(input, output, offset),
+             :ok <- recovery_sync(output, Keyword.get(opts, :fault)) do
+          recovery_directory(destination, Keyword.get(opts, :fault))
+        end
+
+      :file.close(output)
+
+      if result != :ok do
+        File.rm(destination)
+        sync_directory(destination)
+      end
+
+      result
+    end
+  end
+
+  defp recovery_directory(_, :directory_sync), do: {:error, :recovery_directory_sync_failed}
+  defp recovery_directory(path, _), do: sync_directory(path)
+
+  defp recovery_sync(_, :sync), do: {:error, :recovery_sync_failed}
+  defp recovery_sync(file, _), do: :file.sync(file)
+
+  defp sync_directory(path) do
+    with {:ok, directory} <-
+           :file.open(String.to_charlist(Path.dirname(path)), [:read, :directory]) do
+      result = :file.sync(directory)
+      :file.close(directory)
+      result
+    end
+  end
+
+  defp hash(bytes), do: :crypto.hash(:sha256, bytes)
 end

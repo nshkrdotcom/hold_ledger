@@ -88,7 +88,10 @@ defmodule HoldLedger.MixProject do
           HoldLedger.Journal,
           HoldLedger.Processor,
           HoldLedger.Processor.Sim,
-          HoldLedger.EffectExecutor
+          HoldLedger.EffectExecutor,
+          HoldLedger.Attempts,
+          HoldLedger.Outbox,
+          HoldLedger.Event
         ]
       ]
     ]

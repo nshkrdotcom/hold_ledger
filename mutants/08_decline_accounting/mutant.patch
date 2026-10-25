@@ -1,0 +1,11 @@
+--- a/lib/hold_ledger/ledger.ex
++++ b/lib/hold_ledger/ledger.ex
+@@ -186,7 +186,7 @@
+               set_status(entries, key, :authorized)}, :authorized, []}
+ 
+           :declined ->
+-            {{amount_limit, hold_limit, used_amount - amount, used_holds - 1,
++            {{amount_limit, hold_limit, used_amount + amount, used_holds - 1,
+               set_status(entries, key, :declined)}, :declined, []}
+         end
+ 

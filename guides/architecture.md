@@ -28,15 +28,14 @@ laws relate the translated ledger to specification predicates.
 ## Runtime
 
 `HoldLedger.Server` owns one ledger and serializes inputs. It journals and syncs
-each input before applying it or scheduling its effects. Its optional monitor
-checks state validity and expected transitions using Spec.
+admitted input or a bounded rejection marker before applying state or scheduling effects. Its optional monitor
+checks state validity using Spec.
 
 `HoldLedger.Journal` stores a configuration record and ordered, hash-chained
-input records in OTP `:disk_log`. Replay checks ordering, hashes, record shape
-and capacity configuration. Corruption fails closed.
+input records in an application-owned length-prefixed file format. Replay streams verified frames and checks ordering, exact-byte hashes and capacity configuration. Corruption fails closed.
 
 `HoldLedger.EffectExecutor` runs processor operations under a task supervisor
-and reports their outcomes back through the server's journaled input path.
+with monitored deadlines and reports correlated outcomes through the journal. The pure `Attempts` reducer controls task phases and slot release; `Outbox` reconstructs remote void obligations and durable attempt budgets. Neither is included in the ledger proof catalog.
 `HoldLedger.Processor` is the behavior; `HoldLedger.Processor.Sim` is its local
 fault-injectable implementation.
 

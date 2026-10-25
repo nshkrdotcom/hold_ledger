@@ -11,7 +11,7 @@ void(context, integer_key)
 Configure Server with `processor: {YourProcessor, context}`. Authorization can
 return `{:ok, :approved | :declined}`, `{:lost, :request | :reply}`, a delayed
 reply, or a list of synthetic callbacks. Lookup returns an approved/declined
-outcome, `:not_found`, or an error. Void returns a receipt or an error. See the
+outcome, `:not_found`, or an error. Void returns `{:ok, :voided}`, `{:ok, :already_voided}`, or an error. Not-found is unresolved. See the
 behavior's API documentation for exact types.
 
 ## Simulator
@@ -49,3 +49,7 @@ properties. Network success alone is insufficient evidence of authorization,
 and a local void does not establish that remote capacity was released.
 
 The simulator has no network integration and is not a production payment adapter.
+
+## Void identity and completion
+
+Repeated void calls use the same hold key in the configured account/processor scope. The adapter must make that operation repeatable for the required retention lifetime, including execution with a lost reply. A local task kill does not cancel remote work. Unexpected replies and arbitrary error terms are normalized into bounded failure atoms; they cannot mark a void complete. `:not_found` is not confirmation of a void.

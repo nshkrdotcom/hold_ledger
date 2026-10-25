@@ -8,12 +8,11 @@ defmodule HoldLedgerRuntimeTest do
     File.mkdir_p!(dir)
     on_exit(fn -> File.rm_rf!(dir) end)
 
-    {Path.join(dir, "runtime.log"),
-     String.to_atom("hl_srv_#{System.unique_integer([:positive])}")}
+    Path.join(dir, "runtime.log")
   end
 
-  defp start_server(path, journal_name, opts \\ []) do
-    defaults = [path: path, journal_name: journal_name, caps: {100, 10}, allow_faults: true]
+  defp start_server(path, opts \\ []) do
+    defaults = [path: path, caps: {100, 10}, allow_faults: true]
     {:ok, pid} = Server.start_link(Keyword.merge(defaults, opts))
     Process.unlink(pid)
     on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid) end)
@@ -33,9 +32,9 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "append failure is fail-closed: no local apply and no receiver effect" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     before = Server.state(server)
     assert :ok = Server.inject_fault(server, :append)
     assert {:error, {:append_failed, :injected}} = Server.submit(server, {:request, 1, 10})
@@ -47,9 +46,9 @@ defmodule HoldLedgerRuntimeTest do
 
   test "sync failure and disk-full leave memory unchanged without dispatch" do
     for fault <- [:sync, :disk_full] do
-      {path, name} = location()
+      path = location()
       sim = simulator()
-      server = start_server(path, name, processor: {Sim, sim})
+      server = start_server(path, processor: {Sim, sim})
       assert {:ok, :admitted} = Server.submit(server, {:request, 9, 30})
       before = Server.state(server)
       assert :ok = Server.inject_fault(server, fault)
@@ -63,9 +62,10 @@ defmodule HoldLedgerRuntimeTest do
     end
   end
 
+  @tag capture_log: true
   test "crash after durable append before apply replays exactly one transition" do
-    {path, name} = location()
-    server = start_server(path, name, processor: nil)
+    path = location()
+    server = start_server(path, processor: nil)
     assert :ok = Server.inject_fault(server, :crash_after_sync)
     monitor = Process.monitor(server)
 
@@ -81,22 +81,22 @@ defmodule HoldLedgerRuntimeTest do
     assert_receive {:DOWN, ^monitor, :process, ^server, :injected_after_durable_append}, 2_000
     assert Task.await(task, 2_000) == :caller_observed_exit
 
-    restored = start_server(path, name, processor: nil)
+    restored = start_server(path, processor: nil)
     assert Server.recovery(restored).pre_restart == {100, 10, 20, 1, [{23, 20, :reserved}]}
     assert entry(restored, 23) == {23, 20, :reserved}
     assert elem(Server.state(restored), 3) == 1
   end
 
   test "replay shows sent before restart and unknown afterwards; it does not resend" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
-    server = start_server(path, name, processor: nil, chunk_size: 1)
+    server = start_server(path, processor: nil)
     assert {:ok, :admitted} = Server.submit(server, {:request, 4, 40})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 4})
     assert entry(server, 4) == {4, 40, :sent}
     assert :ok = GenServer.stop(server)
 
-    restored = start_server(path, name, processor: {Sim, sim}, chunk_size: 1)
+    restored = start_server(path, processor: {Sim, sim})
     assert elem(Server.recovery(restored).pre_restart, 4) == [{4, 40, :sent}]
     assert entry(restored, 4) == {4, 40, :unknown}
     assert Sim.snapshot(sim).attempts == []
@@ -104,10 +104,10 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "execute then lose reply retains capacity; lookup reconciles existing remote hold" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
     :ok = Sim.queue_fault(sim, :authorize, :execute_then_drop)
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 1, 80})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 1})
     assert :ok = Server.await_idle(server)
@@ -120,10 +120,10 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "dropped request -> not-found lookup -> same identity retry" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
     :ok = Sim.queue_fault(sim, :authorize, :drop_before)
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 50, 40})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 50})
     assert :ok = Server.await_idle(server)
@@ -141,10 +141,10 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "unavailable lookup leaves unknown held and never authorizes or retries" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
     :ok = Sim.queue_fault(sim, :authorize, :drop_before)
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 51, 35})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 51})
     :ok = Server.await_idle(server)
@@ -155,10 +155,10 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "duplicate callback and out-of-order terminal result do not release capacity" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
     :ok = Sim.queue_fault(sim, :authorize, {:out_of_order, [:approved, :declined]})
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 12, 90})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 12})
     assert :ok = Server.await_idle(server)
@@ -169,10 +169,10 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "duplicated callbacks are each journaled but only first outcome applies" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
     :ok = Sim.queue_fault(sim, :authorize, :duplicate_callback)
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 14, 7})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 14})
     assert :ok = Server.await_idle(server)
@@ -182,10 +182,10 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "delayed callback remains sent until later journaled reply" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
     :ok = Sim.queue_fault(sim, :authorize, {:delay, 120})
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 20, 20})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 20})
     assert entry(server, 20) == {20, 20, :sent}
@@ -194,10 +194,10 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "void is local intent until processor confirms; duplicate after void stays stale" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
     :ok = Sim.queue_fault(sim, :void, :unavailable)
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 30, 30})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 30})
     :ok = Server.await_idle(server)
@@ -206,7 +206,7 @@ defmodule HoldLedgerRuntimeTest do
     assert :ok = Server.await_idle(server)
     assert Sim.snapshot(sim).active != []
 
-    assert {:processor_void_result, 30, {:error, :unavailable}} in Server.status(server).void_receipts
+    assert {:void_outcome, 30, {:error, :unavailable}} in Server.status(server).void_receipts
 
     assert {:ok, :stale} = Server.processor_callback(server, 30, :approved)
     assert {:ok, :duplicate} = Server.submit(server, {:request, 30, 30})
@@ -215,10 +215,10 @@ defmodule HoldLedgerRuntimeTest do
 
   test "receiver dedupe-on holds once, dedupe-off exposes duplicate external authorization" do
     for dedupe <- [true, false] do
-      {path, name} = location()
+      path = location()
       sim = simulator(dedupe: dedupe)
       :ok = Sim.queue_fault(sim, :authorize, :execute_then_drop)
-      server = start_server(path, name, processor: {Sim, sim})
+      server = start_server(path, processor: {Sim, sim})
       assert {:ok, :admitted} = Server.submit(server, {:request, 88, 25})
       assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 88})
       :ok = Server.await_idle(server)
@@ -238,8 +238,8 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "concurrent clients serialize at independent slot/amount caps" do
-    {path, name} = location()
-    server = start_server(path, name, caps: {25, 25}, processor: nil)
+    path = location()
+    server = start_server(path, caps: {25, 25}, processor: nil)
 
     results =
       1..60
@@ -259,20 +259,21 @@ defmodule HoldLedgerRuntimeTest do
 
   test "zero slots, exact fit, and cap mismatch on restart" do
     Process.flag(:trap_exit, true)
-    {path, name} = location()
-    server = start_server(path, name, caps: {50, 1})
+    path = location()
+    server = start_server(path, caps: {50, 1})
     assert {:ok, :admitted} = Server.submit(server, {:request, 1, 50})
     assert {:ok, :insufficient_holds} = Server.submit(server, {:request, 2, 1})
     assert {50, 1, 50, 1, _} = Server.state(server)
     assert :ok = GenServer.stop(server)
 
     assert {:error, {:recovery_failed, {:caps_mismatch, {50, 1}, {51, 1}}}} =
-             Server.start_link(path: path, journal_name: name, caps: {51, 1})
+             Server.start_link(path: path, caps: {51, 1})
   end
 
+  @tag capture_log: true
   test "a durable dispatch lost before application replays sent then becomes unknown" do
-    {path, name} = location()
-    server = start_server(path, name, processor: nil)
+    path = location()
+    server = start_server(path, processor: nil)
     assert {:ok, :admitted} = Server.submit(server, {:request, 99, 5})
     assert :ok = Server.inject_fault(server, :crash_after_sync)
     monitor = Process.monitor(server)
@@ -289,17 +290,17 @@ defmodule HoldLedgerRuntimeTest do
     assert_receive {:DOWN, ^monitor, :process, ^server, :injected_after_durable_append}, 2_000
     assert Task.await(task, 2_000) == :caller_observed_exit
     sim = simulator()
-    restored = start_server(path, name, processor: {Sim, sim})
+    restored = start_server(path, processor: {Sim, sim})
     assert {:ok, {99, 5, :sent}} = Ledger.find(elem(Server.recovery(restored).pre_restart, 4), 99)
     assert entry(restored, 99) == {99, 5, :unknown}
     assert Sim.snapshot(sim).attempts == []
   end
 
   test "declined lookup after lost reply releases capacity only upon durable result" do
-    {path, name} = location()
+    path = location()
     sim = simulator(decisions: [{44, :declined}])
     :ok = Sim.queue_fault(sim, :authorize, :execute_then_drop)
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 44, 65})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 44})
     :ok = Server.await_idle(server)
@@ -312,9 +313,9 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "reserved void has no processor-side effect or uncertainty" do
-    {path, name} = location()
+    path = location()
     sim = simulator()
-    server = start_server(path, name, processor: {Sim, sim})
+    server = start_server(path, processor: {Sim, sim})
     assert {:ok, :admitted} = Server.submit(server, {:request, 45, 10})
     assert {:ok, :voided} = Server.submit(server, {:void, 45})
     assert :ok = Server.await_idle(server)
@@ -325,14 +326,14 @@ defmodule HoldLedgerRuntimeTest do
 
   test "partial tail refuses server startup and cannot reset to empty" do
     Process.flag(:trap_exit, true)
-    {path, name} = location()
-    server = start_server(path, name)
+    path = location()
+    server = start_server(path)
     assert {:ok, :admitted} = Server.submit(server, {:request, 70, 4})
     assert :ok = GenServer.stop(server)
     bytes = File.read!(path)
     File.write!(path, binary_part(bytes, 0, byte_size(bytes) - 3))
 
-    case Server.start_link(path: path, journal_name: name, caps: {100, 10}) do
+    case Server.start_link(path: path, caps: {100, 10}) do
       {:error, {:recovery_failed, reason}} ->
         assert reason != nil
 
@@ -346,8 +347,8 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "physical replay never regenerates authorize tasks even after many records" do
-    {path, name} = location()
-    server = start_server(path, name, processor: nil, chunk_size: 2)
+    path = location()
+    server = start_server(path, processor: nil)
 
     for key <- 1..5 do
       assert {:ok, :admitted} = Server.submit(server, {:request, key, 10})
@@ -357,15 +358,15 @@ defmodule HoldLedgerRuntimeTest do
     assert :ok = GenServer.stop(server)
 
     sim = simulator()
-    recovered = start_server(path, name, processor: {Sim, sim}, chunk_size: 1)
+    recovered = start_server(path, processor: {Sim, sim})
     assert Enum.all?(elem(Server.state(recovered), 4), fn {_, _, s} -> s == :unknown end)
     assert Sim.snapshot(sim).attempts == []
     assert Server.recovery(recovered).replayed_event_count >= 11
   end
 
   test "abruptly killed owner recovers synced sent intent without reissuing effects" do
-    {path, name} = location()
-    server = start_server(path, name, processor: nil)
+    path = location()
+    server = start_server(path, processor: nil)
     assert {:ok, :admitted} = Server.submit(server, {:request, 101, 15})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 101})
     monitor = Process.monitor(server)
@@ -373,7 +374,7 @@ defmodule HoldLedgerRuntimeTest do
     assert_receive {:DOWN, ^monitor, :process, ^server, :killed}, 2_000
 
     sim = simulator()
-    restored = start_server(path, name, processor: {Sim, sim})
+    restored = start_server(path, processor: {Sim, sim})
 
     assert {:ok, {101, 15, :sent}} =
              Ledger.find(elem(Server.recovery(restored).pre_restart, 4), 101)
@@ -384,13 +385,13 @@ defmodule HoldLedgerRuntimeTest do
   end
 
   test "zero slots and amount-only exhaustion reject independently" do
-    {path, name} = location()
-    zero = start_server(path, name, caps: {100, 0})
+    path = location()
+    zero = start_server(path, caps: {100, 0})
     assert {:ok, :insufficient_holds} = Server.submit(zero, {:request, 1, 1})
     assert Server.state(zero) == {100, 0, 0, 0, []}
 
-    {path, name} = location()
-    amount = start_server(path, name, caps: {25, 100})
+    path = location()
+    amount = start_server(path, caps: {25, 100})
     assert {:ok, :admitted} = Server.submit(amount, {:request, 1, 25})
     assert {:ok, :insufficient_amount} = Server.submit(amount, {:request, 2, 1})
     assert Server.state(amount) == {25, 100, 25, 1, [{1, 25, :reserved}]}

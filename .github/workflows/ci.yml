@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       verify_laws:
-        description: Run uncached proofs and six independent export checkers
+        description: Run uncached proofs and six checker configurations
         type: boolean
         default: false
       run_mutants:
@@ -30,7 +30,7 @@ jobs:
         run: |
           uv run --locked python scripts/local_run.py mix format --check-formatted
           uv run --locked python scripts/local_run.py mix compile --warnings-as-errors
-          uv run --locked python scripts/local_run.py mix test --exclude laws
+          uv run --locked python scripts/local_run.py mix test --exclude laws --warnings-as-errors
       - name: Static analysis
         run: |
           uv run --locked python scripts/local_run.py mix credo --strict
@@ -46,8 +46,25 @@ jobs:
           mix docs --warnings-as-errors
           mix hex.build
 
+  changes:
+    runs-on: ubuntu-26.04
+    outputs:
+      required: ${{ steps.detect.outputs.required }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: detect
+        env:
+          DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          DIFF_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          FORCE_FORMAL: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_laws }}
+        run: python3 scripts/formal_gate.py detect
+
   formal:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify_laws }}
+    needs: changes
+    if: ${{ needs.changes.outputs.required == 'true' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 180
     steps:
@@ -57,6 +74,25 @@ jobs:
       - uses: ./.github/actions/setup-ledger
       - run: uv run --locked python scripts/onboard.py --profile proofs
       - run: uv run --locked python scripts/run_laws.py --supported-only --stage full --report tmp/verification/checked.json
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: formal-evidence
+          path: tmp/verification/
+
+  formal-gate:
+    if: ${{ always() }}
+    needs: [changes, formal]
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - env:
+          DETECTION_RESULT: ${{ needs.changes.result }}
+          FORMAL_REQUIRED: ${{ needs.changes.outputs.required }}
+          FORMAL_RESULT: ${{ needs.formal.result }}
+        run: python3 scripts/formal_gate.py gate
 
   mutants:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_mutants }}

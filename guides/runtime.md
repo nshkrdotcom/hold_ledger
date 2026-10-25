@@ -1,80 +1,163 @@
 # Runtime and recovery
 
-`HoldLedger.Server` owns a ledger backed by one explicit journal path. The
-application provides `HoldLedger.EffectSupervisor` for asynchronous effects.
+`HoldLedger.Server` owns one account and one explicit journal path. The
+application starts `HoldLedger.EffectSupervisor` with at most 32 task children.
 
 ## Start and submit
-
-In an `iex -S mix` session:
 
 ```elixir
 alias HoldLedger.{Server, Processor.Sim}
 {:ok, processor} = Sim.start_link(dedupe: true)
 {:ok, ledger} = Server.start_link(
   path: Path.join(System.tmp_dir!(), "my-hold-ledger.log"),
-  journal_name: :my_hold_ledger,
   caps: {10_000, 3},
   processor: {Sim, processor}
 )
-
 {:ok, :admitted} = Server.submit(ledger, {:request, 11, 7_000})
 {:ok, :dispatched} = Server.submit(ledger, {:dispatch, 11})
 :ok = Server.await_idle(ledger)
-Server.state(ledger)
 Server.status(ledger)
 ```
 
-Use a dedicated path and distinct journal name for each instance. Reusing a path
-reopens that ledger's history; capacities must match its persisted configuration.
-`start_link/1` optionally accepts a registered `:name`. Stop with
-`GenServer.stop(ledger)` to close the journal.
+A dedicated path has one owner in this BEAM instance. Capacities must match the
+persisted configuration. `start_link/1` accepts a registered `:name` and an
+`:effect_supervisor`. Stop with `GenServer.stop/1`. Configure supervised startup
+with `config :hold_ledger, :server_options, path: ..., caps: ...` before starting
+the application; the default application does not open an account.
 
-For automatic supervision, configure before application startup:
+## Persistence and input authority
 
-```elixir
-config :hold_ledger, :server_options,
-  name: MyLedger,
-  journal_name: :my_hold_ledger,
-  path: "/var/lib/my_app/holds.log",
-  caps: {10_000, 3}
-```
+Admitted input is appended and synced before accounting or effects. Reserved
+internal submissions return `{:error, :reserved_event}` after syncing a bounded
+`{:rejected_submission, tag}` marker. Malformed inputs use a bounded
+`{:malformed_submission, :other}` marker and return `{:ok, :malformed}`. Raw
+arbitrary processor terms and rejected payloads are not retained. Frames have a
+64 KiB payload limit. Oversized input fails before local application.
 
-Supply a `:processor` tuple for effect execution. The default has no external
-processor. A consuming application's supervisor can instead start Server after
-its processor, using explicit child options. There is no automatic journal path.
+`submit/2`, `processor_callback/3`, and the processor callback mailbox route
+trust the integrating application. They do not authenticate approved/declined
+reports. Internal void completions and lookup observations use correlated task
+references and cannot be submitted publicly. Code controlling the VM remains
+outside this boundary.
 
-## Persistence and failures
+Append/sync failure leaves accounting unchanged and poisons writes. An
+unacknowledged append may still exist on disk. Recovery uses actual verified
+history. The default Spec monitor checks validity after each live event; an
+invalid state exits with a shutdown/quarantine reason, and the transient child
+is not automatically restarted for that shutdown. Preserve the journal and use
+read-only inspection. Do not skip a persisted input to restore availability.
 
-Every input, including stale or malformed callbacks, is appended and synced
-before the state transition. Append/sync errors leave the current memory state
-unchanged, schedule no effects and poison the writer. A failed sync may still
-leave an unacknowledged event on disk; recovery must inspect persisted history.
+## Attempts and deadlines
 
-Startup validates the complete journal, folds events without reissuing old
-effects, and appends a new restart event before serving calls. `Server.recovery/1`
-returns the pre-restart and post-restart states and replay count. Any recovered
-sent request becomes unknown. Invalid configuration or corruption prevents startup.
+`HoldLedger.Attempts` is a separate pure lifecycle model, property-tested rather
+than included in the ledger's 29 formal groups. Server maps logical attempts to
+`Task.Supervisor.async_nolink` tasks, monitor references, callers, and timers.
+A result or completed shutdown enters committing; persistence success retires
+it and releases the slot. Persistence failure poisons the lifecycle.
 
-## Reconcile an unknown request
+Options and defaults:
+
+| Option | Default | Meaning |
+|---|---|---|
+| `:authorize_timeout` | 5,000 ms | Authorization task deadline |
+| `:void_timeout` | 5,000 ms | Void task deadline |
+| `:lookup_timeout` | 5,000 ms | Lookup task deadline |
+| `:max_attempts` | 32 | Concurrent attempts per Server |
+| `:void_retry_base` | 1,000 ms | Exponential retry base |
+| `:void_retry_max` | 60,000 ms | Maximum retry delay |
+| `:void_max_attempts` | 5 | Durable automatic void attempt budget |
+
+All values must be positive integers. Retry delay is
+`min(max, base * 2^min(attempts, 16))`, without jitter. The first retry defaults
+to two seconds. Attempts rejected by startup/capacity still count toward the
+void budget. A deployment can supply a separately configured task supervisor.
+
+At a deadline Server kills the local task using `Task.shutdown/2`. An already
+available shutdown result is handled before retiring its reference. Otherwise
+an authorization becomes unknown and a void remains unresolved. Cancellation
+never establishes that remote processing stopped. Task death and startup
+exhaustion also produce durable uncertain outcomes. Successful tasks have their
+monitor removed with `Process.demonitor(ref, [:flush])`; stale task results and
+timers cannot complete retired work.
+
+Nolink workers can survive Server death. Each task also arms an independent lifetime timer, so a blocked orphan cannot occupy the supervisor indefinitely. Recovered sent entries become unknown,
+and old worker replies cannot change the replacement Server. A later trusted
+callback or a new lookup may establish the outcome.
+
+## Durable voids
+
+An authorized void releases local capacity immediately and creates a durable
+remote obligation. A reserved void creates no obligation or remote call.
+Recovery folds transitions with prior state, reconstructs the outbox, then
+redrives pending voids after a durable restart. Historical authorization effects
+are never reissued. The hold key, scoped to this account/processor, is the remote
+idempotency token; retries must be safe for that token at the adapter.
+
+Only `{:ok, :voided}` or `{:ok, :already_voided}` completes a void. Not-found
+remains unresolved because absence alone need not establish successful release.
+Errors, deadlines, and lost replies retain the obligation. Exactly one active/stopping void attempt is allowed per key in the current
+Server lifecycle. An orphaned worker from a previous Server may overlap recovery
+until its independent lifetime cap; remote work can outlive local cancellation
+regardless. The adapter must make same-key repeats safe. Completion must sync before retiring an obligation.
+
+After the automatic budget is exhausted, the obligation remains visible.
+`Server.redrive_void(ledger, key)` explicitly resets its budget and retries;
+active keys return `{:error, :attempt_active}`. Local and remote capacity can
+diverge until confirmation. No write-off, uncertain-hold expiry, or
+confirmation-before-local-release policy is implemented.
+
+## Lookup and inspection
 
 ```elixir
 Server.reconcile(ledger, 11)
 Server.retry_after_lookup(ledger, 11)
+Server.inspect_work(ledger, :unknown, 0, 100)
+Server.inspect_work(ledger, :voids, 0, 100)
+Server.inspect_work(ledger, :conflicts, 0, 100)
 ```
 
-Reconciliation queries the processor and journals an approved/declined result.
-A reliable not-found result permits an explicit retry with the same identity.
-An unavailable lookup leaves the hold unresolved. Direct `{:retry, key}` events
-also exist; their safety depends on receiver deduplication.
+Lookup intent is synced before launching asynchronous work. Server remains
+responsive while lookup blocks; exceptions and deadlines become unavailable
+observations. Concurrent lookup for the same key returns `:lookup_in_progress`.
+A result is journaled and applied against current eligibility. In particular,
+not-found cannot retry a key already resolved while lookup was running.
+Lookup-first retry still requires receiver deduplication and reliable lookup
+semantics: not-found alone cannot exclude an older request still in transit.
 
-`Server.await_idle/2` waits for pending effect tasks and their outcomes; it does
-not resolve a permanently uncertain external result. Processor void receipts
-are tracked separately from the ledger's local void intent.
+`await_idle/2` waits for current attempts and journaled outcomes, not scheduled
+future retries or permanent uncertainty. Its default caller timeout is 5 seconds.
+Poisoned writers return an error. Dead callers are removed from waiter tracking.
 
-## Runtime assumptions
+`status/1` includes the ledger, pending count, poison reason, at most 100 recent
+void receipts/conflicts, and at most 100 unresolved voids. `inspect_work/4`
+paginates unknown entries and unresolved voids; receipt/conflict pages are within
+the most recent 100 retained observations. The full journal preserves evidence.
+Contradictory results are recorded as conflicts while terminal policy remains
+unchanged. `recovery/1` exposes before/after-restart states and replay count.
 
-Journal tests cover truncation, injected append/sync/disk-full failures,
-process crashes, replay and concurrent requests. They do not establish behavior
-under physical power loss or arbitrary storage corruption. The server is one
-owner, not a distributed lock service. Never treat a local accounting transition
-as proof of external exactly-once execution.
+## Journal inspection and tail recovery
+
+The journal uses the application-owned `HOLDJNL1` format. Each frame contains a
+32-bit payload length, 64-bit sequence, predecessor SHA-256, header SHA-256,
+exact serialized payload, and frame SHA-256. Header integrity is checked before
+length; frame integrity is checked before decoding. Replay streams a verified
+fold and does not retain the full event list in Server.
+
+```elixir
+HoldLedger.Journal.inspect_file("/var/lib/my_app/holds.log")
+HoldLedger.Journal.recover_tail("/var/lib/my_app/holds.log", "/var/lib/my_app/recovered.log")
+```
+
+Inspection is read-only. Recovery is an explicit operation that creates a new
+file exclusively and leaves the source untouched. It only copies the verified
+prefix when the final frame is incomplete at EOF; complete corrupt headers or
+payloads are rejected. The recovered file and containing directory must sync
+before success. Never replace an active journal. Review the failure and select
+the recovered path explicitly before restarting.
+
+This recovery rule assumes interrupted append after an intact durable prefix
+and honest durable-sync semantics. It does not justify discarding acknowledged
+history damaged later, repairing interior corruption, or accepting rollback.
+A complete shorter prefix remains valid without an external freshness anchor.
+The format is used directly; there is no prior-data reader or conversion path.
+Tests do not establish physical power-loss protection or arbitrary storage safety.

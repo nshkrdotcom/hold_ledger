@@ -34,10 +34,10 @@ succeeds and the allowed-axiom audit passes. It never changes host policy.
 
 ## Journal will not open
 
-Check path permissions, journal-name collisions and the persisted capacity
+Check path permissions, an already-owned path and the persisted capacity
 configuration. A truncated or invalid chained record fails replay. Preserve the
 journal for inspection; deleting it discards request identities and unresolved
-holds. There is no automatic arbitrary-corruption repair or account migration.
+holds. Use `Journal.inspect_file/1` for read-only diagnostics. `Journal.recover_tail/2` creates a separate verified-prefix file only for an incomplete final frame under the documented interrupted-append assumption. It never repairs arbitrary corruption.
 
 ## An operation stays unknown
 

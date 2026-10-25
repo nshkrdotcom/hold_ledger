@@ -8,7 +8,7 @@ defmodule HoldLedger.Application do
     # A deployment can opt in to one authoritative supervised server by
     # configuring :server_options with its explicit journal pathname/caps.
     server_options = Application.get_env(:hold_ledger, :server_options)
-    children = [{Task.Supervisor, name: HoldLedger.EffectSupervisor}]
+    children = [{Task.Supervisor, name: HoldLedger.EffectSupervisor, max_children: 32}]
 
     children =
       if server_options do

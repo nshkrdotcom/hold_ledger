@@ -7,7 +7,7 @@ uv run --locked python scripts/local_run.py mix format --check-formatted
 uv run --locked python scripts/local_run.py mix compile --warnings-as-errors
 uv run --locked python scripts/local_run.py mix credo --strict
 uv run --locked python scripts/local_run.py mix dialyzer
-uv run --locked python scripts/local_run.py mix test --exclude laws
+uv run --locked python scripts/local_run.py mix test --exclude laws --warnings-as-errors
 uv run --locked python -m unittest discover -s tooling_tests -v
 ```
 
@@ -40,8 +40,8 @@ These tests do not model physical power loss or prove the storage hardware.
 
 ## Deliberate mutations
 
-Six examples under `mutants/` break terminal-key replay, timeout accounting,
-retry identity, exact-fit admission, positive admission and transport-ack handling.
+Nine examples under `mutants/` break terminal-key replay, timeout accounting,
+retry identity, exact-fit admission, positive admission, transport-ack handling, required void effects, decline accounting and restart conversion.
 Each includes a patch and a concrete assertion against the correct behavior.
 
 Check that all patches apply in isolated copies, without native execution:
@@ -72,4 +72,18 @@ mix hex.build
 All `guides/*.md` are included in HexDocs and the Hex source archive. Package
 building is local; it does not publish anything. Source-checkout tests and proof
 scripts are available in Git. CI runs ordinary checks, guide generation and
-package building; full formal/mutation runs are explicit manual options.
+package building; an always-running formal gate requires full proof/export checks for proof-relevant changes. Native mutation experiments remain explicit manual options.
+
+## Runtime lifecycle properties
+
+The attempt lifecycle has independent transition assertions and StreamData interleaving properties. Controlled processor fixtures synchronize worker entry/replies through messages, including worker death, lookup exceptions, blocked calls and Server death with surviving nolink tasks. A tooling guard inspects effective ExUnit tags and rejects an outbox feature with a missing or skipped forged-completion regression. These tests are separate from the 29 ledger proof groups.
+
+## Synthetic runtime measurements
+
+`uv run --locked python scripts/local_run.py mix run scripts/runtime_bench.exs`
+measures request p95, recovered startup time, retained Server memory and record
+count for 100 and 1,000 entries with invariant monitoring enabled. Results depend
+on the host and are not durability or production latency guarantees. Streaming
+replay avoids retaining the event list, while permanent key retention and the
+quadratic uniqueness check still limit account size. No compaction or key pruning
+is performed.

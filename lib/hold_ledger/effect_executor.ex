@@ -1,57 +1,73 @@
 defmodule HoldLedger.EffectExecutor do
   @moduledoc """
-  Launch only *new live* ledger intents under a Task.Supervisor. Each observed
-  processor outcome is delivered to the authoritative server as a new event;
-  the executor never changes ledger state or writes a journal itself.
+  Monitored external work. The calling Server owns each task and its deadline.
+  Adapter terms are normalized to bounded outcomes before journal admission.
   """
 
-  def dispatch(supervisor, server, processor, effect) do
-    ref = make_ref()
+  def dispatch(supervisor, processor, effect, timeout) do
+    {:ok,
+     Task.Supervisor.async_nolink(supervisor, fn ->
+       {:ok, timer} = :timer.kill_after(timeout, self())
 
-    case Task.Supervisor.start_child(supervisor, fn ->
-           events =
-             try do
-               execute(processor, effect)
-             rescue
-               _error -> uncertain_event(effect)
-             catch
-               _, _ -> uncertain_event(effect)
-             end
+       try do
+         execute(processor, effect)
+       after
+         :timer.cancel(timer)
+       end
+     end)}
+  rescue
+    _ -> {:error, :task_start_failed}
+  catch
+    :exit, _ -> {:error, :task_start_failed}
+  end
 
-           send(server, {:hold_ledger_effects, ref, events})
-         end) do
-      {:ok, _pid} -> {:ok, ref}
-      {:error, reason} -> {:error, reason}
+  def execute(processor, effect) do
+    perform(processor, effect)
+  rescue
+    _ -> {:error, :adapter_exception}
+  catch
+    _, _ -> {:error, :adapter_exit}
+  end
+
+  defp perform({module, target}, {:authorize, key, amount}),
+    do: authorization(module.authorize(target, key, amount))
+
+  defp perform({module, target}, {:lookup, key}) do
+    case module.lookup(target, key) do
+      {:ok, result} when result in [:approved, :declined] -> {:ok, result}
+      :not_found -> :not_found
+      {:error, reason} -> {:error, reason(reason)}
+      _ -> {:error, :unexpected_reply}
     end
   end
 
-  defp execute({module, target}, {:authorize, key, amount}) do
-    module.authorize(target, key, amount) |> authorization_events(key)
+  defp perform({module, target}, {:void, key}) do
+    case module.void(target, key) do
+      {:ok, result} when result in [:voided, :already_voided] -> {:ok, result}
+      {:ok, :not_found} -> {:error, :not_found}
+      {:error, error} -> {:error, reason(error)}
+      _ -> {:error, :unexpected_reply}
+    end
   end
 
-  defp execute({module, target}, {:void, key}) do
-    [{:processor_void_result, key, module.void(target, key)}]
+  defp authorization({:ok, result}) when result in [:approved, :declined],
+    do: {:callbacks, [result]}
+
+  defp authorization({:callbacks, outcomes}) when is_list(outcomes) do
+    if outcomes != [] and length(outcomes) <= 16 and
+         Enum.all?(outcomes, &(&1 in [:approved, :declined])),
+       do: {:callbacks, outcomes},
+       else: {:error, :unexpected_reply}
   end
 
-  defp authorization_events({:ok, outcome}, key) when outcome in [:approved, :declined],
-    do: [{:processor_result, key, outcome}]
-
-  defp authorization_events({:lost, _}, key), do: [{:timeout, key}]
-
-  defp authorization_events({:delayed, milliseconds, response}, key)
+  defp authorization({:delayed, milliseconds, reply})
        when is_integer(milliseconds) and milliseconds >= 0 do
     Process.sleep(milliseconds)
-    authorization_events(response, key)
+    authorization(reply)
   end
 
-  defp authorization_events({:callbacks, outcomes}, key) when is_list(outcomes) do
-    Enum.map(outcomes, fn outcome -> {:processor_result, key, outcome} end)
-  end
+  defp authorization(_), do: {:error, :uncertain}
 
-  defp authorization_events(_unexpected, key), do: [{:timeout, key}]
-
-  defp uncertain_event({:authorize, key, _}), do: [{:timeout, key}]
-
-  defp uncertain_event({:void, key}),
-    do: [{:processor_void_result, key, {:error, :executor_failed}}]
+  defp reason(reason) when reason in [:unavailable, :not_found, :timeout, :declined], do: reason
+  defp reason(_), do: :adapter_error
 end

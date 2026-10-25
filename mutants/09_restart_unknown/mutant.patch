@@ -1,0 +1,11 @@
+--- a/lib/hold_ledger/ledger.ex
++++ b/lib/hold_ledger/ledger.ex
+@@ -144,7 +144,7 @@
+ 
+   @doc "After replay, every sent hold becomes unknown; other statuses are unaffected."
+   def restart({amount_limit, hold_limit, used_amount, used_holds, entries}) do
+-    {{amount_limit, hold_limit, used_amount, used_holds, mark_unknown(entries)}, :restarted, []}
++    {{amount_limit, hold_limit, used_amount, used_holds, entries}, :restarted, []}
+   end
+ 
+   @doc "Retry an unknown operation using its stored key and amount."

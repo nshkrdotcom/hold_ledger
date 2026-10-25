@@ -6,11 +6,9 @@ to decide whether the definitions, assumptions and theorem describe the system
 you intend to use.
 
 The checklist applies to any Lynx project. Hold Ledger's policy sheet and source
-review follow it. That review covers the source snapshot originally recorded as
-`08c25a4`, before repository history was consolidated into one initial commit,
-and was prepared by a coding agent. It still needs independent human review.
-Compare later changes with the recorded snapshot before carrying its findings
-forward.
+review follow it. Proof evidence is identified by source/export hashes and tool
+pins rather than deleted repository revisions. This coding-agent review still
+needs independent human review; runtime claims require their own test evidence.
 
 ## What needs a full review
 
@@ -156,12 +154,12 @@ The [specification](specification.md) gives the complete event table.
 | Uncertainty | Timeout and restart retain capacity. Retry reuses key and amount. Unknown entries cannot be voided through the reducer. | Accept that a hold can remain unresolved indefinitely. |
 | Conflicting outcomes | The first eligible approved/declined result changes the entry. Later results are stale in authorized, declined or voided states. | Require trustworthy, consistent processor reports; there is no dispute-resolution policy. |
 | Voids | Voiding reserved entries has no remote effect. Voiding authorized entries immediately releases local capacity and emits a remote void intent. | Accept that local release precedes remote confirmation and a failed remote void does not restore the hold. |
-| Recovery | Replay reconstructs state without executing old effects; a fresh durable restart converts sent entries to unknown. | Accept explicit reconciliation instead of automatic resending. |
+| Recovery | Replay never resends authorization; durable restart converts sent to unknown and pending void obligations redrive. | Accept explicit authorization reconciliation and repeat-safe void execution. |
 | External execution | No remote exactly-once guarantee is provided. Deduplication, reliable lookup and durable storage are assumptions. | Obtain evidence for those assumptions before using a real processor or storage deployment. |
 
 ### Event authority
 
-The runtime trusts its callers. `Server.submit/2` accepts any event term.
+The runtime trusts its callers. `Server.submit/2` accepts supported public event shapes and records bounded markers for malformed or reserved internal submissions.
 `processor_callback/3` uses the same input path, as does a matching mailbox
 message. These APIs do not check caller identity, permissions or callback
 authenticity. The GenServer serializes events but does not establish who may
@@ -175,7 +173,7 @@ submit them.
 | Retry | A recovery policy acting on an unknown hold | Direct retry bypasses the lookup-first convenience API |
 | Processor approved/declined result | An authenticated processor adapter or trusted reconciliation result | Outcome/key shape and eligible status only |
 | Reconcile / retry after lookup | An authorized recovery operator | Unknown-state check and processor lookup; no operator authentication |
-| Void receipts and audit events | Runtime/executor | Journaled metadata; they do not confirm or reverse a pure ledger transition |
+| Void completions and lookup observations | Correlated runtime tasks | Reserved internal tags rejected publicly; durable void success retires an outbox obligation |
 
 The test fault API is enabled only with `allow_faults: true`. That option is a
 test convenience, not an access-control mechanism for the event APIs above.
@@ -392,11 +390,7 @@ with `passed: true`, checker acceptance and an allowed axiom list. Read these
 fields together with stage, command, revision and hashes. A field describing the
 requested checker stage is not itself evidence that checking succeeded.
 
-Ordinary push CI runs tests, static analysis, catalog inspection and static
-mutation checks. The expensive formal and native mutation jobs require explicit
-workflow dispatch. A normal green push therefore does not certify all 29 proofs
-or mutation detection. Require the corresponding full-run artifacts for either
-claim. Commands and provenance details are in [Verification](verification.md).
+Ordinary push CI runs tests, static analysis, catalog inspection and static mutation checks. An always-running gate requires fresh full formal acceptance for proof-relevant changes, including verification tooling and gate logic. Native mutation experiments remain explicitly dispatched. Inspect the full-run artifacts for proof claims and the native mutation report for detection claims.
 
 The [detached launcher](https://github.com/nshkrdotcom/hold_ledger/blob/main/scripts/background_laws.py)
 checks a committed source snapshot and records status, logs and final artifacts.
@@ -407,9 +401,7 @@ disposable local storage when using them for approval.
 
 ### Full-run evidence inspected
 
-The cold full run completed on 2026-10-25 against the snapshot originally
-recorded as `08c25a4`. That revision predates the consolidation of repository
-history into one initial commit. Every source hash recorded in the report
+The recorded cold full run completed on 2026-10-25. Every source hash recorded in the report
 matches the current checkout, including the reducer, independent specification,
 laws, proof library, adapter and dependency lockfile. All 29 law records passed.
 All six configurations accepted the combined export, and the axiom list was
@@ -435,70 +427,60 @@ Sources: [Journal](https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold
 and [Application](https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/application.ex).
 These paths need full review for runtime claims; they are outside the pure proofs.
 
-`Journal` opens `:disk_log` in halt/internal mode with repair disabled. Replay
-reads every chunk, checks sequence and predecessor digest, recomputes SHA-256,
-and rejects malformed frames, corrupt bytes and read errors. A partial verified
-prefix is not installed after an observed read failure. Appends advance the
-in-memory cursor only after sync succeeds.
+`Journal` owns a length-prefixed file format with sequence/predecessor integrity,
+a header digest and a digest over exact stored payload bytes. The header is
+verified before its length is trusted, and the full digest before decoding.
+Replay streams a fold; no input history list is retained by Server. Full-prefix
+rollback still requires a trusted external freshness anchor. The deployment must
+protect files against replacement and supply durable sync semantics.
 
-The chain has no trusted external head, authentication key or expected final
-sequence. Removing complete final records may leave a valid shorter chain.
-Replacing the log with another valid history is also outside its protection.
-The hash chain therefore cannot establish freshness or authenticated storage.
+`Server` syncs inputs before reducer application and effects. Reserved internal
+submissions and malformed arbitrary terms become bounded audit markers instead
+of raw payloads. Writer errors poison future input. A recovered invalid ledger
+or live invariant violation produces a shutdown/quarantine failure; the transient
+child does not automatically restart for that shutdown. Preserve the journal,
+inspect a copy, and correct the failure without silently skipping an input.
 
-`Server.boot` checks the persisted capacity header, replays with `Ledger.run`,
-syncs a new restart and applies it before serving calls. It verifies recovered
-states with Spec. There is no replay of historical effects. `journal_and_apply`
-syncs every submitted event before stepping, updating memory and scheduling
-effects. Append/sync failure preserves the current memory state and poisons
-further writes. An ambiguous sync may have persisted an unacknowledged event;
-recovery uses the disk history rather than promising that the event was absent.
-
-The application starts an effect supervisor and opens a ledger only when server
-options are configured. One server serializes its calls. Deployment must ensure
-one authoritative owner for each account/journal; there is no distributed fencing
-protocol. The default runtime invariant check can be disabled with
-`monitor: false`. It is an executable guard, not a proof of the server.
+`Journal.inspect_file/1` is read-only. Explicit tail recovery writes a new file
+exclusively, copies only an intact verified prefix before an incomplete final
+frame, then syncs the file and directory. This assumes interrupted append after
+an intact durable prefix; it does not repair complete-frame corruption or prove
+hardware behavior. The source is preserved. No prior storage format is read.
 
 ### Effects, reconciliation and simulator
 
-Sources: [EffectExecutor](https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/effect_executor.ex),
-[Processor](https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/processor.ex),
-and [Sim](https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/processor/sim.ex).
+`Attempts` is a small pure, property-tested runtime lifecycle, separate from the
+29 formally checked ledger groups. Server maps logical attempts to monitored
+`async_nolink` tasks. Deadline shutdown kills local work and handles any result
+already returned during shutdown. Only persistence success permits retirement
+and slot release; failed writes poison the lifecycle. Normal result cleanup
+removes/flushed monitors and cancels timers. Startup exhaustion, worker death
+and deadline cannot release uncertain authorization capacity.
 
-The executor starts tasks for new intents and reports outcomes as events. It
-does not write the journal or update the ledger. Lost/unexpected authorization
-responses and caught execution errors become timeouts; void errors become
-receipts. The server journals returned events through its normal input path.
-Task-start failures also produce timeout or receipt events after the committed
-intent. Pending references associate replies with outstanding tasks. They do
-not authenticate the sender against a hostile process in the VM.
+Nolink workers may survive Server death. Startup converts recovered sent entries
+to unknown without regenerating authorization effects. Later processor evidence
+must arrive through lookup or a trusted callback, not an expired worker ref.
 
-The executor does not monitor every task to completion or impose an overall
-deadline. A task that never returns or is killed before sending its reply can
-leave a pending reference and idle waiters unresolved. Server restart still
-converts sent to unknown; there is no proved or implemented guarantee that every
-live task eventually produces a result. A service needing bounded completion
-must address this separately.
+Authorized voids immediately release local capacity and open remote obligations.
+Recovery reconstructs those from transitions and redrives unresolved work with
+the same hold key. Each key has one local active/stopping void attempt; remote
+work can still outlive local cancellation. Only an authoritative, correlated,
+durable success retires an obligation. Attempts have a bounded automatic budget
+and exponential backoff; operators can inspect and explicitly redrive unresolved
+work. Successful repeat-void semantics and token retention are adapter assumptions.
+Not-found is unresolved. This does not implement remote exactly-once execution or
+confirmation-before-local-release accounting.
 
-Reconciliation operates only on unknown entries. The server journals lookup
-intent before calling the processor, then journals the outcome. Reliable
-not-found permits explicit lookup-first retry; unavailable lookup leaves the
-hold unresolved. Direct submit/retry remains possible. Lookup runs synchronously
-inside the GenServer without a server-imposed overall deadline; a slow adapter
-can delay other calls. Neither path promises eventual resolution.
+Lookup is asynchronous, monitored and bounded by a configurable deadline.
+Exceptions become unavailable observations. Current state is checked before a
+not-found result can trigger retry. Receiver deduplication is still required:
+not-found cannot exclude an older request in transit. Contradictory trusted
+reports are journaled as conflicts without reversing terminal policy.
 
-Voiding an authorized entry commits a local release before executing a remote
-void. Receipts are retained separately and do not restore capacity on failure.
-Recovery does not reissue a void lost after the durable intent. A service that
-promises to complete or compensate remote voids needs to implement that policy.
-
-The simulator demonstrates lost requests/replies, delayed/duplicate callbacks,
-lookup failures and the effect of disabling deduplication. Its records are
-in-memory. Successful void removes its remembered outcome, so it is not evidence
-of permanent processor tombstones or payload-conflict rejection. Local terminal
-identity retention prevents normal ledger reuse; a real processor must supply
-its own identity guarantees. See [Runtime and recovery](runtime.md).
+The simulator is in-memory and demonstrates receiver failure assumptions. It is
+not evidence of production token retention, callback authenticity, or permanent
+tombstones. See [Runtime and recovery](runtime.md) for options, limits, inspection
+and [Processors](processors.md) for the external contract.
 
 ### Tests and negative evidence
 

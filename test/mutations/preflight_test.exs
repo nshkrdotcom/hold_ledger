@@ -1,6 +1,6 @@
 defmodule HoldLedger.MutationPreflightTest do
   @moduledoc """
-  Six unmodified, concrete counterexamples. The isolated Python runner injects
+  Nine unmodified, concrete counterexamples. The isolated Python runner injects
   exactly one mutation into a temporary checkout and selects its matching tag.
   This file is also part of the normal (unmutated) ExUnit suite.
   """
@@ -53,5 +53,24 @@ defmodule HoldLedger.MutationPreflightTest do
     s = TestFixtures.sent()
     assert Spec.valid?(s)
     assert Ledger.step(s, {:transport_ack, 11}) == {s, :stale, []}
+  end
+
+  @tag mutation: "M7"
+  test "M7: authorized void requires a remote intent" do
+    state = {1000, 3, 300, 1, [{11, 300, :authorized}]}
+
+    assert Ledger.step(state, {:void, 11}) ==
+             {{1000, 3, 0, 0, [{11, 300, :voided}]}, :voided, [{:void, 11}]}
+  end
+
+  @tag mutation: "M8"
+  test "M8: decline releases exactly its contribution" do
+    assert Ledger.step(TestFixtures.sent(), {:processor_result, 11, :declined}) ==
+             {{1000, 3, 0, 0, [{11, 300, :declined}]}, :declined, []}
+  end
+
+  @tag mutation: "M9"
+  test "M9: restart removes sent status without releasing capacity" do
+    assert Ledger.step(TestFixtures.sent(), :restart) == {TestFixtures.unknown(), :restarted, []}
   end
 end

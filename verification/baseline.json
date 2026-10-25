@@ -1,8 +1,7 @@
 {
-  "source_commit": "b34fd6a6ce5f9966355917bed3fdc9459fe182f1",
   "lynx_commit": "4a7e9db0655b67b6b9fc1e5511eb3fe12625b52c",
   "lean_version": "4.35.0",
-  "scope": "Historical 26-group baseline for the source and Lynx commits recorded here; see guides/verification.md for the completed 29-group full run with the current Lynx pin.",
+  "scope": "Historical 26-group proof baseline identified by source hashes and external tool pins; it does not certify the current runtime.",
   "source_sha256": {
     "lean-toolchain": "ca5f1f601d34c49079e38d7e7041eb0f2a9c227fbc1df0f404820069a052330c",
     "lib/hold_ledger/ledger.ex": "b4bc1bbfb2afe01c0fb0ee019293588c8dbc74c2268e3eac01046283a9021275",

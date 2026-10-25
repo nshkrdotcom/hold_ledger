@@ -90,7 +90,7 @@ It separates the pure core, independent specification, runtime, and formal verif
 +-------------------------------------------------------------------------+
 |                              RUNTIME (OTP)                              |
 |                                                                         |
-|  Event -> Server -> Journal.append_sync (disk_log + hash chain)         |
+|  Event -> Server -> Journal.append_sync (owned frames + hash chain)         |
 |                          |                                              |
 |                          v                                              |
 |                     Ledger.step (Pure Reducer)                          |
@@ -105,13 +105,13 @@ It separates the pure core, independent specification, runtime, and formal verif
 |  HoldLedger.Spec                   |    |  Lynx compiles Elixir BEAM    |
 |  * Recomputes totals from scratch  |    |  Core AST directly to Lean 4. |
 |  * Standalone validity invariant   |    |  29 groups with Lean proofs   |
-|  * Transition & effect predicates  |    |  across 6 external checkers.  |
+|  * Transition & effect predicates  |    |  6 checker configurations.     |
 +------------------------------------+    +-------------------------------+
 ```
 
 1. **Pure State Machine (`HoldLedger.Ledger`)**: No disk, no clock, no processes, no side effects. Given an input state and an event, it returns `{next_state, result_atom, effects}`.
 2. **Independent Oracle (`HoldLedger.Spec`)**: An independently implemented reference specification. It recalculates totals from entries to check the reducer’s cached counters.
-3. **Journaled Server (`HoldLedger.Server`)**: A GenServer managing OTP `:disk_log` storage with SHA-256 hash chaining. Every input is appended and synced to durable media *before* the pure reducer steps.
+3. **Journaled Server (`HoldLedger.Server`)**: A GenServer managing application-owned framed storage with SHA-256 chaining. Admitted inputs sync *before* the pure reducer steps; rejected internal or malformed submissions produce bounded audit markers.
 4. **Formal Verification (`Lynx` + `Lean 4`)**: Translates compiled Core Erlang into Lean definitions. Laws cover accounting, identity preservation, and other specified properties under their explicit preconditions, including valid input states. Terminal absorption and finite-history preservation are included in the catalog.
 
 ---
@@ -126,7 +126,7 @@ The project combines three kinds of evidence:
 | **2. Generative Property Tests** | `StreamData` (10,000 samples per law) | Generates thousands of arbitrary states, malformed terms, and random histories. | Off-by-one errors, weird term shapes, counter desyncs. |
 | **3. Machine-Checked Proofs** | `Lynx` + `Lean 4` Theorem Prover | Proves universal mathematical statements ($\forall s, \forall e \dots$). | The stated properties for all inputs satisfying each law’s preconditions. |
 
-Six deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See the testing guide for the optional mutation experiment; a failed proof alone is not a concrete counterexample.
+Nine deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See the testing guide for the optional mutation experiment; a failed proof alone is not a concrete counterexample.
 
 ---
 
@@ -218,7 +218,7 @@ This script uses synthetic data and a fresh temporary journal. It exercises lost
 ### Run tests and static checks
 ```sh
 # Run deterministic tests, StreamData property tests (10k cases each), and fault injection
-uv run --locked python scripts/local_run.py mix test --exclude laws
+uv run --locked python scripts/local_run.py mix test --exclude laws --warnings-as-errors
 
 # Run static analysis without warning suppressions
 uv run --locked python scripts/local_run.py mix credo --strict
@@ -265,8 +265,8 @@ Formal laws cover the specified pure functions; OTP recovery is tested separatel
 ---------------------------------------------------------------------------------------------
   * Write-ahead log append & sync failure handling (Server poisoned on fault)
   * Recovery replay from disk log after sudden SIGKILL / crash
-  * Crash between disk_log sync and in-memory reducer step
-  * Hash-chain verification failure on truncated/corrupted records
+  * Crash between journal sync and in-memory reducer step
+  * Frame/header hash verification and rejection of incomplete/corrupted records
   * Network reply timeouts and simulator fault injection
 
 [ EXTERNAL ASSUMPTIONS (Outside the Verification Boundary) ]
@@ -288,7 +288,7 @@ Deep-dive documentation is located in `guides/`:
 | [**Human Review**](guides/human_review.md) | Required review, financial policies, trust assumptions, and an assessment of Hold Ledger's source. |
 | [**Architecture**](guides/architecture.md) | Structural split between pure state machine, persistence, and effect scheduling. |
 | [**Specification**](guides/specification.md) | Full contract: state tuple shape, event semantics, transitions, error atoms. |
-| [**Runtime and Recovery**](guides/runtime.md) | Using `HoldLedger.Server`, `:disk_log` hash-chaining, crash recovery, and reconciliation. |
+| [**Runtime and Recovery**](guides/runtime.md) | Using `HoldLedger.Server`, owned journal framing, crash recovery, and reconciliation. |
 | [**Processors**](guides/processors.md) | The processor behavior contract and using `HoldLedger.Processor.Sim` for fault injection. |
 | [**Verification**](guides/verification.md) | Detailed verification catalog, checker configurations, proof costs, and baseline provenance. |
 | [**Formal Verification Crash Course**](guides/formal_verification_crash_course.md) | Introduction to Lean, Lynx, and reading and writing proofs, with a worked law walkthrough. |

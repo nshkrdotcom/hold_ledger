@@ -34,6 +34,9 @@ MUTANTS = (
     ("M4", "04_exact_fit", "po_a2"),
     ("M5", "05_always_reject", "po_a2"),
     ("M6", "06_ack_result", "po_b4"),
+    ("M7", "07_void_effect", "po_b3"),
+    ("M8", "08_decline_accounting", "po_b1_processor_result"),
+    ("M9", "09_restart_unknown", "po_b7"),
 )
 OMIT = (".git", ".local", ".venv", "_build", "deps", "tmp", "__pycache__",
         ".pytest_cache", "doc", "hold_ledger-*.tar")
@@ -269,7 +272,7 @@ def main() -> int:
                 all_detected &= result["mutant_concrete"]["assertion_counterexample"]
                 print(f"{entry[0]} concrete={'DETECTED' if result['mutant_concrete']['assertion_counterexample'] else 'NOT DETECTED'}; "
                       f"formal={result['formal_attribution']}", flush=True)
-            report["all_six_concrete_detected"] = bool(all_detected)
+            report["all_concrete_detected"] = bool(all_detected)
         if (ROOT / LEDGER).read_bytes() != original or digest(ROOT / SPEC) != spec_hash:
             raise RuntimeError("Live normative/reducer sources changed; isolation failure")
         if args.report:
@@ -278,10 +281,10 @@ def main() -> int:
                 raise RuntimeError("Report must remain inside source checkout")
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
-        print(f"Six isolated patch anchors verified; run mode={report['mode']}" )
+        print(f"{len(MUTANTS)} isolated patch anchors verified; run mode={report['mode']}" )
         if not args.execute:
             print("Ordinary execution / formal checker NOT RUN; no mutation claims")
-        return 0 if not args.execute or report.get("all_six_concrete_detected") else 2
+        return 0 if not args.execute or report.get("all_concrete_detected") else 2
     except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"MUTATION RUNNER ERROR: {error}", file=sys.stderr)
         return 1
