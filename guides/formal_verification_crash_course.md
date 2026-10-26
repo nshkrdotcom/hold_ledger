@@ -2,7 +2,7 @@
 
 Changing `>` to `>=` can reject a request that exactly fits the available capacity. A test with spare capacity still passes. A generated test catches the bug only if it exercises equality. A proof of “every fitting request is admitted” must cover equality too.
 
-This guide assumes you know Elixir and property tests. You will run a complete Lynx proof, read its generated Lean, then apply the workflow to Hold Ledger. Complete the [toolchain setup](getting-started.md) first. Save the examples under ignored `tmp/`. When reviewing agent work, read the claim and its definitions before the tactics: a checked proof can establish the wrong requirement.
+This guide assumes you know Elixir and property tests. You will run a complete Lynx proof, read its generated Lean, then apply it to Hold Ledger. Complete the [toolchain setup](getting-started.md) first. Save the examples under ignored `tmp/`. For an agent-assisted process that includes challenging the contract itself, continue with [Verify the behavior you meant](agentic_verification.md).
 
 ## Terms You Will Need
 
@@ -211,7 +211,10 @@ The [shared proof theory reference](verification.md#shared-proof-theory) maps th
 2. **Mutation.** Make the comparison change above. Run both ordinary checks and the proof. Explain the smallest executable failure, then restore the function.
 3. **Another law.** Keep `fits/2` unchanged. Add `over_capacity/2` requiring integer inputs and `remaining < amount`, concluding `admit(amount, remaining) == :full`. Add a witness and generated property, then prove it.
 
-**Solutions.** For exercise 1, `assert fits(18_446_744_073_709_551_615, 18_446_744_073_709_551_615)` and `assert fits(-1, -1)` both pass. Elixir integers are arbitrary precision. Real hold amounts must be positive; the toy function has no such rule.
+<details>
+<summary>Solutions — open after completing the exercises</summary>
+
+For exercise 1, `assert fits(18_446_744_073_709_551_615, 18_446_744_073_709_551_615)` and `assert fits(-1, -1)` both pass. Elixir integers are arbitrary precision. Real hold amounts must be positive; the toy function has no such rule.
 
 For exercise 2, `fits(0, 0)` has a true precondition and a false conclusion under `>=`. Restoring `>` repairs that violation.
 
@@ -237,6 +240,8 @@ law(over_capacity(amount, remaining),
 
 Use `assert over_capacity(2, 1)` as the witness. For the property, generate `remaining <- integer()` and `gap <- positive_integer()`, then assert `over_capacity(remaining + gap, remaining)`. Run the ordinary and proof commands again; there are now two laws.
 
+</details>
+
 ## Review the Statement, Then Its Evidence
 
 Before reading a proof body, review these four things in order:
@@ -246,7 +251,7 @@ Before reading a proof body, review these four things in order:
 3. **Independence:** does `Spec` make its own decisions, or merely repeat or call the implementation?
 4. **Translation boundary:** are the proof's definitions generated from the code being reviewed, and what compiler/translator behavior is being trusted?
 
-Then read the helper lemmas and proof body where needed to understand the argument. Use [Human review](human_review.md) to review agent changes, or the [assurance audit](audit.md) for a deeper review of this codebase.
+Read the helper lemmas and proof body when you need to trace the argument. Next, use [Verify the behavior you meant](agentic_verification.md) to challenge agent-drafted contracts. [Human review](human_review.md) covers individual changes; the [assurance audit](audit.md) examines the system as a whole.
 
 > **Limits.** A checked proof establishes its statement about the translated functions under its hypotheses.
 >

@@ -1,9 +1,9 @@
 # Assurance audit of Hold Ledger
 
-This guide is a route through Hold Ledger's policies, proof models and runtime
-boundaries for an initial or periodic assurance audit. For reviewing an individual
-agent change, use [Human review](human_review.md). New to Lynx? Start with the
-[crash course](formal_verification_crash_course.md).
+Use this guide for an initial or periodic audit of Hold Ledger's policies, proof models
+and runtime boundaries. For a single agent change, use [Human review](human_review.md).
+For the practical requirements-to-proof loop, use [Agentic verification](agentic_verification.md).
+New to Lynx? Start with the [crash course](formal_verification_crash_course.md).
 
 **Source baseline:** `618ee1e7f17e490f643bed898f00b9f67c1cd2b4`. The audit text
 was last substantively updated in `55cfc404205952449293978b50af1fd5ac803c8a`.

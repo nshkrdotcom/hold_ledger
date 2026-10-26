@@ -1,27 +1,29 @@
-# Human review: what to check when an agent changes a Lynx project
+# Human review of agent changes
 
-The kernel checks proofs. You check what they are about: read the statement and its definitions before the tactics. The agent can write code and proofs; a human approves the claims and assumptions.
+A checked proof establishes the statement supplied to Lean. It cannot tell you whether that statement captures the requirement. Read the statement and its definitions, then inspect the evidence behind them. Let agents gather and challenge that evidence; bring in a person to resolve disputed requirements or risk tradeoffs.
 
-Use this guide for each proposed change. If you are new to Lynx, read the [crash-course glossary](formal_verification_crash_course.md#terms-you-will-need) first. The [assurance audit](audit.md) covers the deeper system review. Here, start with the diff.
+Use this guide when an agent proposes a change. Use the [assurance audit](audit.md) for an initial or periodic system review. If you are new to Lynx, use the [crash-course glossary](formal_verification_crash_course.md#terms-you-will-need). For the full process from requirements to evidence, read [Verify the behavior you meant](agentic_verification.md). The research and contract failure modes are in [Specification assurance](specification_assurance.md).
 
-The main failure mode is pressure to get checks green: weakening a claim can be easier than repairing the implementation or proof. The agent's report helps you navigate; the diff decides the tier.
+## What to delegate and what to decide
 
-## Divide the Work
-
-| Human owns | Agent handles | Shared work |
+| Work | Agent contribution | Where review matters |
 |---|---|---|
-| Policy, independently chosen traces, law and Spec approval, required-obligation sign-off | Implementation, helper lemmas, tactics, proof repair and evidence collection | Tests, mutation experiments and failure diagnosis |
+| Identify requirements | Gather written policy, prior traces, interfaces and disputed cases; propose interpretations | Decide which source or new policy governs when sources conflict |
+| Draft claims | Generate `requires`, `expects`, Lean statements and plain-English readings | Check input domains, promised outcomes, dependencies and omissions |
+| Challenge claims | Generate valid cases, wrong outputs for valid inputs, invalid inputs when relevant, mutations and counterexamples | Check that expected outcomes have an independent justification; investigate conflicts |
+| Prove and test | Implement, prove, run focused checks and inspect failures | Distinguish established results from unresolved checks and changed assumptions |
+| Summarize evidence | Compare old/new contracts, name trusted dependencies, report exact source and commands | Judge consequential changes and risk that remains after the checks |
 
-The agent may draft a statement or Spec change; a human must approve its meaning. Settle the claim before commissioning its proof.
+Agents can carry out implementation and proof work within agreed requirements. Review changes to those requirements separately from proof repairs.
 
-## Classify the Diff and Route Review
+## Classify the diff
 
 | Tier | Diff | Action |
 |---|---|---|
-| 1 | Claims, definitions, theorem signatures, Spec, coverage, foundations or checking machinery | Human approval of meaning, scope and evidence policy |
-| 2 | Ledger and runtime implementation | Review behavior and runtime boundaries; rerun committed policy traces for every Ledger change |
-| 3 | Only confirmed proof-body changes | Require fresh full acceptance; usually skip line-by-line tactics |
-| Documentation | Explanations of existing behavior | Check against the contracts; policy changes such as edits to `guides/specification.md` are Tier 1 |
+| 1 | Claims, definitions, theorem signatures, Spec, coverage, foundations or checking machinery | Review meaning, scope and assumptions. Escalate a policy or trust-boundary decision; use gathered evidence to assess changes already authorized. |
+| 2 | Ledger and runtime implementation | Review affected behavior and boundaries; rerun committed policy traces for every Ledger change. |
+| 3 | Only confirmed proof-body changes | Require fresh full acceptance on the reviewed source; a semantic review of unchanged statements need not be repeated for a tactic edit. |
+| Documentation | Explanations of existing behavior | Check against source; an edit changing the policy in `guides/specification.md` is Tier 1. |
 
 In Hold Ledger, apply Tier 1 review to these meanings and boundaries:
 
@@ -49,18 +51,18 @@ Use this checklist for Tier 1 review:
 
 1. **Did the claim weaken?** Look for a stronger hypothesis, narrower domain, weaker conclusion or new environment assumption. Expand predicates rather than trusting names such as `valid` or `safe`.
 2. **Can the hypotheses hold?** Run a concrete witness—an input satisfying the hypotheses. Check that excluded boundary cases are intentional; one witness does not establish adequate coverage.
-3. **Does it match policy?** Compare it with expected traces you chose before reading the agent's oracle or proof.
+3. **Does it match policy?** Compare with traces whose expected outcomes come from policy, rather than the implementation or oracle.
 4. **Are obligations still required?** Compare against the base revision and requirements, not merely two inventories edited together. Nothing should disappear through selection, status, skipping or timeout handling.
 5. **Is Spec independent?** The oracle (the independent reference specification) and implementation never call each other. If both changed, review each against the independently agreed policy; agreement alone is insufficient.
 6. **Are the foundations intact?** Inspect changes to axioms, escape checks, translated definitions, adapters, toolchain and gate behavior.
 
-## Write the Claim Before the Proof
+## Establish expected behavior before proof work
 
-Write a policy sentence, then three to five traces with expected outcomes. Only then read or commission the formal statement and its witness. Choose the expected outcomes without consulting `Spec.expected_step/2`; those expectations need to be able to challenge the oracle.
+Start with a policy sentence and three to five concrete traces. Have the agent generate candidates, including counterexamples and alternate interpretations; select the expected outcomes from the policy or an explicit requirement decision, **not** from `Spec.expected_step/2` or the implementation you are trying to check. Record the resulting expectations as ordinary tests.
 
-For a new policy, choose a safety case, a progress case, exact-fit and last-slot boundaries, then duplicate, failure and restart cases. Commit the traces as ordinary tests with literal expected outcomes so future changes must preserve the human's decisions.
+For a new policy, cover a safety case, a case where something must succeed, a boundary, and relevant retry, failure or restart sequences. The state tuple is `{amount_limit, slot_limit, used_amount, used_slots, entries}`; keys are integers.
 
-For example: **an issued authorization consumes capacity until trustworthy terminal evidence releases it.** Every row below is independent. State tuples are `{amount_limit, slot_limit, used_amount, used_slots, entries}`. Events run left to right; keys are integers.
+**Policy:** an issued authorization consumes capacity until trustworthy terminal evidence releases it.
 
 | Initial state | Event sequence | Expected outcome |
 |---|---|---|
@@ -71,26 +73,28 @@ For example: **an issued authorization consumes capacity until trustworthy termi
 | `{100, 2, 100, 1, [{1, 100, :sent}]}` | `{:timeout, 1}`, `{:request, 2, 100}` | First hold becomes `:unknown`; refuse key 2. |
 | `{100, 2, 100, 1, [{1, 100, :sent}]}` | `:restart`, `{:request, 2, 100}` | First hold becomes `:unknown`; refuse key 2. |
 
-These examples are committed in `test/human_policy_traces_test.exs`; rerun them with `uv run --locked python scripts/local_run.py mix test test/human_policy_traces_test.exs --exclude laws`.
+These examples are recorded in `test/human_policy_traces_test.exs`. Run them with:
 
-A refuse-everything implementation preserves capacity limits. The first and third traces require positive admission as well as safety. Hold Ledger's PO-A2 captures obligatory admission; preservation alone does not.
+```sh
+uv run --locked python scripts/local_run.py mix test test/human_policy_traces_test.exs --exclude laws
+```
 
-## What the Agent Must Report
+A refuse-everything implementation preserves capacity limits. The first and third traces require admission as well as safety; PO-A2 covers eligible requests. Also check whether a contract permits wrong outputs for a valid input. The [worked contract challenge](agentic_verification.md#3-try-to-break-the-contract) shows how to do that.
+## What evidence to inspect in the agent's report
 
-The agent's summary orients review; inspect the diff to decide what changed.
+Use the agent's report to locate the evidence; decide from the diff and checker output. Ask for:
 
-The report contains:
+- The **claim delta**, including changes to predicate bodies, input domains, effects and external assumptions; or `Claim delta: none` with a reason.
+- The declarations and Tier 1 files touched, with the decision each change affects.
+- Where expected trace outcomes came from and which cases challenge the claim.
+- Commands and completed results, distinguishing ordinary tests, proof attempts, full export acceptance, runtime checks and assumptions.
+- Unresolved failures, untested domains, reference disagreements and resource limits.
 
-- `Claim delta: none` or the exact change to statements, domains and assumptions.
-- Tier 1 files touched, with the reason for each change.
-- Commands run and results, separating ordinary tests, formal acceptance and external assumptions.
-- Unresolved failures, missing evidence or resource limits.
+Inspect any proposed weakening against the requested behavior. If it requires a policy change or a new trusted assumption, resolve that decision before accepting the revised proof.
 
-Require human approval for proposed hypothesis additions, domain restrictions, Spec/model changes, inventory changes, axiom or gate changes, and test skips. The original task does not authorize a weaker guarantee. An already approved policy change can proceed within its stated scope.
+When a proof fails, run the witness and property for the same claim. If there is a counterexample, replay it and confirm the precondition holds while the conclusion fails. If there is not, inspect the goal, generator coverage and reference. Neither a test pass nor a failed proof attempt settles the disputed claim.
 
-Resource increases also need explanation and fresh results. A timeout bump is not inherently a changed mathematical claim, but it can change operational acceptance; it must never turn a timeout into success.
-
-When a proof fails, run the witness and property for the same claim. Replay any counterexample and confirm that the precondition holds while the conclusion fails. The human decides whether policy calls for fixing the code or correcting a proposed claim. With no counterexample, the claim remains unresolved: inspect generator coverage and the proof state. Do not label it true merely because bounded testing passed.
+Resource increases need explanation and fresh results. A timeout bump is not necessarily a mathematical claim change, but it changes the operational check; a timeout must never become success by reporting convention.
 
 ## Common Ways a Green Result Can Mislead
 
@@ -101,7 +105,7 @@ When a proof fails, run the witness and property for the same claim. Replay any 
 | Hard inputs disappear | New guards or typed encodings | Compare domains with the base revision; PO-B5 (a catalog label for a terminal-preservation obligation) permits lookup queries where `1 == 1.0`. |
 | Desired result becomes a caller assumption | Hypotheses of the top-level theorem and its helper lemmas | Follow each assumption to independent evidence; do not assume the conclusion. |
 | `valid?` becomes easier to satisfy | Spec or Lean definitions | Check whether it still requires exact totals, uniqueness and intended statuses. |
-| Spec changes to match faulty code | Implementation and oracle diffs | Compare both with the human's prior traces. |
+| Spec changes to match faulty code | Implementation and oracle diffs | Compare both with the policy traces. |
 | A law and its inventory entry vanish together | Catalog and required inventory | Compare required coverage with the previous revision and policy. |
 | Numeric identity is blurred | `==`, `===`, codecs, queried domains | Exercise `1` and `1.0`; decide where exact identity is required. |
 | A witness or property becomes weaker or skipped | Tests, tags, generators, filters | Replay the original regression and inspect effective selection. |
@@ -109,28 +113,48 @@ When a proof fails, run the witness and property for the same claim. Replay any 
 | Old exports or cache results are reused | Source/export identities and acceptance mode | Require fresh acceptance on the reviewed source. |
 | A direct proof attempt passes but acceptance is incomplete | Runner report and CI jobs | Check full scope, exports, all checker results and allowed axioms. |
 
-## Use Mutations to Challenge the Claims
+## Use mutations to challenge claims
 
-A mutant is a disposable code copy with a deliberate change. Choose policy-relevant faults yourself; the agent can propose and run them. A surviving known violation suggests missing coverage only after confirming that the mutation ran and all intended checks completed. Some mutations preserve behavior; tool failures and incomplete runs are inconclusive.
+A mutant is a disposable copy of code with a deliberate change. Agents can propose likely policy violations, run experiments, inspect reports and minimize counterexamples. Reviewers should check the planted change against the intended behavior before deciding what a survivor means.
 
-In `mutants/02_timeout_release/mutant.patch`, a sent hold of `300` becomes unknown while its counters fall to zero. The required result retains `300` and one slot. The concrete M2 test and PO-B1/timeout address that policy.
+In `mutants/02_timeout_release/mutant.patch`, a sent hold of `300` becomes unknown while its counters fall to zero. The required result retains `300` and one slot. The M2 witness and PO-B1/timeout address this policy. Another mutant, `mutants/10_premature_void_release/`, releases capacity before terminal void confirmation. These mutations challenge different claims.
 
-Choose the planted violation, confirm the original passes, then have the agent run the isolated mutation experiment. If a known violation survives completed checks, replay it and strengthen or add the missing law or test against the agreed policy. Do not edit the mutant or Spec to make the experiment pass. Keep the reproducer as a regression.
+A useful sequence is: establish that the correct-source baseline passes; verify that the planted change actually violates a requirement; run the isolated ordinary and relevant formal checks; confirm that those checks completed; then interpret the result. A known violation that survives *completed* checks suggests a coverage gap. An equivalent mutant, incomplete run, proof timeout or tactic failure does not demonstrate a gap or detection on its own. Do not change Spec or the law to accommodate the mutant.
 
-Run the ordinary baseline with `uv run --locked python scripts/local_run.py mix test test/mutations/preflight_test.exs --exclude laws`. The [Testing guide](testing.md#deliberate-mutations) gives the isolated experiment and costs.
+The ordinary baseline command is:
 
-## Read “Green” Precisely
+```sh
+uv run --locked python scripts/local_run.py mix test test/mutations/preflight_test.exs --exclude laws
+```
+
+The [Testing guide](testing.md#deliberate-mutations) describes the optional isolated experiment and its cost.
+
+## Read “green” precisely
 
 | Result | What it establishes |
 |---|---|
-| Development proof attempt | The selected development check passed; full exported-checker acceptance may not have run. |
+| Development proof attempt | The selected development check completed, not necessarily full exported-checker acceptance. |
 | Catalog `supported` | A proof implementation is registered; this is not execution evidence. |
-| Full acceptance | The selected obligations passed fresh proofs, exports, six checker configurations and axiom checks for the recorded sources. A subset is not release acceptance. |
-| CI green | The jobs required for that change succeeded; documentation-only changes may have no new formal run. |
+| Full acceptance | Required obligations passed the fresh proof/export checks, six checker configurations and axiom checks for matching source identities; a subset is not full release acceptance. |
+| CI green | The jobs required for that change succeeded; a documentation-only change might have no new proof run. |
 
-Match the report to the source revision and claims you reviewed.
+Match the report and its source hashes to the reviewed declarations. Keep pure proof checks, ordinary tests, runtime fault tests and processor assumptions separate.
 
-For Tier 2 runtime changes, follow the [server and journal audit](audit.md#server-and-journal-follow-one-confirmation-through-failure): inspect caller authentication; correlation of late worker results with the current attempt; sync-before-transition/effects ordering; crash replay and incomplete-tail handling; and remote retry identity. Require runtime or fault-injection regressions for changed paths. Re-run the committed policy traces whenever Ledger changes.
+For Tier 2 runtime changes, follow the [server and journal audit](audit.md#server-and-journal-follow-one-confirmation-through-failure): caller authentication; late worker correlation; sync-before-transition/effects ordering; crash replay and incomplete-tail handling; and remote retry identity. Require runtime or fault-injection regressions for changed paths. Rerun the committed policy traces whenever Ledger changes.
+
+## When a decision can be delegated
+
+Consider three changes involving a pending void:
+
+| Situation | What the agent can do | What needs a decision |
+|---|---|---|
+| A refactor releases capacity on a void timeout | Cite the existing retention policy, reproduce the violation and repair the code | No new policy choice: the required behavior is already specified |
+| A feature request says “release capacity after 24 hours” | Show the conflict with retention until trusted confirmation; construct a trace where the processor still holds the authorization | A person must resolve the conflicting requirements and the resulting exposure risk |
+| An agent proposes classifying future timeout repairs automatically | Evaluate it on previously reviewed changes, including hidden predicate edits and misleading “proof-only” summaries | Decide which cases the evidence supports delegating and which still need review |
+
+For that last case, keep some reviewed examples out of the agent's development set. Check whether it catches actual guarantee changes, accepts harmless repairs and flags ambiguous cases. Examine missed defects and unnecessary escalations before expanding its remit. Fewer requests for human help are useful only if consequential mistakes are still caught.
+
+Delegation can grow one decision at a time. Success on timeout repairs would not establish competence to choose new processor assumptions or change the retention policy.
 
 ## Practice on Seven Proposed Changes
 
@@ -223,4 +247,4 @@ G is Tier 3: it removes an unnecessary intermediate fact from the proof while pr
 
 </details>
 
-> **Limits.** A failed tactic or timeout is not a counterexample; mutation attribution needs a checked baseline and reproduced violation. A survivor is informative only after confirming the fault and completed checks. Kernel checking validates proofs against their definitions and assumptions. Compiler/translator correspondence, OS and storage behavior, and real processor guarantees remain part of the trust decision. This workflow does not certify those dependencies. The [assurance audit](audit.md) examines those boundaries; [Verification](verification.md) defines acceptance evidence.
+> **Limits.** A failed tactic or timeout is not a counterexample; mutation attribution needs a checked baseline and a reproduced violation. A survivor matters only after confirming the planted fault and completed checks. Kernel checking validates proofs against their definitions and assumptions, not the choice of those definitions. Compiler/translator correspondence, OS and storage behavior, and real processor guarantees remain separate trust questions. The [assurance audit](audit.md) examines those boundaries; [Verification](verification.md) defines acceptance evidence.

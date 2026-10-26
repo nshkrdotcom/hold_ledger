@@ -9,9 +9,8 @@
 
 > An Elixir authorization-hold ledger with formal laws for its pure state machine, an independent specification, and a separately tested journaled OTP runtime.
 
-**Reviewing agent changes?** Start with the [formal verification crash course](guides/formal_verification_crash_course.md)
-if you are new to Lynx, then use [Human review](guides/human_review.md) for each change.
-The [assurance audit](guides/audit.md) covers Hold Ledger's policies, models and trust boundaries.
+**Learning to verify with a coding agent?** Start with the [formal verification crash course](guides/formal_verification_crash_course.md), then follow the [agentic verification workflow](guides/agentic_verification.md).
+[Human review](guides/human_review.md) covers decisions in an individual change. [Specification assurance](guides/specification_assurance.md) explains how a verified contract can miss intent, while the [assurance audit](guides/audit.md) examines the whole system at an initial or periodic checkpoint.
 
 ---
 
@@ -134,6 +133,8 @@ The project combines three kinds of evidence:
 | **3. Machine-Checked Proofs** | `Lynx` + `Lean 4` Theorem Prover | Proves universal mathematical statements ($\forall s, \forall e \dots$). | The stated properties for all inputs satisfying each law’s preconditions. |
 
 Ten deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See the testing guide for the optional mutation experiment; a failed proof alone is not a concrete counterexample.
+
+A proof establishes the **chosen law**. It cannot tell you whether that law covers every required behavior. Hold Ledger's independent `Spec` and concrete traces help challenge the laws, though they can share a mistaken policy. See [Verify the behavior you meant](guides/agentic_verification.md) for the practical workflow and [Specification assurance](guides/specification_assurance.md) for the research.
 
 ---
 
@@ -298,7 +299,9 @@ Deep-dive documentation is located in `guides/`:
 
 | Guide | Description |
 |---|---|
-| [**Human Review**](guides/human_review.md) | Per-change review of agent work: claims, definitions, coverage and acceptance evidence. |
+| [**Agentic Verification**](guides/agentic_verification.md) | Practical loop: establish intent, compare contracts, challenge outcomes, prove and report evidence. |
+| [**Human Review**](guides/human_review.md) | Review claims and definitions, resolve disputed requirements, and decide what to delegate. |
+| [**Specification Assurance**](guides/specification_assurance.md) | Why green proofs can miss intent, with contract-testing examples and research limits. |
 | [**Assurance Audit**](guides/audit.md) | Initial or periodic close review of Hold Ledger's policies, proof models and runtime boundaries. |
 | [**Architecture**](guides/architecture.md) | Structural split between pure state machine, persistence, and effect scheduling. |
 | [**Specification**](guides/specification.md) | Full contract: state tuple shape, event semantics, transitions, error atoms. |
