@@ -2,7 +2,7 @@
 
 The kernel checks proofs. You check what they are about. The agent can write code and proofs; a human approves the claims and assumptions.
 
-Use this guide for each proposed change after reading the [crash course](formal_verification_crash_course.md). Use the [assurance audit](audit.md) for an initial or periodic review of Hold Ledger's full argument. Start with the diff, rather than rereading the proof library.
+Use this guide for each proposed change. If you are new to Lynx, read the [crash course](formal_verification_crash_course.md) first. The [assurance audit](audit.md) covers the deeper system review. Here, start with the diff.
 
 ## Divide the Work
 
@@ -10,7 +10,7 @@ Use this guide for each proposed change after reading the [crash course](formal_
 |---|---|---|
 | Policy, independently chosen traces, law and Spec approval, required-obligation sign-off | Implementation, helper lemmas, tactics, proof repair and evidence collection | Tests, mutation experiments and failure diagnosis |
 
-The agent may draft a statement or Spec change. It cannot approve its own proposal. Review the claim before asking it to spend time proving it.
+The agent may draft a statement or Spec change; a human must approve its meaning. Settle the claim before commissioning its proof.
 
 ## Classify the Diff by Meaning
 
@@ -21,7 +21,7 @@ The agent may draft a statement or Spec change. It cannot approve its own propos
 | 2: implementation | Ledger and runtime code | Normal code review, appropriate tests and required formal checks |
 | 3: proof bodies | Tactics and helper-proof bodies with unchanged statements and dependencies | Fresh acceptance; usually no line-by-line tactic review |
 
-In Hold Ledger, Tier 1 includes `spec.ex`, `test/laws/`, Lean `def` / `inductive` / `structure` / `instance` declarations, `verification/obligations.json`, `verification/laws.json`, `scripts/run_laws.py`, `scripts/formal_gate.py`, `test/support/proof_case.ex`, `.github/`, pins and `mutants/`. Inspect Lean imports, options, macros and elaborators too: a `.lean` extension does not make a change proof-only.
+In Hold Ledger, Tier 1 includes `lib/hold_ledger/spec.ex`, `test/laws/`, Lean `def` / `inductive` / `structure` / `instance` declarations, `verification/obligations.json`, `verification/laws.json`, `scripts/run_laws.py`, `scripts/formal_gate.py`, `test/support/proof_case.ex`, `.github/`, pins and `mutants/`. Inspect Lean imports, options, macros and elaborators too: a `.lean` extension does not make a change proof-only.
 
 A theorem's **body** can usually be skipped after checking its statement and dependencies. A changed theorem statement needs review even when its proof passes. Definitions give the statement meaning; kernel checking does not decide whether that meaning matches policy.
 
@@ -34,7 +34,9 @@ A theorem's **body** can usually be skipped after checking its statement and dep
 | Only Tier 3 bodies | Confirm statements, definitions, imports and checking policy are unchanged; accept the proof work when fresh full acceptance matches the revised source. |
 | Documentation | Check that its promises still match the contracts; documentation can change policy expectations too. |
 
-These are review rules, not an automatic approval service. The current CI gate detects proof-relevant paths and requires formal execution; it does not identify semantic tiers or obtain human sign-off. **To build:** a tool that prints statement-level changes across laws, Spec, Lean definitions and inventories. Until then, inspect those diffs directly. Source hashes identify changes; they do not approve them.
+The current CI gate detects proof-relevant paths and requires formal execution. It does not identify semantic tiers or obtain human sign-off. A Tier 3 classification therefore needs someone to inspect the diff before relying on kernel acceptance.
+
+**To build:** a tool that prints statement-level changes across laws, Spec, Lean definitions and inventories. Until then, inspect those diffs directly. Source hashes identify changes; they do not approve them.
 
 For Tier 1 changes, answer six questions:
 
@@ -47,7 +49,7 @@ For Tier 1 changes, answer six questions:
 
 ## Write the Claim Before the Proof
 
-Write a policy sentence, then three to five traces with expected outcomes. Only then read or commission the formal statement. Give it a witness that exercises the precondition. Keep the traces independent of `Spec.expected_step/2`; copying the oracle's answer cannot challenge its policy.
+Write a policy sentence, then three to five traces with expected outcomes. Only then read or commission the formal statement and its witness. Choose the expected outcomes without consulting `Spec.expected_step/2`; those expectations need to be able to challenge the oracle.
 
 For example: **an issued authorization consumes capacity until trustworthy terminal evidence releases it.** Choose limit `100`, two slots, and distinct keys:
 
@@ -63,14 +65,14 @@ A refuse-everything implementation preserves capacity limits. The first and thir
 
 ## What the Agent Must Report
 
-Ask for a short PR description containing:
+The PR description should give you four things:
 
 - `Claim delta: none` or the exact change to statements, domains and assumptions.
 - Tier 1 files touched, with the reason for each change.
 - Commands run and results, separating ordinary tests, formal acceptance and external assumptions.
 - Unresolved failures, missing evidence or resource limits.
 
-The agent should flag proposed hypothesis additions, domain restrictions, Spec/model changes, inventory changes, axiom or gate changes, and test skips before treating them as an accepted repair. Approval of the original task does not imply approval of a weaker guarantee. An already approved policy change can proceed within its stated scope.
+Require human approval for proposed hypothesis additions, domain restrictions, Spec/model changes, inventory changes, axiom or gate changes, and test skips. The original task does not authorize a weaker guarantee. An already approved policy change can proceed within its stated scope.
 
 Resource increases also need explanation and fresh results. A timeout bump is not inherently a changed mathematical claim, but it can change operational acceptance; it must never turn a timeout into success.
 
@@ -102,7 +104,7 @@ Hold Ledger's `mutants/02_timeout_release/mutant.patch` plants a specific fault:
 1. Begin with `{1000, 3, 300, 1, [{11, 300, :sent}]}` and apply `{:timeout, 11}`.
 2. The agreed result retains `300` and one slot, changing only `:sent` to `:unknown`.
 3. The patch instead reduces both counters to zero while leaving the unknown entry. `Spec.valid?/1` must reject that state.
-4. The concrete M2 test detects the contradiction. The targeted group is PO-B1/timeout. Attribute a formal failure only after checking the original baseline and reproducing the violation; a failed tactic alone is insufficient.
+4. The concrete M2 test detects the contradiction. The targeted group is PO-B1/timeout. Use the original baseline and reproduced violation to interpret any formal failure; a failed tactic alone is insufficient.
 
 Run the ordinary baseline with `uv run --locked python scripts/local_run.py mix test test/mutations/preflight_test.exs --exclude laws`. The [Testing guide](testing.md#deliberate-mutations) gives the isolated native experiment and its costs. Keep mutation work out of the live reducer and never edit Spec to accommodate a planted fault.
 
@@ -115,7 +117,7 @@ Run the ordinary baseline with `uv run --locked python scripts/local_run.py mix 
 | Full acceptance | The selected obligations passed fresh proofs, exports, six checker configurations and axiom checks for the recorded sources. A subset is not release acceptance. |
 | CI green | The jobs required for that change succeeded; documentation-only changes may have no new formal run. |
 
-Inspect the actual report and reviewed revision. In hosting settings, require the stable `formal-gate` check before merge, alongside ordinary checks and the relevant human approval. Workflow code does not configure branch protection or prove that the human reviewed Tier 1 material.
+Match the report to the reviewed revision. In hosting settings, require the stable `formal-gate` check before merge, alongside ordinary checks and the relevant human approval. Workflow code does not configure branch protection or prove that the human reviewed Tier 1 material.
 
 Also ask whether the change relies on runtime behavior absent from the pure model. Authentication, worker correlation, journal sync and recovery paths need runtime or fault-injection evidence. A pure replay equality is not a proof that a disk write survived a crash.
 
@@ -137,8 +139,21 @@ To validate this guide with readers, give a senior SWE unfamiliar with FV the cr
 
 ## Review Card
 
-Classify the diff: claims/checking boundary → human sign-off; implementation → code review and relevant gates; unchanged-statement proof bodies → fresh full acceptance; documentation → verify promises.
+| Change | Required review |
+|---|---|
+| Claims, definitions, coverage or checking boundary | Human approval of meaning and scope |
+| Implementation | Code review, relevant tests and required formal checks |
+| Proof bodies only, with unchanged statements and dependencies | Confirm that classification; require fresh full acceptance |
 
-Before sign-off: claim unchanged or explicitly approved; meaningful witness; independently chosen policy traces; required coverage retained; Spec independent; foundations and gates intact. Record the approved claim delta, source revision, evidence scope and unresolved assumptions. If any item is unresolved, state it rather than treating proof success as approval.
+Before signing off:
+
+- The claim is unchanged, or its exact change has human approval.
+- A witness satisfies the hypotheses, including relevant boundaries.
+- Independently chosen traces agree with policy.
+- Required obligations remain covered; nothing was silently dropped or skipped.
+- Spec stays independent; changed definitions and foundations have been reviewed.
+- Evidence matches the source and required scope; remaining assumptions are explicit.
+
+Record the approved claim delta, source revision and evidence scope. Leave unresolved questions visible instead of treating proof success as their answer.
 
 > **Limits.** Kernel checking validates proofs against their definitions and assumptions. Compiler/translator correspondence, OS and storage behavior, and real processor guarantees remain part of the trust decision. This workflow does not certify those dependencies or establish that hosting rules are configured. The [assurance audit](audit.md) examines those boundaries; [Verification](verification.md) defines acceptance evidence.
