@@ -2,7 +2,7 @@
 
 A checked proof establishes the statement supplied to Lean. It cannot tell you whether that statement captures the requirement. Read the statement and its definitions, then inspect the evidence behind them. Let agents gather and challenge that evidence; bring in a person to resolve disputed requirements or risk tradeoffs.
 
-Use this guide when reviewing a change. The [crash-course glossary](formal_verification_crash_course.md#terms-you-will-need) defines the terms used here.
+Use this guide when reviewing a change. The [crash-course glossary](formal_verification_crash_course.md#glossary) defines the terms used here.
 
 ## What to delegate and what to decide
 
