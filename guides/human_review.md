@@ -2,7 +2,7 @@
 
 A checked proof establishes the statement supplied to Lean. It cannot tell you whether that statement captures the requirement. Read the statement and its definitions, then inspect the evidence behind them. Let agents gather and challenge that evidence; bring in a person to resolve disputed requirements or risk tradeoffs.
 
-Use this guide when an agent proposes a change. Use the [assurance audit](audit.md) for an initial or periodic system review. If you are new to Lynx, use the [crash-course glossary](formal_verification_crash_course.md#terms-you-will-need). For the full process from requirements to evidence, read [Verify the behavior you meant](agentic_verification.md). The research and contract failure modes are in [Specification assurance](specification_assurance.md).
+Use this guide when reviewing a change. The [crash-course glossary](formal_verification_crash_course.md#terms-you-will-need) defines the terms used here.
 
 ## What to delegate and what to decide
 
@@ -41,11 +41,10 @@ These are examples to navigate the code, not an exhaustive filename-based classi
 
 To distinguish proof repair from a changed claim:
 
-1. Inspect the base-to-head diff with enough context to identify the enclosing declaration. For example, start with `git diff -U20 BASE HEAD -- test/laws test/support/lean`; open the complete declaration in both revisions when it extends beyond the context. A `-U0` diff is insufficient, and language-dependent function-context detection may miss Lean boundaries.
-2. In a law `.exs` file, changed lines outside the `proof: ~LEAN` sigil body require Tier 1 review. Context lines alone are not changes. Inside the sigil, apply the same Lean rules as for a `.lean` file.
-3. Classify by the enclosing declaration, not just keywords on the changed line. Any edit inside a `def`, `abbrev`, `instance`, `structure`, `inductive`, `class`, `macro`, `macro_rules`, `syntax`, `elab`, `notation`, `axiom` or `opaque` declaration is Tier 1, including its body. A definition proved with `by` is still a definition.
-4. Review changes to surrounding commands as Tier 1 too: `set_option`, `open`, `import`, `attribute`, `unsafe`, `variable`, `universe`, `namespace`, `section`, `end`, `export`, `local`, `scoped`, `deriving`, `initialize`, `run_cmd` and `#eval`. They can change dependencies, binders, interpretation or checking behavior without touching a theorem signature.
-5. Tier 3 is limited to changes inside a `theorem`, `lemma` or `example` proof after its `:=` (with or without `by`), or inside an existing law's proof sigil, with statements and dependencies unchanged. Inspect nested declarations and commands using the same rules. Compare complete signatures, including multiline binders and attributes. If you cannot establish the boundaries, use Tier 1 review.
+1. View enough diff context to identify the enclosing declaration. Start with `git diff -U20 BASE HEAD -- test/laws test/support/lean`; open the full declaration in both revisions if necessary. A context-free diff can hide that the changed line belongs to a definition.
+2. In a law `.exs` file, changes outside the `proof: ~LEAN` sigil need Tier 1 review. Inside the sigil, apply the same rules as for a `.lean` file.
+3. Review anything that can change meaning or dependencies as Tier 1: definition bodies, types, instances, theorem signatures, imports, options and syntax extensions. Surrounding commands matter too: a `variable` declaration can alter later theorem binders. These are review triggers, not proof that the claim changed.
+4. Tier 3 requires changes confined to an existing theorem, lemma or example proof, or a law's proof sigil, with statements and dependencies unchanged. Check nested declarations too. A `def` body remains Tier 1 even after `:=` or `by`. If you cannot establish the boundaries, use Tier 1 review.
 
 Use this checklist for Tier 1 review:
 
@@ -58,9 +57,9 @@ Use this checklist for Tier 1 review:
 
 ## Establish expected behavior before proof work
 
-Start with a policy sentence and three to five concrete traces. Have the agent generate candidates, including counterexamples and alternate interpretations; select the expected outcomes from the policy or an explicit requirement decision, **not** from `Spec.expected_step/2` or the implementation you are trying to check. Record the resulting expectations as ordinary tests.
+Start with a policy sentence and three to five traces. The agent can propose cases and alternate interpretations. Cite the policy clause or requirement decision behind each expected outcome, rather than deriving it from `Spec.expected_step/2` or the implementation. If the policy leaves a case open, resolve it before recording the expectation as an ordinary test.
 
-For a new policy, cover a safety case, a case where something must succeed, a boundary, and relevant retry, failure or restart sequences. The state tuple is `{amount_limit, slot_limit, used_amount, used_slots, entries}`; keys are integers.
+For a new policy, cover a safety case, a case where something must succeed, a boundary, and relevant retry, failure or restart sequences. The state tuple is `{amount_limit, hold_limit, used_amount, used_holds, entries}`; keys are integers.
 
 **Policy:** an issued authorization consumes capacity until trustworthy terminal evidence releases it.
 
@@ -80,15 +79,10 @@ uv run --locked python scripts/local_run.py mix test test/human_policy_traces_te
 ```
 
 A refuse-everything implementation preserves capacity limits. The first and third traces require admission as well as safety; PO-A2 covers eligible requests. Also check whether a contract permits wrong outputs for a valid input. The [worked contract challenge](agentic_verification.md#3-try-to-break-the-contract) shows how to do that.
-## What evidence to inspect in the agent's report
 
-Use the agent's report to locate the evidence; decide from the diff and checker output. Ask for:
+## What to inspect in the agent report
 
-- The **claim delta**, including changes to predicate bodies, input domains, effects and external assumptions; or `Claim delta: none` with a reason.
-- The declarations and Tier 1 files touched, with the decision each change affects.
-- Where expected trace outcomes came from and which cases challenge the claim.
-- Commands and completed results, distinguishing ordinary tests, proof attempts, full export acceptance, runtime checks and assumptions.
-- Unresolved failures, untested domains, reference disagreements and resource limits.
+Start with **did the meaning of any claim change?** Use the report to locate affected statements, definitions and assumptions, then check the diff. Inspect the commands, results and source identity behind a claimed pass, and distinguish ordinary tests from formal acceptance. Unresolved failures should remain visible.
 
 Inspect any proposed weakening against the requested behavior. If it requires a policy change or a new trusted assumption, resolve that decision before accepting the revised proof.
 
@@ -135,8 +129,10 @@ The [Testing guide](testing.md#deliberate-mutations) describes the optional isol
 |---|---|
 | Development proof attempt | The selected development check completed, not necessarily full exported-checker acceptance. |
 | Catalog `supported` | A proof implementation is registered; this is not execution evidence. |
-| Full acceptance | Required obligations passed the fresh proof/export checks, six checker configurations and axiom checks for matching source identities; a subset is not full release acceptance. |
-| CI green | The jobs required for that change succeeded; a documentation-only change might have no new proof run. |
+| Full acceptance | Every required obligation passed fresh proof/export checks, all six checker configurations and axiom checks for the reviewed source. A subset is partial acceptance. |
+| CI green | The required jobs succeeded. The `formal-gate` job always runs, but the full `formal` job is conditional; see below. |
+
+With a readable base-to-head diff, README/guides-only edits do not trigger the full formal job. `scripts/formal_gate.py` selects it for paths such as `lib/`, laws and `mix.exs`; an explicit request or unavailable diff also requires it.
 
 Match the report and its source hashes to the reviewed declarations. Keep pure proof checks, ordinary tests, runtime fault tests and processor assumptions separate.
 
@@ -152,7 +148,9 @@ Consider three changes involving a pending void:
 | A feature request says “release capacity after 24 hours” | Show the conflict with retention until trusted confirmation; construct a trace where the processor still holds the authorization | A person must resolve the conflicting requirements and the resulting exposure risk |
 | An agent proposes classifying future timeout repairs automatically | Evaluate it on previously reviewed changes, including hidden predicate edits and misleading “proof-only” summaries | Decide which cases the evidence supports delegating and which still need review |
 
-For that last case, keep some reviewed examples out of the agent's development set. Check whether it catches actual guarantee changes, accepts harmless repairs and flags ambiguous cases. Examine missed defects and unnecessary escalations before expanding its remit. Fewer requests for human help are useful only if consequential mistakes are still caught.
+For that last case, justify each expected classification with the diff and the requirement it affects. A replayable violation, such as a mutant failing a policy trace, can support that judgment. An agent can replay the check; agreeing with another generated label is not enough.
+
+Resolve disputed labels before scoring the run, and keep some examples out of the agent's development set. Check whether it catches guarantee changes, accepts harmless repairs and flags ambiguous cases. Review missed defects and unnecessary escalations before delegating more decisions. Fewer requests for help are useful only if consequential mistakes are still caught.
 
 Delegation can grow one decision at a time. Success on timeout repairs would not establish competence to choose new processor assumptions or change the retention policy.
 

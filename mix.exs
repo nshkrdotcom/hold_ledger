@@ -46,11 +46,20 @@ defmodule HoldLedger.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib mix.exs .formatter.exs README.md LICENSE CHANGELOG.md guides assets/*.svg)
+      files:
+        ~w(lib mix.exs .formatter.exs README.md LICENSE CHANGELOG.md guides/*.md assets/*.svg)
     ]
   end
 
   defp docs do
+    learning_guides = ~w(
+      guides/formal_verification_crash_course.md
+      guides/agentic_verification.md
+      guides/human_review.md
+      guides/specification_assurance.md
+      guides/audit.md
+    )
+
     [
       main: "readme",
       authors: ["nshkrdotcom"],
@@ -60,12 +69,11 @@ defmodule HoldLedger.MixProject do
       assets: %{"assets" => "assets"},
       formatters: ["html", "markdown", "epub"],
       extras:
-        ["README.md"] ++
-          Path.wildcard("guides/*.md") ++
+        Enum.uniq(["README.md"] ++ learning_guides ++ Path.wildcard("guides/*.md")) ++
           ["CHANGELOG.md", {"LICENSE", [title: "MIT License"]}],
       groups_for_extras: [
         "Getting Started": ["README.md", "guides/getting-started.md"],
-        "Reviewing Correctness": ["guides/human_review.md", "guides/audit.md"],
+        "Learning Formal Verification": learning_guides,
         "Using the Ledger": [
           "guides/specification.md",
           "guides/architecture.md",
@@ -74,7 +82,6 @@ defmodule HoldLedger.MixProject do
         ],
         "Testing and Verification": [
           "guides/testing.md",
-          "guides/formal_verification_crash_course.md",
           "guides/verification.md"
         ],
         Reference: ["guides/troubleshooting.md", "CHANGELOG.md", "LICENSE"]

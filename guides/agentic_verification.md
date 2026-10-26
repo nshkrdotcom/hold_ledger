@@ -1,10 +1,10 @@
 # Verify the behavior you meant
 
-An implementation could release an authorized hold before the processor confirms its void and still leave Hold Ledger's counters consistent. A proof that `Ledger.void/2` preserves valid accounting would not rule out that mistake.
+An implementation could release an authorized hold before the processor confirms its void and still leave Hold Ledger's counters consistent. The law `po_b1_void` checks that the resulting ledger is valid. Other laws are needed to rule out premature release and missing effects.
 
 Use this workflow to move from a policy question to a checked claim. An agent can draft requirements, contracts, traces, proofs and counterexamples. Judge the work by the evidence behind each decision, whoever wrote it.
 
-New to Lynx? Work through the [runnable crash course](formal_verification_crash_course.md) first. Use [Human review](human_review.md) when examining a change; [Specification assurance](specification_assurance.md) explains the research and the limits of the checks below. For a full examination of the existing system, use the [assurance audit](audit.md).
+New to Lynx? Work through the [runnable crash course](formal_verification_crash_course.md) first.
 
 ## The loop
 
@@ -62,6 +62,25 @@ assert Enum.all?([correct, early_release, lost_effect], weak)
 assert required.(correct)
 refute required.(early_release)
 refute required.(lost_effect)
+
+# Predicates used by the maintained PO-B3 and PO-EXPOSURE laws:
+effects_ok = fn {state, result, effects} ->
+  Spec.effects_valid?(s, {:void, 1}, state, result, effects)
+end
+retained = fn {state, _result, _effects} ->
+  Spec.exposed_entry?(state, 1, 100)
+end
+
+assert effects_ok.(correct) and retained.(correct)
+refute effects_ok.(early_release)
+refute retained.(early_release)
+refute effects_ok.(lost_effect)
+assert retained.(lost_effect)
+
+# Without the effect, premature release passes only the effects check.
+early_release_no_effect = put_elem(early_release, 2, [])
+assert effects_ok.(early_release_no_effect)
+refute retained.(early_release_no_effect)
 ```
 
 Run it with:
@@ -70,7 +89,14 @@ Run it with:
 uv run --locked python scripts/local_run.py mix run tmp/contract_challenge.exs
 ```
 
-Validity alone accepts all three outputs. The exact-result predicate rejects both planted mistakes. Its expected tuple comes from the policy, rather than from calling `Ledger` or `Spec`. This checks one input; a general law must express the same obligations across its full input domain.
+Validity alone accepts all three outputs. The exact-result predicate rejects both planted mistakes; its expected tuple comes from policy rather than from calling `Ledger` or `Spec`.
+
+The existing laws already address these faults:
+
+- `po_b3` uses `effects_valid?` to check effects against the event, result and stored identity. It rejects the lost effect, but accepts premature release when the output contains no effect.
+- `po_exposure_retain` requires the issued key and amount to remain in an exposed status when the event is not release evidence, under its valid-state and lookup hypotheses. It rejects both premature-release outputs but permits the missing effect.
+
+Together the predicates reject all three wrong outputs. These assertions check one input; the laws state the general claims.
 
 Other useful challenges target different questions:
 
@@ -81,15 +107,15 @@ Other useful challenges target different questions:
 | Timeout followed by another request | Whether `:unknown` retains capacity |
 | Void, delayed confirmation, then another request | Whether capacity is held until confirmation and released once |
 | Duplicate/retry with an existing key | Whether identity and stored amount are preserved |
-| Mutation that releases capacity at local void | Whether the relevant checks detect a policy violation (`mutants/10_premature_void_release`) |
+| Mutation that releases capacity at local void | Whether the planted early release violates the retention conclusion (`mutants/10_premature_void_release`) |
 
-Ask the agent for boundary and temporal traces, and justify their expected results from policy before consulting `Spec.expected_step/2`. [Specification assurance](specification_assurance.md#challenge-each-side-of-a-contract) explains how these checks complement one another.
+Ask the agent for boundary and temporal traces. For each expected result, cite the relevant clause in `guides/specification.md` before consulting `Spec.expected_step/2`. If the policy does not settle the case, record the requirement question. [Specification assurance](specification_assurance.md#challenge-each-side-of-a-contract) explains how these checks complement one another.
 
 ### 4. Implement and prove without moving the target
 
 Once the contract is selected, the agent can implement, repair tactics, add lemmas and run the appropriate checks. It can also propose a different contract, but that proposal must be separate from the proof repair. Do not change `Ledger` and `Spec` together just to make their results agree.
 
-The law catalog separates these claims: `po_b1_void` checks validity preservation; `po_b3` constrains required effects; the exposure-related laws address retained capacity under their stated model assumptions. See [Verification](verification.md) for the law inventory and the difference between a development proof attempt and full acceptance.
+Use [Verification](verification.md) to select the applicable laws and distinguish a development proof attempt from full acceptance.
 
 Run the existing policy traces with:
 
@@ -113,16 +139,8 @@ Ask the agent to construct a distinguishing case or prove the relevant implicati
 
 ### 6. State the result and what remains open
 
-Keep the summary tied to the claim and the checks actually performed. After running the example above, a report could read:
-
-> **Claim:** An authorized hold retains capacity and emits a void intent on a local void request, as required by `guides/specification.md`.
->
-> **Check:** `mix run tmp/contract_challenge.exs` passed on the current checkout. For the selected input, validity alone accepted both wrong outputs; the exact-result predicate rejected them. The reducer returned the expected tuple.
->
-> **Scope:** This is a concrete contract check, not a new universal proof. Processor confirmation remains an external assumption. No policy change is proposed.
-
-For proof work, identify the law, checked revision and proof report. [Human review](human_review.md#what-evidence-to-inspect-in-the-agent-s-report) lists what to inspect when the claim or its dependencies change.
+Name the claim and source revision, give the command and result, and note unresolved work. The example above checks concrete outputs against predicates; it does not establish a new universal proof. [Human review](human_review.md#what-to-inspect-in-the-agent-report) explains how to inspect the evidence.
 
 ## When to bring in a person
 
-Let the agent continue gathering evidence, attempting proofs and checking already-agreed claims. Escalate when a new requirement would be selected, an input domain would shrink, an external assumption would change, the reference looks wrong, or independent challenges conflict. The [per-change review guide](human_review.md) gives declaration-level rules and explains what evidence could eventually justify delegating some of these decisions with less human intervention.
+Let the agent continue gathering evidence, attempting proofs and checking already-agreed claims. Escalate when a new requirement would be selected, an input domain would shrink, an external assumption would change, the reference looks wrong, or challenges disagree. The [per-change review guide](human_review.md) gives declaration-level rules and explains what evidence could eventually justify delegating some of these decisions with less human intervention.

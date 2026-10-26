@@ -2,15 +2,10 @@
 
 Use this guide for an initial or periodic audit of Hold Ledger's policies, proof models
 and runtime boundaries. For a single agent change, use [Human review](human_review.md).
-For the practical requirements-to-proof loop, use [Agentic verification](agentic_verification.md).
-New to Lynx? Start with the [crash course](formal_verification_crash_course.md).
 
-**Source baseline:** `618ee1e7f17e490f643bed898f00b9f67c1cd2b4`. The audit text
-was last substantively updated in `55cfc404205952449293978b50af1fd5ac803c8a`.
-This marker identifies the reading route's source baseline; it does not record
-an independent audit sign-off or a successful formal run. Source links below
-are pinned to that baseline. Compare subsequent changes before relying on it.
-Commands and evidence requirements are in [Verification](verification.md).
+**Source baseline:** links below are pinned to `618ee1e7f17e490f643bed898f00b9f67c1cd2b4`.
+Compare subsequent changes before relying on this audit route. [Verification](verification.md)
+defines the required proof evidence.
 
 ## Hold Ledger: the top-level view
 

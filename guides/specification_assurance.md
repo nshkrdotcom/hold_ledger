@@ -2,7 +2,7 @@
 
 A verifier checks whether a program satisfies a formal statement under its assumptions. It cannot tell you whether you chose the right statement.
 
-For the steps to follow, use [Verify the behavior you meant](agentic_verification.md). The [crash-course glossary](formal_verification_crash_course.md#terms-you-will-need) covers Lynx and Lean terms; [Human review](human_review.md) applies these ideas to a proposed change.
+For the steps to follow, use [Verify the behavior you meant](agentic_verification.md).
 
 ## A proof, a contract, and an intention
 
@@ -68,19 +68,19 @@ Logical comparison can establish how two contracts relate *if the necessary impl
 
 If both directions of the relevant implications are proved under their stated conditions, the candidate and reference contracts are equivalent for those conditions. If only one direction is proved, a one-way refinement relation may be established. A rejected implication proof establishes only that the checker did not prove it. A counterexample satisfying one condition and violating the other can establish a genuine difference. Timeouts and incomplete obligations remain unresolved.
 
-Equivalence to a reference is not equivalence to human intention. In Hold Ledger, comparing `Ledger` with `Spec` or their formal contracts is valuable because the implementations are independent. That comparison cannot settle a policy both versions misunderstood.
+Equivalence to a reference is not equivalence to human intention. In Hold Ledger, `Spec` shares no implementation with `Ledger` and recomputes totals, but its transition branches often follow the same policy structure. Comparison can catch implementation drift; it cannot settle a policy both versions misunderstood.
 
-## What the recent research actually found
+## What two Verus studies found
 
-**VerusEval** evaluated LLM-generated Verus contracts using semantic triviality checks, validated input/output cases and comparison with reference contracts. It studied 13,716 artifacts from 762 tasks. Of the 7,081 verifier-accepted artifacts eligible for its quality analysis, 2,995 (42.3%) completed all three semantic checks without a flag; 3,790 (53.5%) were flagged by at least one; and 296 (4.2%) were unflagged but had incomplete checks.
+**VerusEval** evaluated LLM-generated Verus contracts using semantic triviality checks, validated input/output cases and comparison with reference contracts. It studied 13,716 artifacts from 762 tasks. Of the 7,081 verifier-accepted artifacts with an executable target function, 2,995 (42.3%) completed all three semantic checks without a flag; 3,790 (53.5%) were flagged by at least one; and 296 (4.2%) were unflagged but had incomplete checks.
 
 The 53.5% figure is **not a confirmed error rate**. A comparison flag may mean only that an implication proof failed. Among flagged artifacts, 44.7% had a counterexample or a proved triviality obligation; 55.0% were flagged by comparison alone.
 
 The study also looked for defects in reference contracts. Its authors screened a deliberately selected set of 61 references and identified 36 *candidate* defects. That is a yield in a selected sample, not an estimate of defect prevalence in the benchmark. Repairing one reference made 10 of its 11 failing artifact comparisons provably equivalent. The result is a reason to challenge the oracle as well as the generated contract.
 
-See [VerusEval, sections 3, 5 and 6](https://arxiv.org/html/2610.26464v1) (October 2026), and its [version history](https://arxiv.org/abs/2610.26464).
+See [VerusEval, sections 3–6](https://arxiv.org/html/2610.26464v1) (October 2026), and its [version history](https://arxiv.org/abs/2610.26464).
 
-**Verus-SpecGym** studied agents writing Verus specifications for 581 programming tasks. It evaluated generated preconditions and postconditions with executable checks, using examples and adversarial cases. The authors report that an LLM-based judge missed 26% of the failures caught by their evaluator in that setting. This supports using concrete challenges alongside model review. It does not make any finite suite a completeness proof.
+**Verus-SpecGym** studied agents writing Verus specifications for 581 Codeforces programming tasks. It evaluated generated preconditions and postconditions with executable checks, using examples and adversarial cases. The authors report that an LLM-based judge missed 26% of the failures caught by their evaluator in that setting. This supports using concrete challenges alongside model review. It does not make any finite suite a completeness proof.
 
 See the [Verus-SpecGym paper](https://arxiv.org/abs/2605.26457) (May 2026) and [code and benchmark](https://github.com/formal-verif-is-cool/verus-spec-gym).
 

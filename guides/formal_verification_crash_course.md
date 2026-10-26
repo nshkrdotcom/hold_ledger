@@ -2,7 +2,7 @@
 
 Changing `>` to `>=` can reject a request that exactly fits the available capacity. A test with spare capacity still passes. A generated test catches the bug only if it exercises equality. A proof of “every fitting request is admitted” must cover equality too.
 
-This guide assumes you know Elixir and property tests. You will run a complete Lynx proof, read its generated Lean, then apply it to Hold Ledger. Complete the [toolchain setup](getting-started.md) first. Save the examples under ignored `tmp/`. For an agent-assisted process that includes challenging the contract itself, continue with [Verify the behavior you meant](agentic_verification.md).
+This guide assumes you know Elixir and property tests. You will run a complete Lynx proof, read its generated Lean, then apply it to Hold Ledger. Complete the [toolchain setup](getting-started.md) first. Save the examples under ignored `tmp/`.
 
 ## Terms You Will Need
 
@@ -11,12 +11,14 @@ This guide assumes you know Elixir and property tests. You will run a complete L
 | Law / obligation | A law is an executable claim declared with `law`; an obligation is a claim the project requires checked, including Lean-only theorems. `PO-*` labels identify obligations. |
 | Group / catalog entry | A group is a unit selected for verification and may contain multiple theorems. `verification/laws.json` registers each group; `verification/obligations.json` records the required inventory. |
 | Precondition / hypothesis | An assumption under which the claim must hold; Lynx writes the precondition as `requires:`. |
-| Conclusion | What must follow from those assumptions; Lynx writes it as `expects:`. |
+| Contract | The precondition and postcondition together: `requires:` and `expects:`. |
+| Conclusion / postcondition | What must follow from those assumptions; Lynx writes it as `expects:`. |
 | Witness / counterexample | A witness satisfies the precondition; a counterexample also makes the conclusion false. |
 | Invariant / preservation | An invariant describes valid state; preservation means an operation keeps valid input state valid. |
 | Goal / tactic | A goal is a claim still to prove; a tactic is a Lean instruction that builds part of a proof. |
 | Kernel | Lean's small proof checker, which checks the proof term produced by tactics. |
 | Oracle | An independently written reference for expected behavior; here, `HoldLedger.Spec`. |
+| Hold | Reserved payment capacity while a processor outcome is pending or an authorization remains active. |
 | Mutant | A disposable copy of code with a deliberate change, used to test whether checks detect a fault. |
 
 ## Run One Complete Lynx Proof
@@ -160,8 +162,6 @@ uv run --locked python scripts/local_run.py mix test tmp/cap_mutant_test.exs --e
 
 Run the proof command with `tmp/cap_mutant_test.exs` as its path. The original proof no longer closes; the executable equality case already explains why the claim is false. Restore `>` and rerun both checks. This is mutation testing: checking whether deliberately planted faults are detected. An undetected change needs investigation; it may preserve behavior, expose missing coverage, or reflect an incomplete run.
 
-A payment **hold** reserves capacity while the processor outcome is pending or an authorization remains active. A timeout gives no evidence that the remote hold failed.
-
 Hold Ledger has ten mutation patches under `mutants/`. Two show why the statement matters:
 
 | Case | Concrete input | Correct behavior | Mutated behavior |
@@ -207,14 +207,14 @@ The [shared proof theory reference](verification.md#shared-proof-theory) maps th
 
 ## Exercises and Solutions
 
-1. **Boundary witness.** Add an exact-fit test for an integer larger than a machine word. Does the toy claim allow negative integers too?
+1. **Boundary witness.** Add an exact-fit test for an integer larger than `2 ** 64`. Does the toy claim allow negative integers too?
 2. **Mutation.** Make the comparison change above. Run both ordinary checks and the proof. Explain the smallest executable failure, then restore the function.
 3. **Another law.** Keep `fits/2` unchanged. Add `over_capacity/2` requiring integer inputs and `remaining < amount`, concluding `admit(amount, remaining) == :full`. Add a witness and generated property, then prove it.
 
 <details>
 <summary>Solutions — open after completing the exercises</summary>
 
-For exercise 1, `assert fits(18_446_744_073_709_551_615, 18_446_744_073_709_551_615)` and `assert fits(-1, -1)` both pass. Elixir integers are arbitrary precision. Real hold amounts must be positive; the toy function has no such rule.
+For exercise 1, `assert fits(10 ** 30, 10 ** 30)` and `assert fits(-1, -1)` both pass. Elixir integers are arbitrary precision. Real hold amounts must be positive; the toy function has no such rule.
 
 For exercise 2, `fits(0, 0)` has a true precondition and a false conclusion under `>=`. Restoring `>` repairs that violation.
 
@@ -251,10 +251,8 @@ Before reading a proof body, review these four things in order:
 3. **Independence:** does `Spec` make its own decisions, or merely repeat or call the implementation?
 4. **Translation boundary:** are the proof's definitions generated from the code being reviewed, and what compiler/translator behavior is being trusted?
 
-Read the helper lemmas and proof body when you need to trace the argument. Next, use [Verify the behavior you meant](agentic_verification.md) to challenge agent-drafted contracts. [Human review](human_review.md) covers individual changes; the [assurance audit](audit.md) examines the system as a whole.
+Read the helper lemmas and proof body when you need to trace the argument. Next, use [Verify the behavior you meant](agentic_verification.md) to challenge agent-drafted contracts.
 
 > **Limits.** A checked proof establishes its statement about the translated functions under its hypotheses.
 >
-> The compiler and translator remain trusted; sampled BEAM/Lean comparisons test correspondence without proving it universally. Journal durability, OTP recovery and real processor behavior need separate evidence. Remote exposure bounds also require truthful processor outcomes, deduplication, and a guarantee that a hold cannot become authorized after its void is confirmed.
->
-> Direct tutorial proof attempts do not run the repository's full acceptance pipeline. [Verification](verification.md) documents the six checker configurations, checks for unproved assumptions, reports tied to exact source versions, and current obligations; [Testing](testing.md) covers ordinary and runtime checks.
+> The compiler and translator remain trusted. Runtime, storage and processor behavior need separate evidence. Tutorial proof attempts do not run the full acceptance pipeline; see [Verification](verification.md) for those checks and assumptions.

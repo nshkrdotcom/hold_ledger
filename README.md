@@ -7,7 +7,11 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> An Elixir authorization-hold ledger with formal laws for its pure state machine, an independent specification, and a separately tested journaled OTP runtime.
+Hold Ledger teaches formal verification in Elixir with Lynx through a working payment authorization ledger. It assumes you know how to build and test software but are new to formal proofs.
+
+You’ll run a complete proof, read its assumptions and conclusion, and see what tests and proofs each establish. The ledger supplies the practical problems: a timeout must not free capacity while a payment may still be authorized, and a retry must preserve the original request’s identity.
+
+The guides show how to work with a coding agent on specifications, tests, code and proofs. You’ll challenge proposed contracts with required and forbidden outcomes, and learn to spot changes that make a proof pass by weakening its claim. You’ll also see what can be delegated under an existing policy, when conflicting requirements need a person’s decision, and how to assess whether more of that work can be automated.
 
 **Learning to verify with a coding agent?** Start with the [formal verification crash course](guides/formal_verification_crash_course.md), then follow the [agentic verification workflow](guides/agentic_verification.md).
 [Human review](guides/human_review.md) covers decisions in an individual change. [Specification assurance](guides/specification_assurance.md) explains how a verified contract can miss intent, while the [assurance audit](guides/audit.md) examines the whole system at an initial or periodic checkpoint.
@@ -80,8 +84,6 @@ Most teams tackle these bugs with unit tests and integration tests. But distribu
 
 ---
 
-A lack of reliable processor evidence can retain capacity indefinitely. This includes pending voids: no timeout or operator write-off creates evidence that an authorization is gone. Reconciliation can resolve known outcomes, subject to the processor contract.
-
 ## What Is This Project?
 
 `hold_ledger` models an account placing authorization holds against two independent limits:
@@ -116,7 +118,7 @@ It separates the pure core, independent specification, runtime, and formal verif
 ```
 
 1. **Pure State Machine (`HoldLedger.Ledger`)**: No disk, no clock, no processes, no side effects. Given an input state and an event, it returns `{next_state, result_atom, effects}`.
-2. **Independent Oracle (`HoldLedger.Spec`)**: An independently implemented reference specification. It recalculates totals from entries to check the reducer’s cached counters.
+2. **Reference Specification (`HoldLedger.Spec`)**: Shares no implementation with `Ledger` and recomputes totals from entries. It can catch accounting drift, but both implementations can share a mistaken policy.
 3. **Journaled Server (`HoldLedger.Server`)**: A GenServer managing application-owned framed storage with SHA-256 chaining. Admitted inputs sync *before* the pure reducer steps; rejected internal or malformed submissions produce bounded audit markers.
 4. **Formal Verification (`Lynx` + `Lean 4`)**: Translates compiled Core Erlang into Lean definitions. Laws cover accounting, identity preservation, and other specified properties under their explicit preconditions, including valid input states. Terminal absorption and finite-history preservation are included in the catalog.
 
@@ -132,7 +134,7 @@ The project combines three kinds of evidence:
 | **2. Generative Property Tests** | `StreamData` (bounded generated cases) | Generates thousands of arbitrary states, malformed terms, and random histories. | Off-by-one errors, weird term shapes, counter desyncs. |
 | **3. Machine-Checked Proofs** | `Lynx` + `Lean 4` Theorem Prover | Proves universal mathematical statements ($\forall s, \forall e \dots$). | The stated properties for all inputs satisfying each law’s preconditions. |
 
-Ten deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See the testing guide for the optional mutation experiment; a failed proof alone is not a concrete counterexample.
+Ten deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See [Testing](guides/testing.md#deliberate-mutations) for the optional mutation experiment.
 
 A proof establishes the **chosen law**. It cannot tell you whether that law covers every required behavior. Hold Ledger's independent `Spec` and concrete traces help challenge the laws, though they can share a mistaken policy. See [Verify the behavior you meant](guides/agentic_verification.md) for the practical workflow and [Specification assurance](guides/specification_assurance.md) for the research.
 
@@ -299,6 +301,7 @@ Deep-dive documentation is located in `guides/`:
 
 | Guide | Description |
 |---|---|
+| [**Formal Verification Crash Course**](guides/formal_verification_crash_course.md) | Introduction to Lean, Lynx, and reading and writing proofs, with a worked law walkthrough. |
 | [**Agentic Verification**](guides/agentic_verification.md) | Practical loop: establish intent, compare contracts, challenge outcomes, prove and report evidence. |
 | [**Human Review**](guides/human_review.md) | Review claims and definitions, resolve disputed requirements, and decide what to delegate. |
 | [**Specification Assurance**](guides/specification_assurance.md) | Why green proofs can miss intent, with contract-testing examples and research limits. |
@@ -308,7 +311,6 @@ Deep-dive documentation is located in `guides/`:
 | [**Runtime and Recovery**](guides/runtime.md) | Using `HoldLedger.Server`, owned journal framing, crash recovery, and reconciliation. |
 | [**Processors**](guides/processors.md) | The processor behavior contract and using `HoldLedger.Processor.Sim` for fault injection. |
 | [**Verification**](guides/verification.md) | Detailed verification catalog, checker configurations, proof costs, and evidence identity. |
-| [**Formal Verification Crash Course**](guides/formal_verification_crash_course.md) | Introduction to Lean, Lynx, and reading and writing proofs, with a worked law walkthrough. |
 | [**Testing**](guides/testing.md) | Unit test structure, `StreamData` configuration, mutation testing runner, and benchmarks. |
 | [**Getting Started**](guides/getting-started.md) | Detailed toolchain setup, Ubuntu 26.04 dependencies, and dependency installation. |
 | [**Troubleshooting**](guides/troubleshooting.md) | Resolving toolchain drift, stack overflows in Nanoda, and disk lock issues. |
