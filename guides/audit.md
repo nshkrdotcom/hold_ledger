@@ -2,7 +2,7 @@
 
 **Advanced review.** This guide is for someone checking the entire assurance argument, not for a newcomer's first Lean proof. It follows the same question as the tutorial—could a processor still hold money after the local system believes a request is finished?—through policy, the coupled execution model, proof foundations, the OTP runtime and physical assumptions.
 
-Use it for an initial or periodic audit of Hold Ledger's policies, proof models and runtime boundaries. For one agent-generated change, start with [Human review](human_review.md). If you are learning Lean/Lynx, begin with the [crash course](formal_verification_crash_course.md) and return here once you can read the law statements.
+Use it for an initial or periodic audit of Hold Ledger's policies, proof models and runtime boundaries. For one agent-generated change, start with [Human review](human_review.md). If you are learning Lean/Lynx, begin with the [crash course](formal_verification_crash_course.md). [Reading deeper proofs](reading_deeper_proofs.md) explains the predicates, induction and execution relations used below.
 
 **Source baseline:** links below are pinned to `618ee1e7f17e490f643bed898f00b9f67c1cd2b4`.
 Compare subsequent changes before relying on this audit route. [Verification](verification.md)

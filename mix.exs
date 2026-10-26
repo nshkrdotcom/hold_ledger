@@ -54,6 +54,7 @@ defmodule HoldLedger.MixProject do
   defp docs do
     learning_guides = ~w(
       guides/formal_verification_crash_course.md
+      guides/reading_deeper_proofs.md
       guides/agentic_verification.md
       guides/human_review.md
       guides/specification_assurance.md

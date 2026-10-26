@@ -77,6 +77,8 @@ uv run --locked python scripts/run_laws.py --slug po_a4_duplicate --stage proofs
 
 For full acceptance with fresh exported proof objects, follow [Verification](verification.md#run-checks). It needs the complete pinned environment and independent checker prerequisites, including `bwrap`; a focused proof attempt is not a substitute.
 
+To inspect the shared admission proof and its predicates next, use [Reading deeper proofs](reading_deeper_proofs.md).
+
 ## Use as a dependency
 
 Until a release is published, use a chosen repository commit rather than an unpinned branch:

@@ -18,7 +18,7 @@ Run the full command only when you need full acceptance, and preserve its source
 
 `verification/obligations.json` records the required group identities and fully
 qualified theorem names independently of execution results. The catalog in
-`verification/laws.json` registers all 49 groups, including the original 29.
+`verification/laws.json` registers all 49 groups.
 `supported` means a proof implementation is available;
 only a matching successful execution report establishes acceptance. Every declared obligation must be checked; the catalog is not a claim that the latest source has already passed. PO-B5/declined and
 PO-B5/voided establish one-step terminal absorption; PO-C3 lifts identity,
@@ -92,6 +92,8 @@ logs and exports stay under ignored `tmp/verification/`. Acceptance always disab
 both Lynx caching and the shared-module development cache.
 
 ## Shared proof theory
+
+For a guided route through the predicates and lemmas, use [Reading deeper proofs](reading_deeper_proofs.md). The reference below maps the maintained modules.
 
 `test/support/lean/` contains the reusable shape, lookup, accounting, list-structure,
 identity, terminal and authorization lemmas. The Step, Replay, Oracle and History
@@ -208,6 +210,8 @@ event terms on valid ledgers. `run/2` is specified for proper finite event
 lists. Effects are pure descriptions of intended processor actions.
 The precise executable `requires:` and `expects:` are in each law file.
 
+The [pinned Lynx README](https://github.com/josevalim/lynx/blob/3b44de83fb63503e12b84233de70cf0647e7e63e/README.md#disclaimer) describes human design and review of the Elixir code, translation layer and Erlang runtime model. It also states that coding agents produced the proofs and Lean deserialization layer with limited review. Kernel checking validates the resulting proof terms against their statements; it does not establish that deserialization and translation faithfully represent the source program. Review those boundaries separately from proof authorship.
+
 Proofs do not establish the compiler/translator's correctness, authenticated
 processor outcomes, receiver deduplication, durable hardware flushes, BEAM/OS
 correctness, physical power-loss recovery, remote exactly-once execution,
@@ -227,7 +231,9 @@ cases separately. Measure the current model rather than reusing old run duration
 
 The workflow always runs change detection and a final formal gate on push/PR. Proof-relevant changes require a cold full catalog run, fresh exports, all six checker configurations and allowed-axiom audit. Failed detection or a required skipped/cancelled/failed formal job fails the gate. Missing diff-base data conservatively requires verification. Documentation-only changes may pass without a new proof claim. Native mutation experiments remain dispatchable separately. Reports and exports are retained as CI artifacts, including failure diagnostics.
 
-## Added model boundaries
+<a id="added-model-boundaries"></a>
+
+## Model boundaries
 
 The catalog includes explicit attempt-poison, retired-ID, occupied-slot and
 environment-fence obligations. These cover their declared operations. Runtime

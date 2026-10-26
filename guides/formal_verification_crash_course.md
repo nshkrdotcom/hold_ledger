@@ -2,7 +2,7 @@
 
 You know how to test Elixir. What changes when you want to show that a behavior holds for **every** input in a stated domain, rather than the examples a test runner happens to try?
 
-We'll begin with a tiny capacity check, turn its behavior into a Lynx law, and read the Lean proof that establishes it. Then we'll follow one real Hold Ledger law into its shared proof and try breaking the contract on purpose. You don't need prior Lean or Lynx experience. You should leave able to read a theorem's promise, inspect a proof attempt, and ask useful questions of an agent that writes proofs for you. Writing larger proofs takes more practice; this is the first step, not a claim that tactics alone are sufficient.
+We'll begin with a tiny capacity check, turn its behavior into a Lynx law, and read the Lean proof that establishes it. We'll plant an exact-fit bug, read the failure, and finish with one maintained ledger law. You need Elixir and testing experience, but no prior Lean or Lynx. By the end, you'll have run a law, explained a counterexample and traced a ledger claim to its shared proof.
 
 The explanation can be read on any machine. To run the commands, use the [toolchain setup](getting-started.md) and save tutorial files under a `tmp/` directory at the repository root (create it if needed). Git ignores `tmp/`. All example commands assume you're in the repository root.
 
@@ -45,7 +45,7 @@ theorem add_zero (x : Int) : x + 0 = x := by
 
 An ordinary typechecker checks that an expression has the type you declared. Lean can also treat a proposition as a type and a proof as a value of that type. Its small **kernel** checks that the proof has the claimed type. A **tactic**, such as `omega`, helps construct that proof; the kernel checks the result.
 
-The commands below use `local_run.py` to select the repository-local Lean toolchain and cache locations. Elixir and OTP must already match the pinned versions. If you have set the toolchain environment as shown in README’s Quickstart, you can run `lean` or `mix` directly.
+The commands below use `local_run.py` to select the repository-local Lean toolchain and cache locations. Elixir and OTP must already match the pinned versions. If you have set the toolchain environment as shown in [Getting started](getting-started.md#environment), you can run `lean` or `mix` directly.
 
 To try it, save the complete block as `tmp/first_proof.lean` and run:
 
@@ -81,44 +81,6 @@ example : ∀ n : Int, 0 ≤ n → n + 1 > 0 := by
 
 `intro` brings the integer and assumption into scope; `omega` handles the arithmetic. There is nothing special about `nonnegative`: it is just a name for the hypothesis. If we changed `0 ≤ n` to `n > 10`, the proof would still be easy, but the theorem would say less.
 
-Lean also uses `structure` to describe data with named fields and `inductive` to define cases or relations by their constructors. Here is a *native Lean sketch*, not Hold Ledger's translated state representation:
-
-```lean
-structure ToyHold where
-  key : Int
-  amount : Nat
-
-inductive ToyOutcome where
-  | unknown
-  | approved
-  | declined
-```
-
-An inductive **relation** describes which combinations of values satisfy a proposition. Its constructors can require evidence, rather than merely name alternatives. Here is a small history relation:
-
-```lean
-import Lean
-
-def toyStep (state amount : Nat) : Option Nat :=
-  if amount = 0 then none else some (state + amount)
-
-inductive ToyRun : Nat → List Nat → Nat → Prop where
-  | empty (state) : ToyRun state [] state
-  | next {state amount nextState amounts final} :
-      toyStep state amount = some nextState →
-      ToyRun nextState amounts final →
-      ToyRun state (amount :: amounts) final
-
-example : ToyRun 0 [2] 2 :=
-  ToyRun.next rfl (ToyRun.empty 2)
-```
-
-`ToyRun state amounts final` says the listed amounts take the initial state to the final one. `empty` admits an empty history with unchanged state. `next` needs two facts: the first step succeeds, and the remaining history runs from that step's result to `final`. In the example, `rfl` checks the first step by evaluation and `ToyRun.empty 2` supplies the empty tail.
-
-**Checkpoint:** does this relation admit `[2, 0]` from state `0`? Does any constructor mention disk? The zero step returns `none`, so no `next` constructor can supply its success premise. No constructor records a write or flush; a proof about `ToyRun` cannot establish storage durability.
-
-Read `Committed` in `test/support/lean/Recovery.lean` the same way. Its `next` constructor requires a successful translated `Composite.step/2` evaluation and a recursively committed tail. Here successful evaluation means `Except.ok`, which can contain a rejected ledger operation. It does not mean a successful disk write. The [audit](audit.md#lean-execution-relations-examine-what-a-history-means) follows that boundary further. Native Lean `Int` and `List` are not automatically the same thing as Lynx's dynamically typed Elixir terms.
-
 ## How Lynx connects Elixir to Lean
 
 With Lynx, the function stays in Elixir. You write its law in Elixir too, and supply a Lean proof. Lynx translates the compiled function and the law into definitions Lean can reason about:
@@ -144,7 +106,7 @@ Before copying it, try this prediction: would a proof of **only** `amount < rema
 
 ## Run one complete Lynx proof
 
-The test and property both call `fits/2`, which Lynx creates from the law declaration. Read `requires:` and `expects:` first: they state the contract we just described. The `proof: ~LEAN` block supplies the proof in Lean syntax. We’ll walk through its steps after checking the file.
+The test and property both call `fits/2`, which Lynx creates from the law declaration. Read `requires:` and `expects:` first: they state the contract we just described. The `proof: ~LEAN` block supplies the proof in Lean syntax. A `laws` block groups laws into one ExUnit test; the repository also registers groups for selection by the proof runner. We’ll walk through its steps after checking the file.
 
 Create `tmp/` if necessary. Save this entire file as `tmp/cap_test.exs`:
 
@@ -224,7 +186,7 @@ The names `bind` and `Except.bind` in the proof let the simplifier unfold the `d
 
 ### A small Elixir-to-Lean reading aid
 
-This is how to recognize a few forms in the **generated example above**, not a universal translation specification. Check the generated definitions for the pinned Lynx version when details matter.
+Use this table to recognize forms in the generated example. Check the generated definitions for the pinned Lynx version when details matter.
 
 | You wrote or expect in Elixir | You may see in Lean | What it means |
 |---|---|---|
@@ -306,7 +268,23 @@ uv run --locked python scripts/local_run.py mix test tmp/cap_mutant_test.exs --e
 
 `fits(1, 1)` fails. The property can shrink to `remaining = 0`, `gap = 0`: equality is rejected. The precondition holds while `admit(0, 0)` returns `:full`.
 
-Run the proof command with `tmp/cap_mutant_test.exs` as its path. The original proof no longer closes; the executable equality case already explains why the claim is false. Restore `>` and rerun both checks. This is mutation testing: checking whether deliberately planted faults are detected. An undetected change needs investigation; it may preserve behavior, expose missing coverage, or reflect an incomplete run.
+Run the proof command with `tmp/cap_mutant_test.exs` as its path. It reports `proof for law fits(amount, remaining) failed`. The unsolved goal begins:
+
+```text
+unsolved goals
+case integer.integer
+a b : Int
+requires : a ≤ b
+not_over : ¬b < a
+⊢ (match
+      match if b ≤ a then Lynx.Term.atom "true" else Lynx.Term.atom "false" with
+      | Lynx.Term.atom "false" => Except.ok (Lynx.Term.atom "ok")
+      | Lynx.Term.atom "true" => Except.ok (Lynx.Term.atom "full")
+```
+
+This is the start of the diagnostic; the remaining lines handle exceptions and compare the result with `:ok`. Read the facts before the nested matches. `requires` still permits `a = b`, but the changed branch tests `b ≤ a` and returns `:full` at equality. The concrete failure `fits(0, 0)` confirms that the claim is false for the mutant. A different unsolved goal without such a witness would leave the claim unresolved.
+
+Restore `>` and rerun both checks. This is mutation testing: checking whether deliberately planted faults are detected. If a mutation survives, inspect whether it preserves behavior, exposes missing coverage, or reflects an incomplete run.
 
 ## Apply the workflow to the ledger
 
@@ -347,7 +325,7 @@ The correct transition keeps the cached amount at `300`. The broken state claims
 
 ### Which law catches which mistake?
 
-The repository gives required claims **obligation** labels such as PO-A4 and registers runnable **groups** in `verification/laws.json`. These names let us find the claim and select its checks.
+The repository gives required claims **obligation** labels such as PO-A4. A **group** is the unit selected by the verification runner and may contain several theorems. `verification/laws.json` gives each group a command-line slug, such as `po_a4_duplicate`. A report filename such as `po_a4-learning.json` is simply where the command saves its results.
 
 Hold Ledger has ten mutation patches under `mutants/`. Two show why the statement matters:
 
@@ -411,32 +389,9 @@ uv run --locked python scripts/run_laws.py --slug po_a4_duplicate --stage proofs
 
 This is a **focused proof attempt**, not the full acceptance stage. Open `test/laws/po_a4_duplicate_test.exs` and read `requires:` and `expects:`; then search for `theorem «po_a4_duplicate/4»` in `test/support/lean/Lookup.lean`. The law calls that theorem with `exact`, passing the law's variables and its `requires` hypothesis. Its body relies on a lookup-compatibility result proved elsewhere, so the large argument is not repeated at each use.
 
-To read the shared theorem, start at its declaration rather than trying to understand every tactic at once. An excerpt has this form:
+For the shape lemma and the recursive lookup argument, continue with [Reading deeper proofs](reading_deeper_proofs.md#follow-lookup-through-a-list).
 
-```lean
-have shaped : ∀ s, Elixir.HoldLedger.Spec.«valid?/1» s = Except.ok Lynx.Term.true →
-    ∃ al hl ua uh es, s = Lynx.Term.tuple #[al, hl, ua, uh, es] ∧
-      Elixir.HoldLedger.Spec.«proper_entries?/1» es = Except.ok Lynx.Term.true := by
-```
-
-It says: if the specification judges a state valid, then that state can be unpacked into five fields and its entries form a proper list. This is exactly why we learned to read `∀`, `→`, `∃` and `∧` before the law. Then the proof uses the compatibility lemma to connect the reference lookup with the implementation's lookup, and simplifies the duplicate-request branch.
-
-The compatibility lemmas depend on reasoning over lists. A smaller native Lean example shows why such proofs need **induction**:
-
-```lean
-import Lean
-
-theorem append_empty (xs : List Nat) : xs ++ [] = xs := by
-  induction xs with
-  | nil => rfl
-  | cons head tail ih =>
-      change head :: (tail ++ []) = head :: tail
-      rw [ih]
-```
-
-The `nil` case handles the empty list. In the `cons` case, `ih` is the **inductive hypothesis**: appending `[]` leaves the shorter tail unchanged. `change` exposes the recursive append on the tail; `rw [ih]` replaces `tail ++ []` with `tail`, making the two sides equal. `test/support/lean/CoreLookup.lean` uses `fun_induction Elixir.HoldLedger.Spec.«lookup/2» es k` to follow the recursive branches of the translated lookup function. That is functional induction: its cases and inductive hypotheses come from the function’s recursion, rather than directly from the `nil` and `cons` constructors of a native list.
-
-**Checkpoint:** without reading tactic details, can you name (1) the input domain of `po_a4_duplicate`, (2) the exact result promised, and (3) one dependency the shared proof relies on? If so, you've crossed from the toy example into a maintained law. The next level is tracing each helper's statement and assumptions, not memorizing a larger `simp` invocation.
+**Checkpoint:** name the input domain, the exact result promised, and the lookup fact needed by `po_a4_duplicate`. You can answer these from the law and the three proof steps above before reading the helper's tactics.
 
 ### Make sure the assumptions describe a possible case
 
@@ -452,12 +407,12 @@ No integer satisfies both hypotheses. The proof establishes nothing about any ac
 
 ## Exercises and solutions
 
-Return to `tmp/cap_test.exs` for the first three exercises. The fourth asks you to read an existing proof rather than write one.
+Return to `tmp/cap_test.exs` for the first three exercises. The fourth asks you to read the ledger contract.
 
 1. **Boundary witness.** Add an exact-fit test for an integer larger than `2 ** 64`. Does the toy claim allow negative integers too?
 2. **Mutation.** Make the comparison change above. Run both ordinary checks and the proof. Explain the smallest executable failure, then restore the function.
 3. **Another law.** Keep `fits/2` unchanged. Add `over_capacity/2` requiring integer inputs and `remaining < amount`, concluding `admit(amount, remaining) == :full`. Add a witness and generated property, then prove it.
-4. **Read before changing.** Open `Lookup.lean`. In the duplicate law, find the implication that extracts a proper list from a valid state. What would go wrong if a candidate theorem simply assumed the duplicate result, or silently restricted the allowed keys?
+4. **Read before changing.** Open `test/laws/po_a4_duplicate_test.exs`. Which assumptions describe the input, and which exact outputs does the conclusion require? Would requiring only a valid resulting state preserve the duplicate guarantee?
 
 <details>
 <summary>Solutions — open after completing the exercises</summary>
@@ -488,7 +443,7 @@ law(over_capacity(amount, remaining),
 
 Use `assert over_capacity(2, 1)` as the witness. For the property, generate `remaining <- integer()` and `gap <- positive_integer()`, then assert `over_capacity(remaining + gap, remaining)`. `positive_integer()` excludes zero, ensuring `remaining < remaining + gap`; zero would be an exact fit and belongs in `fits/2`. Run the ordinary and proof commands again; there are now two laws.
 
-For exercise 4, `valid?` gives the proof its input-state invariant; the shared theorem derives the proper-list shape from that invariant. Assuming `Ledger.request` already returns `:duplicate` would hide the very behavior we meant to verify. Restricting query keys could quietly remove cases the existing law covers. Consult the actual theorem declaration and referenced definitions before judging whether a changed proof has preserved its claim.
+For exercise 4, the assumptions require a valid state, an integer key, a positive integer amount and a matching entry. The conclusion requires the original state, `:duplicate` and no effects. Validity alone could allow a different result or new effects; it would lose the duplicate guarantee.
 
 </details>
 
@@ -499,9 +454,9 @@ Before reading a proof body, review these four things in order:
 1. **Statement:** do `requires` and `expects` express the intended behavior, including boundaries and rejected cases?
 2. **Witness:** can the assumptions hold, and do they include the intended operating cases?
 3. **Independence:** does `Spec` make its own decisions, or merely repeat or call the implementation?
-4. **Translation boundary:** are the proof's definitions generated from the code being reviewed, and what compiler/translator behavior is being trusted?
+4. **Translation boundary:** are the proof’s definitions generated from the code being reviewed? [Verification](verification.md#domains-and-limits) explains the compiler/translator assumptions and the pinned Lynx implementation’s review history.
 
-Read helper lemmas and the proof body when you need to trace the argument. But first ask what a successful proof would *allow*: if a contract accepts a wrong output on a valid input, no tactic can repair the missing promise. You are ready for [Agentic verification](agentic_verification.md), where an agent proposes and challenges contracts for the void-without-confirmation case.
+Continue with [Agentic verification](agentic_verification.md) to challenge contracts for a pending void. To inspect predicates, follow the admission proof and read recursive history models, use [Reading deeper proofs](reading_deeper_proofs.md).
 
 > **Limits.** A checked proof establishes its statement about the translated functions under its hypotheses.
 >

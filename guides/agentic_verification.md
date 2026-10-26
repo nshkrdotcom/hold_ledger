@@ -2,7 +2,23 @@
 
 Suppose an agent rewrites the ledger so a void request frees capacity immediately. It might still prove that the resulting counters are internally consistent. The proof is valid **for that claim**; the change is wrong because the processor may still hold the money.
 
-We'll follow that example from a requirement to a challenged contract and proof evidence. An agent can gather policy, write code, propose laws, generate counterexamples and attempt proofs. The question is not who typed the theorem. It's **who has authority to decide what the theorem must promise**, and what evidence supports that decision. If you've never seen a Lynx law, start with the [crash course](formal_verification_crash_course.md).
+Follow that void request from a requirement to a challenged contract and a review decision. You need Elixir and testing experience; the exercises use executable predicates and require no Lean tactics. The [crash course](formal_verification_crash_course.md) is a separate path for writing and running proofs.
+
+## Read the contract and the state
+
+A Lynx law has a precondition (`requires:`) and a postcondition (`expects:`). The precondition selects inputs; the postcondition states what the function must return for them. A **witness** is an input satisfying the precondition. A **counterexample** also makes the postcondition false. An impossible precondition makes a claim **vacuous**: the proof has no qualifying inputs to cover.
+
+For the exercise, an `:authorized` hold has processor approval and still consumes capacity. A local void moves it to `:voiding`, where it stays held while confirmation is pending. Trusted confirmation makes it `:voided` and releases capacity. The [lifecycle diagram](../README.md#the-ledger-in-a-few-steps) places these states in the full request flow.
+
+## Read the evidence before accepting a result
+
+| Result in a report | What to inspect |
+|---|---|
+| Test or property pass | The executed inputs and assertions; a correct output may still satisfy a weak contract |
+| Selected proof pass | The exact statement, its hypotheses and the source checked |
+| Full proof acceptance | The required inventory, fresh exports, checker results and source identity |
+
+[Human review](human_review.md#read-green-precisely) defines these evidence levels, including catalog status and CI results. Keep the result's scope attached to it when discussing a policy decision.
 
 ## Who decides what?
 
@@ -10,11 +26,25 @@ We'll follow that example from a requirement to a challenged contract and proof 
 - **Review changed meaning.** A reviewer checks changes to claims, definitions, domains and trusted assumptions against the agreed requirements.
 - **Resolve disputed requirements.** An authorized person decides missing policy and risk tradeoffs. If the reference contradicts independently justified behavior, bring back that discrepancy before changing the contract.
 
-The [responsibility table](human_review.md#what-to-delegate-and-what-to-decide) explains these roles in detail.
+Use this decision flow when an agent reaches an uncertain case:
+
+```text
+Is the required behavior covered by agreed policy?
+  No, or sources conflict -> Gather a distinguishing case; ask the policy owner.
+  Yes -> Does the diff change a claim, domain, Spec or trusted assumption?
+           Yes -> Review its meaning against the policy before accepting it.
+           No  -> Continue the repair and run the relevant checks.
+
+Did a check fail?
+  Concrete counterexample -> Compare it with policy; repair the demonstrated error.
+  No counterexample       -> Report the unresolved claim and investigate the goal.
+```
+
+A failed tactic does not by itself require a policy decision. Use the [responsibility table](human_review.md#what-to-delegate-and-what-to-decide) and [diff tiers](human_review.md#classify-the-diff) to review the resulting change.
 
 ## Find the named laws
 
-A few proof labels appear below. `po_b1_void` checks that the void transition preserves ledger validity; `po_b3` constrains emitted effects; `po_exposure_retain` requires capacity to remain represented when a local void lacks release evidence. They are individual **law groups** in `verification/laws.json`, not magic assurances about the whole system. The [law catalog](verification.md#law-catalog) names the others.
+A few proof labels appear below. `po_b1_void` checks that the void transition preserves ledger validity; `po_b3` constrains emitted effects; `po_exposure_retain` requires capacity to remain represented when a local void lacks release evidence. Each is a **law group**, a unit selected by the verification runner, registered in `verification/laws.json`. Uppercase labels such as PO-EXPOSURE name obligations; lowercase slugs select groups. Report filenames are chosen by the caller. The [law catalog](verification.md#law-catalog) names the others.
 
 ## The loop
 
@@ -26,7 +56,14 @@ Read [the policy](specification.md#uncertain-outcomes-and-identities) before the
 
 Ask the agent to collect the relevant source: `guides/specification.md`, `lib/hold_ledger/ledger.ex`, `lib/hold_ledger/spec.ex`, the applicable `test/laws/*.exs` and ordinary traces. Have it distinguish the local request, the processor response and the journaled confirmation.
 
-The requirement needs a basis outside the proof: written policy, expected outcomes justified against that policy, or an explicit decision to change it. If sources disagree, identify the conflict instead of choosing whichever interpretation verifies.
+For this example, `guides/specification.md` defines the required behavior. When adopting it for a service, identify the person accountable for approving its release rules and processor assumptions. That person owns the policy decision; the tests and proofs supply evidence about the chosen rules.
+
+The repository's `AGENTS.md` gives agents this concrete constraint:
+
+> An uncertain hold still consumes capacity. Retries reuse identity and amount.
+> Transport acknowledgments do not authorize payments.
+
+That instruction constrains implementation work. Justify each expected output from the policy and record any authorized change to it. If the reference implementation conflicts with independently justified behavior, present the conflicting trace to the policy owner before changing the contract.
 
 ### 2. Compare candidate contracts
 
@@ -117,7 +154,7 @@ The input satisfies the retention law’s assumptions: it is valid, key `1` and 
 
 `effects_valid?` rejects `early_release` because a `:voided` result must carry no effects. Removing the effect makes that check pass, even though capacity was released too early. The retention predicate catches that mistake. Conversely, retention alone accepts `lost_effect`.
 
-These are predicates from the existing `po_b3` and `po_exposure_retain` laws. The assertions check their conclusions on one input; they do not establish new universal proofs. The exact-result predicate rejects each wrong output using the tuple chosen from policy.
+These are predicates from the existing `po_b3` and `po_exposure_retain` laws. The assertions compare their conclusions on one input. The exact-result predicate rejects each wrong output using the tuple chosen from policy.
 
 The `early_release` and `lost_effect` outputs match `mutants/10_premature_void_release` and `mutants/07_void_effect`, respectively. The [mutation instructions](testing.md#deliberate-mutations) explain how to run those isolated examples.
 
@@ -132,6 +169,8 @@ Other useful challenges target different questions:
 | Void, delayed confirmation, then another request | Whether capacity is held until confirmation and released once |
 | Duplicate/retry with an existing key | Whether identity and stored amount are preserved |
 | Mutation that releases capacity at local void | Whether the planted early release violates the retention conclusion (`mutants/10_premature_void_release`) |
+
+The [predicate challenge](reading_deeper_proofs.md#challenge-a-missing-accounting-clause) shows how removing one accounting check changes which states `Spec.valid?` would accept.
 
 Ask the agent for boundary and temporal traces. For each expected result, cite the relevant clause in `guides/specification.md` before consulting `Spec.expected_step/2`. If the policy does not settle the case, record the requirement question. [Specification assurance](specification_assurance.md#challenge-each-side-of-a-contract) explains how these checks complement one another.
 
@@ -163,11 +202,11 @@ Ask the agent to construct a distinguishing case or prove the relevant implicati
 
 ### 6. State the result and what remains open
 
-Name the claim and source revision, give the command and result, and note unresolved work. The example above checks concrete outputs against predicates; it does not establish a new universal proof. [Human review](human_review.md#what-to-inspect-in-the-agent-report) explains how to inspect the evidence.
+Name the claim and source revision, give the command and result, and note unresolved work. For the example above, report the concrete predicate checks and their inputs. [Human review](human_review.md#what-to-inspect-in-the-agent-report) explains how to inspect the evidence.
 
 ## Work through a complete agent task
 
-This is a **teaching scenario**, not a transcript of a tool run and not a report of a new checked theorem. It uses the real policy, law names and mutation supplied in this repository. You can give the first prompt to your coding agent, then compare its work with the guide. Keep the source intact; use the mutation runner's isolated-copy workflow for experiments.
+This **illustrative exchange** uses the repository’s policy, laws and premature-void mutation. It is scripted; command results remain unexecuted within the scenario. Give the bounded prompt to an agent and compare its reasoning with the exchange. Use the mutation runner’s isolated copies for experiments.
 
 ### Give the agent a bounded request
 
@@ -312,7 +351,7 @@ This is a useful default for proof repair because it prevents a common failure: 
 
 Repairing premature release under the existing rule doesn't require inventing a new policy. But a request to “release every void after 24 hours, even without confirmation” directly conflicts with the requirement to retain capacity while external authorization is possible. The agent should show the conflicting trace and the exposure consequence, then ask the authorized person to decide. It must not change the specification or introduce a processor guarantee to make the proof easier.
 
-You can learn this workflow without running a full prover. If you do run the experiments, preserve the logs and source identity, and distinguish a concrete local check from universal proof acceptance.
+Preserve the logs and source identity when you run the experiments so the reviewer can reproduce the result.
 
 ## When to bring in a person
 

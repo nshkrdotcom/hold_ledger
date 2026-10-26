@@ -20,9 +20,11 @@ You do not need to read the entire repository in order. Pick the route that matc
 | You want to… | Start here | What you'll do |
 |---|---|---|
 | Understand Lean and Lynx from scratch | [Formal verification crash course](guides/formal_verification_crash_course.md) | Go from a familiar ExUnit test to a Lynx law, read Lean goals, plant a bug, then follow a real ledger law. You can read along without installing anything. |
-| Verify something with a coding agent | [Agentic verification](guides/agentic_verification.md) | Start from a policy, challenge proposed contracts, inspect evidence and see when a person must decide. |
+| Verify something with a coding agent | [Agentic verification](guides/agentic_verification.md) | Challenge contracts and review evidence using Elixir examples; no Lean tactics required. |
 | Review an agent-generated change | [Human review](guides/human_review.md) | Classify changes to code, proof bodies and their meaning; practice with seven deliberately tricky diffs. |
 | Run the example or check a proof | [Getting started](guides/getting-started.md) | Set up the pinned tools, run the ledger, then select a focused proof or full verification. |
+
+For shared lemmas, induction and history models, continue from the crash course to [Reading deeper proofs](guides/reading_deeper_proofs.md).
 
 The [Specification assurance](guides/specification_assurance.md) guide explains why a correct proof may establish an inadequate requirement. [Verification](guides/verification.md) describes evidence and checker boundaries. The [assurance audit](guides/audit.md) is an advanced, system-wide review, not a prerequisite for the tutorial.
 
@@ -99,7 +101,7 @@ Tests and proofs answer related but different questions. An ExUnit assertion che
 
 Try [planting the exact-fit bug](guides/formal_verification_crash_course.md#plant-a-bug-and-watch-the-checks): change `>` to `>=`, keep the law fixed, and see the test, property and proof attempt fail. The [mutation catalog](guides/testing.md#deliberate-mutations) extends that exercise to ten ledger faults.
 
-The proof route, in outline, is:
+Lynx and the checkers process the claim in these steps:
 
 ```text
 Elixir reducer + law (`requires` / `expects`)
@@ -111,7 +113,7 @@ Elixir reducer + law (`requires` / `expects`)
   Lean theorem + supplied proof
               |
   proof checking and, for full acceptance,
-  fresh exports and six checker configurations
+  fresh exports and independent checker runs
 ```
 
 **A checked theorem does not choose the right requirement.** For example, a ledger could release capacity at the moment a void is *requested* and still leave its local counters internally consistent. To reject that behavior, the law must require capacity to remain held until confirmation. The [agentic walkthrough](guides/agentic_verification.md) lets you test this distinction yourself.
@@ -122,13 +124,13 @@ There are also important limits to the evidence:
 |---|---|---|
 | Lean/Lynx laws | Specified pure reducer, composite, attempt and exposure-model properties under their hypotheses | Physical journal durability, a real processor's honesty, or universal compiler/translation correctness |
 | ExUnit, properties and fault injection | Executed code paths, bounded generated examples, injected failures and OTP recovery cases | All possible runtime interleavings or physical power-loss behavior |
-| Six-checker full acceptance | Fresh proof/export and axiom checks for the required obligations on the reviewed source | That the obligations themselves express every intended policy |
+| Full proof acceptance | Fresh proof/export and axiom checks for the required obligations on the reviewed source | That the obligations themselves express every intended policy |
 
 The external processor must deduplicate requests, report truthful outcomes, and permanently fence a voided identity against delayed authorization. A capability declaration is an integrator's attestation, not a remote-service proof. There is no remote exactly-once or eventual-release guarantee. The compiler, translator, kernel, operating system and storage also have explicit trust boundaries. Read [Verification](guides/verification.md), [Processors](guides/processors.md) and [Runtime and recovery](guides/runtime.md) before making deployment claims.
 
 ## Learning to work with an agent
 
-The workflow in these guides is practical rather than a rule that humans must write all specifications:
+An agent can carry out this workflow under agreed policy:
 
 1. **Find the policy.** The agent collects requirements and traces; a person resolves a missing or disputed decision.
 2. **Draft and challenge the claim.** The agent proposes `requires`/`expects`, valid inputs and deliberately wrong outputs. Check that the claim rejects the wrong outputs for the right reason.
@@ -144,7 +146,8 @@ These guides serve different moments in the same learning process. The first gro
 | Guide | Use it for |
 |---|---|
 | [Getting started](guides/getting-started.md) | Prerequisites, local tools and first run |
-| [Formal verification crash course](guides/formal_verification_crash_course.md) | Tests, laws, Lean syntax, proof goals and a real law |
+| [Formal verification crash course](guides/formal_verification_crash_course.md) | Run a law, read a proof failure, plant a bug and inspect a ledger claim |
+| [Reading deeper proofs](guides/reading_deeper_proofs.md) | Inspect predicates, follow shared proofs and read recursive history models |
 | [Agentic verification](guides/agentic_verification.md) | A complete contract challenge and agent-assisted verification task |
 | [Human review](guides/human_review.md) | Change classification, escalation and seven review exercises |
 | [Specification assurance](guides/specification_assurance.md) | Vacuity, missing guarantees, contract comparison and research |
