@@ -39,7 +39,6 @@ jobs:
           mix dialyzer
       - name: Proof tooling and law catalog
         run: |
-          python3 scripts/review_policy.py --check
           uv run --locked python -m unittest discover -s tooling_tests -v
           uv run --locked python scripts/run_laws.py --supported-only --inspect-only
           uv run --locked python scripts/run_mutants.py

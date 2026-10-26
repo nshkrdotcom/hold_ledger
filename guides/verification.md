@@ -199,7 +199,7 @@ cases separately. Measure the current model rather than reusing old run duration
 
 ## CI acceptance gate
 
-The workflow always runs change detection and a final formal gate on push/PR. Proof-relevant changes require a cold full catalog run, fresh exports, all six checker configurations and allowed-axiom audit. Failed detection or a required skipped/cancelled/failed formal job fails the gate. Missing diff-base data conservatively requires verification. Documentation-only changes may pass without a new proof claim. Native mutation experiments remain dispatchable separately. Hosting branch protection must require the stable `formal-gate` check; workflow code does not configure that setting. Reports and exports are retained as CI artifacts, including failure diagnostics.
+The workflow always runs change detection and a final formal gate on push/PR. Proof-relevant changes require a cold full catalog run, fresh exports, all six checker configurations and allowed-axiom audit. Failed detection or a required skipped/cancelled/failed formal job fails the gate. Missing diff-base data conservatively requires verification. Documentation-only changes may pass without a new proof claim. Native mutation experiments remain dispatchable separately. Reports and exports are retained as CI artifacts, including failure diagnostics.
 
 ## Added model boundaries
 

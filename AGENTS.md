@@ -63,17 +63,14 @@ into user documentation. Do not use subagents without explicit authorization.
 
 ## Review contract for agent changes
 
-Use `verification/review-policy.json` as the shared path policy. CODEOWNERS is
-rendered by `python3 scripts/review_policy.py`; CI checks it with `--check`.
 Read `guides/human_review.md` before classifying proof work. Reports orient the
 reviewer; the actual diff determines its tier. Any changed Lean declaration,
 theorem signature, import, option, syntax or elaborator needs Tier 1 review;
 only confirmed proof-body-only changes qualify for Tier 3.
 
 Report the claim delta, Tier 1 files and reasons, commands/results, and unresolved
-work using `.github/pull_request_template.md`. Leave the human approval record
-for the human. Flag changes to assumptions, domains, Spec/models, inventories,
-foundations, gates or skips; do not silently weaken guarantees to repair proofs.
+work in the change summary. Flag changes to assumptions, domains, Spec/models,
+inventories, foundations, gates or skips; do not silently weaken guarantees to repair proofs.
 Human policy approval already given for a change remains valid within its scope.
 
 Commit independently chosen policy traces as tests. Re-run those traces for

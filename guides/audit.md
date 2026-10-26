@@ -210,9 +210,7 @@ with its caller in `run_laws.py`; the
 describe the checking policy and retry.
 
 The permitted axioms here are `propext`, `Quot.sound` and `Classical.choice`.
-Review changes to that policy as changes to the proof's foundations. The hosting
-rule that makes the formal job mandatory is outside the workflow; inspect it
-before treating CI as a merge gate.
+Review changes to that policy as changes to the proof's foundations.
 
 Read the differential encoder in `test/support/differential.ex` and
 `verification/DifferentialCodec.lean` with exact term identity in mind.

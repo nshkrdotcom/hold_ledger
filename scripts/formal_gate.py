@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Always-running gate: missing or skipped required formal work fails closed."""
 import argparse
-import json
 import os
 import subprocess
 from pathlib import Path
 
-_POLICY = json.loads((Path(__file__).resolve().parents[1] / 'verification/review-policy.json').read_text())
-PREFIXES = tuple(_POLICY['formal_prefixes'])
-FILES = set(_POLICY['formal_files'])
+PREFIXES = ('lib/', 'test/laws/', 'test/support/', 'scripts/', 'tooling_tests/', 'verification/', '.github/', 'mutants/')
+FILES = {'AGENTS.md', 'mix.exs', 'mix.lock', 'uv.lock', 'pyproject.toml',
+         'lean-toolchain', '.tool-versions', '.python-version', 'verification/laws.json'}
 
 
 def requires_formal(paths):

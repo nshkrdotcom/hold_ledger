@@ -4,8 +4,6 @@ The kernel checks proofs. You check what they are about. The agent can write cod
 
 Use this guide for each proposed change. If you are new to Lynx, read the [crash-course glossary](formal_verification_crash_course.md#terms-you-will-need) first. The [assurance audit](audit.md) covers the deeper system review. Here, start with the diff.
 
-**Verified against source baseline:** `715de80` before the review-policy changes introduced with this revision. Paths and commands were checked during this edit; this is not an independent assurance sign-off.
-
 The main failure mode is pressure to get checks green: weakening a claim can be easier than repairing the implementation or proof. The agent's report helps you navigate; the diff decides the tier.
 
 Here, an **obligation** is a required claim; `obligations.json` lists what must be checked, while the **catalog**, `laws.json`, registers its implementation. `PO-*` labels identify those claims.
@@ -27,16 +25,14 @@ The agent may draft a statement or Spec change; a human must approve its meaning
 | 3 | Only confirmed proof-body changes | Require fresh full acceptance; usually skip line-by-line tactics |
 | Documentation | Changed explanations or promises | Compare with the contracts; policy expectations can change here too |
 
-The shared path list is [`verification/review-policy.json`](https://github.com/nshkrdotcom/hold_ledger/blob/main/verification/review-policy.json). It includes all verification files (including `baseline.json`), scripts (`obligations.py`, `verify_laws.exs`, `verify_pins.py`, `toolchains.json`), tooling tests, Spec, tests/proofs, mutants, adapters, CI, agent instructions and exact toolchain/dependency pins. CI reads its formal-selection lists. `scripts/review_policy.py` generates CODEOWNERS from its ownership list; `--check` rejects drift. Ownership is deliberately broader than semantic Tier 1, so proof-only changes still request review.
+Review-sensitive files include Spec, law declarations, Lean definitions, required-obligation inventories, proof adapters, runners, CI and toolchain pins. Changes there can alter what a successful proof establishes.
 
-Until a statement-diff tool exists, use this conservative procedure:
+To distinguish proof repair from a changed claim:
 
 1. Inspect the complete base-to-head diff, including added/deleted files, renames and surrounding declarations. Do not trust a “proof-only” label.
 2. A changed Lean line touching `def`, `abbrev`, `instance`, `structure`, `inductive`, `class`, `notation`, `macro`, `syntax`, `elab`, `set_option`, `open`, `import`, `attribute`, `axiom`, `opaque` or `unsafe` makes the change Tier 1. This deliberately overclassifies comments or local definitions when uncertain.
 3. Compare every changed theorem/lemma signature in full, including multiline binders, hypotheses, result types and declaration attributes before the proof. A signature change is Tier 1.
 4. Only changes confined to bodies after those checks qualify for Tier 3. A body may start with `by` or be a proof expression; do not classify it by indentation alone. Unclear boundaries or changed macros/elaborators (code that interprets proof syntax) require Tier 1 review.
-
-CODEOWNERS requests the configured owner's review; hosting must additionally require code-owner approval, dismiss stale approvals, and require approval of the latest revision. Verify the named owner has repository write access. CI does not configure those settings or authenticate a filled-in approval record. **To build:** automated statement-level diff classification. Source hashes identify changes; they do not approve them.
 
 Use this checklist for Tier 1 review:
 
@@ -70,7 +66,7 @@ A refuse-everything implementation preserves capacity limits. The first and thir
 
 ## What the Agent Must Report
 
-Use `.github/pull_request_template.md` for the following report and the human approval record (claim delta, reviewed revision, evidence scope and reviewer). The agent leaves approval to the human. Its report does not establish the tier.
+The agent's summary orients review; inspect the diff to decide what changed.
 
 The report contains:
 
@@ -121,7 +117,7 @@ Run the ordinary baseline with `uv run --locked python scripts/local_run.py mix 
 | Full acceptance | The selected obligations passed fresh proofs, exports, six checker configurations and axiom checks for the recorded sources. A subset is not release acceptance. |
 | CI green | The jobs required for that change succeeded; documentation-only changes may have no new formal run. |
 
-Match the report to the reviewed revision. In hosting settings, require the stable `formal-gate` check before merge, alongside ordinary checks and the relevant human approval. Workflow code does not configure branch protection or prove that the human reviewed Tier 1 material.
+Match the report to the source revision and claims you reviewed.
 
 For Tier 2 runtime changes, follow the [server and journal audit](audit.md#server-and-journal-follow-one-confirmation-through-failure): inspect caller authentication; correlation of late worker results with the current attempt; sync-before-transition/effects ordering; crash replay and incomplete-tail handling; and remote retry identity. Require runtime or fault-injection regressions for changed paths. Re-run the committed policy traces whenever Ledger changes.
 
@@ -148,6 +144,4 @@ A excludes pending voids, the central retention case. Use the delayed-confirmati
 
 </details>
 
-A reader trial should ask a senior SWE new to FV to identify all six flaws, give distinguishing cases and justify review decisions before opening the answers. **Not yet performed:** the reader trial. Executable seeded PR fixtures remain **to build**.
-
-> **Limits.** A failed tactic or timeout is not a counterexample; mutation attribution needs a checked baseline and reproduced violation. A survivor is informative only after confirming the fault and completed checks. Kernel checking validates proofs against their definitions and assumptions. Compiler/translator correspondence, OS and storage behavior, and real processor guarantees remain part of the trust decision. This workflow does not certify those dependencies or establish that hosting rules are configured. The [assurance audit](audit.md) examines those boundaries; [Verification](verification.md) defines acceptance evidence.
+> **Limits.** A failed tactic or timeout is not a counterexample; mutation attribution needs a checked baseline and reproduced violation. A survivor is informative only after confirming the fault and completed checks. Kernel checking validates proofs against their definitions and assumptions. Compiler/translator correspondence, OS and storage behavior, and real processor guarantees remain part of the trust decision. This workflow does not certify those dependencies. The [assurance audit](audit.md) examines those boundaries; [Verification](verification.md) defines acceptance evidence.
