@@ -88,6 +88,12 @@ resolves it. There is no timeout release or operator write-off. Identities stay
 remembered permanently, so entries can grow without bound. These are policy
 choices to approve before relying on the proofs.
 
+Permanent retention has a cost even when every invariant holds. Lookup and
+status changes can take linear time; Spec's uniqueness check is quadratic in
+retained entries. Capacity limits bound holding entries while terminal entries
+accumulate. Judge the expected account lifetime and request volume against
+measured latency and memory budgets, including the cost of invariant monitoring.
+
 Consider an amount limit of 100 and two slots. Authorize 100 for one key,
 request its void, and delay the confirmation. A new request for 100 must be
 refused. Local release at the void request would allow remote exposure of 200
@@ -218,6 +224,10 @@ the integrating application. An approved event can satisfy PO-B4 without being a
 truthful processor approval. The first eligible processor result wins; conflict
 recording does not reverse that policy.
 
+The embedding application must authenticate and authorize callers before they
+reach these APIs. Bounded rejection markers constrain stored payloads; they
+provide no authentication.
+
 For the journal, concentrate on the durability assumptions and recovery
 decision. Frame hashes and sequence checks detect damaged or reordered records.
 They cannot detect replacement by a valid shorter prefix without an external
@@ -243,6 +253,15 @@ manifest and export identity must belong to the claim under review. Distinguish
 a supported catalog entry, a development proof attempt and full export
 acceptance. The six checker configurations include two configurations of Lean.
 All share the translated definitions and theorem statements.
+
+After a reported Nanoda stack overflow, the runner can retry with one thread
+and a 256 MiB process stack. Verify that it uses the same pinned checker and
+export, retains sandbox isolation and
+records actual acceptance under the axiom policy. A stack overflow supplies no
+evidence against the theorem. Read [`scripts/check_nanoda_serial.py`][nanoda-retry]
+with its caller in `run_laws.py`; the
+[verification guide](verification.md) and [troubleshooting guide](troubleshooting.md)
+describe the checking policy and retry.
 
 The permitted axioms here are `propext`, `Quot.sound` and `Classical.choice`.
 Review changes to that policy as changes to the proof's foundations. The hosting
@@ -273,3 +292,4 @@ Lean execution.
 [required]: https://github.com/nshkrdotcom/hold_ledger/blob/main/verification/obligations.json
 [catalog]: https://github.com/nshkrdotcom/hold_ledger/blob/main/verification/laws.json
 [acceptance]: https://github.com/nshkrdotcom/hold_ledger/blob/main/scripts/run_laws.py
+[nanoda-retry]: https://github.com/nshkrdotcom/hold_ledger/blob/main/scripts/check_nanoda_serial.py
