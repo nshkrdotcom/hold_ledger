@@ -43,11 +43,22 @@ These tests do not model physical power loss or prove the storage hardware.
 
 ## Deliberate mutations
 
-A mutation is an intentionally wrong copy of source code. The exercise asks whether the stated checks distinguish that wrong behavior from the agreed policy. Ten examples under `mutants/` break terminal-key replay, timeout accounting,
-retry identity, exact-fit admission, positive admission, transport-ack handling, required void effects, decline accounting, restart conversion and premature void release.
-Each includes a patch and a concrete assertion against the correct behavior. The
-`MUTANTS` table in [`scripts/run_mutants.py`](https://github.com/nshkrdotcom/hold_ledger/blob/main/scripts/run_mutants.py) maps each
-mutation ID and directory to its targeted law group.
+A mutation is an intentionally wrong copy of source code. The exercise asks whether the stated checks distinguish that wrong behavior from the agreed policy. Each example under `mutants/` includes a patch and a concrete assertion against the correct behavior.
+
+| Mutant | What it breaks | Targeted law group |
+|---|---|---|
+| M1 — terminal reuse | Reuses a released key instead of reporting a duplicate | `po_a4_duplicate` |
+| M2 — timeout release | Frees capacity while an authorization remains unknown | `po_b1_timeout` |
+| M3 — retry identity | Changes the identity of a retried authorization | `po_b3` |
+| M4 — exact fit | Rejects a request that exactly fits the available capacity | `po_a2` |
+| M5 — always reject | Refuses otherwise eligible requests | `po_a2` |
+| M6 — transport acknowledgment | Treats delivery acknowledgment as approval | `po_b4` |
+| M7 — missing void effect | Omits the required remote void intent | `po_b3` |
+| M8 — decline accounting | Increases used amount when a decline should release it | `po_b1_processor_result` |
+| M9 — restart conversion | Leaves sent entries unchanged instead of marking them unknown | `po_b7` |
+| M10 — premature void release | Frees capacity before terminal void confirmation | `po_exposure_retain` |
+
+These are the targets selected by `scripts/run_mutants.py`. The concrete assertions establish the planted violations; a failed proof attempt alone does not establish that a law detected the fault.
 
 Check that all patches apply in isolated copies, without native execution:
 
@@ -79,7 +90,7 @@ checked unchanged by the runner.
 
 ## Documentation and package
 
-Build HexDocs to check that the guides render, and build the Hex archive to check packaging. These commands do not execute tutorial code blocks. Run the examples under `tmp/` with the commands in each guide when changing them; CI does not execute those examples.
+Build HexDocs to check that the guides render, and build the Hex archive to check packaging. These commands do not execute tutorial code blocks. Check tutorials manually by saving their examples under `tmp/` and running the commands in each guide, including ordinary tests and proof attempts. CI builds the guides but does not execute those examples.
 
 ```sh
 mix docs --warnings-as-errors

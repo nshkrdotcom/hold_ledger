@@ -69,11 +69,11 @@ The state did not change on the duplicate request. Amounts are positive integer 
 Once the toolchain is ready, check one maintained law rather than starting the full suite:
 
 ```sh
-uv run --locked python scripts/run_laws.py --slug po_a2 --stage proofs \
-  --report tmp/verification/po_a2-learning.json
+uv run --locked python scripts/run_laws.py --slug po_a4_duplicate --stage proofs \
+  --report tmp/verification/po_a4-learning.json
 ```
 
-`po_a2` says an eligible request must be admitted, including an exact fit. It's stronger than merely requiring valid counters. The [crash course](formal_verification_crash_course.md#apply-the-workflow-to-the-ledger) explains the relation between the law and a concrete boundary case. This command attempts the pinned Lean proof, but does not run the independent export/checker stage. A failure or timeout does not by itself mean the law is false; inspect the log and [Troubleshooting](troubleshooting.md).
+`po_a4_duplicate` says that requesting a recorded key at its original positive amount returns the same state, `:duplicate` and no effects. The [crash course](formal_verification_crash_course.md#read-a-ledger-law) follows this claim from a concrete witness into its shared Lean proof. This command attempts the pinned Lean proof, but does not run the independent export/checker stage. A failure or timeout does not by itself mean the law is false; inspect the log and [Troubleshooting](troubleshooting.md).
 
 For full acceptance with fresh exported proof objects, follow [Verification](verification.md#run-checks). It needs the complete pinned environment and independent checker prerequisites, including `bwrap`; a focused proof attempt is not a substitute.
 

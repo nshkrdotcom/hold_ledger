@@ -9,7 +9,7 @@
 
 A payment processor might authorize a hold and lose the reply. Your server sees a timeout. Is it safe to give that money back to the customer's available balance?
 
-No: the authorization may still be live. That small uncertainty is the thread running through Hold Ledger, an Elixir example for learning formal verification with [Lynx](https://github.com/josevalim/lynx) and Lean 4. It has a pure ledger, an independently written specification, a journaled OTP runtime, tests, and machine-checked laws. You can study real proofs without first learning a new programming language or building a payment service.
+No: the authorization may still be live. That small uncertainty is the thread running through Hold Ledger, an Elixir example for learning formal verification with [Lynx](https://github.com/josevalim/lynx) and Lean 4. It has a pure ledger, an independently written specification, a journaled OTP runtime, tests, and machine-checked laws. No prior Lean knowledge is needed: the crash course teaches enough to read a proof while you work with a small Elixir program.
 
 The project is for developers who know Elixir and testing but are new to formal proofs. It also explores how to work with a coding agent on specifications and proofs **without letting a passing proof silently redefine what the program must do**. The agent can investigate, write code, propose contracts and attempt proofs. A person is needed when the requirements or accepted risks themselves must be decided.
 
@@ -30,6 +30,8 @@ The [Specification assurance](guides/specification_assurance.md) guide explains 
 
 The source-checkout environment is **Ubuntu 26.04 x86_64** with Erlang/OTP **29.1.2**, Elixir **1.20.4** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, Git, and `bwrap` (Bubblewrap). The onboarding script checks existing Elixir/OTP installations and `bwrap`; it does not install them.
 
+The examples use the Lynx commit pinned in `mix.lock` and Lean **4.35.0** from `lean-toolchain`; [Verification](guides/verification.md#coverage-and-provenance) identifies the exact versions.
+
 From the repository root, after selecting the required Elixir/OTP installation:
 
 ```sh
@@ -44,14 +46,14 @@ mix run scripts/demo.exs
 
 The demo uses a simulated processor and a fresh temporary journal; it does not move money. The installed Lean/Lake tools stay under ignored `.local/`. If setup stops on a prerequisite, see [Getting started](guides/getting-started.md) and [Troubleshooting](guides/troubleshooting.md) rather than bypassing the check.
 
-To see a **real ledger proof attempt**, start with the exact-fit admission law (`po_a2`):
+To see a **real ledger proof attempt**, start with the duplicate-request law (`po_a4_duplicate`):
 
 ```sh
-uv run --locked python scripts/run_laws.py --slug po_a2 --stage proofs \
-  --report tmp/verification/po_a2-learning.json
+uv run --locked python scripts/run_laws.py --slug po_a4_duplicate --stage proofs \
+  --report tmp/verification/po_a4-learning.json
 ```
 
-This is a focused development check, not whole-repository acceptance. The [crash course](guides/formal_verification_crash_course.md) starts with a much smaller example and explains what that output means. [Verification](guides/verification.md#run-checks) covers the full proof/export pipeline and its prerequisites.
+This is a focused development check, not whole-repository acceptance. The [crash course](guides/formal_verification_crash_course.md#read-a-ledger-law) walks through this law’s witness, statement and shared Lean proof after a smaller example. [Verification](guides/verification.md#run-checks) covers the full proof/export pipeline and its prerequisites.
 
 ## The ledger in a few steps
 
@@ -89,11 +91,13 @@ sent or unknown --approved--> authorized --void--> voiding
                                                (capacity freed)
 ```
 
-A processor decline frees the hold; voiding an undispatched `:reserved` entry also frees it immediately. Terminal keys remain remembered. The [Specification](guides/specification.md) lists all events and results, including stale and malformed inputs.
+Every ledger state shown above retains capacity except `:voided`. A processor decline frees the hold; voiding an undispatched `:reserved` entry also frees it immediately. Terminal keys remain remembered. The [Specification](guides/specification.md) lists all events and results, including stale and malformed inputs.
 
 ## What the checks establish
 
 Tests and proofs answer related but different questions. An ExUnit assertion checks a particular history; a StreamData property samples many histories; a Lean proof establishes its *stated theorem* for every input satisfying its assumptions. A valid-state preservation proof alone would allow a ledger that refuses every request. Hold Ledger therefore includes positive-admission laws, identity and effect laws, finite-history properties, and deliberately broken mutations that challenge them.
+
+Try [planting the exact-fit bug](guides/formal_verification_crash_course.md#plant-a-bug-and-watch-the-checks): change `>` to `>=`, keep the law fixed, and see the test, property and proof attempt fail. The [mutation catalog](guides/testing.md#deliberate-mutations) extends that exercise to ten ledger faults.
 
 The proof route, in outline, is:
 

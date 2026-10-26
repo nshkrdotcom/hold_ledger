@@ -6,6 +6,8 @@ We'll begin with a tiny capacity check, turn its behavior into a Lynx law, and r
 
 The explanation can be read on any machine. To run the commands, use the [toolchain setup](getting-started.md) and save tutorial files under a `tmp/` directory at the repository root (create it if needed). Git ignores `tmp/`. All example commands assume you're in the repository root.
 
+You can work through the course in three sittings: read and run the small law, plant and explain the exact-fit bug, then follow the maintained duplicate-request law. Each is a useful stopping point; proof setup and exercises can take longer than reading the explanations.
+
 ## From a test to a claim about every input
 
 We’ll use a function that decides whether a requested amount fits within the remaining capacity:
@@ -193,7 +195,7 @@ uv run --locked python scripts/local_run.py mix test tmp/cap_test.exs --exclude 
 LYNX_CACHE=0 LYNX_DEBUG=lean uv run --locked python scripts/local_run.py mix test tmp/cap_test.exs --only laws
 ```
 
-The ordinary command reports two passes: one exact-fit test and one generated property. The proof command reports one passing law. Check the exit status as well as the summary. Lynx makes `fits/2` callable in Elixir: it checks `requires`, then `expects`, raising if either fails. `non_negative_integer()` includes zero, so the property exercises exact fits as well as requests below capacity. The test’s `(1, 1)` is a **witness**, a concrete input satisfying the precondition. It gives us one case we can inspect alongside the general proof.
+A successful ordinary run reports two passes: one exact-fit test and one generated property. A successful proof run reports one passing law. Check the exit status as well as the summary. Lynx makes `fits/2` callable in Elixir: it checks `requires`, then `expects`, raising if either fails. `non_negative_integer()` includes zero, so the property exercises exact fits as well as requests below capacity. The test’s `(1, 1)` is a **witness**, a concrete input satisfying the precondition. It gives us one case we can inspect alongside the general proof.
 
 ## Read the translated function
 

@@ -9,7 +9,7 @@ Lynx translates the compiled Elixir pure core and its laws into Lean. Handwritte
 | Task | Check | What its result means |
 |---|---|---|
 | Discover what's required | `--supported-only --inspect-only` | Catalog structure and registration, not a proof |
-| Learn from or debug one law | `--slug po_a2 --stage proofs` | The selected development proof attempt, without fresh export/checker acceptance |
+| Learn from or debug one law | `--slug po_a4_duplicate --stage proofs` | The selected development proof attempt, without fresh export/checker acceptance |
 | Review required proof acceptance | `--supported-only --stage full` | Fresh required proofs, exports, permitted axioms and all six checker configurations on the exact reviewed source |
 
 Run the full command only when you need full acceptance, and preserve its source hashes and reports. A failure, timeout, skipped group or `supported` catalog status is not proof acceptance. Read [Run checks](#run-checks) for exact commands and prerequisites.
@@ -70,7 +70,7 @@ uv run --locked python scripts/run_laws.py --supported-only --stage full \
 
 The full stage already includes uncached proof verification: running proof-only
 first is unnecessary when the full stage is the goal. Both are expensive.
-To check just one group, use `--slug po_a2` instead of `--supported-only`.
+To check just one group, use `--slug po_a4_duplicate` instead of `--supported-only`.
 All cataloged groups, including B5 and C3, are included in the supported selection.
 
 For multiple groups, the runner submits one dependency-ordered cold request:

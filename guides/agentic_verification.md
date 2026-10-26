@@ -6,7 +6,13 @@ We'll follow that example from a requirement to a challenged contract and proof 
 
 ## Who decides what?
 
-An agent can gather evidence, challenge contracts and repair code under agreed policy. A person resolves missing or conflicting requirements and new risk tradeoffs. Use the [responsibility table](human_review.md#what-to-delegate-and-what-to-decide) to distinguish those decisions from ordinary implementation and proof work.
+- **Continue under agreed policy.** The agent can gather evidence, challenge contracts, repair code and attempt proofs.
+- **Review changed meaning.** A reviewer checks changes to claims, definitions, domains and trusted assumptions against the agreed requirements.
+- **Resolve disputed requirements.** An authorized person decides missing policy and risk tradeoffs. If the reference contradicts independently justified behavior, bring back that discrepancy before changing the contract.
+
+The [responsibility table](human_review.md#what-to-delegate-and-what-to-decide) explains these roles in detail.
+
+## Find the named laws
 
 A few proof labels appear below. `po_b1_void` checks that the void transition preserves ledger validity; `po_b3` constrains emitted effects; `po_exposure_retain` requires capacity to remain represented when a local void lacks release evidence. They are individual **law groups** in `verification/laws.json`, not magic assurances about the whole system. The [law catalog](verification.md#law-catalog) names the others.
 
@@ -256,29 +262,35 @@ The decision allows work to continue under agreed policy without treating the co
 Now suppose an agent submits this report excerpt:
 
 ```text
-Claim delta: None; the law statements are unchanged.
-Review tier: Tier 3, proof-only cleanup.
+Claim delta: None; the law files are untouched.
+Review tier: Tier 2, helper refactor.
 Changed files: lib/hold_ledger/spec.ex
 ```
 
-Its actual proposed diff is:
+Its proposed diff keeps the lookup and adds one status:
 
 ```diff
    def exposed_entry?({_, _, _, _, entries}, key, amount) do
      case lookup(entries, key) do
-       {:ok, {^key, ^amount, status}} -> status in [:sent, :unknown, :authorized, :voiding]
--      _ -> false
-+      _ -> true
+-      {:ok, {^key, ^amount, status}} -> status in [:sent, :unknown, :authorized, :voiding]
++      {:ok, {^key, ^amount, status}} -> status in [:sent, :unknown, :authorized, :voiding, :voided]
+       _ -> false
      end
    end
 ```
 
-Before accepting the report, evaluate the predicate for an empty ledger,
-`{100, 2, 0, 0, []}`, key `1` and amount `100`. What changes?
+Before opening the answer, classify the diff and find a valid state for which this predicate changes its result. Does an entry's identity remaining in the ledger mean its capacity remains held? Explain what a retention conclusion would lose even though its law file is untouched.
 
-**Reviewer:** “The original returns `false`; your changed definition returns `true` despite there being no entry. A retention conclusion using this predicate no longer requires the identity to remain recorded. This is Tier 1: a changed Spec definition. Restore the predicate and investigate the original proof failure under the existing contract.”
+<details>
+<summary>Review decision — open after checking the diff</summary>
 
-The law text did not change, but its meaning did. The reviewer found that by following the diff to a concrete input, independently of the report's label. [Human review](human_review.md#practice-on-seven-proposed-changes) provides more practice with this distinction.
+Consider `{100, 2, 0, 0, [{1, 100, :voided}]}`, key `1` and amount `100`. The state is valid: a voided entry remains remembered but consumes no capacity. The original predicate returns `false`; the proposed definition returns `true`.
+
+**Reviewer:** “This is Tier 1: a changed Spec definition. A conclusion using this predicate could now accept a terminal entry with no retained capacity. The unchanged law file does not preserve that guarantee. Keep the original status set and investigate any proof failure under the existing contract.”
+
+The report's label hid a changed guarantee. Following the predicate to a concrete state reveals it. [Human review](human_review.md#practice-on-seven-proposed-changes) provides further exercises with different ways to change a claim's meaning.
+
+</details>
 
 ### A second request: repair a failed proof without changing policy
 

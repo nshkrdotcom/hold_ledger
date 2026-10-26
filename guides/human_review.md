@@ -8,7 +8,7 @@ A useful short rule is:
 
 - **Proceed under agreed policy.** Agents can repair code, add tests and prove an unchanged claim. Check the submitted evidence and diff.
 - **Review changes to meaning.** A different precondition, postcondition, called predicate, theorem signature, model, inventory, import or trusted foundation can change what a green result means.
-- **Ask for a decision when authority is missing.** Conflicting requirements, a new release rule, a changed processor assumption or a proposed risk tradeoff need an authorized policy decision. The agent should present evidence and alternatives, not quietly choose one.
+- **Ask for a decision when authority is missing.** Conflicting requirements, a new release rule, a changed processor assumption or a proposed risk tradeoff need an authorized policy decision. If the reference contradicts independently justified behavior, investigate the discrepancy and resolve the governing requirement before changing the contract. The agent should present evidence and alternatives, not quietly choose one.
 
 The author need not be human. The important question is whether approved requirements and reliable evidence already cover the change, or whether someone still has to decide the policy.
 
