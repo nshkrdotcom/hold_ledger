@@ -42,6 +42,8 @@ jobs:
           uv run --locked python -m unittest discover -s tooling_tests -v
           uv run --locked python scripts/run_laws.py --supported-only --inspect-only
           uv run --locked python scripts/run_mutants.py
+      - name: Executable tutorial examples
+        run: uv run --locked python scripts/check_tutorials.py
       - name: Demo, guides and package
         run: |
           mix run scripts/demo.exs

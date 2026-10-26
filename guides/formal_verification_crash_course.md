@@ -4,6 +4,8 @@ You know how to test Elixir. What changes when you want to show that a behavior 
 
 We'll begin with a tiny capacity check, turn its behavior into a Lynx law, and read the Lean proof that establishes it. We'll plant an exact-fit bug, read the failure, and finish with one maintained ledger law. You need Elixir and testing experience, but no prior Lean or Lynx. By the end, you'll have run a law, explained a counterexample and traced a ledger claim to its shared proof.
 
+The main skill is reading a claim and checking what its proof establishes. You will run and inspect supplied tactics; writing a new proof is an optional exercise. People and agents can both write tactics, but neither gets to change the requirement just to close a goal.
+
 The explanation can be read on any machine. To run the commands, use the [toolchain setup](getting-started.md) and save tutorial files under a `tmp/` directory at the repository root (create it if needed). Git ignores `tmp/`. All example commands assume you're in the repository root.
 
 You can work through the course in three sittings: read and run the small law, plant and explain the exact-fit bug, then follow the maintained duplicate-request law. Each is a useful stopping point; proof setup and exercises can take longer than reading the explanations.
@@ -81,7 +83,11 @@ example : ∀ n : Int, 0 ≤ n → n + 1 > 0 := by
 
 `intro` brings the integer and assumption into scope; `omega` handles the arithmetic. There is nothing special about `nonnegative`: it is just a name for the hypothesis. If we changed `0 ≤ n` to `n > 10`, the proof would still be easy, but the theorem would say less.
 
+A successful command alone does not tell you which assumptions a theorem uses. The [declaration-reading exercise](reading_deeper_proofs.md#inspect-declarations-and-assumptions) shows `def`, `theorem`, admissions and `#print axioms` before you classify a proof diff.
+
 ## How Lynx connects Elixir to Lean
+
+Hold Ledger translates a pure core: tuples, lists, integers, atoms, guards and recursive functions. The GenServer, journal writes and processor calls sit outside that core. Their behavior needs runtime checks and explicit external assumptions; see the [architecture](architecture.md).
 
 With Lynx, the function stays in Elixir. You write its law in Elixir too, and supply a Lean proof. Lynx translates the compiled function and the law into definitions Lean can reason about:
 
@@ -211,6 +217,15 @@ requires : «fits:requires/2» amount remaining = Except.ok Lynx.Term.true
 
 A **goal** is the statement Lean still needs a proof of. Above `⊢` are available facts, also called **hypotheses**; after it is the goal. `Except.ok Lynx.Term.true` means the predicate returned Elixir `true` successfully. To see this state, replace the proof with `trace_state` followed by `rfl` and rerun the proof command. `trace_state` prints the goal; `rfl` tries to close an equality by reducing both sides to the same expression. It fails here because the proof needs the integer and ordering assumptions.
 
+Try replacing the entire proof body with `omega` and run the same proof command. It fails with:
+
+```text
+omega could not prove the goal:
+No usable constraints found.
+```
+
+The rest of the diagnostic suggests unfolding definitions. The inputs are still `Lynx.Term` values, and the precondition is a translated computation. `omega` needs the integer inequality hidden inside it. This is a failed tactic on a true claim; the unchanged example and property still pass.
+
 Restore the complete proof. It first establishes that both arguments are integers:
 
 1. `cases amount` splits the value into possibilities such as an integer, atom or list cell. This resembles pattern matching. `<;>` runs the following tactic in every resulting branch.
@@ -285,6 +300,8 @@ not_over : ¬b < a
 This is the start of the diagnostic; the remaining lines handle exceptions and compare the result with `:ok`. Read the facts before the nested matches. `requires` still permits `a = b`, but the changed branch tests `b ≤ a` and returns `:full` at equality. The concrete failure `fits(0, 0)` confirms that the claim is false for the mutant. A different unsolved goal without such a witness would leave the claim unresolved.
 
 Restore `>` and rerun both checks. This is mutation testing: checking whether deliberately planted faults are detected. If a mutation survives, inspect whether it preserves behavior, exposes missing coverage, or reflects an incomplete run.
+
+This completes the small-program lesson. Before continuing, explain why the exact-fit counterexample defeats the mutant. The next section applies the same steps to a maintained law; you can return to it in another sitting.
 
 ## Apply the workflow to the ledger
 
@@ -411,7 +428,7 @@ Return to `tmp/cap_test.exs` for the first three exercises. The fourth asks you 
 
 1. **Boundary witness.** Add an exact-fit test for an integer larger than `2 ** 64`. Does the toy claim allow negative integers too?
 2. **Mutation.** Make the comparison change above. Run both ordinary checks and the proof. Explain the smallest executable failure, then restore the function.
-3. **Another law.** Keep `fits/2` unchanged. Add `over_capacity/2` requiring integer inputs and `remaining < amount`, concluding `admit(amount, remaining) == :full`. Add a witness and generated property, then prove it.
+3. **Optional: write another law.** Keep `fits/2` unchanged. Add `over_capacity/2` requiring integer inputs and `remaining < amount`, concluding `admit(amount, remaining) == :full`. Add a witness and generated property, then prove it.
 4. **Read before changing.** Open `test/laws/po_a4_duplicate_test.exs`. Which assumptions describe the input, and which exact outputs does the conclusion require? Would requiring only a valid resulting state preserve the duplicate guarantee?
 
 <details>

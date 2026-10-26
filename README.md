@@ -15,7 +15,7 @@ The project is for developers who know Elixir and testing but are new to formal 
 
 ## Choose where to start
 
-You do not need to read the entire repository in order. Pick the route that matches what you want to do.
+If you are new to formal verification, start with the crash course, then work through Agentic verification and Human review. Use Getting started when you want to run the examples. The other routes let you join at the task you already know you need.
 
 | You want to… | Start here | What you'll do |
 |---|---|---|
@@ -95,6 +95,10 @@ sent or unknown --approved--> authorized --void--> voiding
 
 Every ledger state shown above retains capacity except `:voided`. A processor decline frees the hold; voiding an undispatched `:reserved` entry also frees it immediately. Terminal keys remain remembered. The [Specification](guides/specification.md) lists all events and results, including stale and malformed inputs.
 
+The verified core uses fixed tuples, proper lists, integers, atoms, guards, direct calls and named recursion. These are this project’s constraints, not a complete list of Lynx capabilities. A GenServer or Ecto application needs separate reasoning about processes, I/O and dependencies; translating the reducer does not verify those operations. Here, effects connect the pure core to a runtime whose processor and storage assumptions remain explicit.
+
+The pinned Lynx README reports human design and review of the translation layer and runtime design, and limited review of agent-written proofs and Lean deserialization. See the [translation boundary](guides/verification.md#domains-and-limits) for what the checkers establish.
+
 ## What the checks establish
 
 Tests and proofs answer related but different questions. An ExUnit assertion checks a particular history; a StreamData property samples many histories; a Lean proof establishes its *stated theorem* for every input satisfying its assumptions. A valid-state preservation proof alone would allow a ledger that refuses every request. Hold Ledger therefore includes positive-admission laws, identity and effect laws, finite-history properties, and deliberately broken mutations that challenge them.
@@ -141,7 +145,7 @@ An agent can carry out this workflow under agreed policy:
 
 ## Documentation map
 
-These guides serve different moments in the same learning process. The first group teaches; the others are there when you need details.
+Start with the learning path above. Use this table to find a lesson, a procedure or a reference when you need it.
 
 | Guide | Use it for |
 |---|---|

@@ -90,7 +90,13 @@ checked unchanged by the runner.
 
 ## Documentation and package
 
-Build HexDocs to check that the guides render, and build the Hex archive to check packaging. These commands do not execute tutorial code blocks. Check tutorials manually by saving their examples under `tmp/` and running the commands in each guide, including ordinary tests and proof attempts. CI builds the guides but does not execute those examples.
+Build HexDocs to check that the guides render, and build the Hex archive to check packaging. CI also executes the complete tutorial examples directly from the crash course, Reading deeper proofs and Agentic verification. From a source checkout with the pinned tools, run the same check locally:
+
+```sh
+uv run --locked python scripts/check_tutorials.py
+```
+
+The runner checks the README example, standalone Lean examples, ledger witnesses, accounting and contract challenges, the toy law and its optional extension, and selected source excerpts. It requires the exact-fit mutant to produce both a concrete ordinary failure and the documented proof diagnostic. It also checks that `omega` alone fails on the unchanged translated claim. Each command has a five-minute timeout; logs and extracted files go under `tmp/tutorial-checks/`. These development proofs do not run the full exported-checker acceptance pipeline.
 
 ```sh
 mix docs --warnings-as-errors

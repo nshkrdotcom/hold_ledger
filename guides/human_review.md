@@ -33,6 +33,16 @@ Agents can carry out implementation and proof work within agreed requirements. R
 | 3 | Only confirmed proof-body changes | Require fresh full acceptance on the reviewed source; a semantic review of unchanged statements need not be repeated for a tactic edit. |
 | Documentation | Explanations of existing behavior | Check against source; an edit changing the policy in `guides/specification.md` is Tier 1. |
 
+The decision rule and tiers answer different questions. The tier describes what changed; the rule tells you whether existing authority covers the work.
+
+| Decision | How tiers apply | Next action |
+|---|---|---|
+| Proceed under agreed policy | Tier 2 implementation work or confirmed Tier 3 repair; Tier 1 work may also implement an already approved decision | Run the required checks and submit the diff for its tier of review |
+| Review meaning | Tier 1, or an ambiguous change that cannot yet be classified as Tier 3 | Compare statements, definitions, scope and assumptions |
+| Decide policy | Any tier when requirements conflict or authority is missing; there may be no diff yet | Ask the policy owner a specific question before making the dependent change |
+
+A failed check or timeout usually belongs to the agent to investigate. It needs a policy decision only if resolving it would require changing an unapproved requirement or assumption.
+
 In Hold Ledger, apply Tier 1 review to these meanings and boundaries:
 
 | Files | What to inspect |
@@ -104,7 +114,8 @@ Challenge evidence: <valid witness, forbidden output, boundary/temporal trace>
 Ordinary checks: <exact commands, results, log or report paths>
 Formal evidence: <law group, proof/full stage, status, source hashes>
 Trusted assumptions: <processor, compiler/translator, journal, etc.>
-Unresolved: <failed check, timeout, missing policy, or known limitation>
+Unresolved: <failed check, timeout or limitation; owner and next action>
+Decision needed (human): <none, or question, options, consequences and work that can continue>
 ```
 
 For example, a report that says `Claim delta: none` while `Spec.valid?/1` has lost its upper-bound check is not a harmless proof repair. The changed definition weakens every conclusion that relies on that predicate. Compare [exercise E](#practice-on-seven-proposed-changes) with its answer key to practice spotting this.

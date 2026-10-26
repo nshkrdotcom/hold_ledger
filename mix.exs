@@ -57,13 +57,12 @@ defmodule HoldLedger.MixProject do
       guides/reading_deeper_proofs.md
       guides/agentic_verification.md
       guides/human_review.md
-      guides/specification_assurance.md
-      guides/audit.md
     )
 
     guide_groups = [
       "Getting Started": ["README.md", "guides/getting-started.md"],
       "Learning Formal Verification": learning_guides,
+      "Assurance and Audit": ["guides/specification_assurance.md", "guides/audit.md"],
       "Using the Ledger": [
         "guides/architecture.md",
         "guides/specification.md",

@@ -1,8 +1,42 @@
 # Reading deeper proofs
 
-A ledger law may cite a shared theorem with a single `exact` line. Reviewing that law means following its predicates and the lemmas that connect them to the implementation. We’ll start with ledger validity, follow the admission and lookup proofs, then read a history relation to see which executions it covers.
+A ledger law may cite a shared theorem with a single `exact` line. Reviewing that law means following its predicates and the lemmas that connect them to the implementation. First identify declarations and their assumptions. Then inspect ledger validity, follow the admission and lookup proofs, and read a history relation to see which executions it covers.
 
 Start here after you can read a `requires:`/`expects:` law and recognize a Lean hypothesis and goal. The [crash course](formal_verification_crash_course.md) introduces those ideas. You can inspect the source without running Lean; the runnable examples use the [pinned setup](getting-started.md) and files under `tmp/`.
+
+## Inspect declarations and assumptions
+
+Before calling a diff a proof repair, identify the declaration around the changed lines. Lean uses similar syntax for a function body and a proof body, but changing them has different consequences.
+
+| Declaration or command | What to inspect |
+|---|---|
+| `def fits ... := ...` | The definition gives `fits` its meaning. Changing the body can change what claims using it mean. A body starting with `by` is still a definition. |
+| `theorem name ... : P := by ...` | The binders and `P` state the claim; the body constructs its proof. Check that both the statement and its dependencies stayed fixed. |
+| `axiom name : P` | Introduces `P` as an assumption without a proof. A theorem using it depends on that assumption. |
+| `sorry` | Fills a proof gap using `sorryAx`. Lean can accept the declaration with a warning; the required proof is still missing. |
+| `variable`, `instance`, `import` | Can change available parameters, inferred operations or dependencies. Read the surrounding context and imported definitions. |
+| Options, syntax and elaborators | Can affect how source becomes a statement or proof term. Inspect their effect before classifying the diff. |
+
+Try a declaration with a definition you can inspect:
+
+```lean
+import Lean
+
+def within (amount limit : Int) : Prop := amount ≤ limit
+
+theorem exact_fit (amount : Int) : within amount amount := by
+  unfold within
+  omega
+
+#print exact_fit
+#print axioms exact_fit
+```
+
+Save it as `tmp/declarations.lean` and run `uv run --locked python scripts/local_run.py lean tmp/declarations.lean`. `#print exact_fit` prints the theorem and its proof term. `#print axioms exact_fit` lists the axioms used by the proof, including dependencies reached through other declarations. Compare that list with the project's allowed axiom policy and investigate unfamiliar names.
+
+A custom axiom can move the desired conclusion into an assumption. `sorryAx` signals an admitted gap. Neither belongs in a completed Hold Ledger proof. The [verification checks](verification.md) inspect exports and enforce the axiom policy; `#print axioms` is a local inspection aid, not a replacement for them.
+
+Now imagine changing `within` to always return `True`. The theorem can still pass, with no new axiom, while saying nothing about capacity. Axiom inspection cannot detect every weakened claim. Read the definitions as well as the statement, then use the [review tiers](human_review.md#classify-the-diff) to classify the actual change.
 
 ## Open the predicate before trusting its name
 

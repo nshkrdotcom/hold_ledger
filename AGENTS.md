@@ -71,6 +71,10 @@ only confirmed proof-body-only changes qualify for Tier 3.
 Report the claim delta, Tier 1 files and reasons, commands/results, and unresolved
 work in the change summary. Flag changes to assumptions, domains, Spec/models,
 inventories, foundations, gates or skips; do not silently weaken guarantees to repair proofs.
+Use the report fields in `guides/human_review.md`, including
+`Decision needed (human): none` when existing authority covers the work. State the
+question, options, consequences and work that can continue. Keep failed checks
+and timeouts under `Unresolved`, with an owner and next action.
 Human policy approval already given for a change remains valid within its scope.
 
 Commit independently chosen policy traces as tests. Re-run those traces for

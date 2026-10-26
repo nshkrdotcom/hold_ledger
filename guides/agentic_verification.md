@@ -288,8 +288,9 @@ Ordinary checks: Not run. Next commands:
 Formal evidence: Not run; no proof or full-acceptance result claimed.
 Trusted assumptions: Processor outcomes are truthful and authenticated;
  terminal void confirmation permanently fences delayed authorization.
-Unresolved: Execute the challenge and policy traces. Native mutation and
+Unresolved: The agent must execute the challenge and policy traces. Native mutation and
  formal checks remain unexecuted; this review establishes no new theorem.
+Decision needed (human): None; the retention rule already governs this case.
 ```
 
 **Reviewer:** “Keep the existing retention and effect requirements. The proposed validity-only replacement loses both guarantees. Run the listed checks and report their actual results. No new policy decision is needed; a failure should be investigated against the existing contract.”
@@ -350,6 +351,17 @@ This is a useful default for proof repair because it prevents a common failure: 
 ### What would require a human here?
 
 Repairing premature release under the existing rule doesn't require inventing a new policy. But a request to “release every void after 24 hours, even without confirmation” directly conflicts with the requirement to retain capacity while external authorization is possible. The agent should show the conflicting trace and the exposure consequence, then ask the authorized person to decide. It must not change the specification or introduce a processor guarantee to make the proof easier.
+
+The report should make that decision concrete:
+
+```text
+Decision needed (human): May an unconfirmed authorization release capacity
+ after 24 hours? Keeping the current rule can retain capacity indefinitely.
+ Releasing on elapsed time can admit new holds while the old authorization
+ remains live. A processor-enforced expiry would need a documented guarantee
+ and separate approval. Meanwhile, reproduce the pending-void trace and check
+ the existing retention law without changing it.
+```
 
 Preserve the logs and source identity when you run the experiments so the reviewer can reproduce the result.
 
