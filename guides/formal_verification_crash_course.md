@@ -453,7 +453,7 @@ The catalog lists the maintained formal obligations. The two PO-B5 groups establ
 
 PO-C3 reasons over a proper finite list of arbitrary event terms. It proves that reducer replay agrees with `Spec.expected_run/2`, preserves existing identities and terminal entries, and has independent approval evidence for authorization. The History proof uses one-step oracle agreement, successor validity, identity composition, terminal lookup preservation and authorization evidence.
 
-Deterministic tests and 10,000 generated examples per property complement these proofs. The executed test summary and coverage output report the current sample counts; those counts are distinct from formal quantification. A failed tactic or timeout alone is never a concrete counterexample.
+Deterministic tests and bounded generated properties complement these proofs. The ledger and composite properties use 10,000 cases; the attempt interleaving property uses 1,000. The executed test summary and coverage output report the current sample counts; those counts are distinct from formal quantification. A failed tactic or timeout alone is never a concrete counterexample.
 
 ### Does formal verification guarantee my system will never fail?
 No. Accepted proofs establish specific law statements about the translated pure functions, under their explicit preconditions and trusted assumptions. The supported selection includes every cataloged obligation, but the catalog is a specified set of claims rather than a blanket proof of every possible requirement or of the OTP runtime.

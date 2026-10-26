@@ -1,6 +1,6 @@
 # Verification
 
-Lynx translates the compiled Elixir ledger and its laws into Lean. Handwritten
+Lynx translates the compiled Elixir pure core and its laws into Lean. Handwritten
 Lean scripts establish the law statements. A separate export stage lets six
 checker configurations validate the proof objects. This is assurance about the
 specified pure functions, not verification of the complete payment runtime.
@@ -88,7 +88,8 @@ modules compose those results. Laws in `test/laws/` retain the executable
 
 `test/support/proof_case.ex` adapts the pinned Lynx translation/runner APIs. It
 generates shared contract predicates directly from the law declarations,
-translates Ledger and Spec, then loads the Lean theory before checking each
+translates Ledger, Spec, Composite, Outbox, Attempts, Environment and Exposure,
+then loads the Lean theory before checking each
 original law against its own predicates. This ordering matters: Lynx preludes
 load before translated definitions and cannot directly contain concrete Ledger
 lemmas. Induction support is generated once to avoid duplicate helper declarations

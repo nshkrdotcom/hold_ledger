@@ -132,7 +132,7 @@ Server.inspect_work(ledger, :conflicts, 0, 100)
 
 Lookup intent is synced before launching asynchronous work. Server remains
 responsive while lookup blocks; exceptions and deadlines become unavailable
-observations. Concurrent lookup for the same key returns `:lookup_in_progress`.
+observations. Concurrent lookup for the same key returns `{:error, :lookup_in_progress}`.
 A result is journaled and applied against current eligibility. In particular,
 not-found cannot retry a key already resolved while lookup was running.
 Lookup-first retry still requires receiver deduplication and reliable lookup
@@ -146,8 +146,10 @@ Poisoned writers return an error. Dead callers are removed from waiter tracking.
 void receipts/conflicts, and at most 100 unresolved voids. `inspect_work/4`
 paginates unknown entries and unresolved voids; receipt/conflict pages are within
 the most recent 100 retained observations. The full journal preserves evidence.
-Contradictory results are recorded as conflicts while terminal policy remains
-unchanged. `recovery/1` exposes before/after-restart states and replay count.
+An approval for a declined entry or a decline for an authorized entry records a
+conflict without changing the entry. Results for voiding or voided entries remain
+stale without an additional conflict record. `recovery/1` exposes
+before/after-restart states and replay count.
 
 ## Journal inspection and tail recovery
 

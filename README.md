@@ -47,6 +47,11 @@ uv sync --locked
 # Verify existing Elixir/OTP and provision pinned Lean 4.35.0 locally in ignored .local/
 uv run --locked python scripts/onboard.py --provision
 
+# Activate the provisioned toolchain in this shell (also needed to compile test dependencies)
+export ELAN_HOME="$PWD/.local/elan"
+export ELAN_TOOLCHAIN="$(cat lean-toolchain)"
+export PATH="$ELAN_HOME/bin:$PATH"
+
 # Fetch Elixir dependencies using Mix
 mix deps.get
 mix run scripts/demo.exs
@@ -265,8 +270,9 @@ Formal laws concern their declared pure functions and explicit hypotheses; OTP r
   * Finite-history oracle agreement, identity, terminal and approval properties (PO-C3)
   * Capacity retention and conditional remote live amount/count bounds (PO-EXPOSURE)
   * Typed lifecycle histories with unique slots/IDs and at-most-once retirement
+  * Composite coupling preservation and independent step/history oracle agreement
   * Successful pure composite histories replay to the same abstract state
-    (this does not prove journal framing, fsync, restart handling or coupling preservation)
+    (this does not prove journal framing, fsync or OTP restart handling)
 
 [ TESTED VIA FAULT INJECTION & OTP TESTS ]
 ---------------------------------------------------------------------------------------------

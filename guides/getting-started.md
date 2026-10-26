@@ -14,14 +14,20 @@ are checked, not installed by the onboarding script.
 ```sh
 uv sync --locked
 uv run --locked python scripts/onboard.py --provision
+export ELAN_HOME="$PWD/.local/elan"
+export ELAN_TOOLCHAIN="$(cat lean-toolchain)"
+export PATH="$ELAN_HOME/bin:$PATH"
 mix deps.get
 mix compile --warnings-as-errors
 ```
 
 Onboarding verifies release-download checksums and installs Elan/Lean/Lake in
-ignored `.local/`. It does not change shell profiles or global tools. The wrapper
-sets the local proof-tool environment for each command. Lean is needed for the
-explicitly selected formal test modules; plain `mix test` runs the ordinary suite by default, and using the application itself requires only Elixir/OTP.
+ignored `.local/`. It does not change shell profiles or global tools. The exports
+above activate those tools in the current shell so ordinary Mix commands can
+find them. The test-only Lynx dependency invokes Lake during compilation, so a
+fresh `mix test` also needs Lean/Lake, even though it excludes formal laws by
+default. Using the application itself requires only Elixir/OTP. Formal runner
+commands additionally use the wrapper to select the repository-local environment.
 
 ## Run the demonstration
 

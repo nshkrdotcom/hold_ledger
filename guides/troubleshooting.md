@@ -15,6 +15,10 @@ be resolved by obtaining the pinned release, not by bypassing verification.
 An interrupted extraction produces an explicit incomplete-installation error;
 inspect only the named local tool directory before retrying.
 
+A fresh `mix test` compiles the test-only Lynx dependency, whose build invokes
+Lake. If that fails with `System.cmd("lake", ...)` and `:enoent`, activate the
+repository-local toolchain as shown in [Getting started](getting-started.md).
+
 ## Proofs do not run or fail
 
 For explicit formal verification, use `scripts/local_run.py` so Lean/Lake resolve to `.local/`. The full independent
