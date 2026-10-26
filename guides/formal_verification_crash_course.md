@@ -43,6 +43,8 @@ theorem add_zero (x : Int) : x + 0 = x := by
 
 An ordinary typechecker checks that an expression has the type you declared. Lean can also treat a proposition as a type and a proof as a value of that type. Its small **kernel** checks that the proof has the claimed type. A **tactic**, such as `omega`, helps construct that proof; the kernel checks the result.
 
+The commands below use `local_run.py` to select the repository-local Lean toolchain and cache locations. Elixir and OTP must already match the pinned versions. If you have set the toolchain environment as shown in README’s Quickstart, you can run `lean` or `mix` directly.
+
 To try it, save the complete block as `tmp/first_proof.lean` and run:
 
 ```sh
@@ -279,7 +281,7 @@ The concrete tests live in `test/mutations/preflight_test.exs`; run their unchan
 uv run --locked python scripts/local_run.py mix test test/mutations/preflight_test.exs --exclude laws
 ```
 
-The [Testing guide](testing.md#deliberate-mutations) describes the optional expensive experiment that applies the patches in isolated copies. Its formal results require a checked baseline; a tactic failure alone does not attribute detection to a law.
+The [Testing guide](testing.md#deliberate-mutations) describes the optional expensive experiment that applies the patches in isolated copies. [Human review](human_review.md#use-mutations-to-challenge-claims) explains how to interpret the results.
 
 ### Read a ledger law
 
@@ -375,7 +377,7 @@ Before reading a proof body, review these four things in order:
 3. **Independence:** does `Spec` make its own decisions, or merely repeat or call the implementation?
 4. **Translation boundary:** are the proof's definitions generated from the code being reviewed, and what compiler/translator behavior is being trusted?
 
-Read the helper lemmas and proof body when you need to trace the argument. Next, use [Verify the behavior you meant](agentic_verification.md) to challenge agent-drafted contracts.
+Read the helper lemmas and proof body when you need to trace the argument. Next, use [Agentic verification](agentic_verification.md) to challenge agent-drafted contracts.
 
 > **Limits.** A checked proof establishes its statement about the translated functions under its hypotheses.
 >

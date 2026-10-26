@@ -13,7 +13,7 @@ You’ll run a complete proof, read its assumptions and conclusion, and see what
 
 The guides show how to work with a coding agent on specifications, tests, code and proofs. You’ll challenge proposed contracts with required and forbidden outcomes, and learn to spot changes that make a proof pass by weakening its claim. You’ll also see what can be delegated under an existing policy, when conflicting requirements need a person’s decision, and how to assess whether more of that work can be automated.
 
-**Learning to verify with a coding agent?** Start with the [formal verification crash course](guides/formal_verification_crash_course.md), then follow the [agentic verification workflow](guides/agentic_verification.md).
+**Learning to verify with a coding agent?** Start with the [formal verification crash course](guides/formal_verification_crash_course.md), then follow [Agentic verification](guides/agentic_verification.md). To run the examples, complete the [Quickstart](#quickstart) first.
 [Human review](guides/human_review.md) covers decisions in an individual change. [Specification assurance](guides/specification_assurance.md) explains how a verified contract can miss intent, while the [assurance audit](guides/audit.md) examines the whole system at an initial or periodic checkpoint.
 
 ---
@@ -132,11 +132,11 @@ The project combines three kinds of evidence:
 |---|---|---|---|
 | **1. Deterministic Tests** | ExUnit unit tests & worked traces | Runs hand-picked states against concrete inputs. | Regressions, happy paths, obvious edge cases. |
 | **2. Generative Property Tests** | `StreamData` (bounded generated cases) | Generates thousands of arbitrary states, malformed terms, and random histories. | Off-by-one errors, weird term shapes, counter desyncs. |
-| **3. Machine-Checked Proofs** | `Lynx` + `Lean 4` Theorem Prover | Proves universal mathematical statements ($\forall s, \forall e \dots$). | The stated properties for all inputs satisfying each law’s preconditions. |
+| **3. Machine-Checked Proofs** | `Lynx` + `Lean 4` Theorem Prover | Proves statements for every input satisfying their assumptions. | The stated properties for all inputs satisfying each law’s preconditions. |
 
 Ten deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See [Testing](guides/testing.md#deliberate-mutations) for the optional mutation experiment.
 
-A proof establishes the **chosen law**. It cannot tell you whether that law covers every required behavior. Hold Ledger's independent `Spec` and concrete traces help challenge the laws, though they can share a mistaken policy. See [Verify the behavior you meant](guides/agentic_verification.md) for the practical workflow and [Specification assurance](guides/specification_assurance.md) for the research.
+A proof establishes the **chosen law**. It cannot tell you whether that law covers every required behavior. Hold Ledger's independent `Spec` and concrete traces help challenge the laws, though they can share a mistaken policy. See [Agentic verification](guides/agentic_verification.md) for the practical workflow and [Specification assurance](guides/specification_assurance.md) for the research.
 
 ---
 
@@ -174,7 +174,7 @@ The compiler and translator remain trusted. A separate differential harness comp
 
 ## Interactive Walkthrough
 
-You don't need Lean installed to explore the pure engine or OTP runtime.
+You don't need Lean installed to explore the pure engine or OTP runtime. Quickstart provisions Lean for the proof guides; the walkthrough below uses Elixir alone.
 
 ### 1. The Pure State Machine
 Start an interactive shell:
@@ -301,6 +301,7 @@ Deep-dive documentation is located in `guides/`:
 
 | Guide | Description |
 |---|---|
+| [**Getting Started**](guides/getting-started.md) | Detailed toolchain setup, Ubuntu 26.04 dependencies, and dependency installation. |
 | [**Formal Verification Crash Course**](guides/formal_verification_crash_course.md) | Introduction to Lean, Lynx, and reading and writing proofs, with a worked law walkthrough. |
 | [**Agentic Verification**](guides/agentic_verification.md) | Practical loop: establish intent, compare contracts, challenge outcomes, prove and report evidence. |
 | [**Human Review**](guides/human_review.md) | Review claims and definitions, resolve disputed requirements, and decide what to delegate. |
@@ -310,9 +311,8 @@ Deep-dive documentation is located in `guides/`:
 | [**Specification**](guides/specification.md) | Full contract: state tuple shape, event semantics, transitions, error atoms. |
 | [**Runtime and Recovery**](guides/runtime.md) | Using `HoldLedger.Server`, owned journal framing, crash recovery, and reconciliation. |
 | [**Processors**](guides/processors.md) | The processor behavior contract and using `HoldLedger.Processor.Sim` for fault injection. |
-| [**Verification**](guides/verification.md) | Detailed verification catalog, checker configurations, proof costs, and evidence identity. |
 | [**Testing**](guides/testing.md) | Unit test structure, `StreamData` configuration, mutation testing runner, and benchmarks. |
-| [**Getting Started**](guides/getting-started.md) | Detailed toolchain setup, Ubuntu 26.04 dependencies, and dependency installation. |
+| [**Verification**](guides/verification.md) | Detailed verification catalog, checker configurations, proof costs, and evidence identity. |
 | [**Troubleshooting**](guides/troubleshooting.md) | Resolving toolchain drift, stack overflows in Nanoda, and disk lock issues. |
 
 ---

@@ -1,8 +1,8 @@
-# How do you know the contract is right?
+# Specification assurance
 
 A verifier checks whether a program satisfies a formal statement under its assumptions. It cannot tell you whether you chose the right statement.
 
-For the steps to follow, use [Verify the behavior you meant](agentic_verification.md).
+For the steps to follow, use [Agentic verification](agentic_verification.md).
 
 ## A proof, a contract, and an intention
 
@@ -57,6 +57,14 @@ This separates two tasks sometimes conflated as “negative testing.” A bad ou
 
 The [void example](agentic_verification.md#3-try-to-break-the-contract) applies this distinction to Hold Ledger. Finite challenges can expose missing clauses; they cannot establish that a contract covers every requirement. Challenge the reference as well as the candidate.
 
+### Which mistakes can a proof expose?
+
+For a fixed implementation, narrowing the precondition or weakening the postcondition reduces what must be proved. If the old claim was true, the reduced claim remains true, even when it drops an important requirement. An impossible precondition removes every case. Verifier acceptance cannot detect those omissions.
+
+Widening the precondition or strengthening the postcondition asks more of the implementation. A counterexample may reveal that the new promise is false. But the implementation might satisfy it, and a failed proof attempt alone does not decide either way. Nor is a stronger postcondition automatically good policy. Adding “output elements are unique” to “output is sorted” strengthens that postcondition, but a sort that removes duplicates can satisfy both while violating the requirement to preserve the input’s elements.
+
+A green proof still needs review against the required behavior, whichever direction the contract changed.
+
 ## Comparison needs a reference
 
 Logical comparison can establish how two contracts relate *if the necessary implications are proved*. In the usual refinement view, permitting more valid inputs and guaranteeing at least as much about outputs is a stronger service contract. Be careful with the word **stronger**:
@@ -68,11 +76,39 @@ Logical comparison can establish how two contracts relate *if the necessary impl
 
 If both directions of the relevant implications are proved under their stated conditions, the candidate and reference contracts are equivalent for those conditions. If only one direction is proved, a one-way refinement relation may be established. A rejected implication proof establishes only that the checker did not prove it. A counterexample satisfying one condition and violating the other can establish a genuine difference. Timeouts and incomplete obligations remain unresolved.
 
+For example, compare the admission precondition with a candidate that excludes exact fits. The following expressions compare the two predicates on an exact-fit request:
+
+```elixir
+alias HoldLedger.Spec
+reference = &Spec.request_eligible?/3
+candidate = fn state, key, amount ->
+  reference.(state, key, amount) and amount < elem(state, 0) - elem(state, 2)
+end
+s = {100, 1, 0, 0, []}
+
+reference.(s, 11, 100)  # true
+candidate.(s, 11, 100)  # false
+
+# Reference implies candidate: false for this exact-fit request.
+(not reference.(s, 11, 100)) or candidate.(s, 11, 100)
+# Candidate implies reference: true, since candidate includes reference.
+(not candidate.(s, 11, 100)) or reference.(s, 11, 100)
+```
+
+Read `A → B` as “if A holds, B must hold.” To compare the domains, check both directions:
+
+- `reference → candidate`: every required input is admitted. The exact-fit request disproves this implication.
+- `candidate → reference`: every admitted input belongs to the reference domain. This follows from the candidate’s definition, which includes the reference predicate.
+
+A property test samples these implications. A proof must establish them for every state, key and amount under the stated assumptions. This compares preconditions only; compare the promised results separately.
+
 Equivalence to a reference is not equivalence to human intention. In Hold Ledger, `Spec` shares no implementation with `Ledger` and recomputes totals, but its transition branches often follow the same policy structure. Comparison can catch implementation drift; it cannot settle a policy both versions misunderstood.
 
 ## What two Verus studies found
 
-**VerusEval** evaluated LLM-generated Verus contracts using semantic triviality checks, validated input/output cases and comparison with reference contracts. It studied 13,716 artifacts from 762 tasks. Of the 7,081 verifier-accepted artifacts with an executable target function, 2,995 (42.3%) completed all three semantic checks without a flag; 3,790 (53.5%) were flagged by at least one; and 296 (4.2%) were unflagged but had incomplete checks.
+**VerusEval** evaluated LLM-generated Verus contracts using semantic triviality checks, validated input/output cases and comparison with reference contracts. It studied 13,716 artifacts from 762 tasks. Of the 7,081 verifier-accepted artifacts with an executable target function, 2,995 (42.3%) completed all three semantic checks without a flag; 3,790 (53.5%) were flagged by at least one. The remaining 296 (4.2%) were unflagged but had incomplete checks.
+
+The I/O checks used the available validated cases; some suites lacked one or more case kinds.
 
 The 53.5% figure is **not a confirmed error rate**. A comparison flag may mean only that an implication proof failed. Among flagged artifacts, 44.7% had a counterexample or a proved triviality obligation; 55.0% were flagged by comparison alone.
 
@@ -80,7 +116,7 @@ The study also looked for defects in reference contracts. Its authors screened a
 
 See [VerusEval, sections 3–6](https://arxiv.org/html/2610.26464v1) (October 2026), and its [version history](https://arxiv.org/abs/2610.26464).
 
-**Verus-SpecGym** studied agents writing Verus specifications for 581 Codeforces programming tasks. It evaluated generated preconditions and postconditions with executable checks, using examples and adversarial cases. The authors report that an LLM-based judge missed 26% of the failures caught by their evaluator in that setting. This supports using concrete challenges alongside model review. It does not make any finite suite a completeness proof.
+**Verus-SpecGym** studied agents writing Verus specifications for 581 Codeforces programming tasks. It evaluated generated preconditions and postconditions with executable checks, using examples and adversarial cases. The authors report that one LLM-based judge missed 26% of the failures caught by their evaluator in that setting. This supports using concrete challenges alongside model review. It does not make any finite suite a completeness proof.
 
 See the [Verus-SpecGym paper](https://arxiv.org/abs/2605.26457) (May 2026) and [code and benchmark](https://github.com/formal-verif-is-cool/verus-spec-gym).
 

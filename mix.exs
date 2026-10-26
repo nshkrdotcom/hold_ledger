@@ -60,6 +60,21 @@ defmodule HoldLedger.MixProject do
       guides/audit.md
     )
 
+    guide_groups = [
+      "Getting Started": ["README.md", "guides/getting-started.md"],
+      "Learning Formal Verification": learning_guides,
+      "Using the Ledger": [
+        "guides/architecture.md",
+        "guides/specification.md",
+        "guides/runtime.md",
+        "guides/processors.md"
+      ],
+      "Testing and Verification": ["guides/testing.md", "guides/verification.md"],
+      Reference: ["guides/troubleshooting.md", "CHANGELOG.md", "LICENSE"]
+    ]
+
+    ordered_extras = Enum.flat_map(guide_groups, fn {_group, paths} -> paths end)
+
     [
       main: "readme",
       authors: ["nshkrdotcom"],
@@ -69,23 +84,11 @@ defmodule HoldLedger.MixProject do
       assets: %{"assets" => "assets"},
       formatters: ["html", "markdown", "epub"],
       extras:
-        Enum.uniq(["README.md"] ++ learning_guides ++ Path.wildcard("guides/*.md")) ++
-          ["CHANGELOG.md", {"LICENSE", [title: "MIT License"]}],
-      groups_for_extras: [
-        "Getting Started": ["README.md", "guides/getting-started.md"],
-        "Learning Formal Verification": learning_guides,
-        "Using the Ledger": [
-          "guides/specification.md",
-          "guides/architecture.md",
-          "guides/runtime.md",
-          "guides/processors.md"
-        ],
-        "Testing and Verification": [
-          "guides/testing.md",
-          "guides/verification.md"
-        ],
-        Reference: ["guides/troubleshooting.md", "CHANGELOG.md", "LICENSE"]
-      ],
+        Enum.map(Enum.uniq(ordered_extras ++ Path.wildcard("guides/*.md")), fn
+          "LICENSE" -> {"LICENSE", [title: "MIT License"]}
+          path -> path
+        end),
+      groups_for_extras: guide_groups,
       groups_for_modules: [
         Overview: [HoldLedger],
         "Ledger and Specification": [

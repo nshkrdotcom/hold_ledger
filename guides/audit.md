@@ -7,6 +7,14 @@ and runtime boundaries. For a single agent change, use [Human review](human_revi
 Compare subsequent changes before relying on this audit route. [Verification](verification.md)
 defines the required proof evidence.
 
+In a full checkout, start the comparison with:
+
+```sh
+git diff 618ee1e7f17e490f643bed898f00b9f67c1cd2b4 HEAD -- lib test verification scripts guides/specification.md AGENTS.md mix.exs mix.lock lean-toolchain .tool-versions .github
+```
+
+This covers the policy, implementation, laws, runtime tests and checking setup discussed below. Follow any changed dependencies beyond those paths.
+
 ## Hold Ledger: the top-level view
 
 Hold Ledger concerns authorization holds for one account. It does not implement

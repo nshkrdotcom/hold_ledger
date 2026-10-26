@@ -33,8 +33,7 @@ In Hold Ledger, apply Tier 1 review to these meanings and boundaries:
 | `lib/hold_ledger/spec.ex`, `test/laws/*.exs` | Reference behavior, assumptions and conclusions; classify embedded proof changes separately below |
 | `test/support/lean/*.lean`, `test/support/proof_case.ex` | Model definitions, theorem signatures, generated predicates and translation wiring |
 | `verification/obligations.json`, `verification/laws.json`, `verification/baseline.json` | Required claims, registered groups and historical evidence |
-| `scripts/run_laws.py`, `scripts/verify_laws.exs`, `scripts/obligations.py`, `scripts/formal_gate.py`, `.github/workflows/`, `tooling_tests/` | Selection, exports, rejection of incomplete runs and checks on that machinery |
-| `scripts/verify_pins.py`, `scripts/toolchains.json`, `lean-toolchain`, `.tool-versions`, `.python-version`, `mix.exs`, `mix.lock`, `pyproject.toml`, `uv.lock` | Compiler, translator, dependencies and checker versions |
+| `scripts/`, `.github/`, `tooling_tests/` and toolchain/dependency pins | Whether incomplete checks can pass, and whether reports identify the intended source and tool versions |
 | `mutants/`, witnesses and property generators under `test/` | Whether the intended faults and input domains are still exercised |
 
 These are examples to navigate the code, not an exhaustive filename-based classifier. Follow changed helpers too.
@@ -42,7 +41,7 @@ These are examples to navigate the code, not an exhaustive filename-based classi
 To distinguish proof repair from a changed claim:
 
 1. View enough diff context to identify the enclosing declaration. Start with `git diff -U20 BASE HEAD -- test/laws test/support/lean`; open the full declaration in both revisions if necessary. A context-free diff can hide that the changed line belongs to a definition.
-2. In a law `.exs` file, changes outside the `proof: ~LEAN` sigil need Tier 1 review. Inside the sigil, apply the same rules as for a `.lean` file.
+2. In a law `.exs` file, changes outside the `proof: ~LEAN` sigil need Tier 1 review, except for the resource-only edits described below. Inside the sigil, apply the same rules as for a `.lean` file.
 3. Review anything that can change meaning or dependencies as Tier 1: definition bodies, types, instances, theorem signatures, imports, options and syntax extensions. Surrounding commands matter too: a `variable` declaration can alter later theorem binders. These are review triggers, not proof that the claim changed.
 4. Tier 3 requires changes confined to an existing theorem, lemma or example proof, or a law's proof sigil, with statements and dependencies unchanged. Check nested declarations too. A `def` body remains Tier 1 even after `:=` or `by`. If you cannot establish the boundaries, use Tier 1 review.
 
@@ -57,7 +56,7 @@ Use this checklist for Tier 1 review:
 
 ## Establish expected behavior before proof work
 
-Start with a policy sentence and three to five traces. The agent can propose cases and alternate interpretations. Cite the policy clause or requirement decision behind each expected outcome, rather than deriving it from `Spec.expected_step/2` or the implementation. If the policy leaves a case open, resolve it before recording the expectation as an ordinary test.
+Start with a policy sentence and a handful of traces. The agent can propose cases and alternate interpretations. Cite the policy clause or requirement decision behind each expected outcome, rather than deriving it from `Spec.expected_step/2` or the implementation. If the policy leaves a case open, resolve it before recording the expectation as an ordinary test.
 
 For a new policy, cover a safety case, a case where something must succeed, a boundary, and relevant retry, failure or restart sequences. The state tuple is `{amount_limit, hold_limit, used_amount, used_holds, entries}`; keys are integers.
 
@@ -88,7 +87,7 @@ Inspect any proposed weakening against the requested behavior. If it requires a 
 
 When a proof fails, run the witness and property for the same claim. If there is a counterexample, replay it and confirm the precondition holds while the conclusion fails. If there is not, inspect the goal, generator coverage and reference. Neither a test pass nor a failed proof attempt settles the disputed claim.
 
-Resource increases need explanation and fresh results. A timeout bump is not necessarily a mathematical claim change, but it changes the operational check; a timeout must never become success by reporting convention.
+An edit confined to a literal heartbeat or timeout budget changes the resources available, not the claim. Review its cost and fresh results without reopening the meaning of an unchanged statement. This exception requires unchanged selection, translation and timeout-failure handling. Cutoffs, preludes, termination suffixes and other options still need Tier 1 review; a timeout must never be reported as success.
 
 ## Common Ways a Green Result Can Mislead
 
@@ -103,9 +102,6 @@ Resource increases need explanation and fresh results. A timeout bump is not nec
 | A law and its inventory entry vanish together | Catalog and required inventory | Compare required coverage with the previous revision and policy. |
 | Numeric identity is blurred | `==`, `===`, codecs, queried domains | Exercise `1` and `1.0`; decide where exact identity is required. |
 | A witness or property becomes weaker or skipped | Tests, tags, generators, filters | Replay the original regression and inspect effective selection. |
-| “Supported” is presented as proof | Catalog status and report | Require a matching successful full run. |
-| Old exports or cache results are reused | Source/export identities and acceptance mode | Require fresh acceptance on the reviewed source. |
-| A direct proof attempt passes but acceptance is incomplete | Runner report and CI jobs | Check full scope, exports, all checker results and allowed axioms. |
 
 ## Use mutations to challenge claims
 
@@ -134,7 +130,7 @@ The [Testing guide](testing.md#deliberate-mutations) describes the optional isol
 
 With a readable base-to-head diff, README/guides-only edits do not trigger the full formal job. `scripts/formal_gate.py` selects it for paths such as `lib/`, laws and `mix.exs`; an explicit request or unavailable diff also requires it.
 
-Match the report and its source hashes to the reviewed declarations. Keep pure proof checks, ordinary tests, runtime fault tests and processor assumptions separate.
+Match fresh exports and report source hashes to the reviewed declarations. A cached development pass or a catalog label does not establish full acceptance. Keep pure proof checks, ordinary tests, runtime fault tests and processor assumptions separate.
 
 For Tier 2 runtime changes, follow the [server and journal audit](audit.md#server-and-journal-follow-one-confirmation-through-failure): caller authentication; late worker correlation; sync-before-transition/effects ordering; crash replay and incomplete-tail handling; and remote retry identity. Require runtime or fault-injection regressions for changed paths. Rerun the committed policy traces whenever Ledger changes.
 
@@ -148,9 +144,13 @@ Consider three changes involving a pending void:
 | A feature request says “release capacity after 24 hours” | Show the conflict with retention until trusted confirmation; construct a trace where the processor still holds the authorization | A person must resolve the conflicting requirements and the resulting exposure risk |
 | An agent proposes classifying future timeout repairs automatically | Evaluate it on previously reviewed changes, including hidden predicate edits and misleading “proof-only” summaries | Decide which cases the evidence supports delegating and which still need review |
 
-For that last case, justify each expected classification with the diff and the requirement it affects. A replayable violation, such as a mutant failing a policy trace, can support that judgment. An agent can replay the check; agreeing with another generated label is not enough.
+For the first row, start with `s = {100, 2, 100, 1, [{1, 100, :voiding}]}`. Applying `{:timeout, 1}` must return `{s, :stale, []}`. Releasing capacity would contradict that trace.
+
+For the classification example, justify each expected classification with the diff and the requirement it affects. A replayable violation, such as a mutant failing a policy trace, can support that judgment. An agent can replay the check; agreeing with another generated label is not enough.
 
 Resolve disputed labels before scoring the run, and keep some examples out of the agent's development set. Check whether it catches guarantee changes, accepts harmless repairs and flags ambiguous cases. Review missed defects and unnecessary escalations before delegating more decisions. Fewer requests for help are useful only if consequential mistakes are still caught.
+
+The seven exercises below provide a small practice set, including the misleading proof-only summary in E and the harmless repair in G. Use them to develop the method; evaluate it on additional changes whose answers the agent has not seen.
 
 Delegation can grow one decision at a time. Success on timeout repairs would not establish competence to choose new processor assumptions or change the retention policy.
 
@@ -237,7 +237,7 @@ C removes noninteger lookup queries: stored key `1` is found by `1.0` under `==`
 
 D removes required coverage from both inventories; compare with the base revision and policy.
 
-E weakens the definition by removing the upper bound; `used = 101`, `limit = 100` now satisfies it. Unchanged theorem signatures do not preserve their meaning when a referenced definition changes.
+E weakens the definition by removing the upper bound; `used = 101`, `limit = 100` now satisfies it. Theorems that conclude `valid` no longer promise `used ≤ limit`; theorems that assume it must now cover a larger domain. Unchanged theorem signatures do not preserve their meaning when a referenced definition changes.
 
 F drops the duplicate result, exact unchanged state and empty effects. A valid state with a rejection result could satisfy the new conclusion. Restore the duplicate contract. B through F also require Tier 1 review.
 
@@ -245,4 +245,4 @@ G is Tier 3: it removes an unnecessary intermediate fact from the proof while pr
 
 </details>
 
-> **Limits.** A failed tactic or timeout is not a counterexample; mutation attribution needs a checked baseline and a reproduced violation. A survivor matters only after confirming the planted fault and completed checks. Kernel checking validates proofs against their definitions and assumptions, not the choice of those definitions. Compiler/translator correspondence, OS and storage behavior, and real processor guarantees remain separate trust questions. The [assurance audit](audit.md) examines those boundaries; [Verification](verification.md) defines acceptance evidence.
+The [assurance audit](audit.md) examines compiler, runtime and processor trust boundaries; [Verification](verification.md) defines acceptance evidence.

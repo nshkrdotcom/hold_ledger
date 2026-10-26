@@ -1,4 +1,4 @@
-# Verify the behavior you meant
+# Agentic verification
 
 An implementation could release an authorized hold before the processor confirms its void and still leave Hold Ledger's counters consistent. The law `po_b1_void` checks that the resulting ledger is valid. Other laws are needed to rule out premature release and missing effects.
 
@@ -42,6 +42,11 @@ import ExUnit.Assertions
 
 s = {100, 2, 100, 1, [{1, 100, :authorized}]}
 
+# Check the input assumptions before testing candidate outputs.
+assert Spec.valid?(s)
+assert Spec.lookup(elem(s, 4), 1) === {:ok, {1, 100, :authorized}}
+refute Spec.release_evidence?({:void, 1}, 1)
+
 # Required outcome of Ledger.step(s, {:void, 1}):
 correct = {{100, 2, 100, 1, [{1, 100, :voiding}]},
            :voiding, [{:void, 1}]}
@@ -79,6 +84,8 @@ assert retained.(lost_effect)
 
 # Without the effect, premature release passes only the effects check.
 early_release_no_effect = put_elem(early_release, 2, [])
+assert weak.(early_release_no_effect)
+refute required.(early_release_no_effect)
 assert effects_ok.(early_release_no_effect)
 refute retained.(early_release_no_effect)
 ```
@@ -89,20 +96,27 @@ Run it with:
 uv run --locked python scripts/local_run.py mix run tmp/contract_challenge.exs
 ```
 
-Validity alone accepts all three outputs. The exact-result predicate rejects both planted mistakes; its expected tuple comes from policy rather than from calling `Ledger` or `Spec`.
+The input satisfies the retention law’s assumptions: it is valid, key `1` and amount `100` are integers, the matching entry is `:authorized`, and a local void request is not release evidence. The predicates distinguish these outputs:
 
-The existing laws already address these faults:
+| Output | `valid?` | `effects_valid?` (PO-B3) | `exposed_entry?` (PO-EXPOSURE) |
+|---|---|---|---|
+| `correct` | true | true | true |
+| `early_release` | true | false | false |
+| `lost_effect` | true | false | true |
+| `early_release_no_effect` | true | true | false |
 
-- `po_b3` uses `effects_valid?` to check effects against the event, result and stored identity. It rejects the lost effect, but accepts premature release when the output contains no effect.
-- `po_exposure_retain` requires the issued key and amount to remain in an exposed status when the event is not release evidence, under its valid-state and lookup hypotheses. It rejects both premature-release outputs but permits the missing effect.
+`effects_valid?` rejects `early_release` because a `:voided` result must carry no effects. Removing the effect makes that check pass, even though capacity was released too early. The retention predicate catches that mistake. Conversely, retention alone accepts `lost_effect`.
 
-Together the predicates reject all three wrong outputs. These assertions check one input; the laws state the general claims.
+These are predicates from the existing `po_b3` and `po_exposure_retain` laws. The assertions check their conclusions on one input; they do not establish new universal proofs. The exact-result predicate rejects each wrong output using the tuple chosen from policy.
+
+The `early_release` and `lost_effect` outputs match `mutants/10_premature_void_release` and `mutants/07_void_effect`, respectively. The [mutation instructions](testing.md#deliberate-mutations) explain how to run those isolated examples.
 
 Other useful challenges target different questions:
 
 | Challenge | What it probes in Hold Ledger |
 |---|---|
 | Valid request that exactly fills amount and last slot | Whether the contract requires positive admission, not just bounded state (`PO-A2`) |
+| Invalid ledger `{100, 2, 0, 1, [{1, 100, :authorized}]}` | Whether `Spec.valid?` excludes a state whose amount counter disagrees with its entries |
 | Invalid request amount `0` on a valid state | Whether the specified result is `:malformed`; it is not an invalid *ledger state* |
 | Timeout followed by another request | Whether `:unknown` retains capacity |
 | Void, delayed confirmation, then another request | Whether capacity is held until confirmation and released once |
@@ -130,12 +144,12 @@ The [Testing guide](testing.md#deliberate-mutations) covers isolated mutant runs
 When the code, contract, expected trace and reference disagree, identify the exact disagreement first.
 
 - **A verified implementation admits a wrong output:** the contract may be missing a guarantee. Try a wrong-output pair and inspect the postcondition.
-- **A correct input is excluded:** the precondition may be too strong. Check the promised input domain before narrowing it.
+- **A required input is excluded:** the precondition may be too strong. Compare it with the promised input domain and widen it if the requirement covers the case.
 - **A reference disagrees with a stronger generated guarantee:** the reference might omit a useful promise, or the generated postcondition might demand behavior the requirements do not call for. Stronger postconditions constrain implementations; stronger preconditions constrain callers. Check the original requirement and construct a distinguishing case.
 - **A proof attempt fails without a counterexample:** the mathematics may be true but the proof incomplete; the claim remains unresolved.
 - **A model proof passes but a runtime test fails:** inspect translation, task lifetimes, journal ordering and external assumptions. The pure proof does not decide those questions.
 
-Ask the agent to construct a distinguishing case or prove the relevant implication. The [research guide](specification_assurance.md#comparison-needs-a-reference) explains what contract comparisons establish and how to interpret incomplete checks.
+Ask the agent to construct a distinguishing case or prove the relevant implication. [Specification assurance](specification_assurance.md#comparison-needs-a-reference) explains what contract comparisons establish and how to interpret incomplete checks.
 
 ### 6. State the result and what remains open
 
