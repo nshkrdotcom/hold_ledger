@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hold_ledger.svg" alt="Hold Ledger" width="160" height="160">
+  <img src="assets/hold_ledger.svg" alt="Hold Ledger" width="200" height="200">
 </p>
 
 # Hold Ledger
