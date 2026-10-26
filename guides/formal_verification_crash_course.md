@@ -2,13 +2,14 @@
 
 Changing `>` to `>=` can reject a request that exactly fits the available capacity. A test with spare capacity still passes. A generated test catches the bug only if it exercises equality. A proof of “every fitting request is admitted” must cover equality too.
 
-This guide assumes you know Elixir and property tests. You will run a complete Lynx proof, read its generated Lean, then apply the workflow to Hold Ledger. Complete the [toolchain setup](getting-started.md) first. Save the examples under ignored `tmp/`.
+This guide assumes you know Elixir and property tests. You will run a complete Lynx proof, read its generated Lean, then apply the workflow to Hold Ledger. Complete the [toolchain setup](getting-started.md) first. Save the examples under ignored `tmp/`. When reviewing agent work, read the claim and its definitions before the tactics: a checked proof can establish the wrong requirement.
 
 ## Terms You Will Need
 
 | Term | Meaning here |
 |---|---|
-| Law / proof obligation | A claim the project undertakes to prove; labels such as PO-A4 identify claims in the catalog. |
+| Law / obligation | A law is an executable claim declared with `law`; an obligation is a claim the project requires checked, including Lean-only theorems. `PO-*` labels identify obligations. |
+| Group / catalog entry | A group is a unit selected for verification and may contain multiple theorems. `verification/laws.json` registers each group; `verification/obligations.json` records the required inventory. |
 | Precondition / hypothesis | An assumption under which the claim must hold; Lynx writes the precondition as `requires:`. |
 | Conclusion | What must follow from those assumptions; Lynx writes it as `expects:`. |
 | Witness / counterexample | A witness satisfies the precondition; a counterexample also makes the conclusion false. |
@@ -149,7 +150,7 @@ A timeout needs the same care: inspect the last goal and reduce the proof worklo
 
 ## Plant a Bug and Watch the Checks
 
-Copy `tmp/cap_test.exs` to `tmp/cap_mutant_test.exs`. Change only the implementation's `amount > remaining` to `amount >= remaining`. This is a **mutation**; the changed copy is the **mutant**. Run:
+Copy `tmp/cap_test.exs` to `tmp/cap_mutant_test.exs`. Rename its module to `CrashCourseMutantTest` and change the proof reference `Elixir.CrashCourseTest.«admit/2»` to `Elixir.CrashCourseMutantTest.«admit/2»`. This keeps its generated sources under a separate `tmp/CrashCourseMutantTest/laws-capacity/` directory. Then change the implementation's `amount > remaining` to `amount >= remaining`. This is a **mutation**; the changed copy is the **mutant**. Run:
 
 ```sh
 uv run --locked python scripts/local_run.py mix test tmp/cap_mutant_test.exs --exclude laws --seed 12345
@@ -202,18 +203,7 @@ example (amount : Int) (positive : amount > 0) (nonpositive : amount ≤ 0) : am
 
 No integer satisfies both hypotheses. The proof establishes nothing about any actual admission. One witness rules out an entirely impossible precondition; it does not establish that every intended case is included.
 
-The duplicate proof uses helper lemmas and generated contracts:
-
-| Source | Role |
-|---|---|
-| `test/support/lean/CoreLookup.lean` | Relates the independently written `Ledger.find/2` and `Spec.lookup/2` by induction: prove the empty-list case, then each entry using the remaining list's result. |
-| `test/support/lean/Lookup.lean` | Uses lookup compatibility and state shape to prove the duplicate and conflict contracts. |
-| Generated `ProofContracts` | Supplies predicates derived from the law declarations; the shared theorem must establish those predicates. |
-| `test/laws/po_a4_duplicate_test.exs` | States the executable law and cites its shared theorem. |
-
-`Spec.proper_entries?/1` establishes a list ending in `[]`, containing correctly shaped entries with integer keys, positive integer amounts and known statuses. That lets lookup proofs reason about list entries rather than arbitrary malformed terms. Uniqueness and accounting are additional parts of `Spec.valid?/1`.
-
-Changing a reducer regenerates its Lean definition and may break helper lemmas before a top-level law is reached. Follow the first failing dependency, check the generated code, then repair the argument against the existing contract. The [Verification guide](verification.md#shared-proof-theory) covers dependency loading, caching, catalog registration and acceptance commands.
+The [shared proof theory reference](verification.md#shared-proof-theory) maps the duplicate law to its lookup lemmas and generated contracts.
 
 ## Exercises and Solutions
 

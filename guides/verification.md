@@ -105,6 +105,21 @@ reuse during direct `mix test` proof attempts. Editing a shared source invalidat
 its dependents. These attempts do not establish cold acceptance; use
 `scripts/run_laws.py` for that.
 
+### Duplicate-law dependencies
+
+The duplicate proof uses helper lemmas and generated contracts:
+
+| Source | Role |
+|---|---|
+| `test/support/lean/CoreLookup.lean` | Relates the independently written `Ledger.find/2` and `Spec.lookup/2` by induction: prove the empty-list case, then each entry using the remaining list's result. |
+| `test/support/lean/Lookup.lean` | Uses lookup compatibility and state shape to prove the duplicate and conflict contracts. |
+| Generated `ProofContracts` | Supplies predicates derived from the law declarations; the shared theorem must establish those predicates. |
+| `test/laws/po_a4_duplicate_test.exs` | States the executable law and cites its shared theorem. |
+
+`Spec.proper_entries?/1` establishes a list ending in `[]`, containing correctly shaped entries with integer keys, positive integer amounts and known statuses. That lets lookup proofs reason about list entries rather than arbitrary malformed terms. Uniqueness and accounting are additional parts of `Spec.valid?/1`.
+
+Changing a reducer regenerates its Lean definition and may break helper lemmas before a top-level law is reached. Follow the first failing dependency, check the generated code, then repair the argument against the existing contract. Use the development cache and acceptance commands above for this workflow.
+
 ## Detached verification
 
 After committing the checkout, start a durable full run with:

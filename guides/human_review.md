@@ -1,12 +1,10 @@
 # Human review: what to check when an agent changes a Lynx project
 
-The kernel checks proofs. You check what they are about. The agent can write code and proofs; a human approves the claims and assumptions.
+The kernel checks proofs. You check what they are about: read the statement and its definitions before the tactics. The agent can write code and proofs; a human approves the claims and assumptions.
 
 Use this guide for each proposed change. If you are new to Lynx, read the [crash-course glossary](formal_verification_crash_course.md#terms-you-will-need) first. The [assurance audit](audit.md) covers the deeper system review. Here, start with the diff.
 
 The main failure mode is pressure to get checks green: weakening a claim can be easier than repairing the implementation or proof. The agent's report helps you navigate; the diff decides the tier.
-
-Here, an **obligation** is a required claim; `obligations.json` lists what must be checked, while the **catalog**, `laws.json`, registers its implementation. `PO-*` labels identify those claims.
 
 ## Divide the Work
 
@@ -25,14 +23,26 @@ The agent may draft a statement or Spec change; a human must approve its meaning
 | 3 | Only confirmed proof-body changes | Require fresh full acceptance; usually skip line-by-line tactics |
 | Documentation | Changed explanations or promises | Compare with the contracts; policy expectations can change here too |
 
-Review-sensitive files include Spec, law declarations, Lean definitions, required-obligation inventories, proof adapters, runners, CI and toolchain pins. Changes there can alter what a successful proof establishes.
+In Hold Ledger, apply Tier 1 review to these meanings and boundaries:
+
+| Files | What to inspect |
+|---|---|
+| `lib/hold_ledger/spec.ex`, `test/laws/*.exs` | Reference behavior, assumptions and conclusions; classify embedded proof changes separately below |
+| `test/support/lean/*.lean`, `test/support/proof_case.ex` | Model definitions, theorem signatures, generated predicates and translation wiring |
+| `verification/obligations.json`, `verification/laws.json`, `verification/baseline.json` | Required claims, registered groups and historical evidence |
+| `scripts/run_laws.py`, `scripts/verify_laws.exs`, `scripts/obligations.py`, `scripts/formal_gate.py`, `.github/workflows/`, `tooling_tests/` | Selection, exports, rejection of incomplete runs and checks on that machinery |
+| `scripts/verify_pins.py`, `scripts/toolchains.json`, `lean-toolchain`, `.tool-versions`, `.python-version`, `mix.exs`, `mix.lock`, `pyproject.toml`, `uv.lock` | Compiler, translator, dependencies and checker versions |
+| `mutants/`, witnesses and property generators under `test/` | Whether the intended faults and input domains are still exercised |
+
+These are examples to navigate the code, not an exhaustive filename-based classifier. Follow changed helpers too.
 
 To distinguish proof repair from a changed claim:
 
 1. Inspect the complete base-to-head diff, including added/deleted files, renames and surrounding declarations. Do not trust a “proof-only” label.
-2. A changed Lean line touching `def`, `abbrev`, `instance`, `structure`, `inductive`, `class`, `notation`, `macro`, `syntax`, `elab`, `set_option`, `open`, `import`, `attribute`, `axiom`, `opaque` or `unsafe` makes the change Tier 1. This deliberately overclassifies comments or local definitions when uncertain.
-3. Compare every changed theorem/lemma signature in full, including multiline binders, hypotheses, result types and declaration attributes before the proof. A signature change is Tier 1.
-4. Only changes confined to bodies after those checks qualify for Tier 3. A body may start with `by` or be a proof expression; do not classify it by indentation alone. Unclear boundaries or changed macros/elaborators (code that interprets proof syntax) require Tier 1 review.
+2. In a law `.exs` file, treat each hunk with changed lines outside the `proof: ~LEAN` sigil body as Tier 1. Context lines alone do not change the tier. Inside that sigil, apply the same Lean rules as for a `.lean` file.
+3. A changed Lean line touching `def`, `abbrev`, `instance`, `structure`, `inductive`, `class`, `notation`, `macro`, `syntax`, `elab`, `set_option`, `open`, `import`, `attribute`, `axiom`, `opaque`, `unsafe`, `variable`, `universe`, `namespace`, `section`, `end`, `export`, `local`, `scoped`, `deriving`, `macro_rules`, `initialize`, `run_cmd` or `#eval` makes the change Tier 1. This deliberately overclassifies comments or local definitions when uncertain.
+4. Compare every changed theorem/lemma signature in full, including multiline binders, hypotheses, result types and declaration attributes before the proof. A signature change is Tier 1.
+5. Only changes confined to bodies after those checks qualify for Tier 3. A body may start with `by` or be a proof expression; do not classify it by indentation alone. Unclear boundaries or changed macros/elaborators (code that interprets proof syntax) require Tier 1 review.
 
 Use this checklist for Tier 1 review:
 
@@ -123,24 +133,76 @@ For Tier 2 runtime changes, follow the [server and journal audit](audit.md#serve
 
 ## Practice on Six Proposed Changes
 
-These are synthetic PR summaries, not existing branches or executable fixtures. Review them without the answers first. For each, identify the changed guarantee, give a distinguishing trace or witness, and state what would be needed to approve it.
+These are abbreviated teaching diffs, not patches to apply to the working ledger. A diff hunk is one block of nearby changes. `-` removes a line; `+` adds one. For each, identify the tier, the lost guarantee and a distinguishing input before opening the answers. The unchanged proof bodies are omitted.
 
-**A — Faster retention proof.** An agent adds `status != :voiding` to a capacity-retention law and reports full acceptance.
+**A — Faster retention proof** — `test/laws/po_exposure_retain_test.exs`:
 
-**B — Faster accounting.** The timeout branch releases counters early. Spec drops the check that counters equal sums over holding entries. The PR reports that Ledger and Spec agree.
+```diff
+-          status in [:sent, :unknown, :authorized, :voiding] and
++          status in [:sent, :unknown, :authorized, :voiding] and status != :voiding and
+```
 
-**C — Cleaner key types.** A terminal-preservation law adds `is_integer(key)` to its hypotheses. The agent calls it a harmless alignment with the public API and proves the restricted statement.
+**B — Faster accounting** — implementation and reference change together:
 
-**D — Remove obsolete verification.** An agent removes a terminal-preservation group from both `obligations.json` and `laws.json`, deletes its proof, and reports that inventory comparison and all remaining checks pass.
+```diff
+--- lib/hold_ledger/ledger.ex
+-        {{amount_limit, hold_limit, used_amount, used_holds, set_status(entries, key, :unknown)},
++        {{amount_limit, hold_limit, 0, 0, set_status(entries, key, :unknown)},
+--- lib/hold_ledger/spec.ex
+-      used_amount == hold_amount(entries) and used_holds == hold_count(entries) and
+```
 
-**E — Proof-only cleanup.** The PR description says `Claim delta: none`. A Lean diff changes `def valid` or an `instance` used by a theorem, while all theorem signatures and proof results remain unchanged.
+**C — Cleaner key types** — `test/laws/po_b5_voided_test.exs`:
 
-**F — Simpler postcondition.** An admission law previously required the expected admitted state and result. It now requires only `Spec.valid?(result_state)`, and its proof passes.
+```diff
+-      requires: Spec.valid?(s) and Spec.lookup(elem(s, 4), key) == {:ok, {key, amount, :voided}},
++      requires: Spec.valid?(s) and is_integer(key) and Spec.lookup(elem(s, 4), key) == {:ok, {key, amount, :voided}},
+```
+
+**D — Remove obsolete verification** — both inventory files lose a group. Here the teaching diff shows only the identity fields; the proposed change deletes the entire corresponding object from each file and deletes its law file:
+
+```diff
+--- verification/obligations.json
+-      "slug": "po_b5_voided",
+-      "law": "po_b5_voided",
+--- verification/laws.json
+-      "slug": "po_b5_voided",
+-      "law": "po_b5_voided",
+--- test/laws/po_b5_voided_test.exs
+(deleted)
+```
+
+**E — Proof-only cleanup** — the summary says `Claim delta: none`. In a hypothetical Lean model, the diff is:
+
+```diff
+ def valid (used limit : Int) : Prop :=
+-  0 ≤ used ∧ used ≤ limit
++  0 ≤ used
+```
+
+All theorem signatures remain unchanged. Does that make it proof-only?
+
+**F — Simpler postcondition** — `test/laws/po_a4_duplicate_test.exs`:
+
+```diff
+-      expects: Ledger.request(s, key, amount) == {s, :duplicate, []},
++      expects: Spec.valid?(elem(Ledger.request(s, key, amount), 0)),
+```
 
 <details>
 <summary>Answer key — open after reviewing the proposed changes</summary>
 
-A excludes pending voids, the central retention case. Use the delayed-confirmation trace to expose the lost guarantee. B weakens validity to accommodate premature release; restore the accounting contract and repair behavior unless a human approves different policy. C removes noninteger lookup queries: stored key `1` is found by `1.0` under `==`; public event guards do not define this theorem's domain. D removes required coverage from both inventories; compare with the base revision and policy. E is Tier 1 under the declaration filter: unchanged theorem signatures do not preserve their meaning when a referenced definition or instance changes. F drops positive admission; a refuse-everything implementation could satisfy the new conclusion. Restore the admission claim.
+A excludes pending voids, the central retention case. Use the delayed-confirmation trace to expose the lost guarantee.
+
+B weakens validity to accommodate premature release; restore the accounting contract and repair behavior unless a human approves different policy.
+
+C removes noninteger lookup queries: stored key `1` is found by `1.0` under `==`; public event guards do not define this theorem's domain.
+
+D removes required coverage from both inventories; compare with the base revision and policy.
+
+E weakens the definition by removing the upper bound; `used = 101`, `limit = 100` now satisfies it. Unchanged theorem signatures do not preserve their meaning when a referenced definition changes.
+
+F drops the duplicate result, exact unchanged state and empty effects. A valid state with a rejection result could satisfy the new conclusion. Restore the duplicate contract. All six changes require Tier 1 review.
 
 </details>
 
