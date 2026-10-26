@@ -36,3 +36,18 @@ runs:
         uv run --locked python scripts/local_run.py mix deps.get
         git diff --exit-code -- mix.lock
         uv run --locked python scripts/verify_pins.py
+    - name: Expose repository-local tools to later steps
+      shell: bash
+      run: |
+        uv run --locked python - <<'PY'
+        import os
+        from pathlib import Path
+        from scripts.provision import LOCAL, local_env
+
+        environment = local_env()
+        with Path(os.environ["GITHUB_PATH"]).open("a") as output:
+            output.write(str(LOCAL / "elan/bin") + "\n")
+        with Path(os.environ["GITHUB_ENV"]).open("a") as output:
+            for name in ("ELAN_HOME", "ELAN_TOOLCHAIN", "XDG_CACHE_HOME"):
+                output.write(f"{name}={environment[name]}\n")
+        PY

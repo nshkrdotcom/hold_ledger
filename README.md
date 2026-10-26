@@ -89,26 +89,26 @@ The included processor is a deterministic simulator; this project does not conne
 It separates the pure core, independent specification, runtime, and formal verification:
 
 ```
-+-------------------------------------------------------------------------+
-|                              RUNTIME (OTP)                              |
-|                                                                         |
-|  Event -> Server -> Journal.append_sync (owned frames + hash chain)       |
-|                          |                                              |
-|                          v                                              |
-|                     Composite.step (Pure Reducers)                       |
-|                          |                                              |
-|                          +--------> EffectExecutor -> Processor.Sim     |
-+--------------------------|----------------------------------------------+
++----------------------------------------------------------------------------+
+|                              RUNTIME (OTP)                                 |
+|                                                                            |
+|  Event -> Server -> Journal.append_sync (owned frames + hash chain)        |
+|                          |                                                 |
+|                          v                                                 |
+|                     Composite.step (Pure Reducers)                         |
+|                          |                                                 |
+|                          +--------> EffectExecutor -> Processor.Sim        |
++--------------------------|-------------------------------------------------+
                            |
                            v
-+------------------------------------+    +-------------------------------+
-|      INDEPENDENT SPEC (ORACLE)     |    |      FORMAL PROOFS (LEAN 4)   |
-|                                    |    |                               |
-|  HoldLedger.Spec                   |    |  Lynx compiles Elixir BEAM    |
++------------------------------------+    +----------------------------------+
+|      INDEPENDENT SPEC (ORACLE)     |    |      FORMAL PROOFS (LEAN 4)      |
+|                                    |    |                                  |
+|  HoldLedger.Spec                   |    |  Lynx compiles Elixir BEAM       |
 |  * Recomputes totals from scratch  |    |  Core AST into Lean definitions. |
-|  * Standalone validity invariant   |    |  Cataloged pure-core law groups|
-|  * Transition & effect predicates  |    |  6 checker configurations.    |
-+------------------------------------+    +-------------------------------+
+|  * Standalone validity invariant   |    |  Cataloged pure-core law groups  |
+|  * Transition & effect predicates  |    |  6 checker configurations.       |
++------------------------------------+    +----------------------------------+
 ```
 
 1. **Pure State Machine (`HoldLedger.Ledger`)**: No disk, no clock, no processes, no side effects. Given an input state and an event, it returns `{next_state, result_atom, effects}`.
