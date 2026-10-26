@@ -1,11 +1,11 @@
 --- a/lib/hold_ledger/ledger.ex
 +++ b/lib/hold_ledger/ledger.ex
-@@ -213,7 +213,7 @@
+@@ -214,7 +214,7 @@
  
-       {:ok, {_, amount, :authorized}} ->
-         {{amount_limit, hold_limit, used_amount - amount, used_holds - 1,
--          set_status(entries, key, :voided)}, :voided, [{:void, key}]}
-+          set_status(entries, key, :voided)}, :voided, []}
+       {:ok, {_, _, :authorized}} ->
+         {{amount_limit, hold_limit, used_amount, used_holds, set_status(entries, key, :voiding)},
+-         :voiding, [{:void, key}]}
++         :voiding, []}
  
        _ ->
          {state, :stale, []}

@@ -14,7 +14,7 @@ defmodule HoldLedger.Ledger do
   replacement status. This module performs no I/O or hidden state updates.
   """
 
-  @type status :: :reserved | :sent | :unknown | :authorized | :declined | :voided
+  @type status :: :reserved | :sent | :unknown | :authorized | :voiding | :declined | :voided
   @type entry :: {integer(), pos_integer(), status()}
   @type state ::
           {non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer(), [entry()]}
@@ -36,6 +36,7 @@ defmodule HoldLedger.Ledger do
   def step(state, {:retry, key}), do: retry(state, key)
   def step(state, {:processor_result, key, outcome}), do: processor_result(state, key, outcome)
   def step(state, {:void, key}), do: void(state, key)
+  def step(state, {:void_confirmed, key}), do: void_confirmed(state, key)
   def step(state, {:transport_ack, key}), do: transport_ack(state, key)
   def step(state, _), do: {state, :malformed, []}
 
@@ -211,9 +212,9 @@ defmodule HoldLedger.Ledger do
         {{amount_limit, hold_limit, used_amount - amount, used_holds - 1,
           set_status(entries, key, :voided)}, :voided, []}
 
-      {:ok, {_, amount, :authorized}} ->
-        {{amount_limit, hold_limit, used_amount - amount, used_holds - 1,
-          set_status(entries, key, :voided)}, :voided, [{:void, key}]}
+      {:ok, {_, _, :authorized}} ->
+        {{amount_limit, hold_limit, used_amount, used_holds, set_status(entries, key, :voiding)},
+         :voiding, [{:void, key}]}
 
       _ ->
         {state, :stale, []}
@@ -221,6 +222,22 @@ defmodule HoldLedger.Ledger do
   end
 
   def void(state, _), do: {state, :malformed, []}
+
+  @doc "Release a voiding hold only after a trusted terminal processor confirmation."
+  def void_confirmed({al, hl, used, count, entries} = state, key) when is_integer(key) do
+    case find(entries, key) do
+      {:ok, {_, amount, :voiding}} ->
+        {{al, hl, used - amount, count - 1, set_status(entries, key, :voided)}, :voided, []}
+
+      :not_found ->
+        {state, :not_found, []}
+
+      _ ->
+        {state, :stale, []}
+    end
+  end
+
+  def void_confirmed(state, _), do: {state, :malformed, []}
 
   @doc "A transport acknowledgment never establishes processor authorization."
   def transport_ack(state, key) when is_integer(key), do: {state, :stale, []}

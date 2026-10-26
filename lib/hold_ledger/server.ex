@@ -9,7 +9,7 @@ defmodule HoldLedger.Server do
   trusted integration inputs, not authenticated evidence.
   """
   use GenServer, restart: :transient
-  alias HoldLedger.{Attempts, EffectExecutor, Event, Journal, Ledger, Outbox, Spec}
+  alias HoldLedger.{Attempts, Composite, EffectExecutor, Event, Journal, Ledger, Outbox, Spec}
 
   @defaults [
     authorize_timeout: 5_000,
@@ -51,10 +51,12 @@ defmodule HoldLedger.Server do
   def init(opts) do
     config = Map.new(Keyword.take(Keyword.merge(@defaults, opts), Keyword.keys(@defaults)))
 
-    if Enum.all?(config, fn {_, n} -> is_integer(n) and n > 0 end) do
+    with true <- Enum.all?(config, fn {_, n} -> is_integer(n) and n > 0 end),
+         :ok <- HoldLedger.Processor.validate(Keyword.get(opts, :processor)) do
       initialize(opts, config)
     else
-      {:stop, :invalid_runtime_options}
+      false -> {:stop, :invalid_runtime_options}
+      {:error, reason} -> {:stop, reason}
     end
   end
 
@@ -69,7 +71,7 @@ defmodule HoldLedger.Server do
   end
 
   defp boot(journal, initial, caps, config, opts) do
-    seed = %{ledger: initial, outbox: %{}, receipts: [], conflicts: [], count: 0, caps: nil}
+    seed = %{ledger: initial, outbox: [], receipts: [], conflicts: [], count: 0, caps: nil}
 
     case replay(journal, seed) do
       {:ok, recovered, journal} ->
@@ -92,9 +94,20 @@ defmodule HoldLedger.Server do
   end
 
   defp replay_event(event, acc) do
+    case event do
+      {tag, key} when tag in [:void_attempt, :void_retry_enabled] ->
+        if Outbox.fetch(acc.outbox, key) == :not_found, do: raise("orphan attempt event")
+
+      {:void_outcome, key, _} ->
+        if Outbox.fetch(acc.outbox, key) == :not_found, do: raise("orphan outcome event")
+
+      _ ->
+        :ok
+    end
+
     caps = if acc.count == 0, do: event, else: acc.caps
-    {ledger, _, effects} = Ledger.step(acc.ledger, event)
-    outbox = effects |> Enum.reduce(acc.outbox, &open_void/2) |> Outbox.apply(event)
+    {{ledger, outbox}, _, _} = Composite.step({acc.ledger, acc.outbox}, event)
+    if not Spec.composite_valid?({ledger, outbox}), do: raise("invalid composite prefix")
 
     %{
       acc
@@ -137,8 +150,9 @@ defmodule HoldLedger.Server do
 
     with {:ok, journal} <- result,
          {:ok, journal} <- Journal.append_sync(journal, :restart),
-         {ledger, :restarted, []} <- Ledger.step(recovered.ledger, :restart),
-         true <- Spec.valid?(ledger) and Spec.no_sent?(elem(ledger, 4)) do
+         {{ledger, outbox}, :restarted, []} <-
+           Composite.step({recovered.ledger, recovered.outbox}, :restart),
+         true <- Spec.composite_valid?({ledger, outbox}) and Spec.no_sent?(elem(ledger, 4)) do
       send(self(), :redrive)
 
       {:ok,
@@ -148,7 +162,7 @@ defmodule HoldLedger.Server do
          pre_restart: recovered.ledger,
          boot_post_restart: ledger,
          replayed_event_count: recovered.count,
-         outbox: recovered.outbox,
+         outbox: outbox,
          receipts: recovered.receipts,
          conflicts: recovered.conflicts,
          processor: Keyword.get(opts, :processor),
@@ -184,7 +198,7 @@ defmodule HoldLedger.Server do
        poisoned: data.poisoned,
        pending_effects: map_size(data.tasks),
        void_receipts: Enum.reverse(data.receipts),
-       unresolved_voids: data.outbox |> Outbox.unresolved() |> Enum.sort() |> Enum.take(100),
+       unresolved_voids: data.outbox |> outbox_view() |> Enum.sort() |> Enum.take(100),
        conflicts: Enum.reverse(data.conflicts)
      }, data}
   end
@@ -200,7 +214,7 @@ defmodule HoldLedger.Server do
     items =
       case kind do
         :unknown -> Enum.filter(elem(data.ledger, 4), fn {_, _, s} -> s == :unknown end)
-        :voids -> data.outbox |> Outbox.unresolved() |> Enum.sort()
+        :voids -> data.outbox |> outbox_view() |> Enum.sort()
         :receipts -> Enum.reverse(data.receipts)
         :conflicts -> Enum.reverse(data.conflicts)
         _ -> []
@@ -258,12 +272,12 @@ defmodule HoldLedger.Server do
   end
 
   def handle_call({:redrive_void, key}, _, data) do
-    case {Map.get(data.outbox, key),
+    case {Outbox.fetch(data.outbox, key),
           Attempts.occupied?(Attempts.entries(data.attempts), :void, key)} do
       {_, true} ->
         {:reply, {:error, :attempt_active}, data}
 
-      {%{status: :pending}, false} ->
+      {{^key, _, _}, false} ->
         case commit(data, {:void_retry_enabled, key}) do
           {:ok, _, next} -> {:reply, :ok, start_void(next, key)}
           {:error, reason, next} -> {:reply, {:error, reason}, next}
@@ -313,12 +327,10 @@ defmodule HoldLedger.Server do
   end
 
   defp apply_committed(data, event) do
-    {ledger, result, effects} = Ledger.step(data.ledger, event)
+    {{ledger, outbox}, result, effects} = Composite.step({data.ledger, data.outbox}, event)
 
-    if data.monitor and not Spec.valid?(ledger),
+    if data.monitor and not Spec.composite_valid?({ledger, outbox}),
       do: exit({:shutdown, {:quarantined, data.journal.next_seq - 1}})
-
-    outbox = effects |> Enum.reduce(data.outbox, &open_void/2) |> Outbox.apply(event)
 
     next = %{
       data
@@ -354,8 +366,13 @@ defmodule HoldLedger.Server do
     end
   end
 
-  defp open_void({:void, key}, outbox), do: Outbox.open(outbox, key)
-  defp open_void(_, outbox), do: outbox
+  defp outbox_view(entries) do
+    Enum.map(entries, fn {key, attempts, outcome} ->
+      {key, %{attempts: attempts, status: :pending, outcome: outcome}}
+    end)
+  end
+
+  defp receipt({:void_confirmed, _} = event, receipts), do: Enum.take([event | receipts], 100)
 
   defp receipt({:void_outcome, _, _} = event, receipts),
     do: Enum.take([event | receipts], 100)
@@ -373,9 +390,14 @@ defmodule HoldLedger.Server do
   defp start_void(%{poisoned: reason} = data, _) when reason != nil, do: data
 
   defp start_void(data, key) do
-    item = Map.fetch!(data.outbox, key)
+    case Outbox.fetch(data.outbox, key) do
+      :not_found -> data
+      {^key, attempts, _} -> start_pending_void(data, key, attempts)
+    end
+  end
 
-    if item.status == :pending and item.attempts < data.config.void_max_attempts and
+  defp start_pending_void(data, key, attempts) do
+    if attempts < data.config.void_max_attempts and
          not Attempts.occupied?(Attempts.entries(data.attempts), :void, key) do
       case commit(data, {:void_attempt, key}) do
         {:ok, _, next} -> start_attempt(next, {:void, key}, nil)
@@ -421,11 +443,17 @@ defmodule HoldLedger.Server do
         %{data | tasks: Map.put(data.tasks, task.ref, attempt)}
 
       {:error, reason} ->
-        {attempts, _} = Attempts.step(data.attempts, {:down, id})
         attempt = %{id: id, effect: effect, caller: caller, caller_ref: nil}
-        {next, reply} = outcome(%{data | attempts: attempts}, attempt, {:error, reason})
-        reply_caller(caller, reply)
-        retire(next, id)
+
+        case attempt_intent(data, :down, attempt, :persist) do
+          {:ok, committing} ->
+            {next, reply} = outcome(committing, attempt, {:error, reason})
+            reply_caller(caller, reply)
+            retire(next, id)
+
+          :ignored ->
+            data
+        end
     end
   end
 
@@ -459,15 +487,13 @@ defmodule HoldLedger.Server do
   def handle_info({:deadline, ref}, data) do
     case Map.fetch(data.tasks, ref) do
       {:ok, attempt} ->
-        {attempts, _} = Attempts.step(data.attempts, {:deadline, attempt.id})
+        case attempt_intent(data, :deadline, attempt, :shutdown) do
+          {:ok, stopping} ->
+            finish(stopping, ref, :shutdown_result, shutdown_result(attempt.task))
 
-        result =
-          case Task.shutdown(attempt.task, :brutal_kill) do
-            {:ok, result} -> result
-            _ -> {:error, :timeout}
-          end
-
-        finish(%{data | attempts: attempts}, ref, :shutdown_result, result)
+          :ignored ->
+            {:noreply, data}
+        end
 
       :error ->
         {:noreply, data}
@@ -500,21 +526,28 @@ defmodule HoldLedger.Server do
 
   def handle_info(_, data), do: {:noreply, data}
 
+  defp shutdown_result(task) do
+    case Task.shutdown(task, :brutal_kill) do
+      {:ok, result} -> result
+      _ -> {:error, :timeout}
+    end
+  end
+
   defp finish(data, ref, event, result) do
     case Map.fetch(data.tasks, ref) do
       {:ok, attempt} ->
-        {attempts, intents} = Attempts.step(data.attempts, {event, attempt.id})
+        case attempt_intent(data, event, attempt, :persist) do
+          {:ok, committing} ->
+            Process.demonitor(ref, [:flush])
+            Process.cancel_timer(attempt.timer)
+            if attempt.caller_ref, do: Process.demonitor(attempt.caller_ref, [:flush])
+            {next, reply} = outcome(committing, attempt, result)
+            reply_caller(attempt.caller, reply)
+            next = %{next | tasks: Map.delete(next.tasks, ref)} |> retire(attempt.id)
+            {:noreply, wake_waiters(next)}
 
-        if intents == [] do
-          {:noreply, data}
-        else
-          Process.demonitor(ref, [:flush])
-          Process.cancel_timer(attempt.timer)
-          if attempt.caller_ref, do: Process.demonitor(attempt.caller_ref, [:flush])
-          {next, reply} = outcome(%{data | attempts: attempts}, attempt, result)
-          reply_caller(attempt.caller, reply)
-          next = %{next | tasks: Map.delete(next.tasks, ref)} |> retire(attempt.id)
-          {:noreply, wake_waiters(next)}
+          :ignored ->
+            {:noreply, data}
         end
 
       :error ->
@@ -522,9 +555,21 @@ defmodule HoldLedger.Server do
     end
   end
 
+  defp attempt_intent(data, event, %{id: id, effect: effect}, tag) do
+    kind = elem(effect, 0)
+    key = elem(effect, 1)
+
+    case Attempts.step(data.attempts, {event, id}) do
+      {attempts, [{^tag, ^id, ^kind, ^key}]} -> {:ok, %{data | attempts: attempts}}
+      {_, []} -> :ignored
+    end
+  end
+
   defp retire(%{poisoned: nil} = data, id) do
-    {attempts, _} = Attempts.step(data.attempts, {:committed, id})
-    %{data | attempts: attempts}
+    case Attempts.step(data.attempts, {:committed, id}) do
+      {attempts, [{:retire, ^id}]} -> %{data | attempts: attempts}
+      {_, []} -> data
+    end
   end
 
   defp retire(data, _), do: data
@@ -539,8 +584,15 @@ defmodule HoldLedger.Server do
     do: {event_commit(data, {:timeout, key}), :ok}
 
   defp outcome(data, %{effect: {:void, key}}, result) do
-    next = event_commit(data, {:void_outcome, key, result})
-    {schedule_retry(next, key), :ok}
+    case result do
+      {:ok, confirmation} when confirmation in [:voided, :already_voided] ->
+        next = event_commit(data, {:void_confirmed, key})
+        {%{next | retries: Map.delete(next.retries, key)}, :ok}
+
+      _ ->
+        next = event_commit(data, {:void_outcome, key, result})
+        {schedule_retry(next, key), :ok}
+    end
   end
 
   defp outcome(data, %{effect: {:lookup, key}, caller: caller}, result),
@@ -590,15 +642,15 @@ defmodule HoldLedger.Server do
   defp schedule_retry(%{poisoned: reason} = data, _) when reason != nil, do: data
 
   defp schedule_retry(data, key) do
-    item = Map.fetch!(data.outbox, key)
+    {^key, attempts, _} = Outbox.fetch(data.outbox, key)
 
-    if item.status == :pending and item.attempts < data.config.void_max_attempts do
+    if attempts < data.config.void_max_attempts do
       token = make_ref()
 
       delay =
         min(
           data.config.void_retry_max,
-          data.config.void_retry_base * Integer.pow(2, min(item.attempts, 16))
+          data.config.void_retry_base * Integer.pow(2, min(attempts, 16))
         )
 
       Process.send_after(self(), {:retry_void, key, token}, delay)

@@ -3,7 +3,7 @@ defmodule HoldLedger.TransitionTest do
 
   alias HoldLedger.{Ledger, Spec, TestFixtures}
 
-  @statuses [:reserved, :sent, :unknown, :authorized, :declined, :voided]
+  @statuses [:reserved, :sent, :unknown, :authorized, :voiding, :declined, :voided]
 
   test "init validates its advertised domain; zero limits admit nothing" do
     assert Ledger.init(0, 0) == {0, 0, 0, 0, []}
@@ -92,13 +92,27 @@ defmodule HoldLedger.TransitionTest do
              {TestFixtures.voided(), :voided, []}
 
     assert Ledger.step(TestFixtures.authorized(), {:void, 11}) ==
-             {TestFixtures.voided(), :voided, [{:void, 11}]}
+             {TestFixtures.voiding(), :voiding, [{:void, 11}]}
 
     assert Ledger.step(TestFixtures.sent(), {:void, 11}) ==
              {TestFixtures.sent(), :stale, []}
 
     assert Ledger.step(TestFixtures.unknown(), {:void, 11}) ==
              {TestFixtures.unknown(), :stale, []}
+  end
+
+  test "confirmation releases only a voiding hold and handles malformed keys" do
+    pending = TestFixtures.voiding()
+    assert Ledger.step(pending, {:void_confirmed, 11}) == {TestFixtures.voided(), :voided, []}
+    assert Ledger.step(pending, {:void_confirmed, :key}) == {pending, :malformed, []}
+    assert Ledger.step(pending, {:void_confirmed, 1.0}) == {pending, :malformed, []}
+    assert Ledger.step(pending, {:void_confirmed, 99}) == {pending, :not_found, []}
+
+    assert Ledger.step(TestFixtures.authorized(), {:void_confirmed, 11}) ==
+             {TestFixtures.authorized(), :stale, []}
+
+    assert Ledger.step(TestFixtures.voided(), {:void_confirmed, 11}) ==
+             {TestFixtures.voided(), :stale, []}
   end
 
   test "restart converts all sent entries, and ONLY sent entries, to unknown" do
@@ -163,7 +177,15 @@ defmodule HoldLedger.TransitionTest do
           retry: :stale,
           approved: :stale,
           declined: :stale,
-          void: :voided
+          void: :voiding
+        },
+        voiding: %{
+          dispatch: :stale,
+          timeout: :stale,
+          retry: :stale,
+          approved: :stale,
+          declined: :stale,
+          void: :stale
         },
         declined: %{
           dispatch: :stale,

@@ -1,5 +1,5 @@
 {
-  "revision": "authorization-holds-v1",
+  "revision": "authorization-holds-terminal-confirmation",
   "laws": [
     {
       "id": "L1",
@@ -347,6 +347,281 @@
       "witness": "test/hold_ledger_witness_test.exs",
       "purpose": "finite histories retain terminal/identity and require independent approval evidence",
       "target": "po_c3",
+      "status": "supported"
+    },
+    {
+      "id": "PO-B1/void_confirmed",
+      "priority": "P0",
+      "slug": "po_b1_void_confirmed",
+      "file": "test/laws/po_b1_void_confirmed_test.exs",
+      "law": "po_b1_void_confirmed",
+      "arity": 2,
+      "witness": "test/hold_ledger_witness_test.exs",
+      "purpose": "terminal confirmation preserves validity and releases only a voiding hold",
+      "target": "po_b1_void_confirmed",
+      "status": "supported"
+    },
+    {
+      "id": "PO-ATTEMPT/poison",
+      "priority": "P1",
+      "slug": "po_attempt_poison",
+      "file": "test/laws/po_attempt_poison_test.exs",
+      "law": "po_attempt_poison",
+      "arity": 5,
+      "witness": "test/hold_ledger_attempts_test.exs",
+      "purpose": "poisoned lifecycle cannot admit a new attempt",
+      "target": "po_attempt_poison",
+      "status": "supported"
+    },
+    {
+      "id": "PO-ENV/fence",
+      "priority": "P1",
+      "slug": "po_terminal_fence",
+      "file": "test/laws/po_terminal_fence_test.exs",
+      "law": "po_terminal_fence",
+      "arity": 4,
+      "witness": "test/hold_ledger_environment_test.exs",
+      "purpose": "terminal processor fence rejects every delayed authorize",
+      "target": "po_terminal_fence",
+      "status": "supported"
+    },
+    {
+      "id": "PO-ATTEMPT/retired",
+      "priority": "P1",
+      "slug": "po_attempt_retired",
+      "file": "test/laws/po_attempt_retired_test.exs",
+      "law": "po_attempt_retired",
+      "arity": 4,
+      "witness": "test/hold_ledger_attempts_test.exs",
+      "purpose": "absent attempt identities reject result, DOWN, deadline, shutdown and commit",
+      "target": "po_attempt_retired",
+      "status": "supported"
+    },
+    {
+      "id": "PO-ATTEMPT/slot",
+      "priority": "P1",
+      "slug": "po_attempt_slot",
+      "file": "test/laws/po_attempt_slot_test.exs",
+      "law": "po_attempt_slot",
+      "arity": 5,
+      "witness": "test/hold_ledger_attempts_test.exs",
+      "purpose": "occupied operation/key slot refuses new starts",
+      "target": "po_attempt_slot",
+      "status": "supported"
+    },
+    {
+      "id": "PO-EXPOSURE/retain",
+      "priority": "P1",
+      "slug": "po_exposure_retain",
+      "file": "test/laws/po_exposure_retain_test.exs",
+      "law": "po_exposure_retain",
+      "arity": 5,
+      "witness": "test/hold_ledger_exposure_retention_test.exs",
+      "purpose": "issued holds retain capacity without their own terminal evidence",
+      "target": "po_exposure_retain",
+      "status": "supported"
+    },
+    {
+      "id": "PO-COMP/recovery",
+      "priority": "P1",
+      "slug": "po_composite_recovery",
+      "kind": "lean",
+      "module": "HoldLedgerProof.Recovery",
+      "theorems": [
+        "HoldLedgerProof.Recovery.committed_replay"
+      ],
+      "file": "test/support/lean/Recovery.lean",
+      "witness": "test/hold_ledger_recovery_model_test.exs",
+      "purpose": "finite committed live transitions replay to identical durable composite state",
+      "status": "supported"
+    },
+    {
+      "id": "PO-EXPOSURE/history",
+      "priority": "P1",
+      "slug": "po_exposure_history",
+      "kind": "lean",
+      "module": "HoldLedgerProof.ExposureTrace",
+      "theorems": [
+        "HoldLedgerProof.Exposure.retained_history"
+      ],
+      "file": "test/support/lean/ExposureTrace.lean",
+      "witness": "test/hold_ledger_exposure_retention_test.exs",
+      "purpose": "issued identities retain capacity over finite histories without terminal evidence",
+      "status": "supported"
+    },
+    {
+      "id": "PO-EXPOSURE/bounds",
+      "priority": "P1",
+      "slug": "po_exposure_bounds",
+      "kind": "lean",
+      "module": "HoldLedgerProof.ExposureBound",
+      "theorems": [
+        "HoldLedgerProof.Exposure.exposure_bounds"
+      ],
+      "file": "test/support/lean/ExposureBound.lean",
+      "witness": "test/hold_ledger_exposure_test.exs",
+      "purpose": "remote amount/count bounds from deduplicated live authorizations with causal intent and terminal-fencing histories",
+      "status": "supported"
+    },
+    {
+      "id": "PO-ATTEMPT/history",
+      "priority": "P1",
+      "slug": "po_attempt_history",
+      "kind": "lean",
+      "module": "HoldLedgerProof.AttemptSafety",
+      "theorems": [
+        "HoldLedgerProof.AttemptSafety.translated_history_safety",
+        "HoldLedgerProof.AttemptSafety.committing_quiet"
+      ],
+      "file": "test/support/lean/AttemptSafety.lean",
+      "witness": "test/hold_ledger_attempts_test.exs",
+      "purpose": "typed finite lifecycle histories preserve unique IDs/slots and retire each logical attempt at most once, bridged to translated Attempts.step",
+      "status": "supported"
+    },
+    {
+      "id": "PO-COMP/init",
+      "priority": "P1",
+      "slug": "po_composite_init",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.init_valid"
+      ],
+      "file": "test/support/lean/CompositeSafety.lean",
+      "witness": "test/hold_ledger_composite_test.exs",
+      "purpose": "PO-COMP/init",
+      "status": "supported"
+    },
+    {
+      "id": "PO-COMP/preservation",
+      "priority": "P1",
+      "slug": "po_composite_preservation",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.composite_preserves",
+        "HoldLedgerProof.CompositeSafety.composite_view"
+      ],
+      "file": "test/support/lean/CompositeSafety.lean",
+      "witness": "test/hold_ledger_composite_test.exs",
+      "purpose": "PO-COMP/preservation",
+      "status": "supported"
+    },
+    {
+      "id": "PO-COMP/oracle",
+      "priority": "P1",
+      "slug": "po_composite_oracle",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.composite_oracle"
+      ],
+      "file": "test/support/lean/CompositeSafety.lean",
+      "witness": "test/hold_ledger_composite_test.exs",
+      "purpose": "PO-COMP/oracle",
+      "status": "supported"
+    },
+    {
+      "id": "PO-COMP/history",
+      "priority": "P1",
+      "slug": "po_composite_history",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.composite_history",
+        "HoldLedgerProof.CompositeSafety.composite_oracle_history"
+      ],
+      "file": "test/support/lean/CompositeSafety.lean",
+      "witness": "test/hold_ledger_composite_test.exs",
+      "purpose": "PO-COMP/history",
+      "status": "supported"
+    },
+    {
+      "id": "PO-COMP/confirmation",
+      "priority": "P1",
+      "slug": "po_composite_confirmation",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.confirmation_once"
+      ],
+      "file": "test/support/lean/CompositeSafety.lean",
+      "witness": "test/hold_ledger_terminal_contract_test.exs",
+      "purpose": "PO-COMP/confirmation",
+      "status": "supported"
+    },
+    {
+      "id": "PO-COMP/open",
+      "priority": "P1",
+      "slug": "po_composite_open",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.open_obligation"
+      ],
+      "file": "test/support/lean/CompositeSafety.lean",
+      "witness": "test/hold_ledger_composite_test.exs",
+      "purpose": "PO-COMP/open",
+      "status": "supported"
+    },
+    {
+      "id": "PO-COMP/recovery-valid",
+      "priority": "P1",
+      "slug": "po_composite_recovery_valid",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.recovery_valid"
+      ],
+      "file": "test/support/lean/CompositeSafety.lean",
+      "witness": "test/hold_ledger_recovery_model_test.exs",
+      "purpose": "PO-COMP/recovery-valid",
+      "status": "supported"
+    },
+    {
+      "id": "PO-EXPOSURE/model",
+      "priority": "P1",
+      "slug": "po_exposure_model",
+      "kind": "lean",
+      "module": "HoldLedgerProof.ExposureModel",
+      "theorems": [
+        "HoldLedgerProof.ExposureModel.model_init_valid",
+        "HoldLedgerProof.ExposureModel.model_preserves",
+        "HoldLedgerProof.ExposureModel.model_history",
+        "HoldLedgerProof.ExposureModel.void_before_issue"
+      ],
+      "file": "test/support/lean/ExposureModel.lean",
+      "witness": "test/hold_ledger_exposure_test.exs",
+      "purpose": "PO-EXPOSURE/model",
+      "status": "supported"
+    },
+    {
+      "id": "PO-EXPOSURE/model-bounds",
+      "priority": "P1",
+      "slug": "po_exposure_model_bounds",
+      "kind": "lean",
+      "module": "HoldLedgerProof.ExposureModel",
+      "theorems": [
+        "HoldLedgerProof.ExposureModel.model_bounds"
+      ],
+      "file": "test/support/lean/ExposureModel.lean",
+      "witness": "test/hold_ledger_exposure_test.exs",
+      "purpose": "PO-EXPOSURE/model-bounds",
+      "status": "supported"
+    },
+    {
+      "id": "PO-ATTEMPT/persist",
+      "priority": "P1",
+      "slug": "po_attempt_persist",
+      "kind": "lean",
+      "module": "HoldLedgerProof.AttemptSafety",
+      "theorems": [
+        "HoldLedgerProof.AttemptSafety.persist_once",
+        "HoldLedgerProof.AttemptSafety.retire_requires_persist"
+      ],
+      "file": "test/support/lean/AttemptSafety.lean",
+      "witness": "test/hold_ledger_attempts_test.exs",
+      "purpose": "PO-ATTEMPT/persist",
       "status": "supported"
     }
   ]

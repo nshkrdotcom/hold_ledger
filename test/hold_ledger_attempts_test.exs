@@ -39,8 +39,12 @@ defmodule HoldLedgerAttemptsTest do
       ])
 
     check all(events <- list_of(event, max_length: 100), max_runs: 1_000) do
-      Enum.reduce(events, Attempts.init(), fn event, {old_next, old_poison, _} = before ->
-        {{next, poison, entries} = after_state, _intents} = Attempts.step(before, event)
+      Enum.reduce(events, {Attempts.init(), MapSet.new(), MapSet.new()}, fn event,
+                                                                            {{old_next,
+                                                                              old_poison, _} =
+                                                                               before, persisted,
+                                                                             retired} ->
+        {{next, poison, entries} = after_state, intents} = Attempts.step(before, event)
         assert next >= old_next
         assert not old_poison or poison
         assert length(entries) <= 4
@@ -51,7 +55,22 @@ defmodule HoldLedgerAttemptsTest do
                  id < next and phase in [:running, :stopping, :committing]
                end)
 
-        after_state
+        {persisted, retired} =
+          Enum.reduce(intents, {persisted, retired}, fn
+            {:persist, id, _, _}, {seen, done} ->
+              refute MapSet.member?(seen, id)
+              {MapSet.put(seen, id), done}
+
+            {:retire, id}, {seen, done} ->
+              assert MapSet.member?(seen, id)
+              refute MapSet.member?(done, id)
+              {seen, MapSet.put(done, id)}
+
+            _, counts ->
+              counts
+          end)
+
+        {after_state, persisted, retired}
       end)
     end
   end

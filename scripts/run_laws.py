@@ -9,6 +9,8 @@ measurement with --report for each execution baseline. Cache-enabled runs are ti
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import fcntl
 import datetime as dt
 import hashlib
 import json
@@ -19,6 +21,8 @@ import signal
 import sys
 import time
 from pathlib import Path
+
+from obligations import check_registration, coverage, orphan_modules, required_inventory
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "verification/laws.json"
@@ -32,8 +36,48 @@ LAW_SUCCESS = re.compile(r"(?m)^Result: 1 passed\s*$")
 
 
 
+@contextmanager
+def acceptance_lock(path: Path | None = None):
+    path = path or ROOT / 'tmp/verification/acceptance.lock'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('a') as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RuntimeError('Verification is already running; shared evidence is locked') from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
 def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def changed_sources(manifest: dict[str, str], current: list[Path] | None = None) -> list[str]:
+    changed = {name for name, digest in manifest.items()
+               if not (ROOT / name).is_file() or sha(ROOT / name) != digest}
+    if current is not None:
+        names = {str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+                 for path in current}
+        changed.update(names.symmetric_difference(manifest))
+    return sorted(changed)
+
+
+def acceptance_sources() -> list[Path]:
+    files = set((ROOT / 'lib').rglob('*.ex'))
+    files.update((ROOT / 'test').rglob('*.ex'))
+    files.update((ROOT / 'test').rglob('*.exs'))
+    files.update((ROOT / 'test/support/lean').rglob('*.lean'))
+    files.update((ROOT / 'scripts').glob('*.py'))
+    files.update((ROOT / 'scripts').glob('*.exs'))
+    files.update((ROOT / 'verification').glob('*.lean'))
+    files.update(path for path in (ROOT / 'verification').glob('*.json')
+                 if path.name != 'baseline.json')
+    files.update(ROOT / name for name in ('mix.exs', 'mix.lock', 'lean-toolchain',
+        'verification/laws.json', 'test/support/lean/library.json', '.tool-versions'))
+    return sorted(files)
 
 
 def git_revision() -> str | None:
@@ -54,30 +98,47 @@ def inspect_shared_sources(directory: Path | None = None) -> list[Path]:
 def inspect_manifest() -> list[dict]:
     inspect_shared_sources()
     catalog = json.loads(MANIFEST.read_text(encoding="utf8"))
-    if catalog["revision"] != "authorization-holds-v1":
+    if catalog["revision"] != "authorization-holds-terminal-confirmation":
         raise RuntimeError("Unexpected ledger contract revision")
     laws = catalog["laws"]
-    if len(laws) != 29 or len({entry["slug"] for entry in laws}) != len(laws):
-        raise RuntimeError("Expected exactly 29 unique law groups for the ledger contract")
-    wanted = {"L1", "L2", "L3", "L4", "L5", "L6", "PO-I", "PO-A1", "PO-A2",
-              "PO-A3", "PO-A4", "PO-S", "PO-C1", "PO-C2", "PO-B2", "PO-B3",
-              "PO-B4", "PO-B5/declined", "PO-B5/voided", "PO-B6", "PO-B7", "PO-C3"}
-    wanted |= {f"PO-B1/{event}" for event in
-               ("dispatch", "timeout", "restart", "retry", "processor_result", "void")}
-    if {item["id"] for item in laws} != wanted:
-        raise RuntimeError("Formal obligation coverage differs from the verification guide")
+    if not laws or len({entry["slug"] for entry in laws}) != len(laws):
+        raise RuntimeError("Expected a nonempty catalog of unique law groups for the ledger contract")
+    required = required_inventory(ROOT / "verification/obligations.json")
+    check_registration(required, laws)
+    library = json.loads((ROOT / 'test/support/lean/library.json').read_text())
+    roots = {f'HoldLedgerProof.{name}' for name in library.values()}
+    roots.update(item['module'] for item in laws if item.get('kind') == 'lean')
+    orphans = orphan_modules(ROOT / 'test/support/lean', roots)
+    if orphans:
+        raise RuntimeError(f'Orphan proof modules: {orphans}')
+    if {entry['file'] for entry in laws if entry.get('kind') != 'lean'} != {
+            str(path.relative_to(ROOT)) for path in (ROOT / 'test/laws').glob('*_test.exs')}:
+        raise RuntimeError('Catalog must include every authored law source')
+
     for entry in laws:
         file = ROOT / entry["file"]
         witness = ROOT / entry["witness"]
+        if entry.get('status') == 'pending':
+            continue
+        if entry.get('status') != 'supported':
+            raise RuntimeError(f"Invalid obligation status: {entry['slug']}")
         if not file.is_file() or not witness.is_file() or not file.resolve().is_relative_to(ROOT):
             raise RuntimeError(f"Missing law/witness source: {entry['slug']}")
         text = file.read_text(encoding="utf8")
+        if entry.get('kind') == 'lean':
+            expected_file = ROOT / 'test/support/lean' / (entry['module'].rsplit('.', 1)[-1] + '.lean')
+            if (file != expected_file or file.suffix != '.lean' or not entry.get('theorems')
+                    or FORBIDDEN.search(text)):
+                raise RuntimeError(f"Invalid native theorem group: {entry['slug']}")
+            for theorem in entry['theorems']:
+                if not re.search(r'(?m)^theorem ' + re.escape(theorem.rsplit('.', 1)[-1]) + r'\b', text):
+                    raise RuntimeError(f"Missing native theorem: {theorem}")
+            continue
         if FORBIDDEN.search(text):
             raise RuntimeError(f"Forbidden proof escape in {entry['file']}")
         if text.count("laws ") != 1 or text.count("    law(") != 1 or text.count('proof: ~LEAN"""') != 1:
             raise RuntimeError(f"Expected a single authored Lynx law: {entry['file']}")
-        for term in (f'laws "{entry["slug"]}"', f'law({entry["law"]}(', "requires:", "expects:",
-                     "HoldLedger.{Ledger, Spec}"):
+        for term in (f'laws "{entry["slug"]}"', f'law({entry["law"]}(', "requires:", "expects:"):
             if term not in text:
                 raise RuntimeError(f"{entry['slug']} missing {term}")
         if entry["priority"] not in ("L", "P0", "P1"):
@@ -162,8 +223,11 @@ def exported_checker_record(path: Path, *, label: str, timeout: int) -> dict:
 
 def supported_laws(laws: list[dict]) -> list[dict]:
     """Require the complete catalog; never silently drop a formal obligation."""
-    if len(laws) != 29 or any(law.get("status") != "supported" for law in laws):
-        raise RuntimeError("All 29 cataloged law groups must remain supported")
+    required = required_inventory(ROOT / "verification/obligations.json")
+    status = coverage(required, laws)
+    if len(laws) != len(inspect_manifest()) or any(law.get('status') != 'supported' for law in laws):
+        raise RuntimeError(f"INCOMPLETE: {len(status['supported'])} of {len(required)} required groups supported; "
+                           f"pending or missing={sorted(set(status['required']) - set(status['supported']))}")
     return laws
 
 
@@ -181,10 +245,22 @@ def valid_batch_report(report: dict, laws: list[dict]) -> bool:
     reports = report.get("reports", [])
     if set(records) != {law["slug"] for law in laws} or not reports:
         return False
+    if any(diagnostic.get("severity") in ("warning", "error")
+           for item in reports for diagnostic in item.get("diagnostics", [])):
+        return False
     if any(item.get("status") != "ok" or item.get("cached") is True for item in reports):
         return False
     for law in laws:
         record = records[law["slug"]]
+        if law.get('kind') == 'lean':
+            matching = [item for item in reports if item.get('module') == law['module']]
+            if (record.get('passed') is not True or record.get('module') != law['module']
+                    or record.get('laws') != law['theorems']
+                    or record.get('kind') != 'lean' or len(matching) != 1
+                    or record.get('qualified_names_checked') != law['theorems']
+                    or not any(item.get('module') == 'HoldLedgerProof.RequiredObligations' and item.get('status') == 'ok' for item in reports)):
+                return False
+            continue
         expected = f"{law['law']}/{law['arity']}"
         matching = [item for item in reports if item.get("module") == record.get("module", "") + ".laws"]
         if (record.get("passed") is not True or record.get("laws") != [expected]
@@ -224,13 +300,14 @@ def batch_execution(laws: list[dict], timeout: int, checker_timeout: int, stage:
     sources = [ROOT / p for p in ("lib/hold_ledger/ledger.ex", "lib/hold_ledger/spec.ex", "mix.lock",
                "lean-toolchain", "verification/laws.json", "test/support/proof_case.ex", "scripts/verify_laws.exs",
                "scripts/run_laws.py", "test/support/lean/library.json")]
+    sources += sorted((ROOT / "lib").rglob("*.ex"))
     sources += inspect_shared_sources() + [ROOT / law["file"] for law in laws]
     result = {"mode": "EXECUTED", "date_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
               "commit": git_revision(), "stage": stage, "cache": "LYNX_CACHE=0", "batch": True,
               "source_sha256": {str(path.relative_to(ROOT)): sha(path) for path in sources},
               "execution": outcome, "native_report": str(native_report.relative_to(ROOT)), "exports": checks,
               "correct_export": correct_export, "complete": accepted, "laws": {},
-              "checker_claim": stage == "full" and accepted, "accepted_proof_claim": verified}
+              "checker_claim": stage == "full" and accepted, "accepted_proof_claim": accepted}
     for law in laws:
         result["laws"][law["slug"]] = {"id": law["id"], "source": law["file"], "source_sha256": sha(ROOT / law["file"]),
             "passed": accepted, "native_passed": verified, "exports": checks}
@@ -240,7 +317,7 @@ def batch_execution(laws: list[dict], timeout: int, checker_timeout: int, stage:
 
 def execution(laws: list[dict], timeout: int, checker_timeout: int,
               *, stage: str = "full", cache_mode: str = "cold") -> dict:
-    if len(laws) > 1 and cache_mode == "cold":
+    if (len(laws) > 1 or any(law.get("kind") == "lean" for law in laws)) and cache_mode == "cold":
         return batch_execution(laws, timeout, checker_timeout, stage)
     measurements = {"mode": "EXECUTED", "date_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
                     "commit": git_revision(), "source_sha256":
@@ -301,8 +378,8 @@ def execution(laws: list[dict], timeout: int, checker_timeout: int,
               f"paranoid={all(x['passed'] for x in checks) if checks else False})", flush=True)
     measurements["complete"] = (bool(laws) and
                                 all(x["passed"] for x in measurements["laws"].values()))
-    measurements["checker_claim"] = stage == "full" and cache_mode == "cold"
-    measurements["accepted_proof_claim"] = cache_mode == "cold"
+    measurements["checker_claim"] = measurements["complete"] and stage == "full" and cache_mode == "cold"
+    measurements["accepted_proof_claim"] = measurements["complete"] and cache_mode == "cold"
     return measurements
 
 
@@ -311,7 +388,7 @@ def main() -> int:
     parser.add_argument("--inspect-only", action="store_true", help="static validation, no native success claim")
     parser.add_argument("--slug", action="append", help="restrict to one or more exact law slugs")
     parser.add_argument("--priority", choices=("L", "P0", "P1"), help="restrict laws by stage")
-    parser.add_argument("--supported-only", action="store_true", help="require and select all 29 supported groups")
+    parser.add_argument("--supported-only", action="store_true", help="require and select all supported groups")
     parser.add_argument("--stage", choices=("full", "proofs"), default="full",
                         help="full=uncached proof+export+six checkers; proofs=no export/checker claim")
     parser.add_argument("--cache-mode", choices=("cold",), default="cold",
@@ -320,11 +397,19 @@ def main() -> int:
     parser.add_argument("--checker-timeout", type=int, default=900, help="per-export checker seconds")
     parser.add_argument("--report", type=Path, help="persist complete execution report JSON")
     args = parser.parse_args()
+    output = None
     try:
+        if args.report:
+            candidate = args.report.resolve()
+            if not candidate.is_relative_to(ROOT / "tmp"):
+                raise RuntimeError("Report path must stay within checkout tmp directory")
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            candidate.unlink(missing_ok=True)
+            output = candidate
         laws = inspect_manifest()
         if args.supported_only:
             laws = supported_laws(laws)
-            print("Supported proof selection: all 29 cataloged law groups; none excluded.", flush=True)
+            print(f"Supported proof selection: all {len(laws)} required law groups; none excluded.", flush=True)
         if args.slug:
             unknown = set(args.slug) - {law["slug"] for law in laws}
             if unknown:
@@ -334,7 +419,11 @@ def main() -> int:
             laws = [law for law in laws if law["priority"] == args.priority]
         if not laws:
             raise RuntimeError("Empty law selection is not a proof")
+        if any(law.get('status') != 'supported' for law in laws) and not args.inspect_only:
+            raise RuntimeError('INCOMPLETE: selected obligations include pending proofs')
         if args.inspect_only:
+            state = coverage(required_inventory(ROOT / 'verification/obligations.json'), laws)
+            print(f"{len(state['supported'])} of {len(state['required'])} required groups supported; {state['state']}")
             print(f"Catalog valid: {len(laws)} law groups checked statically; "
                   "BEAM, Lynx, Lean and exports NOT RUN")
             return 0
@@ -342,16 +431,33 @@ def main() -> int:
             raise RuntimeError("Shared-theory verification requires cold checks; warm cache runs are not supported")
         if args.timeout <= 0 or args.checker_timeout <= 0:
             raise RuntimeError("Timeouts must be positive")
-        result = execution(laws, args.timeout, args.checker_timeout,
-                           stage=args.stage, cache_mode=args.cache_mode)
-        if args.report:
-            output = args.report.resolve()
-            if not output.is_relative_to(ROOT):
-                raise RuntimeError("Report path must stay within source checkout")
-            output.parent.mkdir(parents=True, exist_ok=True)
+        with acceptance_lock():
+            manifest = {str(path.relative_to(ROOT)): sha(path) for path in acceptance_sources()}
+            result = execution(laws, args.timeout, args.checker_timeout,
+                               stage=args.stage, cache_mode=args.cache_mode)
+            drift = changed_sources(manifest, acceptance_sources())
+            result['source_sha256'] = manifest
+            result['obligation_coverage'] = coverage(required_inventory(ROOT / 'verification/obligations.json'),
+                inspect_manifest(), [slug for slug, item in result['laws'].items() if item['passed']])
+            result['release_complete'] = result['obligation_coverage']['complete'] and result.get('checker_claim', False)
+            result['source_changes_during_run'] = drift
+            if drift:
+                result['complete'] = False
+                result['release_complete'] = False
+                result['accepted_proof_claim'] = False
+                result['checker_claim'] = False
+                for law_result in result['laws'].values():
+                    law_result['passed'] = False
+                print('Source changed during verification; acceptance rejected', file=sys.stderr)
+        if output:
             output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf8")
         return 0 if all(x["passed"] for x in result["laws"].values()) else 2
     except (RuntimeError, OSError, ValueError) as exc:
+        if output:
+            failure = {"complete": False, "release_complete": False,
+                       "accepted_proof_claim": False, "checker_claim": False,
+                       "state": "INCOMPLETE", "error": str(exc), "laws": {}}
+            output.write_text(json.dumps(failure, indent=2, sort_keys=True) + "\n", encoding="utf8")
         print(f"LAW RUNNER ERROR: {exc}", file=sys.stderr)
         return 1
 

@@ -49,8 +49,12 @@ read-only inspection. Do not skip a persisted input to restore availability.
 
 ## Attempts and deadlines
 
-`HoldLedger.Attempts` is a separate pure lifecycle model, property-tested rather
-than included in the ledger's 29 formal groups. Server maps logical attempts to
+`HoldLedger.Attempts` is a separate pure lifecycle model with operation laws and
+a typed finite-history theorem bridged to its translated implementation. Its
+interleaving properties also check duplicate persistence/retirement intents.
+The history proofs establish at-most-once persist intents and require persistence
+before retirement; physical writes remain outside that model.
+Server maps logical attempts to
 `Task.Supervisor.async_nolink` tasks, monitor references, callers, and timers.
 A result or completed shutdown enters committing; persistence success retires
 it and releases the slot. Persistence failure poisons the lifecycle.
@@ -86,25 +90,35 @@ callback or a new lookup may establish the outcome.
 
 ## Durable voids
 
-An authorized void releases local capacity immediately and creates a durable
-remote obligation. A reserved void creates no obligation or remote call.
-Recovery folds transitions with prior state, reconstructs the outbox, then
-redrives pending voids after a durable restart. Historical authorization effects
-are never reissued. The hold key, scoped to this account/processor, is the remote
-idempotency token; retries must be safe for that token at the adapter.
+An authorized void enters `:voiding`, retains its amount and slot, and creates
+exactly one durable obligation. A reserved void releases immediately with no
+remote call. The composite invariant requires the exact voiding-key set to equal
+the unique obligation-key set. `Composite.step/2` is the shared live/replay fold;
+`Spec.expected_composite_step/2` independently models its behavior.
 
-Only `{:ok, :voided}` or `{:ok, :already_voided}` completes a void. Not-found
-remains unresolved because absence alone need not establish successful release.
-Errors, deadlines, and lost replies retain the obligation. Exactly one active/stopping void attempt is allowed per key in the current
-Server lifecycle. An orphaned worker from a previous Server may overlap recovery
-until its independent lifetime cap; remote work can outlive local cancellation
-regardless. The adapter must make same-key repeats safe. Completion must sync before retiring an obligation.
+Only correlated `{:ok, :voided}` or `{:ok, :already_voided}` results produce the
+single journal event `{:void_confirmed, key}`. After sync, one composite transition
+changes the entry to `:voided` and removes the obligation. There is no separate
+retirement record or observable half-completed durable state. Public submission
+of this event is rejected. Not-found, errors, deadlines and lost replies retain
+both capacity and the obligation.
 
-After the automatic budget is exhausted, the obligation remains visible.
-`Server.redrive_void(ledger, key)` explicitly resets its budget and retries;
-active keys return `{:error, :attempt_active}`. Local and remote capacity can
-diverge until confirmation. No write-off, uncertain-hold expiry, or
-confirmation-before-local-release policy is implemented.
+Recovery folds every accepted prefix, checks composite validity, durably records
+restart and redrives pending voids. Historical authorization effects are never
+reissued. The key, within its account/processor scope, is the remote identity.
+Exactly one active/stopping void attempt exists per key in one Server lifetime;
+remote work and orphaned workers can overlap a replacement lifetime, so repeated
+calls must remain safe remotely.
+
+After the durable automatic attempt budget is exhausted, the hold and obligation
+remain visible. `Server.redrive_void(ledger, key)` resets that budget explicitly;
+active keys return `{:error, :attempt_active}`. An unavailable processor can hold
+capacity indefinitely. There is no timeout release or operator write-off.
+
+Configured processors must supply an integrator-attested declaration through
+`capabilities/1`. Startup rejects missing, malformed or unsupported declarations;
+it cannot detect a false claim. See [Processors](processors.md) for the permanent
+terminal fence required before confirmation can release capacity.
 
 ## Lookup and inspection
 
@@ -159,5 +173,4 @@ This recovery rule assumes interrupted append after an intact durable prefix
 and honest durable-sync semantics. It does not justify discarding acknowledged
 history damaged later, repairing interior corruption, or accepting rollback.
 A complete shorter prefix remains valid without an external freshness anchor.
-The format is used directly; there is no prior-data reader or conversion path.
 Tests do not establish physical power-loss protection or arbitrary storage safety.

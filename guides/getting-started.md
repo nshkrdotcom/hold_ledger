@@ -14,19 +14,19 @@ are checked, not installed by the onboarding script.
 ```sh
 uv sync --locked
 uv run --locked python scripts/onboard.py --provision
-uv run --locked python scripts/local_run.py mix deps.get
-uv run --locked python scripts/local_run.py mix compile --warnings-as-errors
+mix deps.get
+mix compile --warnings-as-errors
 ```
 
 Onboarding verifies release-download checksums and installs Elan/Lean/Lake in
 ignored `.local/`. It does not change shell profiles or global tools. The wrapper
 sets the local proof-tool environment for each command. Lean is needed for the
-formal test modules; using the application itself requires only Elixir/OTP.
+explicitly selected formal test modules; plain `mix test` runs the ordinary suite by default, and using the application itself requires only Elixir/OTP.
 
 ## Run the demonstration
 
 ```sh
-uv run --locked python scripts/local_run.py mix run scripts/demo.exs
+mix run scripts/demo.exs
 ```
 
 The default seed is 4808. Set `HOLD_LEDGER_SEED` to another nonnegative integer
@@ -67,3 +67,9 @@ Until a published release is available, depend on an explicit repository commit:
 The application starts a task supervisor. It does not open a ledger automatically;
 start a server explicitly or configure `:server_options` as described in the
 runtime guide. Lynx, StreamData and ExDoc are test/documentation dependencies.
+
+## Local quality checks
+
+Run `mix test` before strict Credo
+and Dialyzer. See [Testing](testing.md) for the complete command sequence and
+[Verification](verification.md) for the separate expensive formal acceptance.

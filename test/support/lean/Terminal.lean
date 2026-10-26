@@ -21,9 +21,9 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
         Elixir.HoldLedger.Spec.«lookup/2» entries key) =
       Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[stored,amount,frozen]]) := by
   have excluded : frozen ≠ Lynx.Term.atom "reserved" ∧ frozen ≠ Lynx.Term.atom "sent" ∧
-      frozen ≠ Lynx.Term.atom "unknown" ∧ frozen ≠ Lynx.Term.atom "authorized" := by
+      frozen ≠ Lynx.Term.atom "unknown" ∧ frozen ≠ Lynx.Term.atom "authorized" ∧ frozen ≠ Lynx.Term.atom "voiding" := by
     rcases terminal with rfl | rfl <;> simp
-  obtain ⟨not_reserved, not_sent, not_unknown, not_authorized⟩ := excluded
+  obtain ⟨not_reserved, not_sent, not_unknown, not_authorized, not_voiding⟩ := excluded
   have find_eq (query : Lynx.Term) : Elixir.HoldLedger.Ledger.«find/2» es query = Elixir.HoldLedger.Spec.«lookup/2» es query := by
     obtain ⟨value,hf,hl⟩ := compatible_1 es query proper
     exact hf.trans hl.symm
@@ -60,139 +60,139 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
     simp only [Elixir.HoldLedger.Ledger.«step/2»]
     split
     case h_1 ev query requested =>
-      cases query <;> try simp [Elixir.HoldLedger.Ledger.«request/3», Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1»,
+      cases query <;> try simp [Elixir.HoldLedger.Ledger.«request/3», Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt,  Erlang.erlang.«is_integer/1»,
         Erlang.erlang.«element/2», lookup, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
       rename_i n
       by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
       · have same := alias_lookup n equal
         cases requested
-        all_goals try simp_all [Erlang.erlang.«is_integer/1», Erlang.erlang.«>/2», Erlang.erlang.«=:=/2», bind, Except.bind]
-        simp_all [find_eq, Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
-        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [lookup, Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+        all_goals try simp_all [  Erlang.erlang.«=:=/2»]
+        simp_all [    Int.compare_eq_gt]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
       · rcases lookup_shape_1 es (Lynx.Term.integer n) proper with absent | ⟨ek,av,status,found,known⟩
-        all_goals simp_all [find_eq, change_eq, change_unrelated n _ equal,
-          fresh_lookup n _ equal, Erlang.erlang.«==/2»,
-          Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
-        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [lookup, change_unrelated,
-          fresh_lookup, Erlang.erlang.«==/2»,
-          Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+        all_goals simp_all [
+
+               Erlang.erlang.«=:=/2»,
+              Lynx.Term.true, Lynx.Term.false]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
         all_goals repeat' split_conjunction
         all_goals subst_vars
         all_goals try exact change_unrelated n _ equal
-        all_goals try simp_all [change_unrelated, fresh_lookup, lookup, Erlang.erlang.«element/2», bind, Except.bind]
+        all_goals try simp_all []
     case h_2 ev query =>
-      cases query <;> try simp [Elixir.HoldLedger.Ledger.«dispatch/2», Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1»,
-        Erlang.erlang.«element/2», lookup, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
+      cases query <;> try simp [Elixir.HoldLedger.Ledger.«dispatch/2»,
+        Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
       by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
       · have same := alias_lookup n equal
-        simp_all [find_eq, Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+        simp_all [
+              Lynx.Term.true]
         all_goals repeat' (split <;> try simp_all [lookup, Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
       · rcases lookup_shape_1 es (Lynx.Term.integer n) proper with absent | ⟨ek,av,status,found,known⟩
-        all_goals simp_all [find_eq, change_eq, change_unrelated n _ equal,
-          fresh_lookup n _ equal, Erlang.erlang.«==/2»,
-          Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
-        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [lookup, change_unrelated,
-          fresh_lookup, Erlang.erlang.«==/2»,
-          Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+        all_goals simp_all [
+
+              Lynx.Term.true]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
         all_goals repeat' split_conjunction
         all_goals subst_vars
         all_goals try exact change_unrelated n _ equal
         all_goals try simp_all [change_unrelated, fresh_lookup, lookup, Erlang.erlang.«element/2», bind, Except.bind]
     case h_3 ev query =>
-      cases query <;> try simp [Elixir.HoldLedger.Ledger.«timeout/2», Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1»,
-        Erlang.erlang.«element/2», lookup, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
+      cases query <;> try simp [Elixir.HoldLedger.Ledger.«timeout/2»,
+        Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
       by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
       · have same := alias_lookup n equal
-        simp_all [find_eq, Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+        simp_all [
+              Lynx.Term.true]
         all_goals repeat' (split <;> try simp_all [lookup, Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
       · rcases lookup_shape_1 es (Lynx.Term.integer n) proper with absent | ⟨ek,av,status,found,known⟩
-        all_goals simp_all [find_eq, change_eq, change_unrelated n _ equal,
-          fresh_lookup n _ equal, Erlang.erlang.«==/2»,
-          Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
-        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [lookup, change_unrelated,
-          fresh_lookup, Erlang.erlang.«==/2»,
-          Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+        all_goals simp_all [
+
+              Lynx.Term.true]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
         all_goals repeat' split_conjunction
         all_goals subst_vars
         all_goals try exact change_unrelated n _ equal
         all_goals try simp_all [change_unrelated, fresh_lookup, lookup, Erlang.erlang.«element/2», bind, Except.bind]
     case h_5 ev query =>
-      cases query <;> try simp [Elixir.HoldLedger.Ledger.«retry/2», Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1»,
-        Erlang.erlang.«element/2», lookup, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
+      cases query <;> try simp [Elixir.HoldLedger.Ledger.«retry/2»,
+        Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
       by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
       · have same := alias_lookup n equal
-        simp_all [find_eq, Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+        simp_all [
+              Lynx.Term.true]
         all_goals repeat' (split <;> try simp_all [lookup, Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
       · rcases lookup_shape_1 es (Lynx.Term.integer n) proper with absent | ⟨ek,av,status,found,known⟩
-        all_goals simp_all [find_eq, change_eq, change_unrelated n _ equal,
-          fresh_lookup n _ equal, Erlang.erlang.«==/2»,
-          Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
-        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [lookup, change_unrelated,
-          fresh_lookup, Erlang.erlang.«==/2»,
-          Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+        all_goals simp_all [
+
+              Lynx.Term.true]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
         all_goals repeat' split_conjunction
         all_goals subst_vars
         all_goals try exact change_unrelated n _ equal
         all_goals try simp_all [change_unrelated, fresh_lookup, lookup, Erlang.erlang.«element/2», bind, Except.bind]
     case h_6 ev query outcome =>
-      cases query <;> try simp [Elixir.HoldLedger.Ledger.«processor_result/3», Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1»,
-        Erlang.erlang.«element/2», lookup, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
+      cases query <;> try simp [Elixir.HoldLedger.Ledger.«processor_result/3»,     Erlang.erlang.«is_integer/1»,
+        Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
       by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
       · have same := alias_lookup n equal
-        simp_all [find_eq, Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
-        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [lookup, Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+        simp_all [
+              Lynx.Term.true]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
       · rcases lookup_shape_1 es (Lynx.Term.integer n) proper with absent | ⟨ek,av,status,found,known⟩
-        all_goals simp_all [find_eq, change_eq, change_unrelated n _ equal,
-          fresh_lookup n _ equal, Erlang.erlang.«==/2»,
-          Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
-        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [lookup, change_unrelated,
-          fresh_lookup, Erlang.erlang.«==/2»,
-          Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+        all_goals simp_all [
+
+              Lynx.Term.true]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
         all_goals repeat' split_conjunction
         all_goals subst_vars
         all_goals try exact change_unrelated n _ equal
         all_goals try simp_all [change_unrelated, fresh_lookup, lookup, Erlang.erlang.«element/2», bind, Except.bind]
     case h_7 ev query =>
-      cases query <;> try simp [Elixir.HoldLedger.Ledger.«void/2», Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1»,
-        Erlang.erlang.«element/2», lookup, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
+      cases query <;> try simp [Elixir.HoldLedger.Ledger.«void/2»,
+        Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
       by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
       · have same := alias_lookup n equal
-        simp_all [find_eq, Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+        simp_all [
+              Lynx.Term.true]
         all_goals repeat' (split <;> try simp_all [lookup, Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
       · rcases lookup_shape_1 es (Lynx.Term.integer n) proper with absent | ⟨ek,av,status,found,known⟩
-        all_goals simp_all [find_eq, change_eq, change_unrelated n _ equal,
-          fresh_lookup n _ equal, Erlang.erlang.«==/2»,
-          Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1», Erlang.erlang.«=:=/2», Erlang.erlang.«and/2», Erlang.erlang.«or/2», Erlang.erlang.«element/2»,
-          Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
-        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [lookup, change_unrelated,
-          fresh_lookup, Erlang.erlang.«==/2»,
-          Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+        all_goals simp_all [
+
+              Lynx.Term.true]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
+        all_goals repeat' split_conjunction
+        all_goals subst_vars
+        all_goals try exact change_unrelated n _ equal
+        all_goals try simp_all [change_unrelated, fresh_lookup, lookup, Erlang.erlang.«element/2», bind, Except.bind]
+    case h_8 ev query =>
+      cases query <;> try simp [Elixir.HoldLedger.Ledger.«void_confirmed/2»,
+        Erlang.erlang.«element/2», lookup,   bind, Except.bind]
+      rename_i n
+      by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+      · have same := alias_lookup n equal
+        simp_all [
+              Lynx.Term.true]
+        all_goals repeat' (split <;> try simp_all [lookup, Erlang.erlang.«element/2», bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
+      · rcases lookup_shape_1 es (Lynx.Term.integer n) proper with absent | ⟨ek,av,status,found,known⟩
+        all_goals simp_all [
+
+              Lynx.Term.true]
+        all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
         all_goals repeat' split_conjunction
         all_goals subst_vars
         all_goals try exact change_unrelated n _ equal
         all_goals try simp_all [change_unrelated, fresh_lookup, lookup, Erlang.erlang.«element/2», bind, Except.bind]
     case h_4 =>
-      simp [Elixir.HoldLedger.Ledger.«restart/1», hr, restart_lookup, Erlang.erlang.«element/2», bind, Except.bind]
-    case h_8 ev query =>
-      cases query <;> simp [Elixir.HoldLedger.Ledger.«transport_ack/2», lookup, Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Erlang.erlang.«is_integer/1»,
-        Erlang.erlang.«element/2», Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
-    case h_9 => simp [lookup, Erlang.erlang.«element/2», bind, Except.bind]
+      simp [Elixir.HoldLedger.Ledger.«restart/1», hr, restart_lookup, Erlang.erlang.«element/2»]
+    case h_9 ev query =>
+      cases query <;> simp [Elixir.HoldLedger.Ledger.«transport_ack/2», lookup,
+        Erlang.erlang.«element/2»]
+    case h_10 => simp [lookup, Erlang.erlang.«element/2»]
   · exact False.elim (not_sent bad)
 
 end HoldLedgerProof
@@ -206,7 +206,7 @@ theorem lookup_compare_status (stored a st key amount : Lynx.Term) (tag : String
   rw [← atom_compare st tag]
   simp only [Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq]
   cases hk : stored.compare key <;> cases ha : a.compare amount <;> cases hs : st.compare (Lynx.Term.atom tag) <;>
-    simp_all [Lynx.Term.compare_tuple, List.compareLex, atom_compare]
+    simp_all [  atom_compare]
 
 theorem terminal_comparison (s event key amount : Lynx.Term) (tag : String)
     (terminal : tag = "declined" ∨ tag = "voided")
@@ -225,12 +225,12 @@ theorem terminal_comparison (s event key amount : Lynx.Term) (tag : String)
       Except.ok Lynx.Term.true := by
   obtain ⟨al,hl,ua,uh,es,rfl,hp,hu,ha,hc,hals,hhls,huas,huhs,hacap,hhcap⟩ := valid_view_1 s valid
   rcases lookup_shape_1 es key hp with absent | ⟨storedn,storedamt,old,found,known⟩
-  · simp [Erlang.erlang.«element/2», absent, Erlang.erlang.«==/2», atom_tuple, bind, Except.bind] at before
+  · simp [Erlang.erlang.«element/2», absent, Erlang.erlang.«==/2», atom_tuple] at before
   · by_cases hkey : (Lynx.Term.integer storedn).compare key = Ordering.eq
     all_goals by_cases hamount : (Lynx.Term.integer storedamt).compare amount = Ordering.eq
     all_goals by_cases hold : old = Lynx.Term.atom tag
     all_goals simp [Erlang.erlang.«element/2», found, Erlang.erlang.«==/2», lookup_compare_status,
-      hkey,hamount,hold,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at before
+      hkey,hamount,hold,Lynx.Term.true,Lynx.Term.false] at before
     all_goals subst old
     all_goals
       have frozen : Lynx.Term.atom tag = Lynx.Term.atom "declined" ∨ Lynx.Term.atom tag = Lynx.Term.atom "voided" := by
@@ -250,6 +250,6 @@ theorem terminal_comparison (s event key amount : Lynx.Term) (tag : String)
             have final_lookup : Elixir.HoldLedger.Spec.«lookup/2» entries key =
                 Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[Lynx.Term.integer storedn,Lynx.Term.integer storedamt,Lynx.Term.atom tag]]) := by
               simpa [step, first, fifth, bind, Except.bind] using preserved
-            simp [step,first,fifth,final_lookup,Erlang.erlang.«==/2»,lookup_compare_status,hkey,hamount,bind,Except.bind]
+            simp [first,fifth,final_lookup,Erlang.erlang.«==/2»,lookup_compare_status,hkey,hamount]
 
 end HoldLedgerProof

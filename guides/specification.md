@@ -12,9 +12,9 @@ or settle funds. `HoldLedger.Spec` is the executable oracle for this contract.
 
 Limits and used counters are nonnegative integers. Entries form a proper list
 with unique integer keys and positive integer amounts. Known statuses are
-`:reserved`, `:sent`, `:unknown`, `:authorized`, `:declined` and `:voided`.
+`:reserved`, `:sent`, `:unknown`, `:authorized`, `:voiding`, `:declined` and `:voided`.
 
-Reserved, sent, unknown and authorized entries consume their amount and one
+Reserved, sent, unknown, authorized and voiding entries consume their amount and one
 hold slot. Declined and voided entries consume neither. Used counters equal
 the sum and count of holding entries and cannot exceed the two limits.
 Entries remain remembered even after they become terminal.
@@ -42,7 +42,8 @@ nonnegative integer limits. Other arguments raise `FunctionClauseError`.
 | `{:processor_result, key, :declined}` | Sent or unknown | `:declined`; release amount and slot | `[]` |
 | `{:transport_ack, key}` | Any integer key | `:stale`; unchanged | `[]` |
 | `{:void, key}` | Reserved | `:voided`; release amount and slot | `[]` |
-| `{:void, key}` | Authorized | `:voided`; release amount and slot | `[{:void, key}]` |
+| `{:void, key}` | Authorized | `:voiding`; retain amount and slot | `[{:void, key}]` |
+| `{:void_confirmed, key}` | Voiding | `:voided`; release amount and slot once | `[]` |
 
 Well-formed key events for absent keys return `:not_found`, except transport
 acknowledgments, which always return `:stale`. Existing entries in ineligible
@@ -59,10 +60,10 @@ A timeout or restart never releases capacity. An unknown entry keeps its own
 amount and hold contribution, although unrelated requests can change global
 counters. Retrying reuses the original key and amount. A transport acknowledgment
 cannot authorize a hold. Declined and voided keys cannot allocate again.
-An approved authorization continues consuming capacity until explicitly voided.
+An approved authorization continues consuming capacity while voiding, until a trusted terminal confirmation is journaled.
 
 Effects describe intended I/O. The pure API does not establish that a processor
-received or honored them. A local void is not proof of a successful external void.
+received or honored them. An authorized void retains capacity until a trusted terminal external confirmation.
 
 ## Replay
 
@@ -71,3 +72,26 @@ effects. It does not execute historical requests. Runtime startup separately
 applies a new `:restart` after replay, so recovered sent entries become unknown.
 No finite-history theorem covers improper event lists, wall-clock execution,
 key expiry, pruning or multiple owners.
+
+## Pending voids and composite recovery
+
+`{:void_confirmed, key}` applies only to a voiding hold, returns `:voided`,
+releases its amount and slot exactly once, and emits no effects. Other known
+statuses return `:stale`; a missing integer key returns `:not_found` and a
+noninteger key returns `:malformed`. This event is internal to the Server;
+public attempts to submit it produce a bounded rejection marker.
+
+The composite state is `{ledger, obligations}`. The exact set of voiding keys
+equals the obligation keys, and each key has exactly one obligation. Entering
+voiding creates the obligation in the same pure transition. One synced
+`{:void_confirmed, key}` record releases capacity and removes the obligation in
+one composite fold, shared by live application and replay. Restart preserves
+this coupling. Spec independently models the composite transition and its finite-history fold.
+
+Errors, absent lookup records, deadlines and exhausted retries do not release
+capacity. An indefinitely unavailable processor can retain capacity indefinitely;
+there is no write-off. A real adapter requires an integrator attestation of
+terminal confirmation and non-resurrection, including a terminal fence when void
+arrives before authorization. Startup validates the declaration, not its truth.
+The remote exposure guarantee is conditional on the declared behavior actually
+holding over the full delivery lifetime, even after deduplication record expiry.

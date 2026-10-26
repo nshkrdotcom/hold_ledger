@@ -93,6 +93,7 @@ defmodule HoldLedger.ProofPredicateTest do
       {:retry, 11},
       {:processor_result, 11, :approved},
       {:void, 11},
+      {:void_confirmed, 11},
       {:request, 11, 300}
     ]
 

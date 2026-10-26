@@ -1,6 +1,7 @@
 defmodule HoldLedger.Event do
   @moduledoc "Bounded journal event schema and public/internal admission boundary."
   @reserved [
+    :void_confirmed,
     :void_attempt,
     :void_outcome,
     :void_retry_enabled,
@@ -45,6 +46,7 @@ defmodule HoldLedger.Event do
 
   def valid?({tag, key})
       when tag in [
+             :void_confirmed,
              :void_attempt,
              :void_retry_enabled,
              :processor_lookup_requested,
@@ -52,9 +54,6 @@ defmodule HoldLedger.Event do
              :processor_lookup_unavailable
            ],
       do: is_integer(key)
-
-  def valid?({:void_outcome, key, {:ok, outcome}}),
-    do: is_integer(key) and outcome in [:voided, :already_voided]
 
   def valid?({:void_outcome, key, {:error, reason}}), do: is_integer(key) and reason in @reasons
 

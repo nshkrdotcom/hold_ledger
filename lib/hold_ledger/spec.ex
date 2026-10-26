@@ -9,7 +9,7 @@ defmodule HoldLedger.Spec do
   All transition functions assume an initial state satisfying `valid?/1`.
   """
 
-  @type status :: :reserved | :sent | :unknown | :authorized | :declined | :voided
+  @type status :: :reserved | :sent | :unknown | :authorized | :voiding | :declined | :voided
   @type entry :: {integer(), pos_integer(), status()}
   @type state ::
           {non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer(), [entry()]}
@@ -19,6 +19,7 @@ defmodule HoldLedger.Spec do
   def holding?(:sent), do: true
   def holding?(:unknown), do: true
   def holding?(:authorized), do: true
+  def holding?(:voiding), do: true
   def holding?(_), do: false
 
   @doc "True precisely for the two permanently released statuses."
@@ -126,6 +127,7 @@ defmodule HoldLedger.Spec do
   def applied_result?(:authorized), do: true
   def applied_result?(:declined), do: true
   def applied_result?(:voided), do: true
+  def applied_result?(:voiding), do: true
   def applied_result?(_), do: false
 
   def not_applied_result?(:duplicate), do: true
@@ -144,7 +146,7 @@ defmodule HoldLedger.Spec do
 
   def effect_valid?({_, _, _, _, entries}, {:void, key}) do
     case lookup(entries, key) do
-      {:ok, {^key, _amount, :voided}} -> true
+      {:ok, {^key, _amount, :voiding}} -> true
       _ -> false
     end
   end
@@ -175,7 +177,7 @@ defmodule HoldLedger.Spec do
       result == :retried ->
         authorize_intent?(before_state, event, after_state, effects, :unknown, :retry)
 
-      result == :voided ->
+      result == :voiding ->
         void_intent?(before_state, event, after_state, effects)
 
       applied_result?(result) ->
@@ -211,7 +213,7 @@ defmodule HoldLedger.Spec do
     case lookup(entries, key) do
       {:ok, {^key, amount, :authorized}} ->
         effects == [{:void, key}] and
-          lookup(elem(after_state, 4), key) == {:ok, {key, amount, :voided}}
+          lookup(elem(after_state, 4), key) == {:ok, {key, amount, :voiding}}
 
       {:ok, {^key, amount, :reserved}} ->
         effects == [] and lookup(elem(after_state, 4), key) == {:ok, {key, amount, :voided}}
@@ -292,6 +294,10 @@ defmodule HoldLedger.Spec do
     expect_void(state, key)
   end
 
+  def expected_step(state, {:void_confirmed, key}) when is_integer(key) do
+    expect_single(state, key, :voiding, :voided, :voided, :none)
+  end
+
   def expected_step(state, {:transport_ack, key}) when is_integer(key) do
     {state, :stale, []}
   end
@@ -358,7 +364,7 @@ defmodule HoldLedger.Spec do
         {restated(s, replacement(entries, key, :voided)), :voided, []}
 
       {:ok, {_, _, :authorized}} ->
-        {restated(s, replacement(entries, key, :voided)), :voided, [{:void, key}]}
+        {restated(s, replacement(entries, key, :voiding)), :voiding, [{:void, key}]}
 
       _ ->
         {s, :stale, []}
@@ -434,4 +440,193 @@ defmodule HoldLedger.Spec do
     authorized_only_on_result?(state, event, next_state) and
       history_authorizations_explained?(next_state, rest)
   end
+
+  @doc "Independent composite invariant: exactly one obligation per voiding entry."
+  def composite_valid?({ledger, obligations}) do
+    valid?(ledger) and obligations_valid?(obligations, elem(ledger, 4), []) and
+      all_voiding_present?(elem(ledger, 4), obligations)
+  end
+
+  def composite_valid?(_), do: false
+
+  defp obligations_valid?([], _, _), do: true
+
+  defp obligations_valid?([{key, count, outcome} | tail], entries, seen)
+       when is_integer(key) and is_integer(count) and count >= 0 do
+    not seen?(seen, key) and outcome_valid?(outcome) and
+      voiding_entry?(lookup(entries, key)) and obligations_valid?(tail, entries, [key | seen])
+  end
+
+  defp obligations_valid?(_, _, _), do: false
+  defp outcome_valid?(:unattempted), do: true
+
+  defp outcome_valid?({:error, reason}),
+    do:
+      reason in [
+        :unavailable,
+        :not_found,
+        :timeout,
+        :declined,
+        :adapter_error,
+        :adapter_exception,
+        :adapter_exit,
+        :unexpected_reply,
+        :uncertain,
+        :task_start_failed,
+        :capacity,
+        :task_down
+      ]
+
+  defp outcome_valid?(_), do: false
+  defp voiding_entry?({:ok, {_, _, :voiding}}), do: true
+  defp voiding_entry?(_), do: false
+  defp all_voiding_present?([], _), do: true
+
+  defp all_voiding_present?([{key, _, :voiding} | tail], obligations),
+    do: obligation_present?(obligations, key) and all_voiding_present?(tail, obligations)
+
+  defp all_voiding_present?([_ | tail], obligations), do: all_voiding_present?(tail, obligations)
+  defp obligation_present?([], _), do: false
+  defp obligation_present?([{key, _, _} | _], key), do: true
+  defp obligation_present?([_ | tail], key), do: obligation_present?(tail, key)
+
+  @doc "Independent composite oracle; never calls production transition helpers."
+  def expected_composite_step({ledger, obligations}, event) do
+    {next, result, effects} = expected_step(ledger, event)
+
+    updated =
+      case {event, result} do
+        {{:void, key}, :voiding} ->
+          obligations ++ [{key, 0, :unattempted}]
+
+        {{:void_confirmed, key}, :voided} ->
+          expected_obligation_update(obligations, key, :remove)
+
+        {{:void_attempt, key}, _} ->
+          expected_obligation_update(obligations, key, :attempt)
+
+        {{:void_outcome, key, {:error, _} = outcome}, _} ->
+          if outcome_valid?(outcome),
+            do: expected_obligation_update(obligations, key, {:outcome, outcome}),
+            else: obligations
+
+        {{:void_retry_enabled, key}, _} ->
+          expected_obligation_update(obligations, key, :reset)
+
+        _ ->
+          obligations
+      end
+
+    {{next, updated}, result, effects}
+  end
+
+  @doc "Fold a proper finite history through the independent composite oracle."
+  def expected_composite_run(state, []), do: state
+
+  def expected_composite_run(state, [event | rest]) do
+    {next, _, _} = expected_composite_step(state, event)
+    expected_composite_run(next, rest)
+  end
+
+  defp expected_obligation_update([], _, _), do: []
+
+  defp expected_obligation_update([{key, n, outcome} | rest], key, change) do
+    case change do
+      :remove -> rest
+      :attempt -> [{key, n + 1, :unattempted} | rest]
+      :reset -> [{key, 0, outcome} | rest]
+      {:outcome, value} -> [{key, n, value} | rest]
+    end
+  end
+
+  defp expected_obligation_update([entry | rest], key, change),
+    do: [entry | expected_obligation_update(rest, key, change)]
+
+  @doc "A previously issued identity remains capacity-holding in one of its post-dispatch states."
+  def exposed_entry?({_, _, _, _, entries}, key, amount) do
+    case lookup(entries, key) do
+      {:ok, {^key, ^amount, status}} -> status in [:sent, :unknown, :authorized, :voiding]
+      _ -> false
+    end
+  end
+
+  def exposed_entry?(_, _, _), do: false
+
+  @doc "The only trusted events that can release a previously issued key."
+  def release_evidence?(event, key),
+    do: event === {:processor_result, key, :declined} or event === {:void_confirmed, key}
+
+  @doc "Independent reachable-pair relation for truthful environment deliveries."
+  def exposure_valid?({{ledger, obligations}, {issued, records}}) do
+    composite_valid?({ledger, obligations}) and
+      issued_valid?(issued, elem(ledger, 4), []) and
+      remote_valid?(records, issued, []) and
+      local_remote_agree?(elem(ledger, 4), issued, records)
+  end
+
+  def exposure_valid?(_), do: false
+
+  defp issued_valid?([], _, _), do: true
+
+  defp issued_valid?([{key, amount, :issued} | rest], entries, seen)
+       when is_integer(key) and is_integer(amount) and amount > 0 do
+    not seen?(seen, key) and issued_local?(lookup(entries, key), amount) and
+      issued_valid?(rest, entries, [key | seen])
+  end
+
+  defp issued_valid?(_, _, _), do: false
+
+  defp issued_local?({:ok, {_, amount, status}}, amount),
+    do: status in [:sent, :unknown, :authorized, :voiding, :declined, :voided]
+
+  defp issued_local?(_, _), do: false
+
+  defp remote_valid?([], _, _), do: true
+
+  defp remote_valid?([{key, amount, status} | rest], issued, seen)
+       when is_integer(key) and is_integer(amount) and amount > 0 and
+              status in [:approved, :declined, :voided] do
+    not seen?(seen, key) and lookup(issued, key) === {:ok, {key, amount, :issued}} and
+      remote_valid?(rest, issued, [key | seen])
+  end
+
+  defp remote_valid?(_, _, _), do: false
+
+  defp local_remote_agree?([], _, _), do: true
+
+  defp local_remote_agree?([{key, amount, status} | rest], issued, records) do
+    entry_agrees?(key, amount, status, lookup(issued, key), lookup(records, key)) and
+      local_remote_agree?(rest, issued, records)
+  end
+
+  defp entry_agrees?(_, _, :reserved, :not_found, :not_found), do: true
+  defp entry_agrees?(_, _, :voided, :not_found, :not_found), do: true
+
+  defp entry_agrees?(key, amount, status, {:ok, {key, amount, :issued}}, observation) do
+    case {status, observation} do
+      {s, :not_found} when s in [:sent, :unknown] ->
+        true
+
+      {s, {:ok, {^key, ^amount, outcome}}}
+      when s in [:sent, :unknown] and outcome in [:approved, :declined] ->
+        true
+
+      {:authorized, {:ok, {^key, ^amount, :approved}}} ->
+        true
+
+      {:voiding, {:ok, {^key, ^amount, outcome}}} when outcome in [:approved, :voided] ->
+        true
+
+      {:declined, {:ok, {^key, ^amount, :declined}}} ->
+        true
+
+      {:voided, {:ok, {^key, ^amount, :voided}}} ->
+        true
+
+      _ ->
+        false
+    end
+  end
+
+  defp entry_agrees?(_, _, _, _, _), do: false
 end

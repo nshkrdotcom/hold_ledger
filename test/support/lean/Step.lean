@@ -54,6 +54,12 @@ theorem «po_s/2» (s event : Lynx.Term)
           Elixir.HoldLedger.Spec.«valid?/1» next) = Except.ok Lynx.Term.true := by
     intro s key requires
     exact «po_b1_void/2» s key requires
+  have confirmation_valid : ∀ s key, Elixir.HoldLedger.Spec.«valid?/1» s = Except.ok Lynx.Term.true →
+      (do let output ← Elixir.HoldLedger.Ledger.«void_confirmed/2» s key
+          let next ← Erlang.erlang.«element/2» (Lynx.Term.integer 1) output
+          Elixir.HoldLedger.Spec.«valid?/1» next) = Except.ok Lynx.Term.true := by
+    intro s key requires
+    exact «po_b1_void_confirmed/2» s key requires
   change Elixir.HoldLedger.Spec.«valid?/1» s = Except.ok Lynx.Term.true at requires
   simp only [«po_s:ensures/2», Elixir.HoldLedger.Ledger.«step/2»]
   split
@@ -64,9 +70,10 @@ theorem «po_s/2» (s event : Lynx.Term)
   case h_5 ev k => exact retry_valid s k requires
   case h_6 ev k outcome => exact processor_result_valid s k outcome requires
   case h_7 ev k => exact void_valid s k requires
-  case h_8 ev k =>
-    cases k <;> simp [Elixir.HoldLedger.Ledger.«transport_ack/2», Erlang.erlang.«is_integer/1»,
-      Erlang.erlang.«element/2», Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, requires]
-  case h_9 => simp [Erlang.erlang.«element/2», bind, Except.bind, requires]
+  case h_8 ev k => exact confirmation_valid s k requires
+  case h_9 ev k =>
+    cases k <;> simp [Elixir.HoldLedger.Ledger.«transport_ack/2»,
+      Erlang.erlang.«element/2»,     requires]
+  case h_10 => simp [Erlang.erlang.«element/2»,   requires]
 
 end Elixir.HoldLedger.ProofContracts

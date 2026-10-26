@@ -27,5 +27,11 @@
   "po_c2": "Replay",
   "po_c3": "History",
   "po_i": "Request",
-  "po_s": "Step"
+  "po_s": "Step",
+  "po_b1_void_confirmed": "Lifecycle",
+  "po_attempt_poison": "Tactics",
+  "po_terminal_fence": "Tactics",
+  "po_attempt_retired": "Tactics",
+  "po_attempt_slot": "Tactics",
+  "po_exposure_retain": "Retention"
 }

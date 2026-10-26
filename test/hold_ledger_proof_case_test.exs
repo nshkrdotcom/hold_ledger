@@ -82,4 +82,22 @@ defmodule HoldLedger.ProofCaseTest do
     assert Enum.zip_with(original, changed, &(&1["cache_key"] != &2["cache_key"])) == [true, true]
     assert original == HoldLedger.ProofCase.cache_files(files)
   end
+
+  test "native anchors resolve full theorem identities and reject source injection" do
+    [anchor] =
+      HoldLedger.ProofCase.native_anchors([
+        %{"module" => "HoldLedgerProof.Example", "theorems" => ["HoldLedgerProof.Example.claim"]}
+      ])
+
+    assert hd(anchor["preludes"])["source"] =~
+             "abbrev checked_0 := @HoldLedgerProof.Example.claim"
+
+    assert anchor["imports"] == ["HoldLedgerProof.Example"]
+
+    assert_raise ArgumentError, fn ->
+      HoldLedger.ProofCase.native_anchors([
+        %{"module" => "HoldLedgerProof.Example", "theorems" => ["Other.claim\nmalformed"]}
+      ])
+    end
+  end
 end

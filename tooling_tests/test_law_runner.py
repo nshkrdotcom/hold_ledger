@@ -14,9 +14,28 @@ class LawRunnerTests(unittest.TestCase):
     def setUpClass(cls):
         (run_laws.ROOT / "tmp").mkdir(exist_ok=True)
 
-    def test_supported_selection_requires_all_29_groups(self):
+    def test_preflight_error_replaces_stale_success_report(self):
+        import json
+        with tempfile.TemporaryDirectory(dir=run_laws.ROOT / "tmp") as folder:
+            report = Path(folder) / "result.json"
+            report.write_text(json.dumps({"complete": True, "release_complete": True}))
+            with mock.patch.object(sys, 'argv', ['run_laws.py', '--report', str(report)]), \
+                    mock.patch.object(run_laws, 'inspect_manifest', side_effect=RuntimeError('broken inventory')):
+                self.assertEqual(run_laws.main(), 1)
+            result = json.loads(report.read_text())
+            self.assertEqual(result['state'], 'INCOMPLETE')
+            self.assertFalse(result['complete'])
+            self.assertFalse(result['release_complete'])
+            self.assertFalse(result['checker_claim'])
+            self.assertEqual(result['error'], 'broken inventory')
+
+    def test_supported_selection_requires_all_cataloged_groups(self):
         laws = run_laws.inspect_manifest()
-        self.assertEqual(len(run_laws.supported_laws(laws)), 29)
+        if any(law.get('status') == 'pending' for law in laws):
+            with self.assertRaisesRegex(RuntimeError, 'INCOMPLETE'):
+                run_laws.supported_laws(laws)
+        else:
+            self.assertEqual(len(run_laws.supported_laws(laws)), len(laws))
         for index in range(len(laws)):
             changed = [dict(law) for law in laws]
             changed[index]["status"] = "unproved"
@@ -24,6 +43,17 @@ class LawRunnerTests(unittest.TestCase):
                 run_laws.supported_laws(changed)
         with self.assertRaises(RuntimeError):
             run_laws.supported_laws(laws[:-1])
+
+    def test_same_id_groups_cannot_disappear_from_manifest(self):
+        import json
+        catalog = json.loads(run_laws.MANIFEST.read_text())
+        catalog['laws'] = [law for law in catalog['laws'] if law['slug'] != 'po_a4_duplicate']
+        with tempfile.TemporaryDirectory(dir=run_laws.ROOT / 'tmp') as folder:
+            manifest = Path(folder) / 'laws.json'
+            manifest.write_text(json.dumps(catalog))
+            with mock.patch.object(run_laws, 'MANIFEST', manifest):
+                with self.assertRaisesRegex(RuntimeError, 'group identities'):
+                    run_laws.inspect_manifest()
 
     def test_shared_proof_sources_are_scanned_for_escapes(self):
         with tempfile.TemporaryDirectory(dir=run_laws.ROOT / "tmp") as folder:
@@ -52,6 +82,17 @@ class LawRunnerTests(unittest.TestCase):
         report["reports"][0]["status"] = "ok"
         report["reports"][0]["theorems"] = []
         self.assertFalse(run_laws.valid_batch_report(report, laws))
+
+    def test_batch_warnings_cannot_count_as_clean_acceptance(self):
+        law = run_laws.inspect_manifest()[0]
+        module = "Elixir.Example." + law["slug"]
+        theorem = f"{law['law']}/{law['arity']}"
+        report = {"laws": {law["slug"]: {"passed": True, "module": module, "laws": [theorem]}},
+                  "reports": [{"module": module + ".laws", "status": "ok", "cached": False,
+                               "theorems": [{"name": theorem}], "diagnostics": []}]}
+        self.assertTrue(run_laws.valid_batch_report(report, [law]))
+        report["reports"][0]["diagnostics"] = [{"severity": "warning", "message": "unused hypothesis"}]
+        self.assertFalse(run_laws.valid_batch_report(report, [law]))
 
     def test_success_requires_an_actual_law_test(self):
         self.assertFalse(run_laws.valid_law_result("Result: 0 passed\n"))
@@ -98,4 +139,33 @@ class LawRunnerTests(unittest.TestCase):
         with mock.patch.object(run_laws, "run", fake_run):
             result = run_laws.execution([law], 1, 1, stage="full")
         self.assertFalse(result["complete"])
+        self.assertFalse(result["accepted_proof_claim"])
+        self.assertFalse(result["checker_claim"])
         self.assertFalse(result["laws"][law["slug"]]["correct_export"])
+
+    def test_native_group_requires_its_checked_module_and_exact_obligation_list(self):
+        law = next(law for law in run_laws.inspect_manifest() if law.get('kind') == 'lean')
+        report = {'laws': {law['slug']: {'passed': True, 'kind': 'lean',
+                   'module': law['module'], 'laws': law['theorems'], 'qualified_names_checked': law['theorems']}},
+                  'reports': [{'module': law['module'], 'status': 'ok', 'cached': False},
+                              {'module': 'HoldLedgerProof.RequiredObligations', 'status': 'ok', 'cached': False}]}
+        self.assertTrue(run_laws.valid_batch_report(report, [law]))
+        report['reports'] = []
+        self.assertFalse(run_laws.valid_batch_report(report, [law]))
+        report['reports'] = [{'module': law['module'], 'status': 'skipped', 'cached': False}]
+        self.assertFalse(run_laws.valid_batch_report(report, [law]))
+        report['reports'] = [{'module': law['module'], 'status': 'ok', 'cached': False}]
+        report['laws'][law['slug']]['laws'] = []
+        self.assertFalse(run_laws.valid_batch_report(report, [law]))
+
+    def test_native_names_require_checked_lean_anchors(self):
+        law = next(item for item in run_laws.inspect_manifest() if item.get('kind') == 'lean')
+        record = {'passed': True, 'kind': 'lean', 'module': law['module'],
+                  'laws': law['theorems'], 'qualified_names_checked': law['theorems']}
+        report = {'laws': {law['slug']: record}, 'reports': [
+            {'module': law['module'], 'status': 'ok', 'cached': False}]}
+        self.assertFalse(run_laws.valid_batch_report(report, [law]))
+        report['reports'].append({'module': 'HoldLedgerProof.RequiredObligations', 'status': 'ok', 'cached': False})
+        self.assertTrue(run_laws.valid_batch_report(report, [law]))
+        record['qualified_names_checked'] = ['Wrong.namespace']
+        self.assertFalse(run_laws.valid_batch_report(report, [law]))

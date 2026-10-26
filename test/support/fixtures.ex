@@ -11,6 +11,7 @@ defmodule HoldLedger.TestFixtures do
   def sent, do: {1000, 3, 300, 1, [{11, 300, :sent}]}
   def unknown, do: {1000, 3, 300, 1, [{11, 300, :unknown}]}
   def authorized, do: {1000, 3, 300, 1, [{11, 300, :authorized}]}
+  def voiding, do: {1000, 3, 300, 1, [{11, 300, :voiding}]}
   def declined, do: {1000, 3, 0, 0, [{11, 300, :declined}]}
   def voided, do: {1000, 3, 0, 0, [{11, 300, :voided}]}
 
@@ -29,6 +30,7 @@ defmodule HoldLedger.TestFixtures do
   def with_status(:sent), do: sent()
   def with_status(:unknown), do: unknown()
   def with_status(:authorized), do: authorized()
+  def with_status(:voiding), do: voiding()
   def with_status(:declined), do: declined()
   def with_status(:voided), do: voided()
 
@@ -44,6 +46,7 @@ defmodule HoldLedger.TestFixtures do
       sent(),
       unknown(),
       authorized(),
+      voiding(),
       declined(),
       voided(),
       mixed()

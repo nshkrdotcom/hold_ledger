@@ -81,7 +81,13 @@ defmodule HoldLedger.MixProject do
       ],
       groups_for_modules: [
         Overview: [HoldLedger],
-        "Ledger and Specification": [HoldLedger.Ledger, HoldLedger.Spec],
+        "Ledger and Specification": [
+          HoldLedger.Ledger,
+          HoldLedger.Spec,
+          HoldLedger.Composite,
+          HoldLedger.Environment,
+          HoldLedger.Exposure
+        ],
         Runtime: [
           HoldLedger.Application,
           HoldLedger.Server,

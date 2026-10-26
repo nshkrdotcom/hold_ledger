@@ -66,7 +66,7 @@ defmodule HoldLedger.ProofCase do
         quote do
           @moduledoc false
           @compile :debug_info
-          alias HoldLedger.{Ledger, Spec}
+          alias HoldLedger.{Attempts, Environment, Ledger, Spec}
           unquote_splicing(definitions)
         end,
         Macro.Env.location(__ENV__)
@@ -113,13 +113,39 @@ defmodule HoldLedger.ProofCase do
     assemble_many([{module, laws}], suffixes, cutoffs, preludes)
   end
 
-  def assemble_many(groups, suffixes \\ %{}, cutoffs \\ MapSet.new(), preludes \\ []) do
+  def assemble_many(
+        groups,
+        suffixes \\ %{},
+        cutoffs \\ MapSet.new(),
+        preludes \\ [],
+        native \\ []
+      ) do
     translation =
       Lynx.Translation.new(termination_suffixes: suffixes, cutoffs: cutoffs, preludes: preludes)
       |> Lynx.Translation.add(Lynx.Bytecode.fetch!(HoldLedger.ProofContracts))
       |> Lynx.Translation.translate(
         HoldLedger.ProofContracts,
         HoldLedger.ProofContracts.__info__(:functions)
+      )
+
+    translation =
+      Enum.reduce(
+        [
+          HoldLedger.Attempts,
+          HoldLedger.Composite,
+          HoldLedger.Environment,
+          HoldLedger.Exposure,
+          HoldLedger.Ledger,
+          HoldLedger.Outbox,
+          HoldLedger.Spec
+        ],
+        translation,
+        fn
+          module, acc ->
+            acc
+            |> Lynx.Translation.add(elem(:code.get_object_code(module), 1))
+            |> Lynx.Translation.translate(module, module.__info__(:functions))
+        end
       )
 
     translation =
@@ -132,6 +158,13 @@ defmodule HoldLedger.ProofCase do
     files = Lynx.Translation.assemble(translation, cache: false)
     {proofs, definitions} = Enum.split_with(files, &String.ends_with?(&1["module"], ".laws"))
     support = support_files(Enum.flat_map(groups, &elem(&1, 1)))
+
+    {_, support} =
+      Enum.reduce(native, {MapSet.new(Enum.map(support, & &1["module"])), support}, fn name,
+                                                                                       state ->
+        load_support(name, state, [])
+      end)
+
     imports = Enum.map(support, & &1["module"])
 
     files =
@@ -139,6 +172,43 @@ defmodule HoldLedger.ProofCase do
         support ++ Enum.map(proofs, &Map.update!(&1, "imports", fn deps -> deps ++ imports end))
 
     if System.get_env("HOLD_LEDGER_PROOF_CACHE") == "1", do: cache_files(files), else: files
+  end
+
+  def native_anchors([]), do: []
+
+  def native_anchors(groups) do
+    names = Enum.flat_map(groups, &Map.fetch!(&1, "theorems"))
+
+    unless Enum.all?(names, &Regex.match?(~r/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$/, &1)),
+      do: raise(ArgumentError, "invalid qualified theorem name")
+
+    imports = groups |> Enum.map(&Map.fetch!(&1, "module")) |> Enum.uniq()
+
+    source =
+      "module\n" <>
+        Enum.map_join(imports, "\n", &("public import " <> &1)) <>
+        "\npublic section\nnamespace HoldLedgerProof.RequiredObligations\n" <>
+        Enum.map_join(Enum.with_index(names), "\n", fn {name, index} ->
+          "abbrev checked_#{index} := @#{name}"
+        end) <>
+        "\nend HoldLedgerProof.RequiredObligations\n"
+
+    [
+      %{
+        "module" => "HoldLedgerProof.RequiredObligations",
+        "file" => "verification/obligations.json",
+        "imports" => imports,
+        "contents" => [],
+        "preludes" => [
+          %{
+            "source" => source,
+            "file" => "verification/obligations.json",
+            "span" => [1, 1],
+            "indentation" => 0
+          }
+        ]
+      }
+    ]
   end
 
   def cache_files(files) do
@@ -263,7 +333,7 @@ defmodule HoldLedger.ProofCase do
             do: diagnostic
 
       ExUnit.Assertions.flunk(
-        "Shared proof verification failed or omitted requested laws: #{inspect(diagnostics, pretty: true, limit: :infinity)}"
+        "Shared proof verification failed or omitted requested laws: #{inspect(diagnostics, pretty: true, limit: :infinity, printable_limit: :infinity)}"
       )
     end
 

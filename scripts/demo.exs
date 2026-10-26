@@ -88,7 +88,9 @@ show.("lookup reconciliation", :authorized)
 :ok = Server.await_idle(server)
 {:ok, {^k3, 10, :authorized}} = Ledger.find(elem(Server.state(server), 4), k3)
 
-{:ok, :voided} = show.("void local intent", Server.submit(server, {:void, k1}))
+{:ok, :voiding} =
+  show.("void retains capacity until confirmation", Server.submit(server, {:void, k1}))
+
 :ok = Server.await_idle(server)
 show.("processor void receipts", Server.status(server).void_receipts)
 
@@ -108,21 +110,11 @@ show.("at capacity", {elem(Server.state(server), 2), elem(Server.state(server), 
 {:ok, sim_off} = Sim.start_link(dedupe: false)
 :ok = Sim.queue_fault(sim_off, :authorize, :execute_then_drop)
 
-{:ok, server_off} =
-  Server.start_link(
-    path: Path.join(dir, "dedupe-off.log"),
-    caps: {50, 2},
-    processor: {Sim, sim_off}
-  )
-
-{:ok, :admitted} = Server.submit(server_off, {:request, base + 90, 25})
-{:ok, :dispatched} = Server.submit(server_off, {:dispatch, base + 90})
-:ok = Server.await_idle(server_off)
-{:ok, :retried} = Server.submit(server_off, {:retry, base + 90})
-:ok = Server.await_idle(server_off)
-{50, 2, 25, 1, _} = Server.state(server_off)
+{:error, :missing_terminal_attestation} = HoldLedger.Processor.validate({Sim, sim_off})
+{:lost, :reply} = Sim.authorize(sim_off, base + 90, 25)
+{:ok, :approved} = Sim.authorize(sim_off, base + 90, 25)
 2 = length(Sim.snapshot(sim_off).active)
-show.("dedupe-off counterexample (local holds, external holds)", {1, 2})
+show.("unsupported receiver counterexample (same key, external holds)", {1, 2})
 
 # M2 changes a *temporary source copy*, never the verified Ledger. Compile it
 # as an isolated module and exhibit a real counterexample for premature release.
@@ -165,9 +157,8 @@ IO.puts(
   "Assumed: processor honesty/lookup meaning, OS/storage flush and physical persistence; remote exactly-once is not proved."
 )
 
-IO.puts("Proof catalog: 29 law groups, including terminal absorption and finite histories.")
+IO.puts("Proof catalog includes terminal absorption and finite histories.")
 :ok = GenServer.stop(server)
-:ok = GenServer.stop(server_off)
 :ok = GenServer.stop(sim)
 :ok = GenServer.stop(sim_off)
 IO.puts("Demo completed; isolated journal files retained for inspection.")

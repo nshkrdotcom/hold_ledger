@@ -27,7 +27,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
     have initial : Elixir.HoldLedger.Spec.«valid?/1» s = Except.ok Lynx.Term.true := by
       clear replaced lookup_equiv marked shape_lookup identity_all compatible
       simp only [«po_b2:requires/4», bind, Except.bind] at requires
-      all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+      all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true])
     have shaped : ∃ (al hl ua uh : Int) (es : Lynx.Term),
         s = Lynx.Term.tuple #[Lynx.Term.integer al, Lynx.Term.integer hl,
           Lynx.Term.integer ua, Lynx.Term.integer uh, es] ∧
@@ -36,8 +36,8 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
       clear requires replaced lookup_equiv marked shape_lookup identity_all compatible key amount event
       simp only [Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
         Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at initial
-      all_goals repeat' (split at initial <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
-      all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+      all_goals repeat' (split at initial <;> try simp_all [Lynx.Term.true])
+      all_goals repeat' (split at * <;> try simp_all [])
       all_goals simp only [Erlang.erlang.«is_integer/1», Elixir.HoldLedger.Spec.«unique_keys?/1»,
         Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at *
       all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
@@ -47,7 +47,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
     clear identity_all
     rcases shape_lookup es key hp with hn | ⟨storedn, storedamt, old, hlookup, hknown⟩
     · simp [«po_b2:requires/4», Erlang.erlang.«element/2», initial, hn,
-        Erlang.erlang.«==/2», HoldLedgerProof.atom_tuple, bind, Except.bind,
+        Erlang.erlang.«==/2», HoldLedgerProof.atom_tuple,
         Lynx.Term.true, Lynx.Term.false] at requires
     · by_cases hkey : (Lynx.Term.integer storedn).compare key = Ordering.eq
       all_goals by_cases hamount : (Lynx.Term.integer storedamt).compare amount = Ordering.eq
@@ -56,7 +56,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
       all_goals by_cases hdecl : event.compare (Lynx.Term.tuple #[Lynx.Term.atom "processor_result",key,Lynx.Term.atom "declined"]) = Ordering.eq
       all_goals simp [«po_b2:requires/4», Erlang.erlang.«element/2», initial, hlookup,
         Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.lookup_compare,
-        hkey,hamount,hold,happ,hdecl, bind, Except.bind, Lynx.Term.true,Lynx.Term.false] at requires
+        hkey,hamount,hold,happ,hdecl,   Lynx.Term.true,Lynx.Term.false] at requires
       all_goals subst old
       all_goals
         have find_eq : ∀ k, Elixir.HoldLedger.Ledger.«find/2» es k = Elixir.HoldLedger.Spec.«lookup/2» es k := by
@@ -107,296 +107,217 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
           split at hs
           case h_1 ev k amountv =>
             cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«request/3», Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals try (subst out; solve | simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
-            all_goals cases amountv <;> try simp [*, Elixir.HoldLedger.Ledger.«request/3», Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals try (subst out; solve | simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+            all_goals try (subst out; solve | simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
+                Lynx.Term.compare_tuple, List.compareLex,
+                   Lynx.Term.true])
+            all_goals cases amountv <;> try simp [*] at hs
+            all_goals try (subst out; solve | simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
+                Lynx.Term.compare_tuple, List.compareLex,
+                   Lynx.Term.true])
             all_goals rename_i n amountn
             all_goals cases hc : (Lynx.Term.integer n).compare key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«request/3», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
+            all_goals try simp [*,
+                   Erlang.erlang.«=:=/2»,
+
                 Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+
+                   Lynx.Term.true,Lynx.Term.false] at hs
+            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
+                Lynx.Term.compare_tuple, List.compareLex,
+                   Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+            all_goals try simp only [] at hidentity ⊢
+            all_goals try simp_all [
+
+                Lynx.Term.compare_tuple, List.compareLex]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_2 ev k =>
-            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«dispatch/2», Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals try (subst out; solve | simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«dispatch/2», bind,Except.bind] at hs
+            all_goals try (subst out; solve | simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true])
             all_goals rename_i n
             all_goals cases hc : (Lynx.Term.integer n).compare key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals obtain ⟨newer,hlchange,hclass⟩ := change_lookup n (Lynx.Term.atom "sent")
             all_goals rcases hclass with rfl | ⟨rfl,_⟩
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«dispatch/2», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp [*] at hs
+            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp only [Erlang.erlang.«element/2»] at hidentity ⊢
+            all_goals try simp_all [
+                  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+                   Lynx.Term.true,Lynx.Term.false]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_3 ev k =>
-            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«timeout/2», Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals try (subst out; solve | simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«timeout/2», bind,Except.bind] at hs
+            all_goals try (subst out; solve | simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true])
             all_goals rename_i n
             all_goals cases hc : (Lynx.Term.integer n).compare key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals obtain ⟨newer,hlchange,hclass⟩ := change_lookup n (Lynx.Term.atom "unknown")
             all_goals rcases hclass with rfl | ⟨rfl,_⟩
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«timeout/2», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp [*] at hs
+            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp only [Erlang.erlang.«element/2»] at hidentity ⊢
+            all_goals try simp_all [
+                  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+                   Lynx.Term.true,Lynx.Term.false]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_5 ev k =>
-            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«retry/2», Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals try (subst out; solve | simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«retry/2», bind,Except.bind] at hs
+            all_goals try (subst out; solve | simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true])
             all_goals rename_i n
             all_goals cases hc : (Lynx.Term.integer n).compare key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals obtain ⟨newer,hlchange,hclass⟩ := change_lookup n (Lynx.Term.atom "sent")
             all_goals rcases hclass with rfl | ⟨rfl,_⟩
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«retry/2», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp [*] at hs
+            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp only [Erlang.erlang.«element/2»] at hidentity ⊢
+            all_goals try simp_all [
+                  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+                   Lynx.Term.true,Lynx.Term.false]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
-            all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
+            all_goals repeat' (split <;> try simp_all [])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all []
             all_goals skip
           case h_6 ev k outcome =>
-            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«processor_result/3», Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals try (subst out; solve | simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«processor_result/3», Erlang.erlang.«is_integer/1»,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
+            all_goals try (subst out; solve | simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
+                Lynx.Term.compare_tuple, List.compareLex,
+                   Lynx.Term.true])
             all_goals rename_i n
             all_goals cases hc : (Lynx.Term.integer n).compare key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«processor_result/3», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+            all_goals try simp [*] at hs
+            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
+                Lynx.Term.compare_tuple, List.compareLex,
+                   Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+            all_goals try simp only [] at hidentity ⊢
+            all_goals try simp_all [
+
+                Lynx.Term.compare_tuple, List.compareLex]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_7 ev k =>
-            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«void/2», Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals try (subst out; solve | simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«void/2»,  bind,Except.bind] at hs
+            all_goals try (subst out; solve | simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true])
             all_goals rename_i n
             all_goals cases hc : (Lynx.Term.integer n).compare key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«void/2», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp [*] at hs
+            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp only [Erlang.erlang.«element/2»] at hidentity ⊢
+            all_goals try simp_all [
+                  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+                   Lynx.Term.true,Lynx.Term.false]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_4 =>
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«restart/1»,Elixir.HoldLedger.Ledger.«transport_ack/2», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
+            all_goals try simp [*, Elixir.HoldLedger.Ledger.«restart/1»] at hs
             all_goals repeat' (split at hs <;> subst_vars <;> try simp_all [hr,
                 Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
                 Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
@@ -406,88 +327,83 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
                 Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+            all_goals try simp only [Erlang.erlang.«element/2»] at hidentity ⊢
+            all_goals try simp_all [
+                  Erlang.erlang.«==/2»,
+
+                 HoldLedgerProof.atom_compare_left,
+
+                Lynx.Term.compare_tuple, List.compareLex,
+                   Lynx.Term.true]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
-          case h_8 =>
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«restart/1»,Elixir.HoldLedger.Ledger.«transport_ack/2», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+          case h_8 ev k =>
+            cases k <;> try simp [*, Elixir.HoldLedger.Ledger.«void_confirmed/2»,  bind,Except.bind] at hs
+            all_goals try (subst out; solve | simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals repeat' (split at hs <;> subst_vars <;> try simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+                   Lynx.Term.true])
+            all_goals rename_i n
+            all_goals cases hc : (Lynx.Term.integer n).compare key
+            all_goals try have halias := alias_lookup n (by assumption)
+            all_goals have hkeep := change_unrelated n (Lynx.Term.atom "voided")
+            all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
+            all_goals try simp [*] at hs
+            all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp only [Erlang.erlang.«element/2»] at hidentity ⊢
+            all_goals try simp_all [
+                  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+                   Lynx.Term.true,Lynx.Term.false]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_9 =>
-            all_goals try simp [*, Elixir.HoldLedger.Ledger.«restart/1»,Elixir.HoldLedger.Ledger.«transport_ack/2», hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            all_goals try simp [*, Elixir.HoldLedger.Ledger.«transport_ack/2»] at hs
+            all_goals repeat' (split at hs <;> subst_vars <;> try simp_all [
+                Erlang.erlang.«element/2»,  Erlang.erlang.«==/2»,
+
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false] at hs
-            all_goals repeat' (split at hs <;> subst_vars <;> try simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false])
+                   Lynx.Term.true,Lynx.Term.false])
             all_goals try simp only [Except.ok.injEq] at hs
             all_goals subst_vars
-            all_goals try simp only [Erlang.erlang.«element/2»,bind,Except.bind] at hidentity ⊢
-            all_goals simp_all [hr,
-                Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«=:=/2», Erlang.erlang.«/=/2»,
-                Erlang.erlang.«and/2», Erlang.erlang.«or/2», HoldLedgerProof.lookup_compare,
-                HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left,
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
-                Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
-                Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,Lynx.Term.true,Lynx.Term.false]
+            all_goals try simp only [] at hidentity ⊢
+            all_goals try simp_all [
+
+                Lynx.Term.compare_tuple, List.compareLex]
             all_goals try solve_by_elim (maxDepth := 20)
             all_goals repeat' split_conjunction
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
             all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
-              simp_all [Lynx.Term.true,Lynx.Term.false]
+              try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
+          case h_10 =>
+            simp only [pure,Except.pure,Except.ok.injEq] at hs
+            subst out
+            simpa [Erlang.erlang.«element/2»,bind,Except.bind,hlookup,hkey,hamount,
+              HoldLedgerProof.lookup_compare,Erlang.erlang.«==/2»,Erlang.erlang.«and/2»,
+              Lynx.Term.true,Lynx.Term.false] using hidentity
   have identity_all : ∀ s event, Elixir.HoldLedger.Spec.«valid?/1» s = Except.ok Lynx.Term.true →
       (do let output ← Elixir.HoldLedger.Ledger.«step/2» s event
           let next ← Erlang.erlang.«element/2» (Lynx.Term.integer 1) output

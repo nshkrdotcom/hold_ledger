@@ -13,7 +13,9 @@ defmodule HoldLedger.TestGenerators do
   def amount,
     do: frequency([{4, integer(1..10_000)}, {1, member_of([1, 100, 300, 7000, 10_000, 100_000])}])
 
-  def status, do: member_of([:reserved, :sent, :unknown, :authorized, :declined, :voided])
+  def status,
+    do: member_of([:reserved, :sent, :unknown, :authorized, :voiding, :declined, :voided])
+
   def outcome, do: member_of([:approved, :declined])
 
   # StreamData 1.4.0 drops max_generation_size in check_all options;
@@ -33,6 +35,7 @@ defmodule HoldLedger.TestGenerators do
       constant({:request, :key, 3}),
       constant({:retry, :key}),
       constant({:void, :key}),
+      constant({:void_confirmed, :key}),
       constant({:transport_ack, :key}),
       constant({:processor_result, 11, :unspecified}),
       constant({:processor_result, 11, :approved, :extra}),
@@ -48,6 +51,7 @@ defmodule HoldLedger.TestGenerators do
       constant({:timeout, key}),
       constant({:retry, key}),
       constant({:void, key}),
+      constant({:void_confirmed, key}),
       constant({:transport_ack, key}),
       map(outcome(), fn result -> {:processor_result, key, result} end)
     ])
@@ -92,7 +96,7 @@ defmodule HoldLedger.TestGenerators do
   defp fixture_entries([[amount, status] | tail], key) do
     {entries, used_amount, used_holds} = fixture_entries(tail, key + 1)
 
-    if status in [:reserved, :sent, :unknown, :authorized] do
+    if status in [:reserved, :sent, :unknown, :authorized, :voiding] do
       {[{key, amount, status} | entries], used_amount + amount, used_holds + 1}
     else
       {[{key, amount, status} | entries], used_amount, used_holds}
@@ -159,7 +163,9 @@ defmodule HoldLedger.TestGenerators do
     bind(
       fixed_list([amount(), status(), member_of([:same, :different])]),
       fn [amount, status, choice] ->
-        amount_used = if status in [:reserved, :sent, :unknown, :authorized], do: amount, else: 0
+        amount_used =
+          if status in [:reserved, :sent, :unknown, :authorized, :voiding], do: amount, else: 0
+
         holds_used = if amount_used == 0, do: 0, else: 1
         s = {amount + 5, 2, amount_used, holds_used, [{11, amount, status}]}
         request_amount = if choice == :same, do: amount, else: amount + 1
@@ -185,7 +191,7 @@ defmodule HoldLedger.TestGenerators do
     map(
       fixed_list([amount(), integer(0..10_000), integer(0..3)]),
       fn [amount, extra_amount, extra_slots] ->
-        held = status in [:reserved, :sent, :unknown, :authorized]
+        held = status in [:reserved, :sent, :unknown, :authorized, :voiding]
         used_amount = if held, do: amount, else: 0
         used_holds = if held, do: 1, else: 0
 

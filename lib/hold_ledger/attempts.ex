@@ -1,6 +1,6 @@
 defmodule HoldLedger.Attempts do
   @moduledoc """
-  Pure lifecycle for runtime attempts, separate from the formally checked ledger.
+  Pure lifecycle for runtime attempts. Cataloged laws cover poison, retired IDs, occupied-slot admission and typed finite histories; OTP scheduling is tested separately.
 
   State is `{next_id, poisoned?, attempts}`; entries are `{id, kind, key, phase}`.
   Running attempts may produce a result or enter stopping on a deadline. Both
@@ -29,7 +29,7 @@ defmodule HoldLedger.Attempts do
     do: change(state, id, :stopping, :committing, :persist)
 
   def step({next, poisoned, entries} = state, {:committed, id}) do
-    case find(entries, id) do
+    case lookup(entries, id) do
       {:ok, {^id, _, _, :committing}} ->
         {{next, poisoned, remove(entries, id)}, [{:retire, id}]}
 
@@ -52,7 +52,7 @@ defmodule HoldLedger.Attempts do
   def entries({_, _, entries}), do: entries
 
   defp change({next, poisoned, entries} = state, id, from, to, intent) do
-    case find(entries, id) do
+    case lookup(entries, id) do
       {:ok, {^id, kind, key, ^from}} ->
         {{next, poisoned, replace(entries, id, to)}, [{intent, id, kind, key}]}
 
@@ -61,9 +61,9 @@ defmodule HoldLedger.Attempts do
     end
   end
 
-  defp find([], _), do: :not_found
-  defp find([{id, _, _, _} = entry | _], id), do: {:ok, entry}
-  defp find([_ | rest], id), do: find(rest, id)
+  def lookup([], _), do: :not_found
+  def lookup([{id, _, _, _} = entry | _], id), do: {:ok, entry}
+  def lookup([_ | rest], id), do: lookup(rest, id)
 
   defp replace([{id, kind, key, _} | rest], id, phase),
     do: [{id, kind, key, phase} | rest]

@@ -17,7 +17,7 @@ defmodule HoldLedger.Laws.PoB5VoidedTest do
       proof: ~LEAN"""
       have valid : Elixir.HoldLedger.Spec.«valid?/1» s = Except.ok Lynx.Term.true := by
         simp only [«po_b5_voided:requires/4», bind, Except.bind] at requires
-        all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+        all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true])
       have before : (do let entries ← Erlang.erlang.«element/2» (Lynx.Term.integer 5) s
                         let found ← Elixir.HoldLedger.Spec.«lookup/2» entries key
                         Erlang.erlang.«==/2» found

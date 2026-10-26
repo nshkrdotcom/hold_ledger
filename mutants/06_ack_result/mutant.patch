@@ -1,7 +1,7 @@
 --- a/lib/hold_ledger/ledger.ex
 +++ b/lib/hold_ledger/ledger.ex
-@@ -223,6 +223,12 @@
-   def void(state, _), do: {state, :malformed, []}
+@@ -240,6 +240,12 @@
+   def void_confirmed(state, _), do: {state, :malformed, []}
  
    @doc "A transport acknowledgment never establishes processor authorization."
 -  def transport_ack(state, key) when is_integer(key), do: {state, :stale, []}

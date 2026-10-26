@@ -7,8 +7,11 @@ specified pure functions, not verification of the complete payment runtime.
 
 ## Coverage and provenance
 
-The catalog in `verification/laws.json` contains 29 supported groups: six
-structural, 17 P0 and six P1. Every group has a Lean proof. PO-B5/declined and
+`verification/obligations.json` records the required group identities and fully
+qualified theorem names independently of execution results. The catalog in
+`verification/laws.json` registers all 49 groups, including the original 29.
+`supported` means a proof implementation is available;
+only a matching successful execution report establishes acceptance. Every declared obligation must be checked; the catalog is not a claim that the latest source has already passed. PO-B5/declined and
 PO-B5/voided establish one-step terminal absorption; PO-C3 lifts identity,
 terminal preservation, approval evidence and independent-oracle agreement to
 proper finite event histories. No cataloged obligation is excluded by
@@ -21,24 +24,14 @@ and the permitted-axiom audit. A launched or partially completed run is not
 acceptance. Keep the generated report with the exact source hashes for any
 claim about a particular checkout.
 
-The recorded cold full run on 2026-10-25 accepted all 29 groups with this Lynx pin. Source-file hashes and export hash/size identify the checked program; removed repository history is not required for that identity. Compare those hashes before carrying the result forward.
-All six checker configurations accepted the export;
-the axiom dependencies were exactly `propext`, `Quot.sound`, `Classical.choice`.
-The [human review guide](human_review.md#full-run-evidence-inspected) records the
-export hash and evidence location, alongside the source assessment and the
-decisions that still require human approval.
+Proof evidence is tied to exact source hashes and export hash/size. Earlier
+reports do not certify changes to the status graph, composite fold or proof
+library. Run the complete command on the reviewed source and retain the generated
+report and raw artifacts under ignored `tmp/verification/`. An independent human
+review remains a separate milestone; see [Human review](human_review.md).
 
-The retained `verification/baseline.json` is historical evidence for an earlier
-26-group run identified by its source hashes and
-Lynx `4a7e9db0655b67b6b9fc1e5511eb3fe12625b52c`. It includes export and source
-hashes, checker and axiom results, 119 ordinary checks, 22 properties/220,000
-examples and 26 runtime tests. Its three then-unproved obligations and its
-performance figures describe that earlier source; they do not certify the
-current 29-group proof library.
-
-The historical B3 run required a sandboxed Nanoda serial retry after a worker-stack overflow.
-The permitted axioms are `propext`, `Quot.sound` and `Classical.choice`.
-No extra admissions or custom axioms are permitted.
+The permitted foundational axioms are `propext`, `Quot.sound` and
+`Classical.choice`. No admissions or custom axioms are permitted.
 
 ## Run checks
 
@@ -66,7 +59,7 @@ uv run --locked python scripts/run_laws.py --supported-only --stage full \
 The full stage already includes uncached proof verification: running proof-only
 first is unnecessary when the full stage is the goal. Both are expensive.
 To check just one group, use `--slug po_a2` instead of `--supported-only`.
-All 29 groups, including B5 and C3, are included in the supported selection.
+All cataloged groups, including B5 and C3, are included in the supported selection.
 
 For multiple groups, the runner submits one dependency-ordered cold request:
 shared theory is checked once within that request, followed by every selected
@@ -76,8 +69,13 @@ and paranoid are configurations of Lean; the other checkers add implementation
 diversity.
 
 The runner removes prior exports, rejects missing or skipped theorem results,
+checks qualified native theorem names with Lean, rejects orphan theory modules,
 and requires the expected nonempty export and all checker acknowledgments.
-Missing tools, timeouts, extra axioms and partial success fail acceptance. Reports,
+Missing tools, timeouts, extra axioms and partial success fail acceptance. The
+report separately records required, registered, supported, accepted and missing
+groups. `release_complete` requires full cold checker acceptance of the entire
+inventory; subset runs cannot establish it. A preflight failure replaces a
+requested prior report with an explicit incomplete result. Reports,
 logs and exports stay under ignored `tmp/verification/`. Acceptance always disables
 both Lynx caching and the shared-module development cache.
 
@@ -123,7 +121,7 @@ survives the launching terminal closing; it cannot survive machine shutdown.
 
 ## Law catalog
 
-| Group | Purpose | Set |
+| Group | Purpose | Proof implementation |
 |---|---|---|
 | L1 | proper unique list lookup compatibility | supported |
 | L2 | status replacement retains all existing key/amount identities | supported |
@@ -143,6 +141,7 @@ survives the launching terminal closing; it cannot survive machine shutdown.
 | PO-B1/retry | retry preserves validity for all valid states and arbitrary arguments | supported |
 | PO-B1/processor_result | processor_result preserves validity for all valid states and arbitrary arguments | supported |
 | PO-B1/void | void preserves validity for all valid states and arbitrary arguments | supported |
+| PO-B1/void_confirmed | confirmation preserves validity and releases only voiding capacity | supported |
 | PO-B2 | unknown key amount persists as holding (unknown/sent) until its valid result | supported |
 | PO-B3 | all authorize and void intents match stored identity; rejected emits no intents | supported |
 | PO-S | one arbitrary event preserves valid state | supported |
@@ -153,7 +152,26 @@ survives the launching terminal closing; it cannot survive machine shutdown.
 | PO-B5/voided | voided remains absorbing under arbitrary next event | supported |
 | PO-B6 | all previously seen identities and amounts remain recorded | supported |
 | PO-B7 | restart removes all sent without reducing holding counters | supported |
+| PO-ATTEMPT/poison | poisoned attempt state rejects new starts | supported |
+| PO-ATTEMPT/retired | absent attempt IDs reject late result/DOWN/deadline/shutdown/commit | supported |
+| PO-ATTEMPT/slot | occupied operation/key slot rejects a second start | supported |
+| PO-ATTEMPT/history | typed finite lifecycle histories preserve unique IDs/slots and at-most-once retirement; committing ignores duplicate outcomes | supported |
+| PO-ENV/fence | a terminal fence rejects delayed authorization | supported |
+| PO-EXPOSURE/retain | an issued hold retains capacity without its own terminal release evidence | supported |
+| PO-EXPOSURE/history | lift retention across a proper finite history of actual ledger transitions | supported |
+| PO-EXPOSURE/bounds | derive remote live amount/count bounds under causal intent, truthful terminal evidence and identity deduplication | supported |
+| PO-COMP/recovery | accepted live composite transitions replay to identical full durable state | supported |
 | PO-C3 | finite histories retain terminal/identity and require independent approval evidence | supported |
+| PO-COMP/init | initialized ledger and obligation list satisfy the full independent composite invariant | supported |
+| PO-COMP/preservation | arbitrary events preserve exact physical voiding/obligation coupling, uniqueness and valid metadata | supported |
+| PO-COMP/oracle | single-step agreement with the independent composite oracle | supported |
+| PO-COMP/history | finite histories preserve coupling and agree with the independent composite oracle | supported |
+| PO-COMP/confirmation | one confirmation atomically releases capacity/removes its obligation; duplicates are stale | supported |
+| PO-COMP/open | an authorized void opens exactly one fresh obligation | supported |
+| PO-COMP/recovery-valid | accepted composite histories retain full invariant validity | supported |
+| PO-EXPOSURE/model | model initialization, arbitrary-event preservation and finite-history pair validity | supported |
+| PO-EXPOSURE/model-bounds | pair validity implies remote live amount/count bounds | supported |
+| PO-ATTEMPT/persist | at most one persist intent per attempt; retirement requires prior persistence | supported |
 
 ## Domains and limits
 
@@ -168,33 +186,92 @@ correctness, physical power-loss recovery, remote exactly-once execution,
 key expiry or distributed ownership. OTP behavior is tested separately.
 A failed proof can reflect resources or tactics rather than a false statement.
 
-## Cost
+## Cost and interpretation
 
-The historical 26-group baseline's uncached proof commands summed to 1,553.463 seconds;
-bundled checker commands to 501.254 seconds, with another 31.037 seconds for
-B3's axiom audit and serial retry. The full cold stage took 2,086.524 seconds.
-A cache-fill pass took 1,419.621 seconds and a warm repeat 55.321 seconds.
-These are command durations, not human proof-authoring time.
-
-The 26 exports totaled 928,451,517 bytes. Each contains elaborated proof terms
-and dependencies; separate exports repeat shared definitions. They are local
-scratch artifacts and are not included in the source package. Source proof
-bodies total 9,172 nonblank lines for a 183-line reducer and 326-line Spec
-under the baseline's counting convention. Proof size and maintenance cost are
-material considerations when choosing which rules to verify.
-
-The shared refactor's 26-group cold proof-only regression took 564.757 seconds.
-This is a native proof measurement, not an all-29 exported-checker measurement.
-Shared source removes repeated proof authoring and within-run elaboration, but
-exports still contain dependencies; source reduction alone does not establish
-an export-size, memory-use or checker-time reduction.
-
-For the shared refactor, counting nonblank shared `.lean` lines plus embedded
-Lean blocks gives 3,939 lines, versus 9,276 embedded Lean lines before the
-refactor (including the three unfinished attempts): a 57.5% source reduction.
-This includes module headers and proof helpers, and differs from the historical
-baseline's proof-body-only counting convention.
+Full proof/export/checker runs are expensive. Use targeted groups during proof
+development and ordinary executable properties for cheap mutation screening.
+A proof-script failure or timeout on a mutant is inconclusive without a concrete
+contract-violating trace. A full-suite survivor claim requires the complete
+supported set, not only the mapped targeted law. Record unresolved budget-limited
+cases separately. Measure the current model rather than reusing old run durations.
 
 ## CI acceptance gate
 
-The workflow always runs change detection and a final formal gate on push/PR. Proof-relevant changes require a cold full 29-group run, fresh exports, all six checker configurations and allowed-axiom audit. Failed detection or a required skipped/cancelled/failed formal job fails the gate. Missing diff-base data conservatively requires verification. Documentation-only changes may pass without a new proof claim. Native mutation experiments remain dispatchable separately. Hosting branch protection must require the stable `formal-gate` check; workflow code does not configure that setting. Reports and exports are retained as CI artifacts, including failure diagnostics.
+The workflow always runs change detection and a final formal gate on push/PR. Proof-relevant changes require a cold full catalog run, fresh exports, all six checker configurations and allowed-axiom audit. Failed detection or a required skipped/cancelled/failed formal job fails the gate. Missing diff-base data conservatively requires verification. Documentation-only changes may pass without a new proof claim. Native mutation experiments remain dispatchable separately. Hosting branch protection must require the stable `formal-gate` check; workflow code does not configure that setting. Reports and exports are retained as CI artifacts, including failure diagnostics.
+
+## Added model boundaries
+
+The catalog includes explicit attempt-poison, retired-ID, occupied-slot and
+environment-fence obligations. These cover their declared operations. Runtime
+scheduling, process monitoring and physical persistence remain separately tested.
+
+`PO-EXPOSURE/retain` establishes one-step retention of an issued identity without
+its own decline or void-confirmation event. `PO-EXPOSURE/history` composes this
+across finite histories using the actual translated `Ledger.run/2`.
+`PO-EXPOSURE/bounds` derives both remote live amount and count bounds. Its
+`CausalLive` hypothesis requires an issued-intent witness with the same identity
+and amount, followed by the actual ledger history with no truthful terminal
+release evidence. Remote identity deduplication is a separate hypothesis.
+Truthful declines and permanent terminal fencing justify that exclusion for a
+still-live processor authorization. These are external requirements, not facts
+that a capability declaration can verify. The conclusion does not assume that
+the final ledger already holds the remote authorization.
+
+The coupled `Exposure` model separates local operations, authorization delivery,
+observation, remote void and confirmation. `PO-EXPOSURE/model` establishes its
+independent pair invariant at initialization, after arbitrary event terms, and
+through proper finite histories. `PO-EXPOSURE/model-bounds` derives live remote
+amount/count limits directly from that invariant. The invariant includes full
+composite coupling, unique issued/remote identities, exact amounts and compatible
+local/remote states. Its per-key characterization is proved equivalent in both
+directions to the independent Spec predicate.
+
+Truthful observations, identity deduplication and permanent terminal fencing are
+built into this processor environment. The theorem does not establish that a
+real adapter implements those assumptions. The separate causal-history theorem
+supports its own explicitly conditional claim. Neither model establishes
+settlement correctness, account balances, eventual completion or storage durability.
+For acceptance of a particular checkout, retain the complete fresh report rather
+than treating catalog membership or a development proof pilot as acceptance.
+
+## Composite recovery theorem
+
+The native Lean group `PO-COMP/recovery` refers directly to the actual translated
+`Composite.step/2` and `Composite.run/2`. Its `Committed` relation records a finite
+sequence of successful individual live transitions. `committed_replay` proves by
+induction that replay of those events yields the same complete composite state,
+including obligations and durable attempt counts. This abstract equality does
+not cover frame decoding, capacity configuration, orphan-record checks or the
+Server’s appended restart event. It does not assume replay
+equality as a hypothesis and does not assert storage durability or progress.
+
+Native groups are explicit catalog entries with named theorem sources and
+modules. Their entire modules must typecheck and be included in the fresh export;
+the runner rejects missing, skipped, cached or mismatched module results. The
+source scan and six-checker/axiom acceptance requirements also apply. This is
+separate from proving composite invariant preservation or independent-oracle
+correspondence, which require their own obligations.
+
+## Lifecycle history theorem
+
+`PO-ATTEMPT/history` gives a typed finite-history model of the runtime's logical
+attempt events. Its `step_bridge` establishes that every encoded transition
+executes the actual translated `Attempts.step/2`; the safety proof is not about
+an unconnected handwritten replacement. `translated_history_safety` preserves
+unique operation/key slots, distinct positive IDs below the monotonically
+increasing next ID, and a duplicate-free history of retirement intents.
+A retired ID remains absent. `committing_quiet` establishes that result, DOWN,
+deadline and shutdown-result events cannot emit another persistence intent while
+an outcome is committing.
+
+The history theorem starts at `Attempts.init/0`'s encoded state and concerns
+well-typed logical runtime events. The separate poison, absent-ID and occupied-slot
+laws retain their broader declared term domains. Actual process references,
+message authentication, scheduling and journal writes remain runtime obligations;
+one logical retirement does not itself prove a disk flush happened.
+
+`PO-ATTEMPT/persist` additionally establishes at-most-once persistence intents and
+that every retirement has a prior persistence intent in the typed history. Server
+handlers execute exactly correlated persist, shutdown and retire instructions;
+fault tests cover that integration. The theorem counts logical instructions,
+not successful physical writes.

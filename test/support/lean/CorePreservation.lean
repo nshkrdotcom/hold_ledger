@@ -17,12 +17,12 @@ theorem HoldLedgerProof.replaced_1 : ∀ es k st seen,
           (newer = old ∨ newer = st ∧ k.compare q = Ordering.eq) := by
   intro es k st seen h
   fun_induction Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen generalizing k st
-  all_goals try simp only [Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
-    Elixir.HoldLedger.Spec.«seen?/2», bind, Except.bind] at h
-  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals try simp only [
+     bind, Except.bind] at h
+  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try simp_all [Elixir.HoldLedger.Ledger.«set_status/3»,
     Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,
+      bind, Except.bind,
     Lynx.Term.true, Lynx.Term.false]
   all_goals obtain ⟨out, hm, hu⟩ := (by assumption : ∀ k st : Lynx.Term, ∃ out : Lynx.Term,
     Elixir.HoldLedger.Ledger.«set_status/3» _ k st = Except.ok out ∧
@@ -35,9 +35,9 @@ theorem HoldLedgerProof.replaced_1 : ∀ es k st seen,
   all_goals split
   all_goals refine ⟨_, rfl, ?_⟩
   all_goals intro q a old hl
-  all_goals repeat' (split at hl <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (split at hl <;> try simp_all [])
   all_goals try simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Term.true, Lynx.Term.false]
   all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
 
   all_goals exact Or.inr (Std.OrientedCmp.eq_symm (cmp := Lynx.Term.compare) (by assumption))
@@ -55,7 +55,7 @@ theorem HoldLedgerProof.explained_1 : ∀ es seen dst ev,
     Elixir.HoldLedger.Spec.«authorizations_explained?/3» es dst ev = Except.ok Lynx.Term.true := by
   intro es seen dst ev h hmap
   fun_induction Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen generalizing dst ev
-  all_goals try simp only [Elixir.HoldLedger.Spec.«unique_keys_seen?/2», bind, Except.bind] at h
+  all_goals try simp only [ bind, Except.bind] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals try simp_all [Elixir.HoldLedger.Spec.«authorizations_explained?/3»]
   rename_i seen n amount old rest x generated ih heq
@@ -73,11 +73,11 @@ theorem HoldLedgerProof.explained_1 : ∀ es seen dst ev,
       simpa [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
         bind, Except.bind, he] using hl
   rcases hsafe with hold | hnew | ⟨hevent, hold | hold⟩
-  all_goals simp [Elixir.HoldLedger.Spec.«authorizations_explained?/3», hlookup, htail,
+  all_goals simp [
     Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2», Erlang.erlang.«and/2»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,
+     Lynx.Except.tryWith, bind, Except.bind,
     Lynx.Term.true, Lynx.Term.false, HoldLedgerProof.compare_atoms, *]
-  all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (split <;> try simp_all [Lynx.Term.true])
 
 theorem HoldLedgerProof.marked_1 : ∀ es seen,
     Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen = Except.ok Lynx.Term.true →
@@ -89,12 +89,12 @@ theorem HoldLedgerProof.marked_1 : ∀ es seen,
           (newer = old ∨ newer = Lynx.Term.atom "unknown") := by
   intro es seen h
   fun_induction Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen
-  all_goals try simp only [Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
-    Elixir.HoldLedger.Spec.«seen?/2», bind, Except.bind] at h
-  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals try simp only [
+     bind, Except.bind] at h
+  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try simp_all [Elixir.HoldLedger.Ledger.«mark_unknown/1»,
     Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Term.true, Lynx.Term.false]
   all_goals obtain ⟨out, hm, hu⟩ := (by assumption : ∃ out : Lynx.Term,
     Elixir.HoldLedger.Ledger.«mark_unknown/1» _ = Except.ok out ∧
     ∀ q a old : Lynx.Term, Elixir.HoldLedger.Spec.«lookup/2» _ q =
@@ -105,16 +105,15 @@ theorem HoldLedgerProof.marked_1 : ∀ es seen,
   all_goals try simp only [Elixir.HoldLedger.Ledger.«mark_unknown/1», hm, bind, Except.bind]
   all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals unfold Elixir.HoldLedger.Ledger.«mark_unknown/1»
-  all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (split <;> try simp_all [])
   all_goals intro q a old hl
-  all_goals repeat' (split at hl <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (split at hl <;> try simp_all [])
   all_goals try simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Term.true, Lynx.Term.false]
   all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals obtain ⟨he, ht⟩ := (by assumption : Lynx.Term.tuple _ = _ ∧ _ = _)
   all_goals rw [← he]
-  all_goals simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    bind, Except.bind]
+  all_goals simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»]
 
 theorem HoldLedgerProof.reflexive_1 : ∀ es ev,
     Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es Lynx.Term.nil = Except.ok Lynx.Term.true →
@@ -212,12 +211,12 @@ theorem HoldLedgerProof.replaced_2 : ∀ es k st seen,
           Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[q,a,newer]]) := by
   intro es k st seen h
   fun_induction Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen generalizing k st
-  all_goals try simp only [Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
-    Elixir.HoldLedger.Spec.«seen?/2», bind, Except.bind] at h
-  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals try simp only [
+     bind, Except.bind] at h
+  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try simp_all [Elixir.HoldLedger.Ledger.«set_status/3»,
     Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind,
+      bind, Except.bind,
     Lynx.Term.true, Lynx.Term.false]
   all_goals obtain ⟨out, hm, hu⟩ := (by assumption : ∀ k st : Lynx.Term, ∃ out : Lynx.Term,
     Elixir.HoldLedger.Ledger.«set_status/3» _ k st = Except.ok out ∧
@@ -229,9 +228,9 @@ theorem HoldLedgerProof.replaced_2 : ∀ es k st seen,
   all_goals split
   all_goals refine ⟨_, rfl, ?_⟩
   all_goals intro q a old hl
-  all_goals repeat' (split at hl <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (split at hl <;> try simp_all [])
   all_goals try simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Term.true, Lynx.Term.false]
   all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
 
 theorem HoldLedgerProof.identities_1 : ∀ es seen dst,
@@ -244,7 +243,7 @@ theorem HoldLedgerProof.identities_1 : ∀ es seen dst,
     Elixir.HoldLedger.Spec.«identities_present?/2» es dst = Except.ok Lynx.Term.true := by
   intro es seen dst h hmap
   fun_induction Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen generalizing dst
-  all_goals try simp only [Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
+  all_goals try simp only [
     bind, Except.bind] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals try simp_all [Elixir.HoldLedger.Spec.«identities_present?/2»]
@@ -262,8 +261,7 @@ theorem HoldLedgerProof.identities_1 : ∀ es seen dst,
       apply hmap q a old hs'
       simpa [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
         bind, Except.bind, he] using hl
-  simp [hlookup, htail, Erlang.erlang.«=:=/2», Erlang.erlang.«and/2»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
+  simp [hlookup, htail, Erlang.erlang.«=:=/2», Erlang.erlang.«and/2»]
 
 theorem HoldLedgerProof.marked_2 : ∀ es seen,
     Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen = Except.ok Lynx.Term.true →
@@ -274,12 +272,12 @@ theorem HoldLedgerProof.marked_2 : ∀ es seen,
           Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[q,a,newer]]) := by
   intro es seen h
   fun_induction Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen
-  all_goals try simp only [Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
-    Elixir.HoldLedger.Spec.«seen?/2», bind, Except.bind] at h
-  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals try simp only [
+     bind, Except.bind] at h
+  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try simp_all [Elixir.HoldLedger.Ledger.«mark_unknown/1»,
     Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Term.true, Lynx.Term.false]
   all_goals obtain ⟨out, hm, hu⟩ := (by assumption : ∃ out : Lynx.Term,
     Elixir.HoldLedger.Ledger.«mark_unknown/1» _ = Except.ok out ∧
     ∀ q a old : Lynx.Term, Elixir.HoldLedger.Spec.«lookup/2» _ q =
@@ -289,16 +287,15 @@ theorem HoldLedgerProof.marked_2 : ∀ es seen,
   all_goals try simp only [Elixir.HoldLedger.Ledger.«mark_unknown/1», hm, bind, Except.bind]
   all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals unfold Elixir.HoldLedger.Ledger.«mark_unknown/1»
-  all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (split <;> try simp_all [])
   all_goals intro q a old hl
-  all_goals repeat' (split at hl <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (split at hl <;> try simp_all [])
   all_goals try simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Term.true, Lynx.Term.false]
   all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals obtain ⟨he, ht⟩ := (by assumption : Lynx.Term.tuple _ = _ ∧ _ = _)
   all_goals rw [← he]
-  all_goals simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
-    bind, Except.bind]
+  all_goals simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»]
 
 theorem HoldLedgerProof.fresh_3 : ∀ es (k : Int) amount,
     Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es Lynx.Term.nil = Except.ok Lynx.Term.true →
@@ -324,11 +321,11 @@ theorem HoldLedgerProof.clearing_1 : ∀ es, Elixir.HoldLedger.Spec.«proper_ent
   fun_induction Elixir.HoldLedger.Ledger.«mark_unknown/1» es
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
-  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
-  all_goals try simp_all [Elixir.HoldLedger.Ledger.«mark_unknown/1», Elixir.HoldLedger.Spec.«no_sent?/1»]
+  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
+  all_goals try simp_all [ Elixir.HoldLedger.Spec.«no_sent?/1»]
   all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals obtain ⟨out, hm, hn⟩ := (by assumption : ∃ out : Lynx.Term, _ ∧ _)
-  all_goals try simp_all [Elixir.HoldLedger.Ledger.«mark_unknown/1», Elixir.HoldLedger.Spec.«no_sent?/1»]
+  all_goals try simp_all [ Elixir.HoldLedger.Spec.«no_sent?/1»]
   all_goals repeat' (split <;> try simp_all)
 
 theorem HoldLedgerProof.replaced_3 : ∀ es (k : Int) to,
@@ -344,14 +341,14 @@ theorem HoldLedgerProof.replaced_3 : ∀ es (k : Int) to,
   case case1 => simp [Elixir.HoldLedger.Ledger.«set_status/3», Elixir.HoldLedger.Spec.«lookup/2»]
   case case2 es hnil ih =>
     simp only [Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
-    all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+    all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
     all_goals simp_all [Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
-    all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+    all_goals repeat' (split at * <;> try simp_all [])
     all_goals try obtain ⟨out, hm, hmap⟩ := ih k to
     all_goals try obtain ⟨out, hm, hmap⟩ := ih k to (by assumption)
     all_goals simp only [Elixir.HoldLedger.Ledger.«set_status/3», Erlang.erlang.«==/2», bind, Except.bind]
     all_goals split
-    all_goals simp_all [Int.compare_eq_eq]
+    all_goals simp_all []
     all_goals repeat' split_conjunction
     all_goals subst_vars
     all_goals try refine ⟨_, rfl, ?_⟩
@@ -360,7 +357,7 @@ theorem HoldLedgerProof.replaced_3 : ∀ es (k : Int) to,
     all_goals repeat' (split at hq <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
     all_goals repeat' split_conjunction
     all_goals subst_vars
-    all_goals try simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2», bind, Except.bind]
+    all_goals try simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»]
     all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
     all_goals try (apply hmap; assumption)
     all_goals try solve_by_elim (maxDepth := 20)
@@ -378,23 +375,23 @@ theorem HoldLedgerProof.marked_3 : ∀ es,
   case case1 => simp [Elixir.HoldLedger.Ledger.«mark_unknown/1», Elixir.HoldLedger.Spec.«lookup/2»]
   case case2 es hnil ih =>
     simp only [Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
-    all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+    all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
     all_goals simp_all [Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
-    all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+    all_goals repeat' (split at * <;> try simp_all [])
     all_goals try obtain ⟨out, hm, hmap⟩ := ih
     all_goals try obtain ⟨out, hm, hmap⟩ := ih (by assumption)
     all_goals simp only [Elixir.HoldLedger.Spec.«known_status?/1», Elixir.HoldLedger.Spec.«holding?/1», Elixir.HoldLedger.Spec.«terminal?/1»] at *
-    all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+    all_goals repeat' (split at * <;> try simp_all [])
     all_goals try unfold Elixir.HoldLedger.Ledger.«mark_unknown/1»
     all_goals try simp only [hm, bind, Except.bind]
-    all_goals repeat' (split <;> try simp_all [hm])
+    all_goals repeat' (split <;> try simp_all [])
     all_goals try refine ⟨_, rfl, ?_⟩
     all_goals intro query stored a old hq
     all_goals try simp only [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2», bind, Except.bind] at hq
     all_goals repeat' (split at hq <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
     all_goals repeat' split_conjunction
     all_goals subst_vars
-    all_goals try simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2», bind, Except.bind]
-    all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+    all_goals try simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»]
+    all_goals repeat' (split <;> try simp_all [])
     all_goals try (apply hmap; assumption)
     all_goals try solve_by_elim (maxDepth := 20)

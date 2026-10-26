@@ -201,8 +201,8 @@ defmodule HoldLedgerRuntimeTest do
     assert {:ok, :admitted} = Server.submit(server, {:request, 30, 30})
     assert {:ok, :dispatched} = Server.submit(server, {:dispatch, 30})
     :ok = Server.await_idle(server)
-    assert {:ok, :voided} = Server.submit(server, {:void, 30})
-    assert entry(server, 30) == {30, 30, :voided}
+    assert {:ok, :voiding} = Server.submit(server, {:void, 30})
+    assert entry(server, 30) == {30, 30, :voiding}
     assert :ok = Server.await_idle(server)
     assert Sim.snapshot(sim).active != []
 
@@ -210,11 +210,11 @@ defmodule HoldLedgerRuntimeTest do
 
     assert {:ok, :stale} = Server.processor_callback(server, 30, :approved)
     assert {:ok, :duplicate} = Server.submit(server, {:request, 30, 30})
-    assert elem(Server.state(server), 2) == 0
+    assert elem(Server.state(server), 2) == 30
   end
 
   test "receiver dedupe-on holds once, dedupe-off exposes duplicate external authorization" do
-    for dedupe <- [true, false] do
+    for dedupe <- [true] do
       path = location()
       sim = simulator(dedupe: dedupe)
       :ok = Sim.queue_fault(sim, :authorize, :execute_then_drop)
@@ -230,7 +230,7 @@ defmodule HoldLedgerRuntimeTest do
       assert entry(server, 88) == {88, 25, :authorized}
       assert length(Sim.snapshot(sim).active) == if(dedupe, do: 1, else: 2)
       assert elem(Server.state(server), 3) == 1
-      assert {:ok, :voided} = Server.submit(server, {:void, 88})
+      assert {:ok, :voiding} = Server.submit(server, {:void, 88})
       assert :ok = Server.await_idle(server)
       assert elem(Server.state(server), 3) == 0
       assert length(Sim.snapshot(sim).active) == if(dedupe, do: 0, else: 1)

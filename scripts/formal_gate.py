@@ -5,7 +5,7 @@ import os
 import subprocess
 from pathlib import Path
 
-PREFIXES = ('lib/', 'test/laws/', 'test/support/', 'scripts/', 'tooling_tests/', '.github/')
+PREFIXES = ('lib/', 'test/laws/', 'test/support/', 'scripts/', 'tooling_tests/', 'verification/', '.github/')
 FILES = {'mix.exs', 'mix.lock', 'uv.lock', 'pyproject.toml', 'lean-toolchain',
          '.tool-versions', '.python-version', 'verification/laws.json'}
 

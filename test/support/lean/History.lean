@@ -62,7 +62,7 @@ theorem history (events s : Lynx.Term)
       have unique : Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es Lynx.Term.nil = Except.ok Lynx.Term.true := by
         exact unique_view es hu
       exact identities_trans es nes fes hp np unique first_ids ids_tail
-    · simp [Elixir.HoldLedger.Spec.«history_authorizations_explained?/2»,oracle,first_approval,explained_tail,bind,Except.bind]
+    · simp [Elixir.HoldLedger.Spec.«history_authorizations_explained?/2»,oracle,first_approval,explained_tail]
     · intro key amount status terminal lookup
       apply terminals_tail key amount status terminal
       obtain ⟨al,hl,ua,uh,es,rfl,hp,hu,ha,hc,hal,hhl,hua,huh,hacap,hhcap⟩ := valid_view_1 s valid
@@ -71,7 +71,7 @@ theorem history (events s : Lynx.Term)
         simpa [Erlang.erlang.«element/2»,bind,Except.bind] using lookup
       have preserved := terminal_lookup al hl ua uh es event key key amount status hp terminal lookup'
       simpa [step,Erlang.erlang.«element/2»,bind,Except.bind] using preserved
-  case case3 => simp [Elixir.HoldLedger.Spec.«proper_events?/1»,Lynx.Term.true,Lynx.Term.false] at proper
+  case case3 => simp [Lynx.Term.true] at proper
 
 end HoldLedgerProof
 
@@ -82,7 +82,7 @@ theorem «po_c3/2» (s events : Lynx.Term)
     «po_c3:ensures/2» s events = Except.ok Lynx.Term.true := by
   have valid : Elixir.HoldLedger.Spec.«valid?/1» s = Except.ok Lynx.Term.true := by
     simp only [«po_c3:requires/2»,bind,Except.bind] at requires
-    all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
+    all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true])
   have proper : Elixir.HoldLedger.Spec.«proper_events?/1» events = Except.ok Lynx.Term.true := by
     simpa [«po_c3:requires/2»,valid,bind,Except.bind] using requires
   obtain ⟨final,run,expected,final_valid,ids,explained,preserved⟩ := HoldLedgerProof.history events s proper valid
@@ -95,6 +95,6 @@ theorem «po_c3/2» (s events : Lynx.Term)
     intro key amount status _ lookup terminal
     have kept := preserved key amount status terminal (by simpa [Erlang.erlang.«element/2»,bind,Except.bind] using lookup)
     simpa [Erlang.erlang.«element/2»,bind,Except.bind] using kept
-  simp [«po_c3:ensures/2»,run,expected,ids,terminals,explained,Erlang.erlang.«==/2»,bind,Except.bind]
+  simp [«po_c3:ensures/2»,run,expected,ids,terminals,explained,Erlang.erlang.«==/2»]
 
 end Elixir.HoldLedger.ProofContracts

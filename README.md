@@ -47,9 +47,9 @@ uv sync --locked
 # Verify existing Elixir/OTP and provision pinned Lean 4.35.0 locally in ignored .local/
 uv run --locked python scripts/onboard.py --provision
 
-# Fetch Elixir dependencies using the repo-local environment
-uv run --locked python scripts/local_run.py mix deps.get
-uv run --locked python scripts/local_run.py mix run scripts/demo.exs
+# Fetch Elixir dependencies using Mix
+mix deps.get
+mix run scripts/demo.exs
 ```
 
 ---
@@ -72,9 +72,11 @@ What state is your system in now?
 
 Most teams tackle these bugs with unit tests and integration tests. But distributed financial edge cases hide in the combinatorial explosion of network delays, crash timings, out-of-order deliveries, and retry loops.
 
-**Hold Ledger** demonstrates how to solve this class of problems by combining a pure state machine, an append-only journaled OTP runtime, property-based testing, and machine-checked formal proofs in **Lean 4** via **[Lynx](https://github.com/josevalim/lynx)**.
+**Hold Ledger** demonstrates conservative accounting and recovery by combining a pure state machine, an append-only journaled OTP runtime, property-based testing, and machine-checked formal proofs in **Lean 4** via **[Lynx](https://github.com/josevalim/lynx)**.
 
 ---
+
+A lack of reliable processor evidence can retain capacity indefinitely. This includes pending voids: no timeout or operator write-off creates evidence that an authorization is gone. Reconciliation can resolve known outcomes, subject to the processor contract.
 
 ## What Is This Project?
 
@@ -90,10 +92,10 @@ It separates the pure core, independent specification, runtime, and formal verif
 +-------------------------------------------------------------------------+
 |                              RUNTIME (OTP)                              |
 |                                                                         |
-|  Event -> Server -> Journal.append_sync (owned frames + hash chain)         |
+|  Event -> Server -> Journal.append_sync (owned frames + hash chain)       |
 |                          |                                              |
 |                          v                                              |
-|                     Ledger.step (Pure Reducer)                          |
+|                     Composite.step (Pure Reducers)                       |
 |                          |                                              |
 |                          +--------> EffectExecutor -> Processor.Sim     |
 +--------------------------|----------------------------------------------+
@@ -103,9 +105,9 @@ It separates the pure core, independent specification, runtime, and formal verif
 |      INDEPENDENT SPEC (ORACLE)     |    |      FORMAL PROOFS (LEAN 4)   |
 |                                    |    |                               |
 |  HoldLedger.Spec                   |    |  Lynx compiles Elixir BEAM    |
-|  * Recomputes totals from scratch  |    |  Core AST directly to Lean 4. |
-|  * Standalone validity invariant   |    |  29 groups with Lean proofs   |
-|  * Transition & effect predicates  |    |  6 checker configurations.     |
+|  * Recomputes totals from scratch  |    |  Core AST into Lean definitions. |
+|  * Standalone validity invariant   |    |  Cataloged pure-core law groups|
+|  * Transition & effect predicates  |    |  6 checker configurations.    |
 +------------------------------------+    +-------------------------------+
 ```
 
@@ -123,10 +125,10 @@ The project combines three kinds of evidence:
 | Level | Technique | How It Works | What It Catches |
 |---|---|---|---|
 | **1. Deterministic Tests** | ExUnit unit tests & worked traces | Runs hand-picked states against concrete inputs. | Regressions, happy paths, obvious edge cases. |
-| **2. Generative Property Tests** | `StreamData` (10,000 samples per law) | Generates thousands of arbitrary states, malformed terms, and random histories. | Off-by-one errors, weird term shapes, counter desyncs. |
+| **2. Generative Property Tests** | `StreamData` (bounded generated cases) | Generates thousands of arbitrary states, malformed terms, and random histories. | Off-by-one errors, weird term shapes, counter desyncs. |
 | **3. Machine-Checked Proofs** | `Lynx` + `Lean 4` Theorem Prover | Proves universal mathematical statements ($\forall s, \forall e \dots$). | The stated properties for all inputs satisfying each law’s preconditions. |
 
-Nine deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See the testing guide for the optional mutation experiment; a failed proof alone is not a concrete counterexample.
+Ten deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See the testing guide for the optional mutation experiment; a failed proof alone is not a concrete counterexample.
 
 ---
 
@@ -142,11 +144,12 @@ unknown --retry (same key/amount)--> sent
 sent or unknown --approved result--> authorized
 sent or unknown --declined result--> declined (capacity freed)
 reserved   --void--> voided (capacity freed; no effect)
-authorized --void--> voided (capacity freed; remote void intent)
+authorized --void--> voiding (capacity retained; remote void intent)
+voiding --trusted void confirmation--> voided (capacity freed)
 ```
 
 ### Key Invariants:
-* **Capacity is Held During Uncertainty**: The statuses `reserved`, `sent`, `unknown`, and `authorized` consume their amount from `amount_limit` and one slot from `hold_limit`. A timeout or a server reboot *never* releases capacity.
+* **Capacity is Held During Uncertainty**: The statuses `reserved`, `sent`, `unknown`, `authorized`, and `voiding` consume their amount from `amount_limit` and one slot from `hold_limit`. A timeout or a server reboot *never* releases capacity.
 * **Idempotent Identity**: An active or terminal key can never be re-used for a fresh request. A matching request yields `:duplicate`; a differing amount yields `:conflict`.
 * **Zero Effects on Non-Applied Operations**: Any rejected or stale transition returns the original state bit-for-bit unchanged and emits `[]` effects.
 * **Absorbing Terminal States**: Once `:declined` or `:voided`, an entry remains terminal. The one-step laws and finite-history law cover arbitrary future events on valid ledgers.
@@ -157,7 +160,7 @@ authorized --void--> voided (capacity freed; remote void intent)
 
 Lynx translates compiled Core Erlang for the pure ledger and its laws into Lean 4 definitions. Handwritten proofs establish the law statements without admissions or custom axioms; the permitted foundational axioms are `propext`, `Quot.sound`, and `Classical.choice`. Exported proof objects can then be checked by six checker configurations.
 
-The compiler and translator are outside the proof boundary. See the crash-course guide in the documentation index for Lean concepts, tactics, and a worked proof.
+The compiler and translator remain trusted. A separate differential harness compares sampled BEAM results with actual translated Lean definitions and kernel-checks a deterministic subset; samples do not prove universal correspondence. See the crash-course guide in the documentation index for Lean concepts, tactics, and a worked proof.
 
 ---
 
@@ -207,7 +210,7 @@ true = Spec.valid?(s4)
 
 To see this in action, run the self-contained interactive demo:
 ```sh
-uv run --locked python scripts/local_run.py mix run scripts/demo.exs
+mix run scripts/demo.exs
 ```
 This script uses synthetic data and a fresh temporary journal. It exercises lost replies, restart/replay, lookup reconciliation, same-ID retry, voids, and processor deduplication.
 
@@ -217,12 +220,12 @@ This script uses synthetic data and a fresh temporary journal. It exercises lost
 
 ### Run tests and static checks
 ```sh
-# Run deterministic tests, StreamData property tests (10k cases each), and fault injection
-uv run --locked python scripts/local_run.py mix test --exclude laws --warnings-as-errors
+# Run deterministic tests, bounded StreamData properties, and fault injection
+mix test --warnings-as-errors
 
 # Run static analysis without warning suppressions
-uv run --locked python scripts/local_run.py mix credo --strict
-uv run --locked python scripts/local_run.py mix dialyzer
+mix credo --strict
+mix dialyzer
 
 # Run Python tooling preflight and guard tests
 uv run --locked python -m unittest discover -s tooling_tests -v
@@ -236,7 +239,7 @@ uv run --locked python scripts/run_laws.py --supported-only --inspect-only
 # Verify single law group (uncached compilation & proof check)
 uv run --locked python scripts/run_laws.py --slug po_a2 --stage proofs
 
-# Full verification: Run all 29 law groups through 6 checker configurations
+# Full verification: Run all cataloged law groups through 6 checker configurations
 uv run --locked python scripts/run_laws.py --supported-only --stage full --report tmp/verification/checked.json
 ```
 
@@ -244,12 +247,12 @@ uv run --locked python scripts/run_laws.py --supported-only --stage full --repor
 
 ## What Is Proven vs. What Is Assumed
 
-All 29 cataloged law groups have machine-checked Lean proofs, including terminal-state absorption and finite-history agreement with the independent specification. The full verification command checks fresh proof exports with six checker configurations. See [Verification](guides/verification.md) for commands, provenance, and proof boundaries.
+The law catalog and required-obligations inventory define the maintained pure-core proof obligations, including terminal-state absorption and finite-history agreement with the independent specification. Catalog status `supported` means a proof implementation is available; acceptance requires a successful report whose source hashes match this checkout. Pending groups make release acceptance incomplete. The full verification command checks fresh proof exports with six checker configurations. See [Verification](guides/verification.md) for commands, provenance, and proof boundaries.
 
-Formal laws cover the specified pure functions; OTP recovery is tested separately. There is no remote exactly-once guarantee.
+Formal laws concern their declared pure functions and explicit hypotheses; OTP recovery is tested separately. Pending voids retain capacity until one trusted confirmation retires the durable obligation. Remote exposure additionally depends on truthful processor decisions, deduplication and terminal non-resurrection; startup checks an integrator declaration, not processor behavior. There is no remote exactly-once guarantee.
 
 ```
-[ PROVED IN LEAN UNDER THE LAWS’ PRECONDITIONS ]
+[ FORMAL OBLIGATIONS — ACCEPTANCE MUST MATCH THE CURRENT SOURCE ]
 ---------------------------------------------------------------------------------------------
   * Specified laws for pure reducer functions (HoldLedger.Ledger)
   * Invariant preservation from valid states under arbitrary event terms (PO-S, PO-A1, etc.)
@@ -260,11 +263,15 @@ Formal laws cover the specified pure functions; OTP recovery is tested separatel
   * Authorization gated strictly by processor approval (PO-B4)
   * Declined and voided entries remain terminal (PO-B5)
   * Finite-history oracle agreement, identity, terminal and approval properties (PO-C3)
+  * Capacity retention and conditional remote live amount/count bounds (PO-EXPOSURE)
+  * Typed lifecycle histories with unique slots/IDs and at-most-once retirement
+  * Successful pure composite histories replay to the same abstract state
+    (this does not prove journal framing, fsync, restart handling or coupling preservation)
 
 [ TESTED VIA FAULT INJECTION & OTP TESTS ]
 ---------------------------------------------------------------------------------------------
   * Write-ahead log append & sync failure handling (Server poisoned on fault)
-  * Recovery replay from disk log after sudden SIGKILL / crash
+  * Recovery replay from the framed journal after sudden SIGKILL / crash
   * Crash between journal sync and in-memory reducer step
   * Frame/header hash verification and rejection of incomplete/corrupted records
   * Network reply timeouts and simulator fault injection
@@ -290,7 +297,7 @@ Deep-dive documentation is located in `guides/`:
 | [**Specification**](guides/specification.md) | Full contract: state tuple shape, event semantics, transitions, error atoms. |
 | [**Runtime and Recovery**](guides/runtime.md) | Using `HoldLedger.Server`, owned journal framing, crash recovery, and reconciliation. |
 | [**Processors**](guides/processors.md) | The processor behavior contract and using `HoldLedger.Processor.Sim` for fault injection. |
-| [**Verification**](guides/verification.md) | Detailed verification catalog, checker configurations, proof costs, and baseline provenance. |
+| [**Verification**](guides/verification.md) | Detailed verification catalog, checker configurations, proof costs, and evidence identity. |
 | [**Formal Verification Crash Course**](guides/formal_verification_crash_course.md) | Introduction to Lean, Lynx, and reading and writing proofs, with a worked law walkthrough. |
 | [**Testing**](guides/testing.md) | Unit test structure, `StreamData` configuration, mutation testing runner, and benchmarks. |
 | [**Getting Started**](guides/getting-started.md) | Detailed toolchain setup, Ubuntu 26.04 dependencies, and dependency installation. |

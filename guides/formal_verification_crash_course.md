@@ -41,7 +41,7 @@ end
 **Limitation**: 10,000 test runs is a statistical sample, not a proof. If a failure only occurs when:
 * `amount_limit == 18_446_744_073_709_551_615`
 * `used_amount == amount_limit - 1`
-* `entries` contains a specific ordering of eight entries drawn from the six lifecycle statuses
+* `entries` contains a specific ordering of eight entries drawn from the seven lifecycle statuses
 
 Random generation may miss that exact combination. In cryptography and financial ledgers, the bug lives in the needle, not the haystack.
 
@@ -94,7 +94,7 @@ When writing proofs in Lean, you enter **tactic mode** using the `by` keyword. I
 | Tactic | Programmer's Analogy | What It Does |
 |---|---|---|
 | `intro x h` | Function argument binding | Pops universal quantifiers ($\forall$) or implications ($\implies$) off the goal and binds them to local variable `x` with hypothesis `h`. |
-| `cases x` | Pattern matching | Splits an inductive value by constructor. Here, a status is represented as `Lynx.Term`, so `cases status` splits term constructors, including `atom`, rather than the six ledger statuses; permitted atom strings require further reasoning. |
+| `cases x` | Pattern matching | Splits an inductive value by constructor. Here, a status is represented as `Lynx.Term`, so `cases status` splits term constructors, including `atom`, rather than the seven ledger statuses; permitted atom strings require further reasoning. |
 | `rcases h with ⟨a, b⟩` | Destructuring assignment | Unpacks a conjunction ($A \land B$), existential quantifier ($\exists$), or tuple into its components. |
 | `simp [lemmas]` | Macro expansion & constant folding | Repeatedly rewrites the goal using known equations until no rules apply. |
 | `have name : Type := proof` | `let` binding | Proves a helpful intermediate fact locally before using it in the main goal. |
@@ -206,7 +206,7 @@ end
 ```
 `Ledger` updates `used_amount` by adding `amount` to the running accumulator.
 
-If there is a bug in delta arithmetic (e.g. timeout subtracts amount when it shouldn't), `used_amount` drifts from reality.
+If there is a bug in delta arithmetic (e.g. timeout subtracts amount when it shouldn't), `used_amount` drifts from the entry totals.
 
 The following accounting-only sketch illustrates recomputation in `HoldLedger.Spec`; it is not the complete `valid?/1` implementation:
 ```elixir
@@ -342,7 +342,7 @@ This repository’s axiom audit permits only three foundational axioms:
 Full-stage acceptance audits the exported proof dependencies and rejects axioms outside this allowlist, including `sorryAx`. A direct `mix test` proof attempt does not run the repository’s full exported-checker and axiom-audit pipeline.
 
 ### 3. Six Checker Configurations
-Compiling with Lean's compiler is not the final step. Lynx exports the elaborated proof objects to `.ndjson` files. We then run **six checker configurations** against those proof objects:
+Checking the theorems with Lean is not the final step. Lynx exports the elaborated proof objects to `.ndjson` files. We then run **six checker configurations** against those proof objects:
 * **Lean default**
 * **Lean paranoid** (a stricter configuration of the Lean checker)
 * **lean4lean** (an independent reimplementation of the Lean kernel in Lean)
@@ -350,16 +350,20 @@ Compiling with Lean's compiler is not the final step. Lynx exports the elaborate
 * **con-leche** (independent external checker)
 * **con-ron** (independent external checker)
 
-Lean default and paranoid are configurations of Lean, not two independently implemented kernels. The other checkers provide implementation diversity. For full-stage acceptance, all six configurations must agree that the proof terms are valid. A full-suite run checks one combined export containing all selected law proofs and dependencies. See [Verification](verification.md) for the historical baseline, current commands, and report provenance.
+Lean default and paranoid are configurations of Lean, not two independently implemented kernels. The other checkers provide implementation diversity. For full-stage acceptance, all six configurations must agree that the proof terms are valid. A full-suite run checks one combined export containing all selected law proofs and dependencies. See [Verification](verification.md) for current commands, source/export identities and report provenance.
 
 ### 4. Mutation Testing (Mutant Catching)
-Under `mutants/`, we maintain six deliberate source patches that inject realistic bugs into `lib/hold_ledger/ledger.ex`:
+Under `mutants/`, we maintain ten deliberate source patches that inject realistic bugs into `lib/hold_ledger/ledger.ex`:
 * `M1`: Mistakes terminal keys (`:voided`, `:declined`) for fresh keys.
 * `M2`: Subtracts capacity on timeout.
 * `M3`: Generates an authorize effect with `key + 1` instead of `key` on retry.
 * `M4`: Changes `amount > limit - used` to `>=` (rejects exact fit).
 * `M5`: Rejects every positive request unconditionally.
 * `M6`: Treats transport ACKs as authorization approvals.
+* `M7`: Omits the required remote void intent.
+* `M8`: Corrupts decline accounting.
+* `M9`: Leaves sent entries unchanged on restart.
+* `M10`: Releases an authorized hold before terminal void confirmation.
 
 When you run:
 ```sh
@@ -419,7 +423,7 @@ A direct upstream `Lynx.Case` attempt runs a development law without registering
 
 - Keep its concrete witnesses, assertions and appropriate property coverage alongside its executable contract.
 - Use `HoldLedger.ProofCase` for the maintained law wrapper. Put reusable theorem declarations in `test/support/lean/`, and map the law name to its theory module in `library.json`. Use the existing laws as examples.
-- Register its group, file, law name, arity, witness path, purpose and status in `verification/laws.json`. Deliberately update the runner’s fixed catalog checks, tooling tests and coverage documentation when extending the current 29-group contract. The supported selection currently includes all 29; it does not silently omit unfinished obligations.
+- Register its group, file, law name, arity, witness path, purpose and status in `verification/laws.json`. Update the independently reviewed `verification/obligations.json` inventory, tooling tests and coverage documentation when extending the catalog. Native groups register fully qualified theorem names; the runner checks them with Lean and rejects orphan theory modules. The supported selection currently includes all cataloged groups; it does not silently omit unfinished obligations.
 - Validate the catalog, then run the selected law through the full cold proof/export/checker stage. Keep historical provenance separate from new results.
 
 The adapter derives shared contract predicates from the actual law declarations and loads the shared theory after translated Ledger/Spec definitions. The final law theorem must still typecheck against its own original predicates. A `prelude` is suitable for generic tactics or term lemmas; it loads too early to import concrete Ledger lemmas directly.
@@ -445,14 +449,14 @@ Extraction and foreign-function integration are other design choices; this proje
 
 ### What do the terminal and history laws add?
 
-All 29 cataloged groups have Lean proofs. The two PO-B5 groups establish that declined and voided entries retain their key, amount and terminal status after any next event on a valid ledger. Their original argument domains include loose numeric equality; the proofs do not add integer guards to the queried key or amount.
+The catalog lists the maintained formal obligations. The two PO-B5 groups establish that declined and voided entries retain their key, amount and terminal status after any next event on a valid ledger. Their original argument domains include loose numeric equality; the proofs do not add integer guards to the queried key or amount.
 
 PO-C3 reasons over a proper finite list of arbitrary event terms. It proves that reducer replay agrees with `Spec.expected_run/2`, preserves existing identities and terminal entries, and has independent approval evidence for authorization. The History proof uses one-step oracle agreement, successor validity, identity composition, terminal lookup preservation and authorization evidence.
 
-Deterministic tests and 10,000 generated examples per property complement these proofs. The 22-property suite has 220,000 configured examples in total; this count is distinct from formal quantification. A failed tactic or timeout alone is never a concrete counterexample.
+Deterministic tests and 10,000 generated examples per property complement these proofs. The executed test summary and coverage output report the current sample counts; those counts are distinct from formal quantification. A failed tactic or timeout alone is never a concrete counterexample.
 
 ### Does formal verification guarantee my system will never fail?
-No. Accepted proofs establish specific law statements about the translated pure functions, under their explicit preconditions and trusted assumptions. All 29 cataloged law groups are covered, but the catalog is a specified set of claims rather than a blanket proof of every possible requirement or of the OTP runtime.
+No. Accepted proofs establish specific law statements about the translated pure functions, under their explicit preconditions and trusted assumptions. The supported selection includes every cataloged obligation, but the catalog is a specified set of claims rather than a blanket proof of every possible requirement or of the OTP runtime.
 
 It does not prove that:
 * Your hard drive won't suffer physical sector corruption.
@@ -470,5 +474,20 @@ Tests, specified laws, proof maintenance, and operational checks remain compleme
 * Read [**Verification Guide**](verification.md) for checker commands, axiom configurations, and benchmark costs.
 * Run the interactive demo:
   ```sh
-  uv run --locked python scripts/local_run.py mix run scripts/demo.exs
+  mix run scripts/demo.exs
   ```
+
+## Pending voids and external exposure
+
+A pure accounting invariant alone does not bound remote authorizations when local
+capacity is released before remote void confirmation. The ledger retains capacity
+in `:voiding`; one internal confirmation event releases it and retires its outbox
+obligation in a composite fold. The independent Spec checks both the transition
+and the invariant that voiding keys equal unique obligation keys.
+
+Remote exposure requires an environment model: no spontaneous authorization,
+truthful decisions, stable identity/amount and a terminal fence preventing delayed
+authorizations after void confirmation. A capability declaration cannot prove
+those assumptions. Differential testing samples actual translated code against
+BEAM; compiled Lean evaluation and kernel-checked equalities provide separate
+bounded evidence. Consult the verification guide for the exact accepted scope.

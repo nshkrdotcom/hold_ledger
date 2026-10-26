@@ -95,6 +95,7 @@ defmodule HoldLedger.SpecTest do
              {:authorize, 11, 300}
            ])
 
-    assert Spec.effect_valid?(TestFixtures.voided(), {:void, 11})
+    assert Spec.effect_valid?(TestFixtures.voiding(), {:void, 11})
+    refute Spec.effect_valid?(TestFixtures.voided(), {:void, 11})
   end
 end

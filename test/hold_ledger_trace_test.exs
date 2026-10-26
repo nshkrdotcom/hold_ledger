@@ -2,7 +2,7 @@ defmodule HoldLedger.WorkedTraceTest do
   use ExUnit.Case, async: true
   alias HoldLedger.{Ledger, Spec}
 
-  test "nine exact worked transitions, including effect and result ordering" do
+  test "ten exact worked transitions, including effect and result ordering" do
     states = [
       {10_000, 3, 0, 0, []},
       {10_000, 3, 7000, 1, [{11, 7000, :reserved}]},
@@ -12,6 +12,7 @@ defmodule HoldLedger.WorkedTraceTest do
       {10_000, 3, 7000, 1, [{11, 7000, :unknown}]},
       {10_000, 3, 7000, 1, [{11, 7000, :sent}]},
       {10_000, 3, 7000, 1, [{11, 7000, :authorized}]},
+      {10_000, 3, 7000, 1, [{11, 7000, :voiding}]},
       {10_000, 3, 0, 0, [{11, 7000, :voided}]},
       {10_000, 3, 0, 0, [{11, 7000, :voided}]}
     ]
@@ -24,7 +25,8 @@ defmodule HoldLedger.WorkedTraceTest do
       {{:timeout, 11}, :marked_unknown, []},
       {{:retry, 11}, :retried, [{:authorize, 11, 7000}]},
       {{:processor_result, 11, :approved}, :authorized, []},
-      {{:void, 11}, :voided, [{:void, 11}]},
+      {{:void, 11}, :voiding, [{:void, 11}]},
+      {{:void_confirmed, 11}, :voided, []},
       {{:request, 11, 7000}, :duplicate, []}
     ]
 

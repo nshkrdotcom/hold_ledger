@@ -19,14 +19,14 @@ theorem HoldLedgerProof.valid_view_1 : ∀ state, Elixir.HoldLedger.Spec.«valid
   intro state h
   simp only [Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
-  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
-  all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
+  all_goals repeat' (split at * <;> try simp_all [])
   all_goals simp only [Erlang.erlang.«is_integer/1», bind, Except.bind] at *
   all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals obtain ⟨⟨a, ha⟩, c, hc⟩ := HoldLedgerProof.totals_1 _ (by assumption)
   all_goals simp_all [Erlang.erlang.«==/2», Lynx.Term.true, Lynx.Term.false]
   all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals subst_vars
-  all_goals try simp_all [Erlang.erlang.«==/2», Lynx.Term.true, Lynx.Term.false]
+  all_goals try simp_all []
   all_goals repeat' split_conjunction
   all_goals refine ⟨_, _, _, _, _, (by exact ⟨rfl, rfl, rfl, rfl, rfl⟩), ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> first | assumption | omega

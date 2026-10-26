@@ -1,0 +1,348 @@
+{
+  "revision": "authorization-holds-terminal-confirmation",
+  "obligations": [
+    {
+      "id": "L1",
+      "slug": "l1_find",
+      "law": "l1_find",
+      "arity": 2
+    },
+    {
+      "id": "L2",
+      "slug": "l2_identity",
+      "law": "l2_identity",
+      "arity": 3
+    },
+    {
+      "id": "L3",
+      "slug": "l3_accounting",
+      "law": "l3_accounting",
+      "arity": 5
+    },
+    {
+      "id": "L4",
+      "slug": "l4_structure",
+      "law": "l4_structure",
+      "arity": 3
+    },
+    {
+      "id": "L5",
+      "slug": "l5_fresh",
+      "law": "l5_fresh",
+      "arity": 3
+    },
+    {
+      "id": "L6",
+      "slug": "l6_restart",
+      "law": "l6_restart",
+      "arity": 1
+    },
+    {
+      "id": "PO-I",
+      "slug": "po_i",
+      "law": "po_i",
+      "arity": 2
+    },
+    {
+      "id": "PO-A1",
+      "slug": "po_a1",
+      "law": "po_a1",
+      "arity": 3
+    },
+    {
+      "id": "PO-A2",
+      "slug": "po_a2",
+      "law": "po_a2",
+      "arity": 3
+    },
+    {
+      "id": "PO-A3",
+      "slug": "po_a3",
+      "law": "po_a3",
+      "arity": 2
+    },
+    {
+      "id": "PO-A4",
+      "slug": "po_a4_duplicate",
+      "law": "po_a4_duplicate",
+      "arity": 4
+    },
+    {
+      "id": "PO-A4",
+      "slug": "po_a4_conflict",
+      "law": "po_a4_conflict",
+      "arity": 5
+    },
+    {
+      "id": "PO-B1/dispatch",
+      "slug": "po_b1_dispatch",
+      "law": "po_b1_dispatch",
+      "arity": 2
+    },
+    {
+      "id": "PO-B1/timeout",
+      "slug": "po_b1_timeout",
+      "law": "po_b1_timeout",
+      "arity": 2
+    },
+    {
+      "id": "PO-B1/restart",
+      "slug": "po_b1_restart",
+      "law": "po_b1_restart",
+      "arity": 1
+    },
+    {
+      "id": "PO-B1/retry",
+      "slug": "po_b1_retry",
+      "law": "po_b1_retry",
+      "arity": 2
+    },
+    {
+      "id": "PO-B1/processor_result",
+      "slug": "po_b1_processor_result",
+      "law": "po_b1_processor_result",
+      "arity": 3
+    },
+    {
+      "id": "PO-B1/void",
+      "slug": "po_b1_void",
+      "law": "po_b1_void",
+      "arity": 2
+    },
+    {
+      "id": "PO-B2",
+      "slug": "po_b2",
+      "law": "po_b2",
+      "arity": 4
+    },
+    {
+      "id": "PO-B3",
+      "slug": "po_b3",
+      "law": "po_b3",
+      "arity": 2
+    },
+    {
+      "id": "PO-S",
+      "slug": "po_s",
+      "law": "po_s",
+      "arity": 2
+    },
+    {
+      "id": "PO-C1",
+      "slug": "po_c1",
+      "law": "po_c1",
+      "arity": 2
+    },
+    {
+      "id": "PO-C2",
+      "slug": "po_c2",
+      "law": "po_c2",
+      "arity": 3
+    },
+    {
+      "id": "PO-B4",
+      "slug": "po_b4",
+      "law": "po_b4",
+      "arity": 2
+    },
+    {
+      "id": "PO-B5/declined",
+      "slug": "po_b5_declined",
+      "law": "po_b5_declined",
+      "arity": 4
+    },
+    {
+      "id": "PO-B5/voided",
+      "slug": "po_b5_voided",
+      "law": "po_b5_voided",
+      "arity": 4
+    },
+    {
+      "id": "PO-B6",
+      "slug": "po_b6",
+      "law": "po_b6",
+      "arity": 2
+    },
+    {
+      "id": "PO-B7",
+      "slug": "po_b7",
+      "law": "po_b7",
+      "arity": 1
+    },
+    {
+      "id": "PO-C3",
+      "slug": "po_c3",
+      "law": "po_c3",
+      "arity": 2
+    },
+    {
+      "id": "PO-B1/void_confirmed",
+      "slug": "po_b1_void_confirmed",
+      "law": "po_b1_void_confirmed",
+      "arity": 2
+    },
+    {
+      "id": "PO-ATTEMPT/poison",
+      "slug": "po_attempt_poison",
+      "law": "po_attempt_poison",
+      "arity": 5
+    },
+    {
+      "id": "PO-ENV/fence",
+      "slug": "po_terminal_fence",
+      "law": "po_terminal_fence",
+      "arity": 4
+    },
+    {
+      "id": "PO-ATTEMPT/retired",
+      "slug": "po_attempt_retired",
+      "law": "po_attempt_retired",
+      "arity": 4
+    },
+    {
+      "id": "PO-ATTEMPT/slot",
+      "slug": "po_attempt_slot",
+      "law": "po_attempt_slot",
+      "arity": 5
+    },
+    {
+      "id": "PO-EXPOSURE/retain",
+      "slug": "po_exposure_retain",
+      "law": "po_exposure_retain",
+      "arity": 5
+    },
+    {
+      "id": "PO-COMP/recovery",
+      "slug": "po_composite_recovery",
+      "kind": "lean",
+      "module": "HoldLedgerProof.Recovery",
+      "theorems": [
+        "HoldLedgerProof.Recovery.committed_replay"
+      ]
+    },
+    {
+      "id": "PO-EXPOSURE/history",
+      "slug": "po_exposure_history",
+      "kind": "lean",
+      "module": "HoldLedgerProof.ExposureTrace",
+      "theorems": [
+        "HoldLedgerProof.Exposure.retained_history"
+      ]
+    },
+    {
+      "id": "PO-EXPOSURE/bounds",
+      "slug": "po_exposure_bounds",
+      "kind": "lean",
+      "module": "HoldLedgerProof.ExposureBound",
+      "theorems": [
+        "HoldLedgerProof.Exposure.exposure_bounds"
+      ]
+    },
+    {
+      "id": "PO-ATTEMPT/history",
+      "slug": "po_attempt_history",
+      "kind": "lean",
+      "module": "HoldLedgerProof.AttemptSafety",
+      "theorems": [
+        "HoldLedgerProof.AttemptSafety.translated_history_safety",
+        "HoldLedgerProof.AttemptSafety.committing_quiet"
+      ]
+    },
+    {
+      "id": "PO-COMP/init",
+      "slug": "po_composite_init",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.init_valid"
+      ]
+    },
+    {
+      "id": "PO-COMP/preservation",
+      "slug": "po_composite_preservation",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.composite_preserves",
+        "HoldLedgerProof.CompositeSafety.composite_view"
+      ]
+    },
+    {
+      "id": "PO-COMP/oracle",
+      "slug": "po_composite_oracle",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.composite_oracle"
+      ]
+    },
+    {
+      "id": "PO-COMP/history",
+      "slug": "po_composite_history",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.composite_history",
+        "HoldLedgerProof.CompositeSafety.composite_oracle_history"
+      ]
+    },
+    {
+      "id": "PO-COMP/confirmation",
+      "slug": "po_composite_confirmation",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.confirmation_once"
+      ]
+    },
+    {
+      "id": "PO-COMP/open",
+      "slug": "po_composite_open",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.open_obligation"
+      ]
+    },
+    {
+      "id": "PO-COMP/recovery-valid",
+      "slug": "po_composite_recovery_valid",
+      "kind": "lean",
+      "module": "HoldLedgerProof.CompositeSafety",
+      "theorems": [
+        "HoldLedgerProof.CompositeSafety.recovery_valid"
+      ]
+    },
+    {
+      "id": "PO-EXPOSURE/model",
+      "slug": "po_exposure_model",
+      "kind": "lean",
+      "module": "HoldLedgerProof.ExposureModel",
+      "theorems": [
+        "HoldLedgerProof.ExposureModel.model_init_valid",
+        "HoldLedgerProof.ExposureModel.model_preserves",
+        "HoldLedgerProof.ExposureModel.model_history",
+        "HoldLedgerProof.ExposureModel.void_before_issue"
+      ]
+    },
+    {
+      "id": "PO-EXPOSURE/model-bounds",
+      "slug": "po_exposure_model_bounds",
+      "kind": "lean",
+      "module": "HoldLedgerProof.ExposureModel",
+      "theorems": [
+        "HoldLedgerProof.ExposureModel.model_bounds"
+      ]
+    },
+    {
+      "id": "PO-ATTEMPT/persist",
+      "slug": "po_attempt_persist",
+      "kind": "lean",
+      "module": "HoldLedgerProof.AttemptSafety",
+      "theorems": [
+        "HoldLedgerProof.AttemptSafety.persist_once",
+        "HoldLedgerProof.AttemptSafety.retire_requires_persist"
+      ]
+    }
+  ]
+}

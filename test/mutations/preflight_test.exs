@@ -60,7 +60,7 @@ defmodule HoldLedger.MutationPreflightTest do
     state = {1000, 3, 300, 1, [{11, 300, :authorized}]}
 
     assert Ledger.step(state, {:void, 11}) ==
-             {{1000, 3, 0, 0, [{11, 300, :voided}]}, :voided, [{:void, 11}]}
+             {{1000, 3, 300, 1, [{11, 300, :voiding}]}, :voiding, [{:void, 11}]}
   end
 
   @tag mutation: "M8"

@@ -82,13 +82,13 @@ defmodule HoldLedger.PreconditionWitnessTest do
     assert Spec.valid?(no)
   end
 
-  test "PO-B1/void: reserved and authorized release with distinct intent" do
+  test "PO-B1/void: reserved releases and authorized retains capacity with intent" do
     reserved = TestFixtures.reserved()
     authorized = TestFixtures.authorized()
     assert Spec.valid?(reserved)
     assert Spec.valid?(authorized)
     assert {next1, :voided, []} = Ledger.void(reserved, 11)
-    assert {next2, :voided, [{:void, 11}]} = Ledger.void(authorized, 11)
+    assert {next2, :voiding, [{:void, 11}]} = Ledger.void(authorized, 11)
     assert Spec.valid?(next1)
     assert Spec.valid?(next2)
   end
@@ -110,8 +110,8 @@ defmodule HoldLedger.PreconditionWitnessTest do
     assert Spec.valid?(authorized)
     {sent, :dispatched, effects} = Ledger.step(reserved, {:dispatch, 11})
     assert Spec.effects_valid?(reserved, {:dispatch, 11}, sent, :dispatched, effects)
-    {voided, :voided, void_effects} = Ledger.step(authorized, {:void, 11})
-    assert Spec.effects_valid?(authorized, {:void, 11}, voided, :voided, void_effects)
+    {voiding, :voiding, void_effects} = Ledger.step(authorized, {:void, 11})
+    assert Spec.effects_valid?(authorized, {:void, 11}, voiding, :voiding, void_effects)
     assert Spec.effects_valid?(reserved, {:request, 11, 300}, reserved, :duplicate, [])
   end
 

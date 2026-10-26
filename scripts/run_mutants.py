@@ -22,7 +22,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from run_laws import inspect_manifest
+from run_laws import CHECKERS, REQUIRED_AXIOMS, acceptance_sources, changed_sources, inspect_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = Path("lib/hold_ledger/ledger.ex")
@@ -37,6 +37,7 @@ MUTANTS = (
     ("M7", "07_void_effect", "po_b3"),
     ("M8", "08_decline_accounting", "po_b1_processor_result"),
     ("M9", "09_restart_unknown", "po_b7"),
+    ("M10", "10_premature_void_release", "po_exposure_retain"),
 )
 OMIT = (".git", ".local", ".venv", "_build", "deps", "tmp", "__pycache__",
         ".pytest_cache", "doc", "hold_ledger-*.tar")
@@ -111,7 +112,9 @@ def evidence_of_assertion_failure(output: str, mutant_id: str) -> bool:
         return False
     if "** (CompileError)" in output or "** (SyntaxError)" in output or "Compilation error" in output:
         return False
-    return any(word in output for word in ("Assertion with", "AssertionError", "left:", "match (==)"))
+    return any(word in output for word in (
+        "Assertion with", "AssertionError", "left:", "match (==)",
+        "Expected truthy", "Expected false or nil"))
 
 
 def run_mix(project: Path, path: str | None, *, logsuffix: str, mutant: str, timeout: int) -> dict:
@@ -144,6 +147,37 @@ def formal_run(project: Path, law_slug: str, *, label: str, timeout: int) -> tup
             law["log"] = str(retained.relative_to(ROOT))
             law["log_sha256"] = digest(retained)
     return executed, law
+
+
+def accepted_baseline(path: Path, mutants: list[tuple]) -> dict:
+    """Reuse a complete fresh acceptance artifact, never an unverified success label."""
+    path = path.resolve()
+    report = json.loads(path.read_text(encoding="utf8"))
+    manifest = report.get("source_sha256", {})
+    expected = {str(source.relative_to(ROOT)) for source in acceptance_sources()}
+    if (not report.get("release_complete") or not report.get("checker_claim")
+            or not report.get("accepted_proof_claim") or report.get("source_changes_during_run")
+            or set(manifest) != expected or changed_sources(manifest, acceptance_sources())):
+        raise RuntimeError("Formal baseline must accept the complete unchanged source")
+    exports = report.get("exports", [])
+    if not exports:
+        raise RuntimeError("Formal baseline has no checked exports")
+    for export in exports:
+        artifact = (ROOT / export["path"]).resolve()
+        if (not artifact.is_relative_to(ROOT / "tmp") or not artifact.is_file()
+                or not export.get("passed") or not export.get("allowed_axioms") or not export.get("axiom_list")
+                or set(export.get("axiom_list", [])) - REQUIRED_AXIOMS
+                or set(export.get("checker_acceptance", {})) != set(CHECKERS)
+                or not all(export["checker_acceptance"].values())
+                or artifact.stat().st_size != export.get("export_bytes")
+                or digest(artifact) != export.get("export_sha256")):
+            raise RuntimeError("Formal baseline export identity/checkers do not match")
+    slugs = list(dict.fromkeys(item[2] for item in mutants))
+    if any(report.get("laws", {}).get(slug, {}).get("passed") is not True for slug in slugs):
+        raise RuntimeError("Formal baseline omits a targeted mutation law")
+    return {"reused_report": str(path), "report_sha256": digest(path),
+            "source_sha256": manifest,
+            "laws": {slug: {"passed": True} for slug in slugs}}
 
 
 def baseline_laws(mutants: list[tuple], timeout: int) -> dict:
@@ -233,12 +267,21 @@ def one_mutant(spec: tuple, original: bytes, spec_digest: str,
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--baseline-report", type=Path, help="reuse matching complete cold checker acceptance")
     p.add_argument("--execute", action="store_true", help="run full native isolated mutations")
     p.add_argument("--timeout", type=int, default=1800, help="native per-check seconds")
     p.add_argument("--suite-timeout", type=int, default=2400)
     p.add_argument("--report", type=Path, help="persist results JSON inside checkout")
     args = p.parse_args()
+    dest = None
     try:
+        if args.report:
+            candidate = args.report.resolve()
+            if not candidate.is_relative_to(ROOT / "tmp"):
+                raise RuntimeError("Report must remain inside checkout tmp directory")
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            candidate.unlink(missing_ok=True)
+            dest = candidate
         inspect_manifest()
         original = (ROOT / LEDGER).read_bytes()
         spec_hash = digest(ROOT / SPEC)
@@ -262,7 +305,8 @@ def main() -> int:
         if args.execute:
             if args.timeout <= 0 or args.suite_timeout <= 0:
                 raise RuntimeError("Positive timeouts required")
-            baselines = baseline_laws(MUTANTS, args.timeout)
+            baselines = (accepted_baseline(args.baseline_report, MUTANTS) if args.baseline_report
+                         else baseline_laws(MUTANTS, args.timeout))
             report["formal_baselines"] = baselines
             all_detected = True
             for entry in MUTANTS:
@@ -275,17 +319,16 @@ def main() -> int:
             report["all_concrete_detected"] = bool(all_detected)
         if (ROOT / LEDGER).read_bytes() != original or digest(ROOT / SPEC) != spec_hash:
             raise RuntimeError("Live normative/reducer sources changed; isolation failure")
-        if args.report:
-            dest = args.report.resolve()
-            if not dest.is_relative_to(ROOT):
-                raise RuntimeError("Report must remain inside source checkout")
-            dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest:
             dest.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         print(f"{len(MUTANTS)} isolated patch anchors verified; run mode={report['mode']}" )
         if not args.execute:
             print("Ordinary execution / formal checker NOT RUN; no mutation claims")
         return 0 if not args.execute or report.get("all_concrete_detected") else 2
     except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
+        if dest:
+            dest.write_text(json.dumps({"mode": "INCOMPLETE", "all_concrete_detected": False,
+                                        "error": str(error)}) + "\n")
         print(f"MUTATION RUNNER ERROR: {error}", file=sys.stderr)
         return 1
 

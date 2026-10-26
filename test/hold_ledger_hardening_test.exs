@@ -67,6 +67,35 @@ defmodule HoldLedgerHardeningTest do
     assert {:monitors, []} = Process.info(server, :monitors)
   end
 
+  test "a rejected lifecycle deadline cannot execute another shutdown", %{path: path} do
+    processor = processor(%{authorize: [:block]})
+    server = server(path, processor: {ControlledProcessor, processor}, authorize_timeout: 10_000)
+    Server.submit(server, {:request, 1, 10})
+    Server.submit(server, {:dispatch, 1})
+    assert_receive {:entered, :authorize, worker, 1}
+    on_exit(fn -> if Process.alive?(worker), do: Process.exit(worker, :kill) end)
+    original = :sys.get_state(server)
+    [{ref, attempt}] = Map.to_list(original.tasks)
+
+    # Inject the interval after the model has already requested shutdown.
+    :sys.replace_state(server, fn data ->
+      {attempts, [{:shutdown, _, :authorize, 1}]} =
+        HoldLedger.Attempts.step(data.attempts, {:deadline, attempt.id})
+
+      %{data | attempts: attempts}
+    end)
+
+    send(server, {:deadline, ref})
+    assert :sys.get_state(server).tasks == original.tasks
+    assert Process.alive?(worker)
+    assert [{1, 10, :sent}] = elem(Server.state(server), 4)
+
+    :sys.replace_state(server, &%{&1 | attempts: original.attempts})
+    send(worker, {:respond, {:ok, :approved}})
+    assert :ok = Server.await_idle(server)
+    assert [{1, 10, :authorized}] = elem(Server.state(server), 4)
+  end
+
   test "forged_completion cannot retire a durable void obligation", %{path: path} do
     processor = processor(%{void: [:block]})
     server = server(path, processor: {ControlledProcessor, processor})
@@ -74,6 +103,7 @@ defmodule HoldLedgerHardeningTest do
     Server.submit(server, {:void, 1})
     assert_receive {:entered, :void, worker, 1}
     assert {:error, :reserved_event} = Server.submit(server, {:void_outcome, 1, {:ok, :voided}})
+    assert {:error, :reserved_event} = Server.submit(server, {:void_confirmed, 1})
     assert {:error, :reserved_event} = Server.submit(server, {:processor_lookup_not_found, 1})
     send(server, {make_ref(), {:ok, :voided}})
     assert [{1, %{status: :pending}}] = Server.inspect_work(server, :voids)
@@ -84,7 +114,7 @@ defmodule HoldLedgerHardeningTest do
     {:ok, journal} = Journal.open(path: path)
     {:ok, events, journal} = Journal.replay(journal)
     assert {:rejected_submission, :void_outcome} in events
-    assert Enum.count(events, &(&1 == {:void_outcome, 1, {:ok, :voided}})) == 1
+    assert Enum.count(events, &(&1 == {:void_confirmed, 1})) == 1
     Journal.close(journal)
   end
 
@@ -356,7 +386,7 @@ defmodule HoldLedgerHardeningTest do
     {:ok, journal} = Journal.open(path: path)
     {:ok, [], journal} = Journal.replay(journal)
     {:ok, journal} = Journal.append_sync(journal, {:hold_ledger_caps, 100, 10})
-    {:ok, journal} = Journal.append_sync(journal, {:void_outcome, 99, {:ok, :voided}})
+    {:ok, journal} = Journal.append_sync(journal, {:void_attempt, 99})
     Journal.close(journal)
 
     assert {:error, {:shutdown, {:quarantined, :invalid_runtime_history}}} =
