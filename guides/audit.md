@@ -208,11 +208,10 @@ All share the translated definitions and theorem statements.
 
 After a reported Nanoda stack overflow, the runner can retry with one thread
 and a 256 MiB process stack. Verify that it uses the same pinned checker and
-export, retains sandbox isolation and
-records actual acceptance under the axiom policy. A stack overflow supplies no
-evidence against the theorem. Read [`scripts/check_nanoda_serial.py`][nanoda-retry]
-with its caller in `run_laws.py`; the
-[verification guide](verification.md) and [troubleshooting guide](troubleshooting.md)
+export, retains sandbox isolation and records actual acceptance under the axiom
+policy. A stack overflow supplies no evidence against the theorem. Read
+[`scripts/check_nanoda_serial.py`][nanoda-retry] with its caller in `run_laws.py`;
+the [verification guide](verification.md) and [troubleshooting guide](troubleshooting.md)
 describe the checking policy and retry.
 
 The permitted axioms here are `propext`, `Quot.sound` and `Classical.choice`.

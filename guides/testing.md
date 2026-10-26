@@ -45,7 +45,9 @@ These tests do not model physical power loss or prove the storage hardware.
 
 A mutation is an intentionally wrong copy of source code. The exercise asks whether the stated checks distinguish that wrong behavior from the agreed policy. Ten examples under `mutants/` break terminal-key replay, timeout accounting,
 retry identity, exact-fit admission, positive admission, transport-ack handling, required void effects, decline accounting, restart conversion and premature void release.
-Each includes a patch and a concrete assertion against the correct behavior.
+Each includes a patch and a concrete assertion against the correct behavior. The
+`MUTANTS` table in [`scripts/run_mutants.py`](https://github.com/nshkrdotcom/hold_ledger/blob/main/scripts/run_mutants.py) maps each
+mutation ID and directory to its targeted law group.
 
 Check that all patches apply in isolated copies, without native execution:
 

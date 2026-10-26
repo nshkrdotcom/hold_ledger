@@ -93,12 +93,12 @@ A refuse-everything implementation preserves capacity limits. The first and thir
 
 Start with **did the meaning of any claim change?** Use the report to locate affected statements, definitions and assumptions, then check the diff. Inspect the commands, results and source identity behind a claimed pass, and distinguish ordinary tests from formal acceptance. Unresolved failures should remain visible.
 
-Ask for the following in the change summary. This is a reporting format, not a substitute for checking the changed files:
+Use these field names in change summaries and worked reports. For a review with no changed files, write `Review tier: Not applicable (no diff)`. The format helps locate evidence; it does not replace checking the changed files:
 
 ```text
 Policy: <requirement source and the required before/after behavior>
 Claim delta: <old/new requires, expects, called definitions, or "none">
-Review tier: <Tier 1/2/3, reasons, and any ambiguous declarations>
+Review tier: <Tier 1/2/3, Documentation, or not applicable; reasons and ambiguity>
 Changed files: <paths, including dependencies and tools>
 Challenge evidence: <valid witness, forbidden output, boundary/temporal trace>
 Ordinary checks: <exact commands, results, log or report paths>

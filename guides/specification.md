@@ -2,7 +2,7 @@
 
 This is the behavioral contract to consult **before** asking an agent to prove or change a ledger operation. The ledger models authorization holds for one account, not fund transfer or settlement. `HoldLedger.Spec` is an independently implemented executable reference for this policy; agreement with the implementation is useful evidence but cannot decide whether the policy itself is right.
 
-The central rule is simple: an issued or potentially issued authorization continues consuming local capacity until reliable terminal evidence allows release. That is why timeout, restart and local void requests do not automatically free it.
+The central rule is simple: an issued or potentially issued authorization continues consuming local capacity until reliable terminal evidence allows release. That is why timeout, restart and a local void of an authorized hold do not free it. Voiding an undispatched `:reserved` hold releases capacity immediately.
 
 ## State and validity
 

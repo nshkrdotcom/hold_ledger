@@ -92,7 +92,30 @@ inductive ToyOutcome where
   | declined
 ```
 
-You don't have to write either construct to start with Lynx. But when `test/support/lean/*.lean` defines an inductive **relation**, inspect its constructors: they determine the steps or histories the model permits. A theorem about `Committed` tells you little until you know which histories qualify as committed. Native Lean `Int` and `List` are not automatically the same thing as Lynx's dynamically typed Elixir terms.
+An inductive **relation** describes which combinations of values satisfy a proposition. Its constructors can require evidence, rather than merely name alternatives. Here is a small history relation:
+
+```lean
+import Lean
+
+def toyStep (state amount : Nat) : Option Nat :=
+  if amount = 0 then none else some (state + amount)
+
+inductive ToyRun : Nat → List Nat → Nat → Prop where
+  | empty (state) : ToyRun state [] state
+  | next {state amount nextState amounts final} :
+      toyStep state amount = some nextState →
+      ToyRun nextState amounts final →
+      ToyRun state (amount :: amounts) final
+
+example : ToyRun 0 [2] 2 :=
+  ToyRun.next rfl (ToyRun.empty 2)
+```
+
+`ToyRun state amounts final` says the listed amounts take the initial state to the final one. `empty` admits an empty history with unchanged state. `next` needs two facts: the first step succeeds, and the remaining history runs from that step's result to `final`. In the example, `rfl` checks the first step by evaluation and `ToyRun.empty 2` supplies the empty tail.
+
+**Checkpoint:** does this relation admit `[2, 0]` from state `0`? Does any constructor mention disk? The zero step returns `none`, so no `next` constructor can supply its success premise. No constructor records a write or flush; a proof about `ToyRun` cannot establish storage durability.
+
+Read `Committed` in `test/support/lean/Recovery.lean` the same way. Its `next` constructor requires a successful translated `Composite.step/2` evaluation and a recursively committed tail. Here successful evaluation means `Except.ok`, which can contain a rejected ledger operation. It does not mean a successful disk write. The [audit](audit.md#lean-execution-relations-examine-what-a-history-means) follows that boundary further. Native Lean `Int` and `List` are not automatically the same thing as Lynx's dynamically typed Elixir terms.
 
 ## How Lynx connects Elixir to Lean
 
@@ -170,7 +193,7 @@ uv run --locked python scripts/local_run.py mix test tmp/cap_test.exs --exclude 
 LYNX_CACHE=0 LYNX_DEBUG=lean uv run --locked python scripts/local_run.py mix test tmp/cap_test.exs --only laws
 ```
 
-On the documented pinned setup, the ordinary command is expected to pass the exact-fit test and generated property, and the second command to check the law. Inspect the actual exit status and output; the tutorial files are not a substitute for running the commands. Lynx makes `fits/2` callable in Elixir: it checks `requires`, then `expects`, raising if either fails. The test’s `(1, 1)` is a **witness**, a concrete input satisfying the precondition. It gives us one case we can inspect alongside the general proof.
+The ordinary command reports two passes: one exact-fit test and one generated property. The proof command reports one passing law. Check the exit status as well as the summary. Lynx makes `fits/2` callable in Elixir: it checks `requires`, then `expects`, raising if either fails. `non_negative_integer()` includes zero, so the property exercises exact fits as well as requests below capacity. The test’s `(1, 1)` is a **witness**, a concrete input satisfying the precondition. It gives us one case we can inspect alongside the general proof.
 
 ## Read the translated function
 
@@ -409,7 +432,7 @@ theorem append_empty (xs : List Nat) : xs ++ [] = xs := by
       rw [ih]
 ```
 
-The `nil` case handles the empty list. In the `cons` case, `ih` is the **inductive hypothesis**: appending `[]` leaves the shorter tail unchanged. `change` exposes the recursive append on the tail; `rw [ih]` replaces `tail ++ []` with `tail`, making the two sides equal. This is the pattern to recognize in `test/support/lean/CoreLookup.lean` and other recursive proof modules, even though those files reason about translated Elixir terms rather than a native `List Nat`.
+The `nil` case handles the empty list. In the `cons` case, `ih` is the **inductive hypothesis**: appending `[]` leaves the shorter tail unchanged. `change` exposes the recursive append on the tail; `rw [ih]` replaces `tail ++ []` with `tail`, making the two sides equal. `test/support/lean/CoreLookup.lean` uses `fun_induction Elixir.HoldLedger.Spec.«lookup/2» es k` to follow the recursive branches of the translated lookup function. That is functional induction: its cases and inductive hypotheses come from the function’s recursion, rather than directly from the `nil` and `cons` constructors of a native list.
 
 **Checkpoint:** without reading tactic details, can you name (1) the input domain of `po_a4_duplicate`, (2) the exact result promised, and (3) one dependency the shared proof relies on? If so, you've crossed from the toy example into a maintained law. The next level is tracing each helper's statement and assumptions, not memorizing a larger `simp` invocation.
 
@@ -461,7 +484,7 @@ law(over_capacity(amount, remaining),
 )
 ```
 
-Use `assert over_capacity(2, 1)` as the witness. For the property, generate `remaining <- integer()` and `gap <- positive_integer()`, then assert `over_capacity(remaining + gap, remaining)`. Run the ordinary and proof commands again; there are now two laws.
+Use `assert over_capacity(2, 1)` as the witness. For the property, generate `remaining <- integer()` and `gap <- positive_integer()`, then assert `over_capacity(remaining + gap, remaining)`. `positive_integer()` excludes zero, ensuring `remaining < remaining + gap`; zero would be an exact fit and belongs in `fits/2`. Run the ordinary and proof commands again; there are now two laws.
 
 For exercise 4, `valid?` gives the proof its input-state invariant; the shared theorem derives the proper-list shape from that invariant. Assuming `Ledger.request` already returns `:duplicate` would hide the very behavior we meant to verify. Restricting query keys could quietly remove cases the existing law covers. Consult the actual theorem declaration and referenced definitions before judging whether a changed proof has preserved its claim.
 

@@ -6,15 +6,7 @@ We'll follow that example from a requirement to a challenged contract and proof 
 
 ## Who decides what?
 
-| Moment | Agent's work | Evidence or decision needed |
-|---|---|---|
-| Find the requirement | Gather the specification, traces and competing interpretations | A person resolves missing or conflicting policy; an agreed requirement can be reused without asking again |
-| Draft the claim | Propose `requires`, `expects`, definitions and exact examples | Review the domain, guarantees and any new assumption before calling it the accepted contract |
-| Challenge it | Produce admissible inputs, deliberately wrong outputs and mutants | Check expected behavior against policy, not just against the implementation or `Spec` |
-| Implement and prove | Write code, tests, lemmas and tactics under an agreed contract | Lean checks a theorem; it does **not** judge policy or remote-service truth |
-| Deliver the change | Show the diff, source identity, commands, results and open questions | A reviewer decides whether any semantic or trust-boundary change is authorized |
-
-You don't need a new human decision for every keystroke. Under an already agreed policy, an agent can repair a bug and run the checks. Stop when a new release rule, narrower domain, different reference meaning or new remote assumption would be accepted. [Human review](human_review.md) gives the detailed escalation rule.
+An agent can gather evidence, challenge contracts and repair code under agreed policy. A person resolves missing or conflicting requirements and new risk tradeoffs. Use the [responsibility table](human_review.md#what-to-delegate-and-what-to-decide) to distinguish those decisions from ordinary implementation and proof work.
 
 A few proof labels appear below. `po_b1_void` checks that the void transition preserves ledger validity; `po_b3` constrains emitted effects; `po_exposure_retain` requires capacity to remain represented when a local void lacks release evidence. They are individual **law groups** in `verification/laws.json`, not magic assurances about the whole system. The [law catalog](verification.md#law-catalog) names the others.
 
@@ -234,22 +226,22 @@ To experiment with the deliberate mutation, first inspect its patch and witness 
 The exchange ends with a report and a review decision. This illustrative report describes a contract review before executing checks; its `not run` entries leave that work visible.
 
 ```text
-Requirement: An authorized local void retains its amount and slot until
-trusted confirmation; its transition emits {:void, key}.
-Policy source: guides/specification.md, "Uncertain outcomes and identities"
+Policy: guides/specification.md, "Uncertain outcomes and identities": an
+ authorized local void retains capacity until trusted confirmation permits
+ release; its transition emits {:void, key}.
 Claim delta: None to maintained laws. Reject validity alone as a substitute
-for the required transition: it permits early release and a missing effect.
+ for the required transition: it permits early release and a missing effect.
+Review tier: Not applicable (no diff).
 Changed files: None.
-Review tier: Contract review (Tier 1 meaning/scope review); no proof repair.
-Challenge: Starting from {100, 2, 100, 1, [{1, 100, :authorized}]}, both
+Challenge evidence: From {100, 2, 100, 1, [{1, 100, :authorized}]}, both
  early_release and lost_effect satisfy validity but violate the exact output.
-Existing coverage: po_b1_void checks validity; po_b3 checks effects;
- po_exposure_retain checks retention. The policy traces exercise pending voids.
+ po_b1_void checks validity; po_b3 checks effects; po_exposure_retain checks
+ retention. The policy traces exercise pending voids.
 Ordinary checks: Not run. Next commands:
  uv run --locked python scripts/local_run.py mix run tmp/contract_challenge.exs
  uv run --locked python scripts/local_run.py mix test test/human_policy_traces_test.exs --exclude laws
-Formal checks: Not run; no proof or full-acceptance result claimed.
-External assumptions: Processor outcomes are truthful and authenticated;
+Formal evidence: Not run; no proof or full-acceptance result claimed.
+Trusted assumptions: Processor outcomes are truthful and authenticated;
  terminal void confirmation permanently fences delayed authorization.
 Unresolved: Execute the challenge and policy traces. Native mutation and
  formal checks remain unexecuted; this review establishes no new theorem.
@@ -259,7 +251,34 @@ Unresolved: Execute the challenge and policy traces. Native mutation and
 
 The decision allows work to continue under agreed policy without treating the contract review as proof acceptance. For a report after execution, replace each `not run` entry with the exact command, result and log or report path. Include source hashes with formal evidence. [Human review](human_review.md#what-to-inspect-in-the-agent-report) gives the general report format.
 
-The reviewer checks the actual diff and evidence; the report is not an authority. A sample response that says **“proof-only change, no claim delta”** while changing a referenced definition is misleading even if the theorem signatures are unchanged. Try identifying this failure in [Human review, exercise E](human_review.md#practice-on-seven-proposed-changes).
+### Check a report against its diff
+
+Now suppose an agent submits this report excerpt:
+
+```text
+Claim delta: None; the law statements are unchanged.
+Review tier: Tier 3, proof-only cleanup.
+Changed files: lib/hold_ledger/spec.ex
+```
+
+Its actual proposed diff is:
+
+```diff
+   def exposed_entry?({_, _, _, _, entries}, key, amount) do
+     case lookup(entries, key) do
+       {:ok, {^key, ^amount, status}} -> status in [:sent, :unknown, :authorized, :voiding]
+-      _ -> false
++      _ -> true
+     end
+   end
+```
+
+Before accepting the report, evaluate the predicate for an empty ledger,
+`{100, 2, 0, 0, []}`, key `1` and amount `100`. What changes?
+
+**Reviewer:** “The original returns `false`; your changed definition returns `true` despite there being no entry. A retention conclusion using this predicate no longer requires the identity to remain recorded. This is Tier 1: a changed Spec definition. Restore the predicate and investigate the original proof failure under the existing contract.”
+
+The law text did not change, but its meaning did. The reviewer found that by following the diff to a concrete input, independently of the report's label. [Human review](human_review.md#practice-on-seven-proposed-changes) provides more practice with this distinction.
 
 ### A second request: repair a failed proof without changing policy
 
@@ -285,4 +304,4 @@ You can learn this workflow without running a full prover. If you do run the exp
 
 ## When to bring in a person
 
-The agent can continue gathering evidence, attempting proofs and checking agreed requirements. Bring the decision back to a person when a new requirement is needed, an important input domain may shrink, an external assumption changes, the reference contradicts independently justified behavior, or challenges expose competing policies. Record the question and the evidence before asking for a decision. The [per-change review guide](human_review.md) gives declaration-level rules and explains how evaluation could eventually justify delegating narrower classes of decisions.
+Use the [responsibility table](human_review.md#what-to-delegate-and-what-to-decide) and [diff classification rules](human_review.md#classify-the-diff) when a challenge exposes a disputed decision. Bring the specific conflict, distinguishing trace and relevant evidence to the reviewer; work covered by the agreed policy can continue.
