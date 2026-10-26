@@ -1,6 +1,6 @@
-# Editing procedure for the human review guide
+# Editing the review guides
 
-The guide is written for an engineer deciding what evidence to trust. Its job
+`guides/human_review.md` serves per-change review; `guides/audit.md` serves initial or periodic system assurance. Both are written for an engineer deciding what evidence to trust. Its job
 is to help that engineer inspect and approve a concrete claim. Keep the editing
 procedure here so authoring notes do not distract from the published review.
 
@@ -21,8 +21,7 @@ procedure here so authoring notes do not distract from the published review.
 
 ## Procedure
 
-1. Check scope and order. Put mandatory review first, keep the sampling advice
-   short, then give Hold Ledger's policy sheet and source assessment.
+1. Check scope and order. In human_review.md, keep one tier/action table and one review checklist, a conservative proof-body classification procedure, independent traces and hidden exercise answers. In audit.md, keep policy and source assessment. Use verification/review-policy.json for paths; do not duplicate an authoritative path list.
 2. For each section, mark the decision, source and consequence of each paragraph.
    Delete paragraphs that provide none of these. Keep necessary qualifications
    about proof domains, evidence and assumptions.
@@ -39,8 +38,7 @@ procedure here so authoring notes do not distract from the published review.
    "valid", "local" and "assumed" when removing them would strengthen a claim.
    Distinguish code inspection, machine checks and human approval.
 7. Inspect the complete rendered guide, README entry point, HexDocs navigation,
-   local links and package contents. Run documentation checks only for these
-   documentation changes; leave the existing formal run undisturbed.
+   local links and package contents. Run documentation checks for prose changes. Changes to review-policy tooling, CI or agent instructions also require tooling tests and the formal gate specified by repository policy.
 
 Finish only after every section has received the prose and source checks. Keep
 the qualifications that make a claim accurate, even when they take another

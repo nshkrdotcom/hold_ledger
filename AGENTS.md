@@ -26,7 +26,7 @@ before state changes or effects. Processor deduplication and storage durability
 are external assumptions, not consequences of the pure proofs.
 
 Do not narrow a law's preconditions to obtain a pass or add proof admissions.
-All 29 cataloged groups are supported; do not silently exclude obligations.
+All cataloged groups are supported; do not silently exclude obligations.
 A proof timeout or failure is not a concrete bug; reproduce a counterexample
 before claiming one. Report ordinary tests, formal checks and external
 assumptions separately.
@@ -60,3 +60,24 @@ When adding a guide, include it in `mix.exs` documentation extras and verify
 that it appears in the Hex package. Keep README focused on using the project.
 Do not introduce phase logs, handoffs, delivery checklists or generated reports
 into user documentation. Do not use subagents without explicit authorization.
+
+## Review contract for agent changes
+
+Use `verification/review-policy.json` as the shared path policy. CODEOWNERS is
+rendered by `python3 scripts/review_policy.py`; CI checks it with `--check`.
+Read `guides/human_review.md` before classifying proof work. Reports orient the
+reviewer; the actual diff determines its tier. Any changed Lean declaration,
+theorem signature, import, option, syntax or elaborator needs Tier 1 review;
+only confirmed proof-body-only changes qualify for Tier 3.
+
+Report the claim delta, Tier 1 files and reasons, commands/results, and unresolved
+work using `.github/pull_request_template.md`. Leave the human approval record
+for the human. Flag changes to assumptions, domains, Spec/models, inventories,
+foundations, gates or skips; do not silently weaken guarantees to repair proofs.
+Human policy approval already given for a change remains valid within its scope.
+
+Commit independently chosen policy traces as tests. Re-run those traces for
+Ledger changes. For proof failures, execute the same claim's witness/property,
+replay any counterexample, and distinguish implementation errors from proposed
+claim corrections. No counterexample leaves the claim unresolved. Report timeout
+changes with justification and fresh evidence; a timeout never counts as success.
