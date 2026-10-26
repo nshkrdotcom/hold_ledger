@@ -1,14 +1,14 @@
 # Specification assurance
 
-A verifier checks whether a program satisfies a formal statement under its assumptions. It cannot tell you whether you chose the right statement.
+Imagine proving that every void leaves a *valid* ledger. The theorem checks out, but the program frees a hold before the payment processor confirms its cancellation. The local state can still be valid: we simply asked the theorem the wrong question.
 
-For the steps to follow, use [Agentic verification](agentic_verification.md).
+Formal verification establishes a claim about code under stated assumptions. **Specification assurance** asks whether that claim protects the behavior people actually need. This guide explains how to find a weak or misleading contract; [Agentic verification](agentic_verification.md) puts these ideas into a worked agent-assisted task, and [Human review](human_review.md) applies them to code changes.
 
 ## A proof, a contract, and an intention
 
 A typical function contract specifies which inputs are allowed (a *precondition*) and what the function must guarantee for them (a *postcondition*). A theorem can also express an *invariant* that must hold across transitions. For Elixir/Lynx, the corresponding law fields are `requires:` and `expects:`.
 
-Three questions need different evidence:
+It helps to keep three questions separate, because no single green check answers all of them:
 
 | Question | Evidence that can answer it |
 |---|---|
@@ -16,11 +16,13 @@ Three questions need different evidence:
 | Does the formal claim distinguish required from forbidden behavior? | Independently justified examples, wrong-output challenges, domain checks, counterexamples, contract comparison and targeted mutations |
 | Does the chosen claim cover the requirements that matter? | Examination of the requirement sources, missing cases, tradeoffs and external boundaries; a decision when sources disagree |
 
-You need all three kinds of evidence. Two agents using the same reference may agree on the same mistake, and humans can misread policy too. **Independence depends on how you justify an expected outcome**, not who wrote it.
+You need evidence for each question. Two agents can agree on the same bad reference, and a person can misread policy too. **Independence comes from how an expected outcome is justified**, not whether an agent or human wrote it.
 
 The [Lean reference](https://lean-lang.org/doc/reference/latest/ValidatingProofs/) explains how to inspect proof dependencies and axioms when evaluating untrusted work.
 
 ## Four common contract mistakes
+
+Here are the failure modes worth checking before spending time on tactics. Each is easy to overlook when the actual implementation happens to behave correctly.
 
 ### An impossible precondition
 
@@ -41,6 +43,8 @@ The Hold Ledger analogue is a postcondition checking `Spec.valid?/1` but omittin
 Not every difference is a defect in the generated claim. A postcondition that also preserves duplicate counts may strengthen an incomplete sorting reference. Conversely, a generated precondition requiring nonempty input could reject valid empty inputs. Check which side of the contract differs, then ask what the original requirement says. Even an independently written reference such as `HoldLedger.Spec` needs challenges from requirements and expected traces; it is not ground truth because its code is called `Spec`.
 
 ## Challenge each side of a contract
+
+A strong first test of a proposed law is to show it the outputs you **do not** want to permit. A correct implementation may never produce them, so testing only its own outputs won't expose a missing guarantee.
 
 Let `P` be the candidate precondition and `Q` its postcondition. Check whether they admit the intended inputs and reject wrong outcomes. Here, **invalid input** means outside the *intended function domain*, not merely an event that a valid-state API is designed to reject with `:malformed`.
 
@@ -105,6 +109,8 @@ A property test samples these implications. A proof must establish them for ever
 Equivalence to a reference is not equivalence to human intention. In Hold Ledger, `Spec` shares no implementation with `Ledger` and recomputes totals, but its transition branches often follow the same policy structure. Comparison can catch implementation drift; it cannot settle a policy both versions misunderstood.
 
 ## What two Verus studies found
+
+You can skip the research and still use the exercises above. It concerns Verus for Rust, not Lynx for Elixir, so its measured rates are not claims about Hold Ledger. The useful connection is the evaluation method: combine verifier results with independently justified input/output challenges and check the reference specification itself.
 
 **VerusEval** evaluated LLM-generated Verus contracts using semantic triviality checks, validated input/output cases and comparison with reference contracts. It studied 13,716 artifacts from 762 tasks. Of the 7,081 verifier-accepted artifacts with an executable target function, 2,995 (42.3%) completed all three semantic checks without a flag; 3,790 (53.5%) were flagged by at least one. The remaining 296 (4.2%) were unflagged but had incomplete checks.
 

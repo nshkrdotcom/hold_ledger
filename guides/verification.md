@@ -1,9 +1,18 @@
 # Verification
 
-Lynx translates the compiled Elixir pure core and its laws into Lean. Handwritten
-Lean scripts establish the law statements. A separate export stage lets six
-checker configurations validate the proof objects. This is assurance about the
-specified pure functions, not verification of the complete payment runtime.
+If you've run the small law in the [crash course](formal_verification_crash_course.md), you have seen a **development proof attempt**. That is only one part of accepting a change to Hold Ledger. This guide names the required law groups, the evidence tied to a particular source revision, and the separate checks that must finish before the project can report full proof acceptance.
+
+Lynx translates the compiled Elixir pure core and its laws into Lean. Handwritten Lean scripts establish the law statements. A separate export stage lets six checker configurations validate the proof objects. This is assurance about the **specified pure functions under their hypotheses**, not verification of the complete payment runtime.
+
+## Choose the check you need
+
+| Task | Check | What its result means |
+|---|---|---|
+| Discover what's required | `--supported-only --inspect-only` | Catalog structure and registration, not a proof |
+| Learn from or debug one law | `--slug po_a2 --stage proofs` | The selected development proof attempt, without fresh export/checker acceptance |
+| Review required proof acceptance | `--supported-only --stage full` | Fresh required proofs, exports, permitted axioms and all six checker configurations on the exact reviewed source |
+
+Run the full command only when you need full acceptance, and preserve its source hashes and reports. A failure, timeout, skipped group or `supported` catalog status is not proof acceptance. Read [Run checks](#run-checks) for exact commands and prerequisites.
 
 ## Coverage and provenance
 
@@ -36,7 +45,9 @@ The permitted foundational axioms are `propext`, `Quot.sound` and
 
 ## Run checks
 
-After setup, validate the catalog without running BEAM or Lean:
+After the pinned [setup](getting-started.md), use the smallest check that answers your question. These commands run from the repository root; don't infer success from a command merely being listed here.
+
+First, validate the catalog without running BEAM or Lean:
 
 ```sh
 uv run --locked python scripts/run_laws.py --supported-only --inspect-only
@@ -292,3 +303,5 @@ that every retirement has a prior persistence intent in the typed history. Serve
 handlers execute exactly correlated persist, shutdown and retire instructions;
 fault tests cover that integration. The theorem counts logical instructions,
 not successful physical writes.
+
+A fresh, complete report lets you say the specified laws were checked for a particular source revision. It does not replace [specification assurance](specification_assurance.md) or the [runtime and processor review](audit.md). Those questions need their own evidence.

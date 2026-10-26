@@ -1,7 +1,8 @@
 # Specification
 
-The ledger models one account placing authorization holds. It does not transfer
-or settle funds. `HoldLedger.Spec` is the executable oracle for this contract.
+This is the behavioral contract to consult **before** asking an agent to prove or change a ledger operation. The ledger models authorization holds for one account, not fund transfer or settlement. `HoldLedger.Spec` is an independently implemented executable reference for this policy; agreement with the implementation is useful evidence but cannot decide whether the policy itself is right.
+
+The central rule is simple: an issued or potentially issued authorization continues consuming local capacity until reliable terminal evidence allows release. That is why timeout, restart and local void requests do not automatically free it.
 
 ## State and validity
 
@@ -25,7 +26,7 @@ nonnegative integer limits. Other arguments raise `FunctionClauseError`.
 
 ## Events
 
-`Ledger.step(valid_state, event)` returns `{next_state, result, effects}`.
+`Ledger.step(valid_state, event)` returns `{next_state, result, effects}`. Think of `effects` as requests for work outside the pure reducer, not proof that an external service received or completed that work. Read the event table with that distinction in mind.
 
 | Event | Eligible status/condition | Result and change | Effects |
 |---|---|---|---|
@@ -56,7 +57,7 @@ All non-applied results leave the entire state identical and emit no effects.
 
 ## Uncertain outcomes and identities
 
-A timeout or restart never releases capacity. An unknown entry keeps its own
+The purpose of `:unknown` is to tell the truth: we do not yet know what happened remotely. A timeout or restart never releases capacity. An unknown entry keeps its own
 amount and hold contribution, although unrelated requests can change global
 counters. Retrying reuses the original key and amount. A transport acknowledgment
 cannot authorize a hold. Declined and voided keys cannot allocate again.
@@ -75,7 +76,7 @@ key expiry, pruning or multiple owners.
 
 ## Pending voids and composite recovery
 
-`{:void_confirmed, key}` applies only to a voiding hold, returns `:voided`,
+The ledger alone records the entry's status. The composite state also remembers the remote work still owed, so a crash cannot turn an unfinished void into freed capacity. `{:void_confirmed, key}` applies only to a voiding hold, returns `:voided`,
 releases its amount and slot exactly once, and emits no effects. Other known
 statuses return `:stale`; a missing integer key returns `:not_found` and a
 noninteger key returns `:malformed`. This event is internal to the Server;
@@ -95,3 +96,5 @@ terminal confirmation and non-resurrection, including a terminal fence when void
 arrives before authorization. Startup validates the declaration, not its truth.
 The remote exposure guarantee is conditional on the declared behavior actually
 holding over the full delivery lifetime, even after deduplication record expiry.
+
+When you ask an agent to change a transition, use these event rules to justify the expected outputs before consulting `Spec.expected_step/2`. The [agentic walkthrough](agentic_verification.md) shows that review in practice.

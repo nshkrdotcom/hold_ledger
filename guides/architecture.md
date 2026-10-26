@@ -1,5 +1,7 @@
 # Architecture
 
+When the processor's reply disappears, something in the system must remember that the request might still be live. Hold Ledger divides that job among a pure reducer, a journaled OTP server, a processor adapter and independent checks. This guide maps the pieces; start with [Specification](specification.md) for exact behavior or [Runtime and recovery](runtime.md) to run the server.
+
 The application separates pure accounting from persistence and processor effects.
 
 ```text
@@ -17,7 +19,7 @@ input event -> Server -> Journal.append_sync
 
 ## Pure state machine
 
-`HoldLedger.Ledger` provides initialization, single-event transitions and finite
+Start here when a question is about **what state transition is allowed**, not about disk writes or network calls. `HoldLedger.Ledger` provides initialization, single-event transitions and finite
 history replay. It uses tuples, lists, integers, atoms and named recursion.
 It has no I/O, clock, process or hidden state.
 
@@ -27,7 +29,7 @@ laws relate the translated ledger to specification predicates.
 
 ## Runtime
 
-`HoldLedger.Server` owns one ledger and serializes inputs. It journals and syncs
+The server takes the pure transitions and makes them durable before any effect is scheduled. `HoldLedger.Server` owns one ledger and serializes inputs. It journals and syncs
 admitted input or a bounded rejection marker before applying state or scheduling effects. Its optional monitor
 checks ledger/obligation coupling using the independent Spec.
 
@@ -41,7 +43,7 @@ fault-injectable implementation.
 
 ## Responsibility boundaries
 
-Formal targets include the ledger, composite fold, typed attempt lifecycle and
+This separation makes claims easier to inspect, but it also marks where a proof stops. Formal targets include the ledger, composite fold, typed attempt lifecycle and
 coupled processor model, each under its declared hypotheses. The runtime, journal, simulator, BEAM,
 compiler/translation and OS/storage have separate testing or trust boundaries.
 Hash chaining detects checked corruption; it does not authenticate an entire
@@ -59,3 +61,5 @@ has an independent composite oracle and does not call production helpers.
 `Environment` models issued authorization identities, remote decisions and
 terminal fencing with tuples/lists. It states processor assumptions explicitly;
 a real adapter's capability declaration is an attestation, not a behavioral proof.
+
+For the exact transitions, use [Specification](specification.md). For questions about tasks, journal sync and recovery, continue with [Runtime and recovery](runtime.md); for what the laws establish, see [Verification](verification.md).

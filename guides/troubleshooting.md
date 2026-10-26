@@ -1,5 +1,7 @@
 # Troubleshooting
 
+Start with the symptom you actually see; a missing native tool, a failing proof, and an unresolved payment outcome require different responses. Do not edit an agreed law, remove an uncertain hold, or disable a checker to get a green result. If you're just setting up the project, begin with [Getting started](getting-started.md).
+
 ## Runtime or toolchain mismatch
 
 ```sh
@@ -20,6 +22,8 @@ Lake. If that fails with `System.cmd("lake", ...)` and `:enoent`, activate the
 repository-local toolchain as shown in [Getting started](getting-started.md).
 
 ## Proofs do not run or fail
+
+A failed proof attempt is not automatically a counterexample. First check whether Lean ran, what it reported, and whether the contract has an independently justified witness.
 
 For explicit formal verification, use `scripts/local_run.py` so Lean/Lake resolve to `.local/`. The full independent
 checker needs `bwrap` and a host that permits its sandbox namespaces. A missing
@@ -70,3 +74,5 @@ A `:missing_terminal_attestation` startup error means the adapter declaration is
 absent or unsupported. Implement the processor contract only if the integrator
 can attest to permanent terminal non-resurrection, including void-before-authorize.
 A declaration passing validation is not evidence that the remote service is honest.
+
+For an unresolved processor outcome, the safe fallback is to keep capacity held and preserve the journal while investigating. [Runtime and recovery](runtime.md) covers the available inspection and reconciliation operations.

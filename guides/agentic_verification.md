@@ -1,10 +1,22 @@
 # Agentic verification
 
-An implementation could release an authorized hold before the processor confirms its void and still leave Hold Ledger's counters consistent. The law `po_b1_void` checks that the resulting ledger is valid. Other laws are needed to rule out premature release and missing effects.
+Suppose an agent rewrites the ledger so a void request frees capacity immediately. It might still prove that the resulting counters are internally consistent. The proof is valid **for that claim**; the change is wrong because the processor may still hold the money.
 
-Use this workflow to move from a policy question to a checked claim. An agent can draft requirements, contracts, traces, proofs and counterexamples. Judge the work by the evidence behind each decision, whoever wrote it.
+We'll follow that example from a requirement to a challenged contract and proof evidence. An agent can gather policy, write code, propose laws, generate counterexamples and attempt proofs. The question is not who typed the theorem. It's **who has authority to decide what the theorem must promise**, and what evidence supports that decision. If you've never seen a Lynx law, start with the [crash course](formal_verification_crash_course.md).
 
-New to Lynx? Work through the [runnable crash course](formal_verification_crash_course.md) first.
+## Who decides what?
+
+| Moment | Agent's work | Evidence or decision needed |
+|---|---|---|
+| Find the requirement | Gather the specification, traces and competing interpretations | A person resolves missing or conflicting policy; an agreed requirement can be reused without asking again |
+| Draft the claim | Propose `requires`, `expects`, definitions and exact examples | Review the domain, guarantees and any new assumption before calling it the accepted contract |
+| Challenge it | Produce admissible inputs, deliberately wrong outputs and mutants | Check expected behavior against policy, not just against the implementation or `Spec` |
+| Implement and prove | Write code, tests, lemmas and tactics under an agreed contract | Lean checks a theorem; it does **not** judge policy or remote-service truth |
+| Deliver the change | Show the diff, source identity, commands, results and open questions | A reviewer decides whether any semantic or trust-boundary change is authorized |
+
+You don't need a new human decision for every keystroke. Under an already agreed policy, an agent can repair a bug and run the checks. Stop when a new release rule, narrower domain, different reference meaning or new remote assumption would be accepted. [Human review](human_review.md) gives the detailed escalation rule.
+
+A few proof labels appear below. `po_b1_void` checks that the void transition preserves ledger validity; `po_b3` constrains emitted effects; `po_exposure_retain` requires capacity to remain represented when a local void lacks release evidence. They are individual **law groups** in `verification/laws.json`, not magic assurances about the whole system. The [law catalog](verification.md#law-catalog) names the others.
 
 ## The loop
 
@@ -32,7 +44,7 @@ A contract consists of its conclusion **and** the inputs under which that conclu
 
 ### 3. Try to break the contract
 
-Check the *contract*, not just the implementation. A correct implementation returning the correct value does not tell you whether its contract would permit a bad value.
+First challenge the *contract* itself. A correct implementation returning the correct value does not tell you whether its contract would permit a bad value.
 
 Save this example as `tmp/contract_challenge.exs`. It tests two candidate postconditions for one authorized hold: validity alone, and the exact transition required by policy.
 
@@ -155,6 +167,122 @@ Ask the agent to construct a distinguishing case or prove the relevant implicati
 
 Name the claim and source revision, give the command and result, and note unresolved work. The example above checks concrete outputs against predicates; it does not establish a new universal proof. [Human review](human_review.md#what-to-inspect-in-the-agent-report) explains how to inspect the evidence.
 
+## Work through a complete agent task
+
+This is a **teaching scenario**, not a transcript of a tool run and not a report of a new checked theorem. It uses the real policy, law names and mutation supplied in this repository. You can give the first prompt to your coding agent, then compare its work with the guide. Keep the source intact; use the mutation runner's isolated-copy workflow for experiments.
+
+### Give the agent a bounded request
+
+```text
+Investigate mutants/10_premature_void_release as a specification challenge.
+The agreed policy is in guides/specification.md: an authorized local void
+must keep capacity and issue a void intent until trusted confirmation.
+
+Before modifying code, return:
+1. The policy sentence and the files that support it.
+2. The valid starting state and required output for a local void.
+3. A weak candidate claim, the required stronger claim, and a deliberately
+   wrong output that distinguishes them.
+4. The existing laws and witnesses that address this case.
+5. The smallest focused commands to check the existing baseline.
+
+Do not weaken any existing law, change Spec to match Ledger, add axioms,
+claim a failed tactic is a counterexample, or edit the live reducer.
+Report any missing or conflicting requirement rather than selecting one.
+```
+
+The following illustrative exchange uses the exact state from the contract challenge.
+
+**Agent:** “The policy in Specification, under ‘Uncertain outcomes and identities,’ requires an authorized void to retain capacity and emit a void intent. For this input, the required output is:”
+
+```elixir
+s = {100, 2, 100, 1, [{1, 100, :authorized}]}
+# required Ledger.step(s, {:void, 1}):
+{{100, 2, 100, 1, [{1, 100, :voiding}]}, :voiding, [{:void, 1}]}
+```
+
+**Agent:** “Requiring the resulting state to satisfy `Spec.valid?` would check that the counters agree with the entries.”
+
+**Reviewer:** “Would that permit freeing the hold before confirmation? Show a wrong output that satisfies that claim.”
+
+**Agent:** “Yes. The `early_release` output above sets the entry to `:voided` and both counters to zero. It is internally valid but violates retention. The `lost_effect` output also passes validity while omitting the void intent. The exact transition rejects both. Adding release evidence as a precondition would instead exclude the local void we need to cover.”
+
+These three proposed contracts can now be classified **before** looking at any proof:
+
+| Proposed claim | What would still pass? | Judgment |
+|---|---|---|
+| After `{:void, 1}`, `Spec.valid?` holds | Consistent counters after immediate release | Too weak: a valid state can violate retained capacity |
+| An authorized hold enters `:voiding`, keeps amount and slot, and emits `{:void, key}` | The intended local transition; no claim of remote completion | Suitable local requirement, provided its precondition covers all intended authorized holds |
+| Same as the previous claim, but require `Spec.release_evidence?({:void, key}, key)` | No ordinary local void satisfies the new condition | Vacuous for this case: the precondition assumes release evidence that a local request lacks |
+
+The second claim is not the entire remote guarantee. It must be joined with the confirmation/coupled-model obligations and explicit assumptions about the processor. The agent should point to those boundaries instead of claiming a single law proves remote correctness.
+
+### Challenge the result, then run the existing checks
+
+Have the agent use the executable `tmp/contract_challenge.exs` example from [step 3](#3-try-to-break-the-contract) as its local test: the weak validity predicate accepts incorrect `early_release` and `lost_effect` results, while the chosen guarantees distinguish them. If the agent offers a simpler claim, ask for an *incorrect output for a valid input* that it still accepts but the original contract rejects. Finding one exposes a lost guarantee; failing to find one does not establish that the contracts are equivalent.
+
+The maintained policy traces can be checked without changing production source:
+
+```sh
+uv run --locked python scripts/local_run.py mix test test/human_policy_traces_test.exs --exclude laws
+```
+
+To experiment with the deliberate mutation, first inspect its patch and witness at `mutants/10_premature_void_release/`. Then use [Testing](testing.md#deliberate-mutations) to validate patches and, when the proof toolchain is ready, run the isolated native mutation experiment. A proof compilation failure, timeout or tactic error is **inconclusive** unless a valid counterexample has been established. The mutation runner's reports describe what actually completed.
+
+### Ask for a reviewable report
+
+The exchange ends with a report and a review decision. This illustrative report describes a contract review before executing checks; its `not run` entries leave that work visible.
+
+```text
+Requirement: An authorized local void retains its amount and slot until
+trusted confirmation; its transition emits {:void, key}.
+Policy source: guides/specification.md, "Uncertain outcomes and identities"
+Claim delta: None to maintained laws. Reject validity alone as a substitute
+for the required transition: it permits early release and a missing effect.
+Changed files: None.
+Review tier: Contract review (Tier 1 meaning/scope review); no proof repair.
+Challenge: Starting from {100, 2, 100, 1, [{1, 100, :authorized}]}, both
+ early_release and lost_effect satisfy validity but violate the exact output.
+Existing coverage: po_b1_void checks validity; po_b3 checks effects;
+ po_exposure_retain checks retention. The policy traces exercise pending voids.
+Ordinary checks: Not run. Next commands:
+ uv run --locked python scripts/local_run.py mix run tmp/contract_challenge.exs
+ uv run --locked python scripts/local_run.py mix test test/human_policy_traces_test.exs --exclude laws
+Formal checks: Not run; no proof or full-acceptance result claimed.
+External assumptions: Processor outcomes are truthful and authenticated;
+ terminal void confirmation permanently fences delayed authorization.
+Unresolved: Execute the challenge and policy traces. Native mutation and
+ formal checks remain unexecuted; this review establishes no new theorem.
+```
+
+**Reviewer:** “Keep the existing retention and effect requirements. The proposed validity-only replacement loses both guarantees. Run the listed checks and report their actual results. No new policy decision is needed; a failure should be investigated against the existing contract.”
+
+The decision allows work to continue under agreed policy without treating the contract review as proof acceptance. For a report after execution, replace each `not run` entry with the exact command, result and log or report path. Include source hashes with formal evidence. [Human review](human_review.md#what-to-inspect-in-the-agent-report) gives the general report format.
+
+The reviewer checks the actual diff and evidence; the report is not an authority. A sample response that says **“proof-only change, no claim delta”** while changing a referenced definition is misleading even if the theorem signatures are unchanged. Try identifying this failure in [Human review, exercise E](human_review.md#practice-on-seven-proposed-changes).
+
+### A second request: repair a failed proof without changing policy
+
+```text
+The focused proof attempt for po_b1_timeout failed. Diagnose the first
+unresolved goal and run its existing witness/property. Keep the maintained
+requires/ expects clauses and called Spec definitions unchanged. You may
+propose proof-body changes or helper lemmas only after checking whether those
+changes alter any theorem statement, assumption, import or trusted definition.
+If you find a concrete counterexample, show an input satisfying the current
+precondition and violating the conclusion; do not quietly modify the law.
+If no counterexample is found, report the proof as unresolved, with the goal,
+command, diagnostic and limits of the tests you ran.
+```
+
+This is a useful default for proof repair because it prevents a common failure: changing the contract until an implementation passes it. If the agent proposes a different contract, review that proposal separately as a change in meaning. Don't treat it as a tactic repair.
+
+### What would require a human here?
+
+Repairing premature release under the existing rule doesn't require inventing a new policy. But a request to “release every void after 24 hours, even without confirmation” directly conflicts with the requirement to retain capacity while external authorization is possible. The agent should show the conflicting trace and the exposure consequence, then ask the authorized person to decide. It must not change the specification or introduce a processor guarantee to make the proof easier.
+
+You can learn this workflow without running a full prover. If you do run the experiments, preserve the logs and source identity, and distinguish a concrete local check from universal proof acceptance.
+
 ## When to bring in a person
 
-Let the agent continue gathering evidence, attempting proofs and checking already-agreed claims. Escalate when a new requirement would be selected, an input domain would shrink, an external assumption would change, the reference looks wrong, or challenges disagree. The [per-change review guide](human_review.md) gives declaration-level rules and explains what evidence could eventually justify delegating some of these decisions with less human intervention.
+The agent can continue gathering evidence, attempting proofs and checking agreed requirements. Bring the decision back to a person when a new requirement is needed, an important input domain may shrink, an external assumption changes, the reference contradicts independently justified behavior, or challenges expose competing policies. Record the question and the evidence before asking for a decision. The [per-change review guide](human_review.md) gives declaration-level rules and explains how evaluation could eventually justify delegating narrower classes of decisions.

@@ -1,5 +1,9 @@
 # Processors
 
+A local timeout tells you only that your process stopped waiting. The external processor might already have authorized the money. Hold Ledger therefore needs more from a real adapter than a successful network request: stable identities, truthful outcomes, safe retries and terminal void confirmation that cannot later be undone.
+
+This guide describes that boundary and the deliberately limited simulator. It does **not** supply a production payment adapter. For what the ledger does with callbacks, see [Runtime and recovery](runtime.md).
+
 `HoldLedger.Processor` defines four callbacks:
 
 ```elixir
@@ -16,6 +20,8 @@ outcome, `:not_found`, or an error. Void returns `{:ok, :voided}`, `{:ok, :alrea
 behavior's API documentation for exact types.
 
 ## Simulator
+
+Use the simulator to see how ordinary-looking failures change what the ledger can safely conclude. It can drop a reply after executing an authorization, deliver callbacks twice, or keep lookup unavailable. The following is a small interactive example:
 
 ```elixir
 alias HoldLedger.Processor.Sim
@@ -43,7 +49,7 @@ one local request. The demo exhibits that mismatch.
 
 ## Contract required of a real adapter
 
-A real processor must authenticate outcomes, retain deduplication identities
+The adapter boundary is a trust boundary, not another fact established by the pure-state proofs. A real processor must authenticate outcomes, retain deduplication identities
 for the relevant lifetime, reject identity/payload conflicts and provide lookup
 semantics strong enough for reconciliation. The ledger does not prove those
 properties. Network success alone is insufficient evidence of authorization,
@@ -75,3 +81,5 @@ it is not evidence that a real processor or a restarted simulator persists them.
 It remains useful for direct simulator experiments demonstrating failed receiver
 assumptions. A supported processor can still be unavailable indefinitely; in that
 case a voiding hold retains capacity indefinitely without a write-off path.
+
+If you are changing the adapter or its deployment, pair this contract with the [durable-void path](runtime.md#durable-voids) and [runtime fault tests](testing.md#targeted-runtime-tests). No adapter declaration substitutes for testing and operational evidence from the external service.

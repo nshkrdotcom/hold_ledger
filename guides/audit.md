@@ -1,7 +1,8 @@
 # Assurance audit of Hold Ledger
 
-Use this guide for an initial or periodic audit of Hold Ledger's policies, proof models
-and runtime boundaries. For a single agent change, use [Human review](human_review.md).
+**Advanced review.** This guide is for someone checking the entire assurance argument, not for a newcomer's first Lean proof. It follows the same question as the tutorial—could a processor still hold money after the local system believes a request is finished?—through policy, the coupled execution model, proof foundations, the OTP runtime and physical assumptions.
+
+Use it for an initial or periodic audit of Hold Ledger's policies, proof models and runtime boundaries. For one agent-generated change, start with [Human review](human_review.md). If you are learning Lean/Lynx, begin with the [crash course](formal_verification_crash_course.md) and return here once you can read the law statements.
 
 **Source baseline:** links below are pinned to `618ee1e7f17e490f643bed898f00b9f67c1cd2b4`.
 Compare subsequent changes before relying on this audit route. [Verification](verification.md)
@@ -17,7 +18,7 @@ This covers the policy, implementation, laws, runtime tests and checking setup d
 
 ## Hold Ledger: the top-level view
 
-Hold Ledger concerns authorization holds for one account. It does not implement
+Before opening the proof files, decide what claim is being audited and which system owns each assumption. Hold Ledger concerns authorization holds for one account. It does not implement
 settlement, expiration, pruning or distributed ownership. Its
 [specification](specification.md) is the starting point for policy review.
 
@@ -56,6 +57,8 @@ survive ordinary record expiry. An adapter's capability declaration cannot
 establish that the service honors the contract.
 
 ## Hold Ledger under the microscope
+
+The route below moves from the remote behavior we assume, to the local obligations we prove, and finally to the runtime that must implement them. Do not swap evidence between layers: an abstract history theorem does not establish journal `fsync`, and a fault test does not establish a universal model invariant.
 
 ### Exposure: read the environment as part of the specification
 

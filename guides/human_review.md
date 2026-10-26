@@ -1,8 +1,16 @@
 # Human review of agent changes
 
-A checked proof establishes the statement supplied to Lean. It cannot tell you whether that statement captures the requirement. Read the statement and its definitions, then inspect the evidence behind them. Let agents gather and challenge that evidence; bring in a person to resolve disputed requirements or risk tradeoffs.
+An agent tells you it repaired a proof and everything is green. What should you look at first? **The claim, not the tactics.** Lean checks that a proof establishes the statement it was given; it cannot decide whether that statement still protects a payment authorization after a lost reply.
 
-Use this guide when reviewing a change. The [crash-course glossary](formal_verification_crash_course.md#glossary) defines the terms used here.
+Use this guide to review one proposed change. The [crash-course glossary](formal_verification_crash_course.md#glossary) explains Lean and Lynx terms; the [agentic walkthrough](agentic_verification.md) shows the work that leads to a review. For a whole-system inspection of models and foundations, use the advanced [assurance audit](audit.md).
+
+A useful short rule is:
+
+- **Proceed under agreed policy.** Agents can repair code, add tests and prove an unchanged claim. Check the submitted evidence and diff.
+- **Review changes to meaning.** A different precondition, postcondition, called predicate, theorem signature, model, inventory, import or trusted foundation can change what a green result means.
+- **Ask for a decision when authority is missing.** Conflicting requirements, a new release rule, a changed processor assumption or a proposed risk tradeoff need an authorized policy decision. The agent should present evidence and alternatives, not quietly choose one.
+
+The author need not be human. The important question is whether approved requirements and reliable evidence already cover the change, or whether someone still has to decide the policy.
 
 ## What to delegate and what to decide
 
@@ -14,7 +22,7 @@ Use this guide when reviewing a change. The [crash-course glossary](formal_verif
 | Prove and test | Implement, prove, run focused checks and inspect failures | Distinguish established results from unresolved checks and changed assumptions |
 | Summarize evidence | Compare old/new contracts, name trusted dependencies, report exact source and commands | Judge consequential changes and risk that remains after the checks |
 
-Agents can carry out implementation and proof work within agreed requirements. Review changes to those requirements separately from proof repairs.
+Agents can carry out implementation and proof work within agreed requirements. Review changes to those requirements separately from proof repairs. The table describes **responsibilities**, not a requirement for a person to type every theorem.
 
 ## Classify the diff
 
@@ -44,6 +52,8 @@ To distinguish proof repair from a changed claim:
 2. In a law `.exs` file, changes outside the `proof: ~LEAN` sigil need Tier 1 review, except for the resource-only edits described below. Inside the sigil, apply the same rules as for a `.lean` file.
 3. Review anything that can change meaning or dependencies as Tier 1: definition bodies, types, instances, theorem signatures, imports, options and syntax extensions. Surrounding commands matter too: a `variable` declaration can alter later theorem binders. These are review triggers, not proof that the claim changed.
 4. Tier 3 requires changes confined to an existing theorem, lemma or example proof, or a law's proof sigil, with statements and dependencies unchanged. Check nested declarations too. A `def` body remains Tier 1 even after `:=` or `by`. If you cannot establish the boundaries, use Tier 1 review.
+
+A text-based diff classifier can help **triage**, but it cannot certify Tier 3. It may miss a changed declaration outside the hunk, imported theorem, instance, elaborator or altered meaning inside a helper. Use automated labels to locate suspected Tier 1 boundaries and ambiguous cases, then review the enclosing declarations before accepting the classification.
 
 Use this checklist for Tier 1 review:
 
@@ -83,13 +93,29 @@ A refuse-everything implementation preserves capacity limits. The first and thir
 
 Start with **did the meaning of any claim change?** Use the report to locate affected statements, definitions and assumptions, then check the diff. Inspect the commands, results and source identity behind a claimed pass, and distinguish ordinary tests from formal acceptance. Unresolved failures should remain visible.
 
+Ask for the following in the change summary. This is a reporting format, not a substitute for checking the changed files:
+
+```text
+Policy: <requirement source and the required before/after behavior>
+Claim delta: <old/new requires, expects, called definitions, or "none">
+Review tier: <Tier 1/2/3, reasons, and any ambiguous declarations>
+Changed files: <paths, including dependencies and tools>
+Challenge evidence: <valid witness, forbidden output, boundary/temporal trace>
+Ordinary checks: <exact commands, results, log or report paths>
+Formal evidence: <law group, proof/full stage, status, source hashes>
+Trusted assumptions: <processor, compiler/translator, journal, etc.>
+Unresolved: <failed check, timeout, missing policy, or known limitation>
+```
+
+For example, a report that says `Claim delta: none` while `Spec.valid?/1` has lost its upper-bound check is not a harmless proof repair. The changed definition weakens every conclusion that relies on that predicate. Compare [exercise E](#practice-on-seven-proposed-changes) with its answer key to practice spotting this.
+
 Inspect any proposed weakening against the requested behavior. If it requires a policy change or a new trusted assumption, resolve that decision before accepting the revised proof.
 
 When a proof fails, run the witness and property for the same claim. If there is a counterexample, replay it and confirm the precondition holds while the conclusion fails. If there is not, inspect the goal, generator coverage and reference. Neither a test pass nor a failed proof attempt settles the disputed claim.
 
 An edit confined to a literal heartbeat or timeout budget changes the resources available, not the claim. Review its cost and fresh results without reopening the meaning of an unchanged statement. This exception requires unchanged selection, translation and timeout-failure handling. Cutoffs, preludes, termination suffixes and other options still need Tier 1 review; a timeout must never be reported as success.
 
-## Common Ways a Green Result Can Mislead
+## Common ways a green result can mislead
 
 | Symptom | Where to look | How to detect it |
 |---|---|---|
@@ -148,13 +174,24 @@ For the first row, start with `s = {100, 2, 100, 1, [{1, 100, :voiding}]}`. Appl
 
 For the classification example, justify each expected classification with the diff and the requirement it affects. A replayable violation, such as a mutant failing a policy trace, can support that judgment. An agent can replay the check; agreeing with another generated label is not enough.
 
-Resolve disputed labels before scoring the run, and keep some examples out of the agent's development set. Check whether it catches guarantee changes, accepts harmless repairs and flags ambiguous cases. Review missed defects and unnecessary escalations before delegating more decisions. Fewer requests for help are useful only if consequential mistakes are still caught.
+### Evaluate delegation rather than counting fewer interruptions
 
-The seven exercises below provide a small practice set, including the misleading proof-only summary in E and the harmless repair in G. Use them to develop the method; evaluate it on additional changes whose answers the agent has not seen.
+Before letting an agent classify more changes without review, test whether it catches the decisions that matter. Start with independently justified labels for known diffs, including a policy citation and a distinguishing trace where one exists. Use the seven exercises below for practice, **not** as a held-out evaluation set after the agent has seen the answers.
 
-Delegation can grow one decision at a time. Success on timeout repairs would not establish competence to choose new processor assumptions or change the retention policy.
+Resolve disputed labels before scoring a run. For a separate evaluation set whose answers the agent has not seen, record at least: actual tier, whether policy/assumptions changed, expected escalation, evidence for that label, agent label and justification, and whether the agent asked for help. Review the cases where the agent missed a consequential semantic change and where it unnecessarily blocked an ordinary repair. A conservative `uncertain / escalate` classification is preferable to a confident but false Tier 3 label; track that uncertainty separately rather than pretending it is a correct autonomous decision.
 
-## Practice on Seven Proposed Changes
+For each evaluation run, look at:
+
+| Measure | Why it matters |
+|---|---|
+| Missed semantic or trust-boundary changes | The dangerous failure: the agent treats a changed requirement as proof-only work |
+| Correctly resolved established-policy repairs | Whether useful work continues without unnecessary policy decisions |
+| Unnecessary escalations | Cost of caution; worth measuring, not optimizing in isolation |
+| Evidence quality and honest unresolved results | Whether the agent distinguishes a demonstrated counterexample, a failed tactic and full acceptance |
+
+Delegation can grow one reviewed decision class at a time; success on timeout repairs does not authorize new processor assumptions or a changed capacity-release policy.
+
+## Practice on seven proposed changes
 
 These are abbreviated teaching diffs, not patches to apply to the working ledger. A diff hunk is one block of nearby changes. `-` removes a line; `+` adds one. For each, identify the tier and explain whether the guarantee changes. If it does, give a distinguishing input. The unchanged proof bodies are omitted.
 

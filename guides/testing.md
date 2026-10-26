@@ -1,5 +1,7 @@
 # Testing
 
+A passing proof answers a universal question about a stated model. Tests answer different questions: does this example behave as required, does a fault path recover safely, and does a deliberately broken implementation get caught? Hold Ledger uses all of these checks because none replaces the others.
+
 Use the setup in [Getting started](getting-started.md), then run:
 
 ```sh
@@ -26,6 +28,8 @@ or ignore files. These static checks are separate from tests and formal proofs.
 
 ## Targeted runtime tests
 
+These checks are for the OTP/journal boundary, which pure Lean proofs do not establish. They are useful after changing task handling, persistence or recovery.
+
 ```sh
 mix test \
   test/hold_ledger_journal_test.exs test/hold_ledger_runtime_test.exs --exclude laws
@@ -39,7 +43,7 @@ These tests do not model physical power loss or prove the storage hardware.
 
 ## Deliberate mutations
 
-Ten examples under `mutants/` break terminal-key replay, timeout accounting,
+A mutation is an intentionally wrong copy of source code. The exercise asks whether the stated checks distinguish that wrong behavior from the agreed policy. Ten examples under `mutants/` break terminal-key replay, timeout accounting,
 retry identity, exact-fit admission, positive admission, transport-ack handling, required void effects, decline accounting, restart conversion and premature void release.
 Each includes a patch and a concrete assertion against the correct behavior.
 
@@ -73,6 +77,8 @@ checked unchanged by the runner.
 
 ## Documentation and package
 
+Build HexDocs to check that the guides render, and build the Hex archive to check packaging. These commands do not execute tutorial code blocks. Run the examples under `tmp/` with the commands in each guide when changing them; CI does not execute those examples.
+
 ```sh
 mix docs --warnings-as-errors
 mix hex.build
@@ -98,6 +104,8 @@ quadratic uniqueness check still limit account size. No compaction or key prunin
 is performed.
 
 ## Translation comparisons
+
+Lynx works on compiled Core Erlang, so compiler/translation correspondence deserves its own checks. This harness compares selected actual executions with translated definitions; sampling does not prove general equivalence.
 
 ```sh
 uv run --locked python scripts/run_differential.py --samples 100 --timeout 300
@@ -142,3 +150,5 @@ literal vectors are kernel-checked. The pinned decimal parser did not reduce in
 the kernel pilot; integer/float parsing comparisons use compiled Lean execution.
 That limitation is recorded in the differential report, not counted as a passing
 numeric-parser kernel proof.
+
+To understand how a maintained law is written, return to the [crash course](formal_verification_crash_course.md#read-a-ledger-law). To claim full proof acceptance, use the exact source, exports and checker requirements in [Verification](verification.md).

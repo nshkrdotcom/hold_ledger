@@ -7,316 +7,152 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Hold Ledger teaches formal verification in Elixir with Lynx through a working payment authorization ledger. It assumes you know how to build and test software but are new to formal proofs.
+A payment processor might authorize a hold and lose the reply. Your server sees a timeout. Is it safe to give that money back to the customer's available balance?
 
-You’ll run a complete proof, read its assumptions and conclusion, and see what tests and proofs each establish. The ledger supplies the practical problems: a timeout must not free capacity while a payment may still be authorized, and a retry must preserve the original request’s identity.
+No: the authorization may still be live. That small uncertainty is the thread running through Hold Ledger, an Elixir example for learning formal verification with [Lynx](https://github.com/josevalim/lynx) and Lean 4. It has a pure ledger, an independently written specification, a journaled OTP runtime, tests, and machine-checked laws. You can study real proofs without first learning a new programming language or building a payment service.
 
-The guides show how to work with a coding agent on specifications, tests, code and proofs. You’ll challenge proposed contracts with required and forbidden outcomes, and learn to spot changes that make a proof pass by weakening its claim. You’ll also see what can be delegated under an existing policy, when conflicting requirements need a person’s decision, and how to assess whether more of that work can be automated.
+The project is for developers who know Elixir and testing but are new to formal proofs. It also explores how to work with a coding agent on specifications and proofs **without letting a passing proof silently redefine what the program must do**. The agent can investigate, write code, propose contracts and attempt proofs. A person is needed when the requirements or accepted risks themselves must be decided.
 
-**Learning to verify with a coding agent?** Start with the [formal verification crash course](guides/formal_verification_crash_course.md), then follow [Agentic verification](guides/agentic_verification.md). To run the examples, complete the [Quickstart](#quickstart) first.
-[Human review](guides/human_review.md) covers decisions in an individual change. [Specification assurance](guides/specification_assurance.md) explains how a verified contract can miss intent, while the [assurance audit](guides/audit.md) examines the whole system at an initial or periodic checkpoint.
+## Choose where to start
 
----
+You do not need to read the entire repository in order. Pick the route that matches what you want to do.
 
-### Table of Contents
-1. [Quickstart](#quickstart)
-2. [The Real-World Problem](#the-real-world-problem)
-3. [What Is This Project?](#what-is-this-project)
-4. [The Three Layers of Assurance](#the-three-layers-of-assurance)
-5. [The Lifecycle of an Authorization Hold](#the-lifecycle-of-an-authorization-hold)
-6. [How Lynx and Lean 4 Work Here](#how-lynx-and-lean-4-work-here)
-7. [Interactive Walkthrough](#interactive-walkthrough)
-8. [Development Checks](#development-checks)
-9. [What Is Proven vs. What Is Assumed](#what-is-proven-vs-what-is-assumed)
-10. [Documentation Index](#documentation-index)
-11. [License](#license)
+| You want to… | Start here | What you'll do |
+|---|---|---|
+| Understand Lean and Lynx from scratch | [Formal verification crash course](guides/formal_verification_crash_course.md) | Go from a familiar ExUnit test to a Lynx law, read Lean goals, plant a bug, then follow a real ledger law. You can read along without installing anything. |
+| Verify something with a coding agent | [Agentic verification](guides/agentic_verification.md) | Start from a policy, challenge proposed contracts, inspect evidence and see when a person must decide. |
+| Review an agent-generated change | [Human review](guides/human_review.md) | Classify changes to code, proof bodies and their meaning; practice with seven deliberately tricky diffs. |
+| Run the example or check a proof | [Getting started](guides/getting-started.md) | Set up the pinned tools, run the ledger, then select a focused proof or full verification. |
 
----
+The [Specification assurance](guides/specification_assurance.md) guide explains why a correct proof may establish an inadequate requirement. [Verification](guides/verification.md) describes evidence and checker boundaries. The [assurance audit](guides/audit.md) is an advanced, system-wide review, not a prerequisite for the tutorial.
 
-## Quickstart
+## Try it on a supported machine
 
-### Prerequisites
-The validated environment is **Ubuntu 26.04 x86_64** with:
-* Erlang/OTP `29.1.2`
-* Elixir `1.20.4`
-* Python `3.13.15` and `uv` `0.12.6`
+The source-checkout environment is **Ubuntu 26.04 x86_64** with Erlang/OTP **29.1.2**, Elixir **1.20.4** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, Git, and `bwrap` (Bubblewrap). The onboarding script checks existing Elixir/OTP installations and `bwrap`; it does not install them.
 
-### Setup and demo
-Clone the repository and provision local tooling:
+From the repository root, after selecting the required Elixir/OTP installation:
+
 ```sh
-# Sync local python tools
 uv sync --locked
-
-# Verify existing Elixir/OTP and provision pinned Lean 4.35.0 locally in ignored .local/
 uv run --locked python scripts/onboard.py --provision
-
-# Activate the provisioned toolchain in this shell (also needed to compile test dependencies)
 export ELAN_HOME="$PWD/.local/elan"
 export ELAN_TOOLCHAIN="$(cat lean-toolchain)"
 export PATH="$ELAN_HOME/bin:$PATH"
-
-# Fetch Elixir dependencies using Mix
 mix deps.get
 mix run scripts/demo.exs
 ```
 
----
+The demo uses a simulated processor and a fresh temporary journal; it does not move money. The installed Lean/Lake tools stay under ignored `.local/`. If setup stops on a prerequisite, see [Getting started](guides/getting-started.md) and [Troubleshooting](guides/troubleshooting.md) rather than bypassing the check.
 
-## The Real-World Problem
+To see a **real ledger proof attempt**, start with the exact-fit admission law (`po_a2`):
 
-Imagine you run an online debit engine or payment gateway. A customer swipes their card at a gas pump or books a hotel room:
-
-1. **Authorization Request**: The merchant requests a $100 hold.
-2. **Limit Check**: You check that the customer has at least $100 in available credit, and has not exceeded their concurrent open-hold quota.
-3. **Dispatch**: You dispatch the hold request over the network to the card processor.
-4. **The Network Drop**: 15 seconds pass. No response arrives. The connection drops.
-
-What state is your system in now?
-
-* If you assume the hold failed and release the $100, the processor may have authorized it. The customer pumps $100 of fuel, your processor settles the charge tomorrow, and your ledger is left with an unauthorized overdraft.
-* If you assume it succeeded, but the request was actually dropped before reaching the processor, the customer’s funds remain trapped indefinitely until manual intervention.
-* If your node crashes during the round trip and reboots, does your recovered state machine start resending requests and double-billing the card?
-* If a duplicate callback arrives 10 minutes later after a timeout or void, does it corrupt your totals?
-
-Most teams tackle these bugs with unit tests and integration tests. But distributed financial edge cases hide in the combinatorial explosion of network delays, crash timings, out-of-order deliveries, and retry loops.
-
-**Hold Ledger** demonstrates conservative accounting and recovery by combining a pure state machine, an append-only journaled OTP runtime, property-based testing, and machine-checked formal proofs in **Lean 4** via **[Lynx](https://github.com/josevalim/lynx)**.
-
----
-
-## What Is This Project?
-
-`hold_ledger` models an account placing authorization holds against two independent limits:
-1. **Amount Limit**: Total money reserved across all active holds (in positive integer cents).
-2. **Slot Limit**: Maximum number of concurrent open holds.
-
-The included processor is a deterministic simulator; this project does not connect to a payment service. The ledger does not implement settlement, expiration, key pruning, multiple accounts, or distributed ownership.
-
-It separates the pure core, independent specification, runtime, and formal verification:
-
-```
-+----------------------------------------------------------------------------+
-|                              RUNTIME (OTP)                                 |
-|                                                                            |
-|  Event -> Server -> Journal.append_sync (owned frames + hash chain)        |
-|                          |                                                 |
-|                          v                                                 |
-|                     Composite.step (Pure Reducers)                         |
-|                          |                                                 |
-|                          +--------> EffectExecutor -> Processor.Sim        |
-+--------------------------|-------------------------------------------------+
-                           |
-                           v
-+------------------------------------+    +----------------------------------+
-|      INDEPENDENT SPEC (ORACLE)     |    |      FORMAL PROOFS (LEAN 4)      |
-|                                    |    |                                  |
-|  HoldLedger.Spec                   |    |  Lynx compiles Elixir BEAM       |
-|  * Recomputes totals from scratch  |    |  Core AST into Lean definitions. |
-|  * Standalone validity invariant   |    |  Cataloged pure-core law groups  |
-|  * Transition & effect predicates  |    |  6 checker configurations.       |
-+------------------------------------+    +----------------------------------+
-```
-
-1. **Pure State Machine (`HoldLedger.Ledger`)**: No disk, no clock, no processes, no side effects. Given an input state and an event, it returns `{next_state, result_atom, effects}`.
-2. **Reference Specification (`HoldLedger.Spec`)**: Shares no implementation with `Ledger` and recomputes totals from entries. It can catch accounting drift, but both implementations can share a mistaken policy.
-3. **Journaled Server (`HoldLedger.Server`)**: A GenServer managing application-owned framed storage with SHA-256 chaining. Admitted inputs sync *before* the pure reducer steps; rejected internal or malformed submissions produce bounded audit markers.
-4. **Formal Verification (`Lynx` + `Lean 4`)**: Translates compiled Core Erlang into Lean definitions. Laws cover accounting, identity preservation, and other specified properties under their explicit preconditions, including valid input states. Terminal absorption and finite-history preservation are included in the catalog.
-
----
-
-## The Three Layers of Assurance
-
-The project combines three kinds of evidence:
-
-| Level | Technique | How It Works | What It Catches |
-|---|---|---|---|
-| **1. Deterministic Tests** | ExUnit unit tests & worked traces | Runs hand-picked states against concrete inputs. | Regressions, happy paths, obvious edge cases. |
-| **2. Generative Property Tests** | `StreamData` (bounded generated cases) | Generates thousands of arbitrary states, malformed terms, and random histories. | Off-by-one errors, weird term shapes, counter desyncs. |
-| **3. Machine-Checked Proofs** | `Lynx` + `Lean 4` Theorem Prover | Proves statements for every input satisfying their assumptions. | The stated properties for all inputs satisfying each law’s preconditions. |
-
-Ten deliberate mutations under `mutants/` exercise exact-fit boundaries, timeout accounting, retry identity, and other contract violations. See [Testing](guides/testing.md#deliberate-mutations) for the optional mutation experiment.
-
-A proof establishes the **chosen law**. It cannot tell you whether that law covers every required behavior. Hold Ledger's independent `Spec` and concrete traces help challenge the laws, though they can share a mistaken policy. See [Agentic verification](guides/agentic_verification.md) for the practical workflow and [Specification assurance](guides/specification_assurance.md) for the research.
-
----
-
-## The Lifecycle of an Authorization Hold
-
-A hold is identified by an integer `key` and holds an integer `amount`. Its lifecycle progresses through a strictly monitored finite state machine:
-
-```
-request --admitted--> reserved --dispatch--> sent
-sent --timeout/restart--> unknown
-unknown --retry (same key/amount)--> sent
-
-sent or unknown --approved result--> authorized
-sent or unknown --declined result--> declined (capacity freed)
-reserved   --void--> voided (capacity freed; no effect)
-authorized --void--> voiding (capacity retained; remote void intent)
-voiding --trusted void confirmation--> voided (capacity freed)
-```
-
-### Key Invariants:
-* **Capacity is Held During Uncertainty**: The statuses `reserved`, `sent`, `unknown`, `authorized`, and `voiding` consume their amount from `amount_limit` and one slot from `hold_limit`. A timeout or a server reboot *never* releases capacity.
-* **Idempotent Identity**: An active or terminal key can never be re-used for a fresh request. A matching request yields `:duplicate`; a differing amount yields `:conflict`.
-* **Zero Effects on Non-Applied Operations**: Any rejected or stale transition returns the original state bit-for-bit unchanged and emits `[]` effects.
-* **Absorbing Terminal States**: Once `:declined` or `:voided`, an entry remains terminal. The one-step laws and finite-history law cover arbitrary future events on valid ledgers.
-
----
-
-## How Lynx and Lean 4 Work Here
-
-Lynx translates compiled Core Erlang for the pure ledger and its laws into Lean 4 definitions. Handwritten proofs establish the law statements without admissions or custom axioms; the permitted foundational axioms are `propext`, `Quot.sound`, and `Classical.choice`. Exported proof objects can then be checked by six checker configurations.
-
-The compiler and translator remain trusted. A separate differential harness compares sampled BEAM results with actual translated Lean definitions and kernel-checks a deterministic subset; samples do not prove universal correspondence. See the crash-course guide in the documentation index for Lean concepts, tactics, and a worked proof.
-
----
-
-## Interactive Walkthrough
-
-You don't need Lean installed to explore the pure engine or OTP runtime. Quickstart provisions Lean for the proof guides; the walkthrough below uses Elixir alone.
-
-### 1. The Pure State Machine
-Start an interactive shell:
 ```sh
-iex -S mix
+uv run --locked python scripts/run_laws.py --slug po_a2 --stage proofs \
+  --report tmp/verification/po_a2-learning.json
 ```
+
+This is a focused development check, not whole-repository acceptance. The [crash course](guides/formal_verification_crash_course.md) starts with a much smaller example and explains what that output means. [Verification](guides/verification.md#run-checks) covers the full proof/export pipeline and its prerequisites.
+
+## The ledger in a few steps
+
+Hold Ledger models **one account** with two limits: the total amount reserved, in positive integer cents, and the number of concurrent holds. Every request has an integer key that is never reused, even after the request finishes.
+
+A pure transition takes a state and event and returns `{next_state, result, effects}`. It describes I/O but does not perform it:
 
 ```elixir
 alias HoldLedger.{Ledger, Spec}
 
-# 1. Initialize an empty ledger with limit of $100.00 (10,000 cents) and 2 slots
-s0 = Ledger.init(10_000, 2)
-#=> {10000, 2, 0, 0, []}
+s0 = Ledger.init(100, 2)
+{s1, :admitted, []} = Ledger.step(s0, {:request, 11, 100})
+{s2, :dispatched, [{:authorize, 11, 100}]} = Ledger.step(s1, {:dispatch, 11})
+{s3, :marked_unknown, []} = Ledger.step(s2, {:timeout, 11})
 
-# 2. Admit a fresh hold request for key 11, amount $70.00
-{s1, :admitted, []} = Ledger.step(s0, {:request, 11, 7_000})
-# Notice: used_amount is now 7000, used_holds is 1, entry is :reserved
-#=> {{10000, 2, 7000, 1, [{11, 7000, :reserved}]}, :admitted, []}
-
-# 3. Duplicate detection: same key, same amount
-{^s1, :duplicate, []} = Ledger.step(s1, {:request, 11, 7_000})
-
-# 4. Conflict detection: same key, different amount
-{^s1, :conflict, []} = Ledger.step(s1, {:request, 11, 8_000})
-
-# 5. Over-capacity rejection: slot limit reached
-{s2, :admitted, []} = Ledger.step(s1, {:request, 12, 2_000})
-{^s2, :insufficient_holds, []} = Ledger.step(s2, {:request, 13, 500})
-
-# 6. Dispatch the hold -> generates an authorization effect
-{s3, :dispatched, [{:authorize, 11, 7_000}]} = Ledger.step(s2, {:dispatch, 11})
-
-# 7. Network drops! Timeout moves hold to :unknown (capacity is NOT released)
-{s4, :marked_unknown, []} = Ledger.step(s3, {:timeout, 11})
-true = Spec.valid?(s4)
-# Used amount remains 9,000 cents; used slots remains 2.
+true = Spec.valid?(s3)
+{^s3, :insufficient_amount, []} = Ledger.step(s3, {:request, 12, 100})
 ```
 
-### 2. The Journaled Server & Recovery
-`HoldLedger.Server` wraps this pure state machine inside a GenServer backed by an append-only hash-chained journal. If the node crashes while a request is in-flight, it replays history on startup, applies a `:restart` event, and marks all pending `:sent` items as `:unknown`.
+The second request fails because a lost reply is not a decline. The `:unknown` entry still uses 100 cents and one slot. Retrying it uses its original key and amount. An authorized entry that is being voided likewise keeps its capacity until a trusted terminal confirmation arrives.
 
-To see this in action, run the self-contained interactive demo:
-```sh
-mix run scripts/demo.exs
-```
-This script uses synthetic data and a fresh temporary journal. It exercises lost replies, restart/replay, lookup reconciliation, same-ID retry, voids, and processor deduplication.
+Here is the important part of the lifecycle:
 
----
+```text
+request -> reserved -> sent --timeout or restart--> unknown
+                       ^                               |
+                       +------- retry same key -------+
 
-## Development Checks
-
-### Run tests and static checks
-```sh
-# Run deterministic tests, bounded StreamData properties, and fault injection
-mix test --warnings-as-errors
-
-# Run static analysis without warning suppressions
-mix credo --strict
-mix dialyzer
-
-# Run Python tooling preflight and guard tests
-uv run --locked python -m unittest discover -s tooling_tests -v
+sent or unknown --approved--> authorized --void--> voiding
+                                                (still held)
+                                                     |
+                                     trusted void confirmation
+                                                     v
+                                                   voided
+                                               (capacity freed)
 ```
 
-### Verify formal proofs
-```sh
-# Inspect the law catalog (static verification; no Lean or BEAM execution)
-uv run --locked python scripts/run_laws.py --supported-only --inspect-only
+A processor decline frees the hold; voiding an undispatched `:reserved` entry also frees it immediately. Terminal keys remain remembered. The [Specification](guides/specification.md) lists all events and results, including stale and malformed inputs.
 
-# Verify single law group (uncached compilation & proof check)
-uv run --locked python scripts/run_laws.py --slug po_a2 --stage proofs
+## What the checks establish
 
-# Full verification: Run all cataloged law groups through 6 checker configurations
-uv run --locked python scripts/run_laws.py --supported-only --stage full --report tmp/verification/checked.json
+Tests and proofs answer related but different questions. An ExUnit assertion checks a particular history; a StreamData property samples many histories; a Lean proof establishes its *stated theorem* for every input satisfying its assumptions. A valid-state preservation proof alone would allow a ledger that refuses every request. Hold Ledger therefore includes positive-admission laws, identity and effect laws, finite-history properties, and deliberately broken mutations that challenge them.
+
+The proof route, in outline, is:
+
+```text
+Elixir reducer + law (`requires` / `expects`)
+              |
+       Core Erlang output
+              |
+        Lynx translation
+              |
+  Lean theorem + supplied proof
+              |
+  proof checking and, for full acceptance,
+  fresh exports and six checker configurations
 ```
 
----
+**A checked theorem does not choose the right requirement.** For example, a ledger could release capacity at the moment a void is *requested* and still leave its local counters internally consistent. To reject that behavior, the law must require capacity to remain held until confirmation. The [agentic walkthrough](guides/agentic_verification.md) lets you test this distinction yourself.
 
-## What Is Proven vs. What Is Assumed
+There are also important limits to the evidence:
 
-The law catalog and required-obligations inventory define the maintained pure-core proof obligations, including terminal-state absorption and finite-history agreement with the independent specification. Catalog status `supported` means a proof implementation is available; acceptance requires a successful report whose source hashes match this checkout. Pending groups make release acceptance incomplete. The full verification command checks fresh proof exports with six checker configurations. See [Verification](guides/verification.md) for commands, provenance, and proof boundaries.
+| Evidence | What it covers | What it does not establish |
+|---|---|---|
+| Lean/Lynx laws | Specified pure reducer, composite, attempt and exposure-model properties under their hypotheses | Physical journal durability, a real processor's honesty, or universal compiler/translation correctness |
+| ExUnit, properties and fault injection | Executed code paths, bounded generated examples, injected failures and OTP recovery cases | All possible runtime interleavings or physical power-loss behavior |
+| Six-checker full acceptance | Fresh proof/export and axiom checks for the required obligations on the reviewed source | That the obligations themselves express every intended policy |
 
-Formal laws concern their declared pure functions and explicit hypotheses; OTP recovery is tested separately. Pending voids retain capacity until one trusted confirmation retires the durable obligation. Remote exposure additionally depends on truthful processor decisions, deduplication and terminal non-resurrection; startup checks an integrator declaration, not processor behavior. There is no remote exactly-once guarantee.
+The external processor must deduplicate requests, report truthful outcomes, and permanently fence a voided identity against delayed authorization. A capability declaration is an integrator's attestation, not a remote-service proof. There is no remote exactly-once or eventual-release guarantee. The compiler, translator, kernel, operating system and storage also have explicit trust boundaries. Read [Verification](guides/verification.md), [Processors](guides/processors.md) and [Runtime and recovery](guides/runtime.md) before making deployment claims.
 
-```
-[ FORMAL OBLIGATIONS — ACCEPTANCE MUST MATCH THE CURRENT SOURCE ]
----------------------------------------------------------------------------------------------
-  * Specified laws for pure reducer functions (HoldLedger.Ledger)
-  * Invariant preservation from valid states under arbitrary event terms (PO-S, PO-A1, etc.)
-  * Exact accounting deltas and hold slot counting (L3, L5, L6)
-  * Positive admission completeness (PO-A2)
-  * Duplicate/conflict detection across all lifecycle statuses (PO-A4)
-  * Effect generation matching stored key and amount (PO-B3)
-  * Authorization gated strictly by processor approval (PO-B4)
-  * Declined and voided entries remain terminal (PO-B5)
-  * Finite-history oracle agreement, identity, terminal and approval properties (PO-C3)
-  * Capacity retention and conditional remote live amount/count bounds (PO-EXPOSURE)
-  * Typed lifecycle histories with unique slots/IDs and at-most-once retirement
-  * Composite coupling preservation and independent step/history oracle agreement
-  * Successful pure composite histories replay to the same abstract state
-    (this does not prove journal framing, fsync or OTP restart handling)
+## Learning to work with an agent
 
-[ TESTED VIA FAULT INJECTION & OTP TESTS ]
----------------------------------------------------------------------------------------------
-  * Write-ahead log append & sync failure handling (Server poisoned on fault)
-  * Recovery replay from the framed journal after sudden SIGKILL / crash
-  * Crash between journal sync and in-memory reducer step
-  * Frame/header hash verification and rejection of incomplete/corrupted records
-  * Network reply timeouts and simulator fault injection
+The workflow in these guides is practical rather than a rule that humans must write all specifications:
 
-[ EXTERNAL ASSUMPTIONS (Outside the Verification Boundary) ]
----------------------------------------------------------------------------------------------
-  * Processor deduplication honesty (a remote processor might not dedupe)
-  * Operating system disk sync durability (fsync honoring physical media flushes)
-  * Hardware memory safety and physical power-loss protection
-  * Lean 4 kernel, BEAM compiler, and Core Erlang translator correctness
-```
+1. **Find the policy.** The agent collects requirements and traces; a person resolves a missing or disputed decision.
+2. **Draft and challenge the claim.** The agent proposes `requires`/`expects`, valid inputs and deliberately wrong outputs. Check that the claim rejects the wrong outputs for the right reason.
+3. **Implement and prove.** The agent can change code and proof tactics under an agreed policy. A theorem statement, called definition, trusted assumption or coverage change needs separate semantic review.
+4. **Report the evidence.** Check which command ran, what source it covered, what passed, and what remains unknown. A timeout is not a counterexample or an accepted proof.
 
----
+[Agentic verification](guides/agentic_verification.md) has a worked exercise and prompts; [Human review](guides/human_review.md) explains what may be delegated and includes a decision practice set. The repository's `AGENTS.md` contains instructions for an agent working on this codebase.
 
-## Documentation Index
+## Documentation map
 
-Deep-dive documentation is located in `guides/`:
+These guides serve different moments in the same learning process. The first group teaches; the others are there when you need details.
 
-| Guide | Description |
+| Guide | Use it for |
 |---|---|
-| [**Getting Started**](guides/getting-started.md) | Detailed toolchain setup, Ubuntu 26.04 dependencies, and dependency installation. |
-| [**Formal Verification Crash Course**](guides/formal_verification_crash_course.md) | Introduction to Lean, Lynx, and reading and writing proofs, with a worked law walkthrough. |
-| [**Agentic Verification**](guides/agentic_verification.md) | Practical loop: establish intent, compare contracts, challenge outcomes, prove and report evidence. |
-| [**Human Review**](guides/human_review.md) | Review claims and definitions, resolve disputed requirements, and decide what to delegate. |
-| [**Specification Assurance**](guides/specification_assurance.md) | Why green proofs can miss intent, with contract-testing examples and research limits. |
-| [**Assurance Audit**](guides/audit.md) | Initial or periodic close review of Hold Ledger's policies, proof models and runtime boundaries. |
-| [**Architecture**](guides/architecture.md) | Structural split between pure state machine, persistence, and effect scheduling. |
-| [**Specification**](guides/specification.md) | Full contract: state tuple shape, event semantics, transitions, error atoms. |
-| [**Runtime and Recovery**](guides/runtime.md) | Using `HoldLedger.Server`, owned journal framing, crash recovery, and reconciliation. |
-| [**Processors**](guides/processors.md) | The processor behavior contract and using `HoldLedger.Processor.Sim` for fault injection. |
-| [**Testing**](guides/testing.md) | Unit test structure, `StreamData` configuration, mutation testing runner, and benchmarks. |
-| [**Verification**](guides/verification.md) | Detailed verification catalog, checker configurations, proof costs, and evidence identity. |
-| [**Troubleshooting**](guides/troubleshooting.md) | Resolving toolchain drift, stack overflows in Nanoda, and disk lock issues. |
-
----
+| [Getting started](guides/getting-started.md) | Prerequisites, local tools and first run |
+| [Formal verification crash course](guides/formal_verification_crash_course.md) | Tests, laws, Lean syntax, proof goals and a real law |
+| [Agentic verification](guides/agentic_verification.md) | A complete contract challenge and agent-assisted verification task |
+| [Human review](guides/human_review.md) | Change classification, escalation and seven review exercises |
+| [Specification assurance](guides/specification_assurance.md) | Vacuity, missing guarantees, contract comparison and research |
+| [Architecture](guides/architecture.md) | How the pure core, reference model, runtime and proofs fit together |
+| [Specification](guides/specification.md) | The exact ledger state and event contract |
+| [Runtime and recovery](guides/runtime.md) | Journal, tasks, reconciliation and durable voids |
+| [Processors](guides/processors.md) | The simulator and required remote-service behavior |
+| [Testing](guides/testing.md) | Tests, mutations, differential checks and benchmarks |
+| [Verification](guides/verification.md) | Law catalog, proof commands, acceptance and provenance |
+| [Troubleshooting](guides/troubleshooting.md) | Setup, proof and runtime failure symptoms |
+| [Assurance audit](guides/audit.md) | Advanced review of models, foundation and runtime assumptions |
 
 ## License
 
-MIT License
+MIT. See [LICENSE](LICENSE).

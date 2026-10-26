@@ -1,7 +1,8 @@
 # Runtime and recovery
 
-`HoldLedger.Server` owns one account and one explicit journal path. The
-application starts `HoldLedger.EffectSupervisor` with at most 32 task children.
+The pure ledger can say that a timeout leaves a hold `:unknown`. A running service has harder work: record the request durably, survive a crash, and avoid treating a lost reply as proof that the processor did nothing. `HoldLedger.Server` is the OTP layer that carries out those transitions with a journal and supervised effects.
+
+`HoldLedger.Server` owns one account and one explicit journal path. The application starts `HoldLedger.EffectSupervisor` with at most 32 task children. Read [Specification](specification.md) first if you need the meaning of an event; this guide describes what happens when the event reaches the server.
 
 ## Start and submit
 
@@ -27,7 +28,7 @@ the application; the default application does not open an account.
 
 ## Persistence and input authority
 
-Admitted input is appended and synced before accounting or effects. Reserved
+The ordering is deliberate: an accepted event must survive a restart before any local state transition or processor effect depends on it. Admitted input is appended and synced before accounting or effects. Reserved
 internal submissions return `{:error, :reserved_event}` after syncing a bounded
 `{:rejected_submission, tag}` marker. Malformed inputs use a bounded
 `{:malformed_submission, :other}` marker and return `{:ok, :malformed}`. Raw
@@ -49,7 +50,7 @@ read-only inspection. Do not skip a persisted input to restore availability.
 
 ## Attempts and deadlines
 
-`HoldLedger.Attempts` is a separate pure lifecycle model with operation laws and
+A deadline can end a *local task* without ending the processor's remote work. That distinction drives the attempt lifecycle. `HoldLedger.Attempts` is a separate pure lifecycle model with operation laws and
 a typed finite-history theorem bridged to its translated implementation. Its
 interleaving properties also check duplicate persistence/retirement intents.
 The history proofs establish at-most-once persist intents and require persistence
@@ -90,7 +91,7 @@ callback or a new lookup may establish the outcome.
 
 ## Durable voids
 
-An authorized void enters `:voiding`, retains its amount and slot, and creates
+Voids bring the central safety rule into the runtime: capacity stays held until trusted completion, even if the server crashes or retries. An authorized void enters `:voiding`, retains its amount and slot, and creates
 exactly one durable obligation. A reserved void releases immediately with no
 remote call. The composite invariant requires the exact voiding-key set to equal
 the unique obligation-key set. `Composite.step/2` is the shared live/replay fold;
@@ -153,7 +154,7 @@ before/after-restart states and replay count.
 
 ## Journal inspection and tail recovery
 
-The journal uses the application-owned `HOLDJNL1` format. Each frame contains a
+Inspect the file without changing it before attempting recovery. The journal uses the application-owned `HOLDJNL1` format. Each frame contains a
 32-bit payload length, 64-bit sequence, predecessor SHA-256, header SHA-256,
 exact serialized payload, and frame SHA-256. Header integrity is checked before
 length; frame integrity is checked before decoding. Replay streams a verified
@@ -176,3 +177,5 @@ and honest durable-sync semantics. It does not justify discarding acknowledged
 history damaged later, repairing interior corruption, or accepting rollback.
 A complete shorter prefix remains valid without an external freshness anchor.
 Tests do not establish physical power-loss protection or arbitrary storage safety.
+
+Use [Testing](testing.md#targeted-runtime-tests) to exercise fault paths. Before connecting an external service, read the [Processor contract](processors.md#contract-required-of-a-real-adapter); a successful local restart test cannot establish the remote guarantees.
