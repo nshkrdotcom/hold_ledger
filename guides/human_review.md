@@ -21,12 +21,13 @@ The agent may draft a statement or Spec change; a human must approve its meaning
 | 1 | Claims, definitions, theorem signatures, Spec, coverage, foundations or checking machinery | Human approval of meaning, scope and evidence policy |
 | 2 | Ledger and runtime implementation | Review behavior and runtime boundaries; rerun committed policy traces for every Ledger change |
 | 3 | Only confirmed proof-body changes | Require fresh full acceptance; usually skip line-by-line tactics |
-| Documentation | Changed explanations or promises | Compare with the contracts; policy expectations can change here too |
+| Documentation | Explanations of existing behavior | Check against the contracts; policy changes such as edits to `guides/specification.md` are Tier 1 |
 
 In Hold Ledger, apply Tier 1 review to these meanings and boundaries:
 
 | Files | What to inspect |
 |---|---|
+| `guides/specification.md`, `AGENTS.md` | Intended policy and the instructions that constrain agent changes |
 | `lib/hold_ledger/spec.ex`, `test/laws/*.exs` | Reference behavior, assumptions and conclusions; classify embedded proof changes separately below |
 | `test/support/lean/*.lean`, `test/support/proof_case.ex` | Model definitions, theorem signatures, generated predicates and translation wiring |
 | `verification/obligations.json`, `verification/laws.json`, `verification/baseline.json` | Required claims, registered groups and historical evidence |
@@ -38,11 +39,11 @@ These are examples to navigate the code, not an exhaustive filename-based classi
 
 To distinguish proof repair from a changed claim:
 
-1. Inspect the complete base-to-head diff, including added/deleted files, renames and surrounding declarations. Do not trust a “proof-only” label.
-2. In a law `.exs` file, treat each hunk with changed lines outside the `proof: ~LEAN` sigil body as Tier 1. Context lines alone do not change the tier. Inside that sigil, apply the same Lean rules as for a `.lean` file.
-3. A changed Lean line touching `def`, `abbrev`, `instance`, `structure`, `inductive`, `class`, `notation`, `macro`, `syntax`, `elab`, `set_option`, `open`, `import`, `attribute`, `axiom`, `opaque`, `unsafe`, `variable`, `universe`, `namespace`, `section`, `end`, `export`, `local`, `scoped`, `deriving`, `macro_rules`, `initialize`, `run_cmd` or `#eval` makes the change Tier 1. This deliberately overclassifies comments or local definitions when uncertain.
-4. Compare every changed theorem/lemma signature in full, including multiline binders, hypotheses, result types and declaration attributes before the proof. A signature change is Tier 1.
-5. Only changes confined to bodies after those checks qualify for Tier 3. A body may start with `by` or be a proof expression; do not classify it by indentation alone. Unclear boundaries or changed macros/elaborators (code that interprets proof syntax) require Tier 1 review.
+1. Inspect the base-to-head diff with enough context to identify the enclosing declaration. For example, start with `git diff -U20 BASE HEAD -- test/laws test/support/lean`; open the complete declaration in both revisions when it extends beyond the context. A `-U0` diff is insufficient, and language-dependent function-context detection may miss Lean boundaries.
+2. In a law `.exs` file, changed lines outside the `proof: ~LEAN` sigil body require Tier 1 review. Context lines alone are not changes. Inside the sigil, apply the same Lean rules as for a `.lean` file.
+3. Classify by the enclosing declaration, not just keywords on the changed line. Any edit inside a `def`, `abbrev`, `instance`, `structure`, `inductive`, `class`, `macro`, `macro_rules`, `syntax`, `elab`, `notation`, `axiom` or `opaque` declaration is Tier 1, including its body. A definition proved with `by` is still a definition.
+4. Review changes to surrounding commands as Tier 1 too: `set_option`, `open`, `import`, `attribute`, `unsafe`, `variable`, `universe`, `namespace`, `section`, `end`, `export`, `local`, `scoped`, `deriving`, `initialize`, `run_cmd` and `#eval`. They can change dependencies, binders, interpretation or checking behavior without touching a theorem signature.
+5. Tier 3 is limited to changes inside a `theorem`, `lemma` or `example` proof after its `:=` (with or without `by`), or inside an existing law's proof sigil, with statements and dependencies unchanged. Inspect nested declarations and commands using the same rules. Compare complete signatures, including multiline binders and attributes. If you cannot establish the boundaries, use Tier 1 review.
 
 Use this checklist for Tier 1 review:
 
@@ -131,15 +132,20 @@ Match the report to the source revision and claims you reviewed.
 
 For Tier 2 runtime changes, follow the [server and journal audit](audit.md#server-and-journal-follow-one-confirmation-through-failure): inspect caller authentication; correlation of late worker results with the current attempt; sync-before-transition/effects ordering; crash replay and incomplete-tail handling; and remote retry identity. Require runtime or fault-injection regressions for changed paths. Re-run the committed policy traces whenever Ledger changes.
 
-## Practice on Six Proposed Changes
+## Practice on Seven Proposed Changes
 
-These are abbreviated teaching diffs, not patches to apply to the working ledger. A diff hunk is one block of nearby changes. `-` removes a line; `+` adds one. For each, identify the tier, the lost guarantee and a distinguishing input before opening the answers. The unchanged proof bodies are omitted.
+These are abbreviated teaching diffs, not patches to apply to the working ledger. A diff hunk is one block of nearby changes. `-` removes a line; `+` adds one. For each, identify the tier and explain whether the guarantee changes. If it does, give a distinguishing input. The unchanged proof bodies are omitted.
 
-**A — Faster retention proof** — `test/laws/po_exposure_retain_test.exs`:
+**A — Broader exposure helper** — `lib/hold_ledger/spec.ex`; the law file is untouched:
 
 ```diff
--          status in [:sent, :unknown, :authorized, :voiding] and
-+          status in [:sent, :unknown, :authorized, :voiding] and status != :voiding and
+   def exposed_entry?({_, _, _, _, entries}, key, amount) do
+     case lookup(entries, key) do
+       {:ok, {^key, ^amount, status}} -> status in [:sent, :unknown, :authorized, :voiding]
+-      _ -> false
++      _ -> true
+     end
+   end
 ```
 
 **B — Faster accounting** — implementation and reference change together:
@@ -189,10 +195,19 @@ All theorem signatures remain unchanged. Does that make it proof-only?
 +      expects: Spec.valid?(elem(Ledger.request(s, key, amount), 0)),
 ```
 
+**G — Shorter proof** — a standalone Lean example; its statement is unchanged:
+
+```diff
+ example (a b : Int) (fits : a ≤ b) : ¬ b < a := by
+-  have bound : a ≤ b := fits
+-  omega
++  omega
+```
+
 <details>
 <summary>Answer key — open after reviewing the proposed changes</summary>
 
-A excludes pending voids, the central retention case. Use the delayed-confirmation trace to expose the lost guarantee.
+A weakens a helper used by the retention conclusion. An empty ledger, key `11` and amount `300` now satisfy `exposed_entry?` despite having no matching entry. The law text is unchanged, but the predicate no longer requires the issued identity to remain recorded. This is Tier 1.
 
 B weakens validity to accommodate premature release; restore the accounting contract and repair behavior unless a human approves different policy.
 
@@ -202,7 +217,9 @@ D removes required coverage from both inventories; compare with the base revisio
 
 E weakens the definition by removing the upper bound; `used = 101`, `limit = 100` now satisfies it. Unchanged theorem signatures do not preserve their meaning when a referenced definition changes.
 
-F drops the duplicate result, exact unchanged state and empty effects. A valid state with a rejection result could satisfy the new conclusion. Restore the duplicate contract. All six changes require Tier 1 review.
+F drops the duplicate result, exact unchanged state and empty effects. A valid state with a rejection result could satisfy the new conclusion. Restore the duplicate contract. B through F also require Tier 1 review.
+
+G is Tier 3: it removes an unnecessary intermediate fact from the proof while preserving the statement and dependencies. The revised proof checks with `omega`. For maintained proof work, require fresh full acceptance on the reviewed source; the tactic lines themselves need no further semantic review.
 
 </details>
 
