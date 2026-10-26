@@ -256,7 +256,7 @@ Before reading a proof body, review these four things in order:
 3. **Independence:** does `Spec` make its own decisions, or merely repeat or call the implementation?
 4. **Translation boundary:** are the proof's definitions generated from the code being reviewed, and what compiler/translator behavior is being trusted?
 
-Then read the helper lemmas and proof body where needed to understand the argument. See [Human review](human_review.md) for a deeper review of this codebase.
+Then read the helper lemmas and proof body where needed to understand the argument. Use [Human review](human_review.md) to review agent changes, or the [assurance audit](audit.md) for a deeper review of this codebase.
 
 > **Limits.** A checked proof establishes its statement about the translated functions under its hypotheses.
 >

@@ -9,9 +9,9 @@
 
 > An Elixir authorization-hold ledger with formal laws for its pure state machine, an independent specification, and a separately tested journaled OTP runtime.
 
-**For reviewers:** Start with [Human review of a Lynx project](guides/human_review.md).
-It covers the required checks, Hold Ledger's policies and trust assumptions,
-and a review of the code behind its guarantees.
+**Reviewing agent changes?** Start with the [formal verification crash course](guides/formal_verification_crash_course.md)
+if you are new to Lynx, then use [Human review](guides/human_review.md) for each change.
+The [assurance audit](guides/audit.md) covers Hold Ledger's policies, models and trust boundaries.
 
 ---
 
@@ -298,7 +298,8 @@ Deep-dive documentation is located in `guides/`:
 
 | Guide | Description |
 |---|---|
-| [**Human Review**](guides/human_review.md) | Required review, financial policies, trust assumptions, and an assessment of Hold Ledger's source. |
+| [**Human Review**](guides/human_review.md) | Per-change review of agent work: claims, definitions, coverage and acceptance evidence. |
+| [**Assurance Audit**](guides/audit.md) | Initial or periodic close review of Hold Ledger's policies, proof models and runtime boundaries. |
 | [**Architecture**](guides/architecture.md) | Structural split between pure state machine, persistence, and effect scheduling. |
 | [**Specification**](guides/specification.md) | Full contract: state tuple shape, event semantics, transitions, error atoms. |
 | [**Runtime and Recovery**](guides/runtime.md) | Using `HoldLedger.Server`, owned journal framing, crash recovery, and reconciliation. |

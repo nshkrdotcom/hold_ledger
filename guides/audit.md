@@ -1,70 +1,16 @@
-# Human review of a Lynx project
+# Assurance audit of Hold Ledger
 
-A successful kernel check establishes a theorem about particular definitions.
-Most of the human review belongs in those definitions, the statement and the
-code that selects what gets checked. Together they determine whether the proof
-supports the claim you intend to rely on.
+This guide is a route through Hold Ledger's policies, proof models and runtime
+boundaries for an initial or periodic assurance audit. For reviewing an individual
+agent change, use [Human review](human_review.md). New to Lynx? Start with the
+[crash course](formal_verification_crash_course.md).
 
-This guide starts with that general task, then gives a reading route through
-Hold Ledger. Commands and the full obligation catalog belong in
-[Verification](verification.md); the introduction to Lean is in the [crash
-course](formal_verification_crash_course.md).
-
-## Reviewing a Lynx project
-
-### Settle the claim before reading the tactics
-
-An implementation that refuses every operation can preserve an invariant. A
-locally consistent ledger can misrepresent a remote authorization. Start with a
-few examples that distinguish the promised behavior from those failures, and
-choose their expected outcomes before consulting the oracle or proofs.
-
-Then read the actual theorem statements and the definitions they depend on. For
-Elixir laws this includes the bodies behind `requires:` and `expects:`. For
-Lean-only obligations it includes the inductive relations and encodings that
-define an execution. Expand names such as `valid`, `committed` and `safe`: their
-definitions determine which states exist, which events can happen and what the
-theorem excludes.
-
-Look especially for preconditions that discard the difficult case, conclusions
-that omit the promised behavior, and environment rules that make a bad execution
-impossible by assumption. Those assumptions can be reasonable. The review must
-establish that they describe the intended system.
-
-### Follow the claim to the running program
-
-Trace an important claim from its source declaration through the compiled
-function, translated definition and final exported theorem. Read the project's
-adapter wherever it chooses definitions, generates predicates or resolves names.
-An independent kernel cannot repair a translation that describes a different
-program.
-
-For each fact the proof leaves to its caller, identify the runtime code or
-service contract that must supply it. An assumption without that connection is a
-gap in the deployment argument.
-
-Within the proof library, concentrate on interfaces that introduce assumptions,
-change representations or compose histories. Read their statements and enough of
-the argument to understand that step. Routine proof search needs less attention
-once the resulting terms have passed kernel checking with the intended axioms.
-
-### Review the meaning of acceptance
-
-The acceptance program decides which obligations were selected, which source
-reached the translator and which artifact reached each checker. Review how it
-treats missing obligations, cached results, failed processes and exports left by
-earlier runs. Mechanical inventory comparisons are useful; deciding whether the
-inventory contains the necessary claims is still a specification question.
-
-Keep two negative experiments separate. Dropping a law while retaining it in the
-required inventory, or presenting an invalid proof artifact, should prevent
-acceptance. Replacing a postcondition with a weaker, provable one may still
-produce a valid proof. Determine whether the remaining obligations still
-establish the promised behavior. Source hashes identify the changed material;
-they do not approve the change.
-
-The review should leave a precise account of which claims you endorse, which
-assumptions you accept and what remains unsupported for the intended use.
+**Source baseline:** `618ee1e7f17e490f643bed898f00b9f67c1cd2b4`. The audit text
+was last substantively updated in `55cfc404205952449293978b50af1fd5ac803c8a`.
+This marker identifies the reading route's source baseline; it does not record
+an independent audit sign-off or a successful formal run. Source links below
+are pinned to that baseline. Compare subsequent changes before relying on it.
+Commands and evidence requirements are in [Verification](verification.md).
 
 ## Hold Ledger: the top-level view
 
@@ -277,19 +223,19 @@ universal translation equivalence. The kernel subset checks selected function
 results and literal/atom codec cases. Numeric-parser comparisons use compiled
 Lean execution.
 
-[exposure]: https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/exposure.ex
-[environment]: https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/environment.ex
-[spec]: https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/spec.ex
-[exposure-proof]: https://github.com/nshkrdotcom/hold_ledger/blob/main/test/support/lean/ExposureModel.lean
-[exposure-view]: https://github.com/nshkrdotcom/hold_ledger/blob/main/test/support/lean/ExposureValidity.lean
-[composite]: https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/composite.ex
-[composite-proof]: https://github.com/nshkrdotcom/hold_ledger/blob/main/test/support/lean/CompositeSafety.lean
-[recovery-proof]: https://github.com/nshkrdotcom/hold_ledger/blob/main/test/support/lean/Recovery.lean
-[attempt-proof]: https://github.com/nshkrdotcom/hold_ledger/blob/main/test/support/lean/AttemptSafety.lean
-[server]: https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/server.ex
-[journal]: https://github.com/nshkrdotcom/hold_ledger/blob/main/lib/hold_ledger/journal.ex
-[adapter]: https://github.com/nshkrdotcom/hold_ledger/blob/main/test/support/proof_case.ex
-[required]: https://github.com/nshkrdotcom/hold_ledger/blob/main/verification/obligations.json
-[catalog]: https://github.com/nshkrdotcom/hold_ledger/blob/main/verification/laws.json
-[acceptance]: https://github.com/nshkrdotcom/hold_ledger/blob/main/scripts/run_laws.py
-[nanoda-retry]: https://github.com/nshkrdotcom/hold_ledger/blob/main/scripts/check_nanoda_serial.py
+[exposure]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/lib/hold_ledger/exposure.ex
+[environment]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/lib/hold_ledger/environment.ex
+[spec]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/lib/hold_ledger/spec.ex
+[exposure-proof]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/test/support/lean/ExposureModel.lean
+[exposure-view]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/test/support/lean/ExposureValidity.lean
+[composite]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/lib/hold_ledger/composite.ex
+[composite-proof]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/test/support/lean/CompositeSafety.lean
+[recovery-proof]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/test/support/lean/Recovery.lean
+[attempt-proof]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/test/support/lean/AttemptSafety.lean
+[server]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/lib/hold_ledger/server.ex
+[journal]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/lib/hold_ledger/journal.ex
+[adapter]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/test/support/proof_case.ex
+[required]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/verification/obligations.json
+[catalog]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/verification/laws.json
+[acceptance]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/scripts/run_laws.py
+[nanoda-retry]: https://github.com/nshkrdotcom/hold_ledger/blob/618ee1e7f17e490f643bed898f00b9f67c1cd2b4/scripts/check_nanoda_serial.py

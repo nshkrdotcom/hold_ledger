@@ -28,7 +28,8 @@ Proof evidence is tied to exact source hashes and export hash/size. Earlier
 reports do not certify changes to the status graph, composite fold or proof
 library. Run the complete command on the reviewed source and retain the generated
 report and raw artifacts under ignored `tmp/verification/`. An independent human
-review remains a separate milestone; see [Human review](human_review.md).
+review remains separate: use [Human review](human_review.md) for each change and
+the [assurance audit](audit.md) for the deeper system review.
 
 The permitted foundational axioms are `propext`, `Quot.sound` and
 `Classical.choice`. No admissions or custom axioms are permitted.

@@ -65,7 +65,7 @@ defmodule HoldLedger.MixProject do
           ["CHANGELOG.md", {"LICENSE", [title: "MIT License"]}],
       groups_for_extras: [
         "Getting Started": ["README.md", "guides/getting-started.md"],
-        "Reviewing Correctness": ["guides/human_review.md"],
+        "Reviewing Correctness": ["guides/human_review.md", "guides/audit.md"],
         "Using the Ledger": [
           "guides/specification.md",
           "guides/architecture.md",
