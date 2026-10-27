@@ -72,7 +72,7 @@ The state did not change on the duplicate request. Amounts are positive integer 
 
 ## Check your first law
 
-Start with the [empty-list law](formal_verification_crash_course.md#a-first-lynx-law) if you haven't written a Lynx proof before. Then check the ledger's duplicate-request law:
+Start with the [exact-fit law](formal_verification_crash_course.md#a-first-lynx-law) if you haven't written a Lynx proof before. Then check the ledger's duplicate-request law:
 
 ```sh
 uv run --locked python scripts/run_laws.py --slug po_a4_duplicate --stage proofs \

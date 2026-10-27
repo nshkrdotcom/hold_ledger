@@ -110,25 +110,27 @@ Lynx supplies the Lean version of `admit/2`; you write the claim and proof. In a
 
 ## A first Lynx law
 
-Save the empty-list case from Lynx's recursive sum example as `tmp/first_law_test.exs`:
+Start with one exact-fit request to `admit/2`. Save this file as `tmp/first_law_test.exs`:
 
 ```elixir
 defmodule FirstLynxLawTest do
   use ExUnit.Case
   use Lynx.Case
 
-  def sum([]), do: 0
-  def sum([head | tail]), do: head + sum(tail)
+  def admit(amount, remaining) do
+    if amount > remaining, do: :full, else: :ok
+  end
 
-  test "empty sum" do
-    assert sum([]) == 0
+  test "exact fit" do
+    assert admit(1, 1) == :ok
   end
 
   laws "first law" do
-    law sum_empty,
-      expects: sum([]) == 0,
+    law exact_fit,
+      expects: admit(1, 1) == :ok,
       proof: ~LEAN"""
-      simp [«sum_empty:ensures/0», «sum/1», Erlang.erlang.«==/2»]
+      simp [«exact_fit:ensures/0», «admit/2»,
+        Erlang.erlang.«>/2», Erlang.erlang.«==/2»]
       """
   end
 end
@@ -141,13 +143,19 @@ uv run --locked python scripts/local_run.py mix test tmp/first_law_test.exs --ex
 LYNX_CACHE=0 LYNX_DEBUG=lean uv run --locked python scripts/local_run.py mix test tmp/first_law_test.exs --only laws
 ```
 
-The test checks one call. So does the law: without variables, it makes no claim about other lists. You don't need `requires:` here. The `simp` tactic unfolds the generated `sum_empty:ensures/0` predicate, the empty-list case of `sum/1`, and Erlang equality. The recursive case never comes up.
+Both checks cover the single call `admit(1, 1)`. The law has no variables and needs no `requires:` clause. The `simp` tactic unfolds the generated `exact_fit:ensures/0` predicate, `admit/2`, and the comparison and equality operators. With both inputs fixed at `1`, Lean can simplify the result.
 
-Replace the `simp [...]` line with `trace_state` and rerun the proof. Lean prints the open goal and reports that it hasn't been proved. Restore `simp [...]` when you've read it.
+Replace the whole `simp [...]` tactic with `trace_state` and rerun the proof. Lean prints the open goal and reports that it hasn't been proved:
+
+```text
+⊢ «exact_fit:ensures/0» = Except.ok Lynx.Term.true
+```
+
+The symbol `⊢` marks what remains to be proved. `exact_fit:ensures/0` is the translated check `admit(1, 1) == :ok`. `Except.ok Lynx.Term.true` means the check returned `true` without an exception. `trace_state` only displays the goal; it doesn't prove it. Restore `simp [...]` and rerun to finish the proof.
 
 ## Prove the capacity contract
 
-Now return to `admit/2`. The law must cover exact fits as well as amounts below capacity; `amount < remaining` would miss equality. This proof has variables and a precondition, so it takes more than unfolding one call.
+Now replace the fixed inputs with variables. The law must cover exact fits as well as amounts below capacity; `amount < remaining` would miss equality. This proof has variables and a precondition, so it takes more than unfolding one call.
 
 The test and property call `fits/2`, which Lynx creates from the law declaration. `requires:` and `expects:` state the contract; `proof: ~LEAN` contains the Lean proof. A `laws` block runs as one ExUnit test. The repository registers its maintained law groups separately for the proof runner.
 
@@ -344,7 +352,13 @@ The exact-fit failure is a counterexample to the mutant. Restore the original `>
 
 ## Write a law yourself
 
-Add a law for requests that exceed the remaining capacity. Put this declaration inside the existing `laws "capacity"` block in `tmp/cap_test.exs`:
+Write a law for this requirement:
+
+> For any two integers, if the requested amount exceeds the remaining capacity, `admit/2` returns `:full`.
+
+Name it `over_capacity(amount, remaining)` and draft its `requires:` and `expects:` clauses inside the existing `laws "capacity"` block in `tmp/cap_test.exs`. Allow negative integers too, as the earlier law does. The pair `(2, 1)` should satisfy your precondition. The exact fit `(1, 1)` should fall outside it.
+
+Write your clauses before reading on, then compare them with this declaration:
 
 ```elixir
 law over_capacity(amount, remaining),
@@ -356,7 +370,7 @@ law over_capacity(amount, remaining),
   """
 ```
 
-`trace_state` prints the starting goal; `rfl` is a placeholder that should fail. Keep `requires:` and `expects:` as written and replace the tactics. Use the `fits/2` proof as a guide. After splitting the inputs into integer cases, you'll have a hypothesis `b < a` instead of `a ≤ b`.
+After comparing the claims, start the proof with `trace_state` followed by `rfl`. This prints the goal and then fails, leaving you to fill in the proof. Keep `requires:` and `expects:` fixed as you work. The `fits/2` proof can guide you: after splitting the inputs into integer cases, you'll have a hypothesis `b < a` instead of `a ≤ b`.
 
 Add a witness and a property to the same test module, outside `laws "capacity"`:
 
@@ -500,8 +514,9 @@ No integer satisfies both hypotheses. The proof establishes nothing about any ac
 3. **Write the second law.** Complete the [over-capacity law](#write-a-law-yourself). Keep the statement unchanged, add the witness and property, and finish the Lean proof.
 4. **Read before changing.** Open `test/laws/po_a4_duplicate_test.exs`. Which assumptions describe the input, and which exact outputs does the conclusion require? Would requiring only a valid resulting state preserve the duplicate guarantee?
 
-<details>
-<summary>Solutions — open after completing the exercises</summary>
+### Solutions
+
+Try the exercises before reading these answers.
 
 For exercise 1, `assert fits(10 ** 30, 10 ** 30)` and `assert fits(-1, -1)` both pass. Elixir integers are arbitrary precision. Real hold amounts must be positive; the toy function has no such rule.
 
@@ -530,8 +545,6 @@ law(over_capacity(amount, remaining),
 Use `assert over_capacity(2, 1)` as the witness. For the property, generate `remaining <- integer()` and `gap <- positive_integer()`, then assert `over_capacity(remaining + gap, remaining)`. `positive_integer()` excludes zero, ensuring `remaining < remaining + gap`; zero would be an exact fit and belongs in `fits/2`. Run the ordinary and proof commands again; there are now two laws.
 
 For exercise 4, the assumptions require a valid state, an integer key, a positive integer amount and a matching entry. The conclusion requires the original state, `:duplicate` and no effects. Validity alone could allow a different result or new effects; it would lose the duplicate guarantee.
-
-</details>
 
 ## Review the statement, then its evidence
 
