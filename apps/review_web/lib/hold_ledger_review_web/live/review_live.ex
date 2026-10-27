@@ -1,7 +1,7 @@
 defmodule HoldLedgerReviewWeb.ReviewLive do
   use HoldLedgerReviewWeb, :live_view
   import HoldLedgerReviewWeb.SourceExcerpt
-  alias HoldLedgerReview.{Packet, Session, Receipts}
+  alias HoldLedgerReview.{Packet, Receipts, Session}
 
   def mount(%{"case_id" => id}, _session, socket) do
     case Packet.build(id) do

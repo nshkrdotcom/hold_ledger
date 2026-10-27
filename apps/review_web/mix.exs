@@ -9,6 +9,9 @@ defmodule HoldLedgerReview.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
+      name: "Hold Ledger Review Studio",
+      docs: [main: "readme", extras: ["README.md"]],
+      dialyzer: [plt_add_apps: [:ex_unit]],
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader]
@@ -40,6 +43,9 @@ defmodule HoldLedgerReview.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
       {:hold_ledger, path: "../.."},
       {:inference, "~> 0.5.1"},
       {:req_llm, "~> 1.29.0"},
@@ -92,7 +98,13 @@ defmodule HoldLedgerReview.MixProject do
         "esbuild hold_ledger_review_web --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: [
+        "compile --warnings-as-errors",
+        "format --check-formatted",
+        "credo --strict",
+        "dialyzer",
+        "test --warnings-as-errors"
+      ]
     ]
   end
 end

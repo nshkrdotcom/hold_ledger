@@ -83,8 +83,8 @@ defmodule HoldLedgerReviewWeb do
       import HoldLedgerReviewWeb.CoreComponents
 
       # Common modules used in templates
-      alias Phoenix.LiveView.JS
       alias HoldLedgerReviewWeb.Layouts
+      alias Phoenix.LiveView.JS
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())

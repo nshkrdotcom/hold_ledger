@@ -73,8 +73,7 @@ defmodule HoldLedgerReview.Receipts do
         with :ok <- IO.binwrite(io, Jason.encode!(TermCodec.encode(receipt), pretty: true)),
              :ok <- :file.sync(io),
              :ok <- File.close(io),
-             :ok <- File.ln(tmp, final),
-             do: :ok
+             do: File.ln(tmp, final)
 
       File.close(io)
       File.rm(tmp)
@@ -85,8 +84,7 @@ defmodule HoldLedgerReview.Receipts do
   def read(id) when is_binary(id) do
     if Regex.match?(~r/\A[A-Za-z0-9_-]{24}\z/, id) do
       with {:ok, b} <- File.read(Path.join(directory(), id <> ".json")),
-           {:ok, r} <- Jason.decode(b),
-           do: {:ok, r}
+           do: Jason.decode(b)
     else
       {:error, :invalid_id}
     end

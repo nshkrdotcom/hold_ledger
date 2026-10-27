@@ -1,6 +1,6 @@
 defmodule HoldLedgerReviewWeb.ReceiptLive do
   use HoldLedgerReviewWeb, :live_view
-  alias HoldLedgerReview.{Receipts, ProofEvidence, Config}
+  alias HoldLedgerReview.{Config, ProofEvidence, Receipts}
 
   def mount(%{"id" => id}, _, socket) do
     case Receipts.read(id) do

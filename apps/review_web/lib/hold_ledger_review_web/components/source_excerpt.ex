@@ -1,4 +1,5 @@
 defmodule HoldLedgerReviewWeb.SourceExcerpt do
+  @moduledoc "Renders an original source excerpt with its location and digest."
   use Phoenix.Component
   attr :anchor, :map, required: true
 

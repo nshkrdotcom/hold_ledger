@@ -1,4 +1,5 @@
 defmodule HoldLedgerReview.Facts do
+  @moduledoc "Computes case outputs and concrete predicate comparisons independently of explanations."
   alias HoldLedger.{Ledger, Spec}
 
   def build(c) do

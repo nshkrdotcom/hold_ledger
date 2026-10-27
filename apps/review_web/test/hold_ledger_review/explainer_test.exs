@@ -1,6 +1,6 @@
 defmodule HoldLedgerReview.ExplainerTest do
   use ExUnit.Case
-  alias HoldLedgerReview.{Packet, Explainer}
+  alias HoldLedgerReview.{Explainer, Packet}
   alias HoldLedgerReview.Explainer.{Scripted, Validator}
 
   setup do
@@ -30,7 +30,7 @@ defmodule HoldLedgerReview.ExplainerTest do
             ]
           },
           "bad json",
-          String.duplicate("x", 17000)
+          String.duplicate("x", 17_000)
         ] do
       assert {:error, _} = Validator.validate(bad, p)
     end

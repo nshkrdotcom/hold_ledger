@@ -1,4 +1,5 @@
 defmodule HoldLedgerReview.ControlledAdapter do
+  @moduledoc "Blocks mock inference requests so tests can exercise cancellation and timeouts."
   @behaviour Inference.Adapter
   def provider_kind, do: :model_endpoint
 

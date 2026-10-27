@@ -1,4 +1,5 @@
 defmodule HoldLedgerReview.Packet do
+  @moduledoc "Builds a fixed record of the sources, computations and evidence for one review."
   alias HoldLedgerReview.{Anchor, Canonical, Cases, Config, Facts, ProofEvidence}
 
   def build(id, opts \\ []) do

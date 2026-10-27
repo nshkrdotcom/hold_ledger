@@ -54,6 +54,9 @@ jobs:
           git diff --exit-code -- mix.lock ../../mix.lock
           mix format --check-formatted
           mix compile --warnings-as-errors
+          mix credo --strict
+          mix dialyzer
+          mix docs --warnings-as-errors
           mix test --warnings-as-errors
           mix assets.setup
           mix assets.build

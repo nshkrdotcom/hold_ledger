@@ -1,4 +1,5 @@
 defmodule HoldLedgerReview.Explainer.Inference do
+  @moduledoc "Sends case evidence to an explicitly configured model that supports JSON Schema."
   alias HoldLedgerReview.{Canonical, Explainer}
   alias HoldLedgerReview.Explainer.Validator
 

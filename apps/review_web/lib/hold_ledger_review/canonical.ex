@@ -1,4 +1,5 @@
 defmodule HoldLedgerReview.Canonical do
+  @moduledoc "Encodes review data with stable key order for content digests."
   def json(value),
     do: value |> HoldLedgerReview.TermCodec.encode() |> ordered() |> IO.iodata_to_binary()
 

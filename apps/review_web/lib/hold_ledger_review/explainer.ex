@@ -1,6 +1,7 @@
 defmodule HoldLedgerReview.Explainer do
+  @moduledoc "Runs a bounded explanation request and validates its citations before display."
   alias HoldLedgerReview.{Anchor, Session}
-  alias HoldLedgerReview.Explainer.{Scripted, Validator}
+  alias HoldLedgerReview.Explainer.{Inference, Scripted, Validator}
 
   def prompt,
     do:
@@ -17,11 +18,7 @@ defmodule HoldLedgerReview.Explainer do
 
       task =
         Task.Supervisor.async_nolink(HoldLedgerReview.Tasks, fn ->
-          case mode do
-            :scripted -> {:ok, Scripted.response(packet, context)}
-            :inference -> HoldLedgerReview.Explainer.Inference.response(packet, question, context)
-            _ -> {:error, :explainer_unavailable}
-          end
+          response(mode, packet, question, context)
         end)
 
       result =
@@ -53,4 +50,12 @@ defmodule HoldLedgerReview.Explainer do
   rescue
     _ -> {:error, :explainer_unavailable}
   end
+
+  defp response(:scripted, packet, _question, context),
+    do: {:ok, Scripted.response(packet, context)}
+
+  defp response(:inference, packet, question, context),
+    do: Inference.response(packet, question, context)
+
+  defp response(_, _, _, _), do: {:error, :explainer_unavailable}
 end

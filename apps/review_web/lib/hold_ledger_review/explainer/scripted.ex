@@ -1,4 +1,5 @@
 defmodule HoldLedgerReview.Explainer.Scripted do
+  @moduledoc "Supplies the offline explanations for the three supported cases."
   def response(p, context) do
     prefix = p.case.id <> "."
 

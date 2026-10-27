@@ -46,9 +46,9 @@ defmodule HoldLedgerReview.ProofEvidence do
     do: %{status: :not_supplied, detail: "No report supplied", report: nil}
 
   def load(root, path, slugs) do
-    with full = Path.expand(path, root),
-         relative = Path.relative_to(full, root),
-         true <- String.starts_with?(relative, "tmp/verification/"),
+    relative = path |> Path.expand(root) |> Path.relative_to(root)
+
+    with true <- String.starts_with?(relative, "tmp/verification/"),
          {:ok, bytes} <- Anchor.read_under(root, relative),
          true <- byte_size(bytes) <= 10_000_000,
          {:ok, report} <- Jason.decode(bytes) do
@@ -63,51 +63,63 @@ defmodule HoldLedgerReview.ProofEvidence do
     end
   end
 
-  def status(root, r, slugs) when is_map(r) do
-    cond do
-      r["schema_version"] not in [nil, 1] or r["mode"] != "EXECUTED" or
-        r["stage"] not in ["proofs", "full"] or not is_map(r["laws"]) ->
-        :incomplete
-
-      not valid_manifest?(r["source_sha256"]) or r["source_sha256"] != manifest(root) ->
-        :stale
-
-      r["source_changes_during_run"] != [] ->
-        :stale
-
-      not Enum.all?(slugs, &Map.has_key?(r["laws"], &1)) ->
-        :incomplete
-
-      Enum.any?(slugs, &(get_in(r, ["laws", &1, "passed"]) == false)) ->
-        :failed
-
-      r["complete"] != true ->
-        :incomplete
-
-      r["stage"] == "proofs" or r["cache"] != "LYNX_CACHE=0" ->
-        :development_only
-
-      r["checker_claim"] != true ->
-        :incomplete
-
-      not Enum.all?(r["laws"], fn {slug, law} -> checked?(root, slug, law) end) or
-          (r["batch"] == true and r["correct_export"] != true) ->
-        :incomplete
-
-      r["release_complete"] == true and full_coverage?(root, r) ->
-        :full_catalog_checked
-
-      r["release_complete"] == true ->
-        :incomplete
-
-      true ->
-        :selected_checked
+  def status(root, report, slugs) when is_map(report) do
+    with :ok <- validate_schema(report),
+         :ok <- validate_sources(root, report),
+         :ok <- validate_results(report, slugs) do
+      checker_status(root, report)
+    else
+      {:error, status} -> status
     end
   rescue
     _ -> :incomplete
   end
 
   def status(_, _, _), do: :incomplete
+
+  defp validate_schema(r) do
+    valid =
+      r["schema_version"] in [nil, 1] and r["mode"] == "EXECUTED" and
+        r["stage"] in ["proofs", "full"] and is_map(r["laws"])
+
+    if valid, do: :ok, else: {:error, :incomplete}
+  end
+
+  defp validate_sources(root, r) do
+    current =
+      valid_manifest?(r["source_sha256"]) and r["source_sha256"] == manifest(root) and
+        r["source_changes_during_run"] == []
+
+    if current, do: :ok, else: {:error, :stale}
+  end
+
+  defp validate_results(r, slugs) do
+    cond do
+      not Enum.all?(slugs, &Map.has_key?(r["laws"], &1)) -> {:error, :incomplete}
+      Enum.any?(slugs, &(get_in(r, ["laws", &1, "passed"]) == false)) -> {:error, :failed}
+      r["complete"] != true -> {:error, :incomplete}
+      true -> :ok
+    end
+  end
+
+  defp checker_status(root, r) do
+    cond do
+      r["stage"] == "proofs" or r["cache"] != "LYNX_CACHE=0" -> :development_only
+      r["checker_claim"] != true -> :incomplete
+      not checked_run?(root, r) -> :incomplete
+      r["release_complete"] == true -> catalog_status(root, r)
+      true -> :selected_checked
+    end
+  end
+
+  defp checked_run?(root, r) do
+    Enum.all?(r["laws"], fn {slug, law} -> checked?(root, slug, law) end) and
+      (r["batch"] != true or r["correct_export"] == true)
+  end
+
+  defp catalog_status(root, r) do
+    if full_coverage?(root, r), do: :full_catalog_checked, else: :incomplete
+  end
 
   defp valid_manifest?(m) when is_map(m) and map_size(m) > 0 do
     Enum.all?(m, fn {path, hash} ->
@@ -128,32 +140,54 @@ defmodule HoldLedgerReview.ProofEvidence do
   end
 
   defp checked?(root, slug, law) do
-    registered_source?(root, slug, law) and law["passed"] == true and
+    registered_source?(root, slug, law) and native_passed?(law) and
+      source_matches?(root, law) and exports_checked?(root, law["exports"])
+  end
+
+  defp native_passed?(law) do
+    law["passed"] == true and
       (law["native_passed"] == true or
-         (law["one_law_test"] == true and law["correct_export"] == true)) and
-      is_binary(law["source"]) and
-      law["source_sha256"] == digest_file(root, law["source"]) and is_list(law["exports"]) and
-      law["exports"] != [] and
-      Enum.all?(law["exports"], fn export ->
-        checks = export["checker_acceptance"] || %{}
+         (law["one_law_test"] == true and law["correct_export"] == true))
+  end
 
-        export["passed"] == true and export["allowed_axioms"] == true and
-          Enum.sort(Map.keys(checks)) == Enum.sort(@checkers) and
-          Enum.all?(checks, fn {_, v} -> v == true end) and
-          is_list(export["axiom_list"]) and export["axiom_list"] != [] and
-          Enum.all?(export["axiom_list"], &(&1 in ["propext", "Quot.sound", "Classical.choice"])) and
-          is_binary(export["path"]) and
-          String.starts_with?(export["path"], "tmp/verification/exports/") and
-          is_integer(export["export_bytes"]) and export["export_bytes"] > 0 and
-          case Anchor.read_under(root, export["path"]) do
-            {:ok, bytes} ->
-              byte_size(bytes) == export["export_bytes"] and
-                Anchor.sha(bytes) == export["export_sha256"]
+  defp source_matches?(root, law) do
+    is_binary(law["source"]) and law["source_sha256"] == digest_file(root, law["source"])
+  end
 
-            _ ->
-              false
-          end
-      end)
+  defp exports_checked?(root, exports) when is_list(exports) and exports != [] do
+    Enum.all?(exports, &export_checked?(root, &1))
+  end
+
+  defp exports_checked?(_, _), do: false
+
+  defp export_checked?(root, export) do
+    export["passed"] == true and export["allowed_axioms"] == true and
+      checkers_passed?(export["checker_acceptance"]) and axioms_allowed?(export["axiom_list"]) and
+      export_matches?(root, export)
+  end
+
+  defp checkers_passed?(checks) when is_map(checks) do
+    Enum.sort(Map.keys(checks)) == Enum.sort(@checkers) and
+      Enum.all?(checks, fn {_, v} -> v == true end)
+  end
+
+  defp checkers_passed?(_), do: false
+
+  defp axioms_allowed?(axioms) when is_list(axioms) and axioms != [] do
+    Enum.all?(axioms, &(&1 in ["propext", "Quot.sound", "Classical.choice"]))
+  end
+
+  defp axioms_allowed?(_), do: false
+
+  defp export_matches?(root, export) do
+    with path when is_binary(path) <- export["path"],
+         true <- String.starts_with?(path, "tmp/verification/exports/"),
+         size when is_integer(size) and size > 0 <- export["export_bytes"],
+         {:ok, bytes} <- Anchor.read_under(root, path) do
+      byte_size(bytes) == size and Anchor.sha(bytes) == export["export_sha256"]
+    else
+      _ -> false
+    end
   end
 
   defp full_coverage?(root, r) do

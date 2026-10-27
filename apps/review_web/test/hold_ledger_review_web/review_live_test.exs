@@ -1,7 +1,7 @@
 defmodule HoldLedgerReviewWeb.ReviewLiveTest do
   use HoldLedgerReviewWeb.ConnCase
   import Phoenix.LiveViewTest
-  alias HoldLedgerReview.{Packet, Session, Receipts}
+  alias HoldLedgerReview.{Packet, Receipts, Session}
 
   setup do
     dir = Path.join(System.tmp_dir!(), "review-receipts-#{System.unique_integer([:positive])}")

@@ -1,6 +1,6 @@
 defmodule HoldLedgerReview.Session do
   @moduledoc "Pure session actions; LiveViews hold isolated instances."
-  alias HoldLedgerReview.{Packet, Facts}
+  alias HoldLedgerReview.{Facts, Packet}
   @decisions ~w(accept_scope reject_scope needs_policy insufficient_evidence)
   def decisions, do: @decisions
 
@@ -28,12 +28,10 @@ defmodule HoldLedgerReview.Session do
         do: ~w(admit reject uncertain),
         else: ~w(retain release uncertain)
 
-    if choice not in choices do
-      {:error, :invalid_prediction}
-    else
-      if is_nil(s.prediction),
-        do: {:ok, %{s | prediction: choice, note: text(params["note"], 500)}},
-        else: {:ok, s}
+    cond do
+      choice not in choices -> {:error, :invalid_prediction}
+      is_nil(s.prediction) -> {:ok, %{s | prediction: choice, note: text(params["note"], 500)}}
+      true -> {:ok, s}
     end
   end
 
@@ -111,51 +109,81 @@ defmodule HoldLedgerReview.Session do
     mode = Application.get_env(:hold_ledger_review_web, :review_mode, :practice)
     current = Packet.current?(s.packet)
 
+    with :ok <- validate_session(s, decision),
+         :ok <- validate_evidence(s.packet, rationale, ids),
+         :ok <- validate_reason(decision, rationale, ids),
+         :ok <- validate_acceptance(s.packet, params, current),
+         :ok <- validate_scope(s.packet, params, mode) do
+      {:ok,
+       %{
+         decision: decision,
+         rationale: rationale,
+         selected_evidence_ids: ids,
+         review_mode: mode,
+         reviewed_scope: text(params["scope"], 500),
+         reviewed_revision: params["revision"],
+         formally_checked: params["formally_checked"] == "true",
+         stale_at_recording: not current
+       }}
+    end
+  end
+
+  defp validate_session(s, decision) do
     cond do
-      s.receipt_id != nil ->
-        {:error, :already_recorded}
+      s.receipt_id != nil -> {:error, :already_recorded}
+      s.prediction == nil -> {:error, :prediction_required}
+      decision not in @decisions -> {:error, :unknown_decision}
+      true -> :ok
+    end
+  end
 
-      s.prediction == nil ->
-        {:error, :prediction_required}
-
-      decision not in @decisions ->
-        {:error, :unknown_decision}
-
+  defp validate_evidence(packet, rationale, ids) do
+    cond do
       not is_binary(rationale) or not String.valid?(rationale) or byte_size(rationale) > 2000 ->
         {:error, :rationale_too_long}
 
-      not is_list(ids) or length(ids) > 30 or
-          Enum.any?(ids, &(&1 not in Packet.evidence_ids(s.packet))) ->
+      not is_list(ids) or length(ids) > 30 ->
         {:error, :invalid_evidence}
 
-      decision in ~w(accept_scope reject_scope) and (String.trim(rationale) == "" or ids == []) ->
-        {:error, :rationale_and_evidence_required}
-
-      decision == "accept_scope" and (not current or s.packet.facts.disputed?) ->
-        {:error, :stale_or_disputed_source}
-
-      decision == "accept_scope" and params["formally_checked"] == "true" and
-          s.packet.proof.status not in [:selected_checked, :full_catalog_checked] ->
-        {:error, :checked_evidence_required}
-
-      mode == :source_review and
-          (params["revision"] != s.packet.git_head or text(params["scope"], 500) == "") ->
-        {:error, :revision_and_scope_required}
+      Enum.any?(ids, &(&1 not in Packet.evidence_ids(packet))) ->
+        {:error, :invalid_evidence}
 
       true ->
-        {:ok,
-         %{
-           decision: decision,
-           rationale: rationale,
-           selected_evidence_ids: ids,
-           review_mode: mode,
-           reviewed_scope: text(params["scope"], 500),
-           reviewed_revision: params["revision"],
-           formally_checked: params["formally_checked"] == "true",
-           stale_at_recording: not current
-         }}
+        :ok
     end
   end
+
+  defp validate_reason(decision, rationale, ids) when decision in ~w(accept_scope reject_scope) do
+    if String.trim(rationale) == "" or ids == [],
+      do: {:error, :rationale_and_evidence_required},
+      else: :ok
+  end
+
+  defp validate_reason(_, _, _), do: :ok
+
+  defp validate_acceptance(packet, %{"decision" => "accept_scope"} = params, current) do
+    cond do
+      not current or packet.facts.disputed? ->
+        {:error, :stale_or_disputed_source}
+
+      params["formally_checked"] == "true" and
+          packet.proof.status not in [:selected_checked, :full_catalog_checked] ->
+        {:error, :checked_evidence_required}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_acceptance(_, _, _), do: :ok
+
+  defp validate_scope(packet, params, :source_review) do
+    if params["revision"] != packet.git_head or text(params["scope"], 500) == "",
+      do: {:error, :revision_and_scope_required},
+      else: :ok
+  end
+
+  defp validate_scope(_, _, _), do: :ok
 
   def text(v, max) when is_binary(v) do
     if String.valid?(v) and byte_size(v) <= max, do: String.trim(v), else: ""

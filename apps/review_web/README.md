@@ -13,7 +13,7 @@ mix phx.server
 ```
 
 Open http://localhost:4000/review. The default scripted explainer makes no
-network calls. Follow the [manual exercise](../../guides/interactive_review.md)
+network calls. Follow the [manual exercise](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md)
 for prediction, candidate comparison, original claims and a human receipt.
 
 Configuration is resolved at startup:
