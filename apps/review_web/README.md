@@ -40,10 +40,11 @@ mix phx.server
 Open [localhost:4000/review](http://localhost:4000/review). The server binds to
 `127.0.0.1`. Stop it with Ctrl+C in the terminal where you started it.
 
-The default explanations are scripted and run locally. You don't need an AI
-account, API key, database, or running processor. The app calls the pure ledger
-and specification functions on fixed inputs; starting it doesn't start a ledger
-server or open a journal.
+The default explainer uses your local Codex login through ASM, with
+`gpt-6.1-sol` at low reasoning effort. Run `codex login` if needed. For offline
+scripted explanations, start with `HOLD_LEDGER_REVIEW_EXPLAINER=scripted`.
+The app calls the pure ledger and specification functions on fixed inputs;
+starting it doesn't start a ledger server or open a journal.
 
 You can also follow the
 [manual review exercise](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md)
@@ -130,20 +131,28 @@ records judgment about the stated scope; it grants no deployment authority.
 
 ## Use an AI explainer
 
-Scripted mode supplies fixed explanations and review questions for each case.
-For questions answered by a model, explicitly enable inference at startup:
+The configured client uses `Inference.Adapters.ASM`, provider `:codex`, and
+the Codex SDK lane. Its default model is `gpt-6.1-sol` with
+`reasoning_effort: :low`. Codex manages authentication through its local login.
 
 ```sh
-export OPENAI_API_KEY=...  # use your local secret-management method
-export HOLD_LEDGER_REVIEW_EXPLAINER=inference
-export HOLD_LEDGER_REVIEW_MODEL=...  # choose a model with JSON Schema support
+codex login
 mix phx.server
 ```
 
-The app uses `Inference.Client` through `Inference.Adapters.ReqLLM`, with the
-OpenAI provider. It checks the adapter's JSON Schema capability before sending
-a request. An unsupported or unknown capability leaves the explainer unavailable.
-To return to scripted mode, restart with `HOLD_LEDGER_REVIEW_EXPLAINER=scripted`.
+To change the model or effort at startup:
+
+```sh
+HOLD_LEDGER_REVIEW_MODEL=gpt-6.1-sol \
+HOLD_LEDGER_REVIEW_REASONING_EFFORT=low mix phx.server
+```
+
+Client construction belongs to `inference_client_options` in `config/config.exs`.
+The explainer consumes the configured `Inference.Client` without choosing an
+adapter or provider. An explicitly supplied `:inference_client` is preserved.
+The adapter must report JSON Schema support for this app's structured responses.
+Set `HOLD_LEDGER_REVIEW_EXPLAINER=scripted` for fixed offline explanations.
+Tests and CI explicitly use scripted mode or mock clients.
 
 In inference mode, the provider receives your question, the selected case and
 candidate, computed predicates, proof status, and quoted source anchors. The
@@ -168,9 +177,9 @@ All environment settings are read at startup.
 | `HOLD_LEDGER_REVIEW_ROOT` | Checkout root | Source checkout to inspect. Ledger and Spec bytes must match the compiled dependency. |
 | `HOLD_LEDGER_REVIEW_REPORT` | Unset | Existing report under root `tmp/verification/`. |
 | `HOLD_LEDGER_REVIEW_MODE` | `practice` | `practice` or `source_review`. |
-| `HOLD_LEDGER_REVIEW_EXPLAINER` | `scripted` | `scripted` or `inference`. |
-| `HOLD_LEDGER_REVIEW_MODEL` | Unset | Model used in inference mode. |
-| `OPENAI_API_KEY` | Unset | Credential used by the optional provider adapter. |
+| `HOLD_LEDGER_REVIEW_EXPLAINER` | `inference` (`scripted` in tests) | `scripted` or `inference`. |
+| `HOLD_LEDGER_REVIEW_MODEL` | `gpt-6.1-sol` | Overrides the configured client model. |
+| `HOLD_LEDGER_REVIEW_REASONING_EFFORT` | `low` | Overrides the configured reasoning effort. |
 
 Browser events can't supply source or report paths. The root override is checked
 against the compiled Ledger and Spec so computed facts can't be paired with a

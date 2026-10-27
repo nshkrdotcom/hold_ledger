@@ -14,7 +14,7 @@ defmodule HoldLedgerReview.Explainer do
          not Map.has_key?(packet.facts.candidates, context.candidate) do
       {:error, :explainer_unavailable}
     else
-      mode = Application.get_env(:hold_ledger_review_web, :explainer, :scripted)
+      mode = Application.get_env(:hold_ledger_review_web, :explainer, :inference)
 
       task =
         Task.Supervisor.async_nolink(HoldLedgerReview.Tasks, fn ->
@@ -22,7 +22,10 @@ defmodule HoldLedgerReview.Explainer do
         end)
 
       result =
-        Task.yield(task, Application.get_env(:hold_ledger_review_web, :explainer_timeout, 15_000)) ||
+        Task.yield(
+          task,
+          Application.get_env(:hold_ledger_review_web, :explainer_timeout, 120_000)
+        ) ||
           Task.shutdown(task, :brutal_kill)
 
       with {:ok, {:ok, data}} <- result, {:ok, items} <- Validator.validate(data, packet) do

@@ -8,6 +8,7 @@ defmodule HoldLedgerReview.Application do
   @impl true
   def start(_type, _args) do
     HoldLedgerReview.Config.validate!()
+    HoldLedgerReview.Config.configure_inference!()
 
     children = [
       {Task.Supervisor, name: HoldLedgerReview.Tasks},

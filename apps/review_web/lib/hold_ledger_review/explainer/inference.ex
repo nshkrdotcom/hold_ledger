@@ -50,17 +50,7 @@ defmodule HoldLedgerReview.Explainer.Inference do
         {:ok, client}
 
       _ ->
-        case Application.get_env(:hold_ledger_review_web, :inference_model) do
-          model when is_binary(model) and byte_size(model) > 0 ->
-            Inference.Client.new(
-              adapter: Inference.Adapters.ReqLLM,
-              provider: :openai,
-              model: model
-            )
-
-          _ ->
-            {:error, :not_configured}
-        end
+        {:error, :not_configured}
     end
   end
 end

@@ -63,9 +63,10 @@ permission to deploy. Old receipts remain available after source changes.
 
 ## Optional AI explanation
 
-The default is scripted and offline. Explicit hosted configuration is documented
-in `apps/review_web/README.md`. Questions and source excerpts go to the selected
-provider only in that mode. Explanations must cite IDs in the current packet,
+The default uses ASM and Codex with `gpt-6.1-sol` at low effort. Configuration is
+documented in `apps/review_web/README.md`. Set
+`HOLD_LEDGER_REVIEW_EXPLAINER=scripted` for offline explanations. Questions and
+source excerpts go to the selected provider in inference mode. Explanations must cite IDs in the current packet,
 remain visibly labeled, and never supply computed facts or a decision. Open
 citations and mark misleading text; an existing citation does not prove that
 a sentence follows from it. A provider failure leaves the workbench usable.

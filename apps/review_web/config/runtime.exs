@@ -46,13 +46,14 @@ config :hold_ledger_review_web,
 config :hold_ledger_review_web, :proof_report, System.get_env("HOLD_LEDGER_REVIEW_REPORT")
 
 # Explicit opt-in; no credentials are loaded from browser events.
-case System.get_env("HOLD_LEDGER_REVIEW_EXPLAINER", "scripted") do
+default_explainer = if config_env() == :test, do: "scripted", else: "inference"
+
+case System.get_env("HOLD_LEDGER_REVIEW_EXPLAINER", default_explainer) do
   "scripted" ->
     config :hold_ledger_review_web, :explainer, :scripted
 
   "inference" ->
     config :hold_ledger_review_web, :explainer, :inference
-    config :hold_ledger_review_web, :inference_model, System.get_env("HOLD_LEDGER_REVIEW_MODEL")
 
   _ ->
     raise "HOLD_LEDGER_REVIEW_EXPLAINER must be scripted or inference"
@@ -62,4 +63,21 @@ case System.get_env("HOLD_LEDGER_REVIEW_MODE", "practice") do
   "practice" -> config :hold_ledger_review_web, :review_mode, :practice
   "source_review" -> config :hold_ledger_review_web, :review_mode, :source_review
   _ -> raise "HOLD_LEDGER_REVIEW_MODE must be practice or source_review"
+end
+
+if model = System.get_env("HOLD_LEDGER_REVIEW_MODEL") do
+  config :hold_ledger_review_web, :inference_model, model
+end
+
+if effort = System.get_env("HOLD_LEDGER_REVIEW_REASONING_EFFORT") do
+  allowed = %{
+    "low" => :low,
+    "medium" => :medium,
+    "high" => :high,
+    "xhigh" => :xhigh,
+    "max" => :max,
+    "ultra" => :ultra
+  }
+
+  config :hold_ledger_review_web, :inference_reasoning_effort, Map.fetch!(allowed, effort)
 end

@@ -10,7 +10,16 @@ import Config
 config :hold_ledger_review_web,
   ledger_root: Path.expand("../../..", __DIR__),
   review_mode: :practice,
-  explainer: :scripted
+  explainer: :inference,
+  explainer_timeout: 120_000,
+  inference_client_options: [
+    adapter: Inference.Adapters.ASM,
+    admitted_kinds: [:agent_session],
+    provider: :codex,
+    model: "gpt-6.1-sol",
+    defaults: [reasoning_effort: :low, timeout: 110_000],
+    adapter_opts: [query_opts: [lane: :sdk]]
+  ]
 
 config :hold_ledger_review_web,
   generators: [timestamp_type: :utc_datetime]

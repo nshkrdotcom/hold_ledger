@@ -47,8 +47,9 @@ defmodule HoldLedgerReview.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
       {:hold_ledger, path: "../.."},
-      {:inference, "~> 0.5.1"},
-      {:req_llm, "~> 1.29.0"},
+      {:inference, "~> 0.5.2"},
+      {:agent_session_manager, "~> 0.17.4"},
+      {:codex_sdk, "~> 0.21.4"},
       {:phoenix, "~> 1.8.16"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
@@ -74,7 +75,7 @@ defmodule HoldLedgerReview.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.14.0"}
     ]
   end
 
