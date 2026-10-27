@@ -1,0 +1,74 @@
+name: Review Studio
+on:
+  push:
+    paths:
+      - 'apps/review_web/**'
+      - 'lib/**'
+      - 'test/**'
+      - 'guides/**'
+      - 'verification/**'
+      - 'scripts/**'
+      - 'mix.exs'
+      - 'mix.lock'
+      - 'lean-toolchain'
+      - '.tool-versions'
+      - '.github/workflows/review-web.yml'
+  pull_request:
+    paths:
+      - 'apps/review_web/**'
+      - 'lib/**'
+      - 'test/**'
+      - 'guides/**'
+      - 'verification/**'
+      - 'scripts/**'
+      - 'mix.exs'
+      - 'mix.lock'
+      - 'lean-toolchain'
+      - '.tool-versions'
+      - '.github/workflows/review-web.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review-web:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    env:
+      HOLD_LEDGER_REVIEW_EXPLAINER: scripted
+      HOLD_LEDGER_REVIEW_MODE: practice
+    defaults:
+      run:
+        working-directory: apps/review_web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: erlef/setup-beam@v1.24.1
+        with:
+          otp-version: '29.1.2'
+          elixir-version: '1.20.4'
+          version-type: strict
+      - name: Locked dependencies, compilation and tests
+        run: |
+          mix deps.get --check-locked
+          git diff --exit-code -- mix.lock ../../mix.lock
+          mix format --check-formatted
+          mix compile --warnings-as-errors
+          mix test --warnings-as-errors
+          mix assets.setup
+          mix assets.build
+      - name: Chromium offline interaction and accessibility smoke
+        run: |
+          npm ci --prefix test/browser
+          cd test/browser
+          npx playwright install --with-deps chromium
+          cd ../..
+          mkdir -p ../../tmp/review_studio
+          mix phx.server > ../../tmp/review_studio/browser-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:4000/review > /dev/null; then break; fi
+            sleep 1
+          done
+          npm test --prefix test/browser

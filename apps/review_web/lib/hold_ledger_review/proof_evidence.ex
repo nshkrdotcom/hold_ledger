@@ -69,7 +69,7 @@ defmodule HoldLedgerReview.ProofEvidence do
         r["stage"] not in ["proofs", "full"] or not is_map(r["laws"]) ->
         :incomplete
 
-      not is_map(r["source_sha256"]) or r["source_sha256"] != manifest(root) ->
+      not valid_manifest?(r["source_sha256"]) or r["source_sha256"] != manifest(root) ->
         :stale
 
       r["source_changes_during_run"] != [] ->
@@ -90,7 +90,7 @@ defmodule HoldLedgerReview.ProofEvidence do
       r["checker_claim"] != true ->
         :incomplete
 
-      not Enum.all?(r["laws"], fn {_slug, law} -> checked?(root, law) end) or
+      not Enum.all?(r["laws"], fn {slug, law} -> checked?(root, slug, law) end) or
           (r["batch"] == true and r["correct_export"] != true) ->
         :incomplete
 
@@ -109,8 +109,26 @@ defmodule HoldLedgerReview.ProofEvidence do
 
   def status(_, _, _), do: :incomplete
 
-  defp checked?(root, law) do
-    law["passed"] == true and
+  defp valid_manifest?(m) when is_map(m) and map_size(m) > 0 do
+    Enum.all?(m, fn {path, hash} ->
+      is_binary(path) and is_binary(hash) and Regex.match?(~r/\A[0-9a-f]{64}\z/, hash)
+    end)
+  end
+
+  defp valid_manifest?(_), do: false
+
+  defp registered_source?(root, slug, law) do
+    with {:ok, bytes} <- Anchor.read_under(root, "verification/laws.json"),
+         {:ok, catalog} <- Jason.decode(bytes),
+         item when is_map(item) <- Enum.find(catalog["laws"], &(&1["slug"] == slug)) do
+      item["file"] == law["source"]
+    else
+      _ -> false
+    end
+  end
+
+  defp checked?(root, slug, law) do
+    registered_source?(root, slug, law) and law["passed"] == true and
       (law["native_passed"] == true or
          (law["one_law_test"] == true and law["correct_export"] == true)) and
       is_binary(law["source"]) and

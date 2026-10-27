@@ -49,6 +49,10 @@ defmodule HoldLedgerReview.Receipts do
              follow_on: s.follow,
              explanation: s.explanation,
              explanation_feedback: s.feedback,
+             explanation_model: if(s.explanation, do: s.explanation.model, else: "not_requested"),
+             explanation_prompt_sha256:
+               HoldLedgerReview.Anchor.sha(HoldLedgerReview.Explainer.prompt()),
+             open_questions: [],
              created_at_utc: DateTime.utc_now() |> DateTime.to_iso8601()
            }),
          :ok <- write(id, receipt) do

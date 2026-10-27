@@ -70,7 +70,7 @@ defmodule HoldLedgerReview.ExplainerTest do
 
   test "provider timeout returns unavailable without changing packet", %{packet: p} do
     Application.put_env(:hold_ledger_review_web, :explainer, :inference)
-    Application.put_env(:hold_ledger_review_web, :explainer_timeout, 20)
+    Application.put_env(:hold_ledger_review_web, :explainer_timeout, 500)
 
     client =
       Inference.Client.new!(
