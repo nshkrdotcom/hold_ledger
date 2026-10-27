@@ -57,6 +57,7 @@ defmodule HoldLedger.MixProject do
       guides/reading_deeper_proofs.md
       guides/agentic_verification.md
       guides/human_review.md
+      guides/interactive_review.md
     )
 
     guide_groups = [

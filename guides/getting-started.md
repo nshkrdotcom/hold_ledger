@@ -97,6 +97,23 @@ Until a release is published, use a chosen repository commit rather than an unpi
 
 The application starts a task supervisor but does not open a ledger automatically. Start `HoldLedger.Server` explicitly or set `:server_options` as shown in [Runtime and recovery](runtime.md). Lynx, StreamData and ExDoc are test or documentation dependencies, not processor services.
 
+## Optional human review interface
+
+The ledger and Lean lessons work independently of Phoenix. For the local
+practice workbench, use the pinned BEAM tools and run:
+
+```sh
+cd apps/review_web
+mix deps.get
+mix assets.setup
+mix assets.build
+mix phx.server
+```
+
+Open `http://localhost:4000/review`. Scripted explanations need no API key.
+See [interactive review](interactive_review.md) for the no-server exercise and
+optional provider configuration.
+
 ## Local quality checks
 
 Run `mix test` first, then strict Credo and Dialyzer as needed. [Testing](testing.md) lists the commands and their scope; [Verification](verification.md) covers the separate, expensive formal checks. If prerequisites fail, use [Troubleshooting](troubleshooting.md) rather than changing version pins silently.

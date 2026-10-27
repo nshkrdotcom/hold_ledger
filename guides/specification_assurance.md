@@ -126,6 +126,10 @@ See [VerusEval, sections 3–6](https://arxiv.org/html/2610.26464v1) (October 20
 
 See the [Verus-SpecGym paper](https://arxiv.org/abs/2605.26457) (May 2026) and [code and benchmark](https://github.com/formal-verif-is-cool/verus-spec-gym).
 
+The [interactive review exercise](interactive_review.md) uses concrete wrong
+outputs to expose gaps in a contract. Such witnesses can reveal omissions;
+they cannot establish that requirements are complete.
+
 ## Where assurance stops
 
 Hold Ledger's pure laws reason about translated Elixir functions under declared hypotheses. They do not by themselves establish that the BEAM compiler and translator agree on every program, that every journal sync survives physical failure, or that a real processor honors deduplication and [permanent fencing](processors.md#terminal-attestation-and-retention). [Verification](verification.md) distinguishes full proof acceptance from supported catalog entries and development attempts. [Testing](testing.md) distinguishes runtime and fault-injection evidence. [Assurance audit](audit.md) walks through the actual trust boundaries.

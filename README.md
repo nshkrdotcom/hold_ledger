@@ -27,6 +27,10 @@ If you're new to Lean, start with the crash course. You'll run a small proof, br
 
 [Specification assurance](guides/specification_assurance.md) deals with proofs of inadequate requirements. [Verification](guides/verification.md) explains what the checkers establish. The [assurance audit](guides/audit.md) covers the whole system and is not part of the first lesson.
 
+The operator directs the agent; the reviewer judges claims and evidence; the policy
+owner resolves disputed behavior. [Interactive review](guides/interactive_review.md)
+provides a manual exercise and an optional local Phoenix workbench.
+
 ## Try it on a supported machine
 
 The supported checkout runs on **Ubuntu 26.04 x86_64**, with Erlang/OTP **29.1.2**, Elixir **1.20.4** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, and Git. The demo and focused proofs don't need `bwrap` (Bubblewrap). The full independent checker does. Onboarding checks your existing Elixir/OTP installation; it won't install those tools.

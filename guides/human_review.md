@@ -24,6 +24,26 @@ The author need not be human. The important question is whether approved require
 
 Agents can carry out implementation and proof work within agreed requirements. Review changes to those requirements separately from proof repairs. The table describes **responsibilities**, not a requirement for a person to type every theorem.
 
+## Review the guarantee, not the generated explanation
+
+Write down the unacceptable behavior before reading the explanation. Then ask:
+
+1. What is universally claimed? Read `requires`, `expects` and called predicates.
+2. Which states qualify? Check exact fit, missing identity and uncertain holds.
+3. Which wrong output still passes? Validity can permit premature void release;
+   effects and exposure retention are separate requirements.
+4. What ran? Check hashes, law selection, stage, exports and drift. Selected
+   `checker_claim` does not establish `release_complete`.
+5. What remains assumed? Pure proofs do not establish disk durability or
+   remote processor honesty.
+
+Practice with [Review Studio or its manual exercise](interactive_review.md).
+Record a separate human judgment: case/claim, reviewed source digest, policy
+anchor, witness, wrong alternative and predicate finding, proof status, limits,
+decision and reason. Acceptance/rejection needs a rationale and cited evidence;
+insufficient evidence need not invent either. Preserve old receipts when sources
+change. A human receipt is neither a proof certificate nor deployment authority.
+
 ## Classify the diff
 
 | Tier | Diff | Action |

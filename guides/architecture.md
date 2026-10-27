@@ -41,6 +41,13 @@ It has no I/O, clock, process or hidden state.
 predicates. Neither module calls the other. Tests compare them, and the formal
 laws relate the translated ledger to specification predicates.
 
+## Optional review companion
+
+`apps/review_web/` is a separate Mix/Phoenix project with a path dependency on
+this root package. It inspects pure Ledger and Spec calls. It has its own
+lockfile and lifecycle and does not participate in the journaled runtime or
+proof toolchain. See [interactive review](interactive_review.md).
+
 ## Runtime
 
 The server takes the pure transitions and makes them durable before any effect is scheduled. `HoldLedger.Server` owns one ledger and serializes inputs. It journals and syncs

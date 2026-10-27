@@ -38,6 +38,71 @@ Did a check fail?
 
 A failed tactic does not by itself require a policy decision. Use the [responsibility table](human_review.md#what-to-delegate-and-what-to-decide) and [diff tiers](human_review.md#classify-the-diff) to review the resulting change.
 
+## Run an agent through a bounded change
+
+The **operator** sets the objective and constraints; the **reviewer** judges the
+claim and evidence; the **policy owner** resolves disputed behavior. One person
+may fill all three roles. The agent drafts and attempts proofs within that scope.
+You need not author Lean tactics to review what a theorem claims. Read its
+input domain and predicate definitions, then try an unacceptable output.
+
+| Checkpoint | Agent supplies | Human decision |
+|---|---|---|
+| Identify behavior | Policy source, before/event/after, harmful alternative | Which requirement governs? Stop for conflicting policy. |
+| Propose statement | Actual `requires`, `expects`, called definitions and domain | Does it cover required cases? |
+| Attack claim | Valid witness, excluded boundary, two wrong outputs and predicate results | Which wrong outcomes must be rejected? |
+| Implement and prove | Bounded diff, test/proof commands, remaining goals | Review semantic changes separately from tactics. |
+| Inspect evidence | Source hashes, law slugs, stage and checker/export status | Is this development evidence, selected acceptance or full coverage? |
+| Record judgment | Source-bound packet with limits | Accept for scope, reject, needs policy or insufficient evidence. |
+
+Use these prompts with an ordinary coding assistant:
+
+**Scope and challenge, before edits**
+
+```text
+Read the governing policy, Ledger, independent Spec, policy traces and relevant
+law/Lean definitions for [operation]. Do not edit or attempt proofs yet.
+Return the policy citation, exact before/event/after and effects, proposed
+requires/expects and every called predicate. Give a qualifying witness,
+an important excluded boundary and two wrong outputs for the valid input.
+Evaluate which predicates permit each wrong output. Identify policy choices.
+Agreement between Ledger and Spec is not independent policy authority.
+```
+
+**Bounded implementation after the scope decision**
+
+```text
+Approved requirement and law scope: [quote decision and source]. Make the
+smallest change within that scope. Commit a concrete policy witness; run
+focused tests and the relevant law attempt. Report exact commands, results,
+source identity and checker/export status. Do not weaken claims, redefine
+predicates, add axioms/admissions, remove coverage or change assumptions.
+Stop for an unapproved change of meaning. A timeout is not a counterexample.
+```
+
+**Skeptical explanation**
+
+```text
+Explain this claim to an OTP developer new to Lean. Show original requires
+and expects and source references. Separate policy, concrete execution,
+theorem statement, actual checker evidence and unproved assumptions.
+Show whether the dangerous wrong output is rejected, one excluded input
+and one conclusion the theorem does not establish. Do not recommend approval.
+```
+
+**Evidence-bound handoff**
+
+```text
+Prepare a packet for [claim]: revision/dirty state, source hashes, policy
+anchors, law statements, witness and wrong-output evaluations, exact commands
+and failures, checked exports and runtime limits. Distinguish ordinary tests,
+development proofs and independent checked evidence. Present open questions;
+do not author the human decision or replace missing evidence with prose.
+```
+
+The [interactive review exercise](interactive_review.md) practices these steps.
+Keep the existing pending-void walkthrough below as the executable challenge.
+
 ## Find the named laws
 
 The example uses three law groups:
