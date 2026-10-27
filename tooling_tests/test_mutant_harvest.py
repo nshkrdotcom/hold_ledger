@@ -5,10 +5,11 @@ import json
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from harvest_mutants import source_inputs
+from harvest_mutants import source_inputs, run_observation
 from run_mutants import MUTANTS
 
 
@@ -37,6 +38,33 @@ class MutantHarvestStaticTest(unittest.TestCase):
             self.assertIsNone(item['output'])
             self.assertEqual(item['formal'], 'NOT RUN')
         report.unlink()
+
+
+class MutantObservationFailureTest(unittest.TestCase):
+    def test_failed_scratch_compilation_cannot_be_observed(self):
+        with patch('harvest_mutants.cmd', return_value={'exit': 1, 'timeout': False}) as command:
+            result = run_observation(ROOT, 'M1', 'unit-build-failure', 1)
+        self.assertEqual(result['status'], 'unexecuted')
+        self.assertNotIn('observation', result)
+        self.assertEqual(command.call_count, 1)
+
+    def test_successful_process_without_one_complete_marker_is_unexecuted(self):
+        target = ROOT / 'tmp/verification/mutant-harvest-logs/M1-unit-invalid-marker.log'
+        target.parent.mkdir(parents=True, exist_ok=True)
+        for output in ['', 'MUTANT_OBSERVATION_JSON:{}\n', 'MUTANT_OBSERVATION_JSON:{invalid}\n']:
+            target.write_text(output)
+            with patch('harvest_mutants.cmd', return_value={'exit': 0, 'timeout': False}):
+                result = run_observation(ROOT, 'M1', 'unit-invalid-marker', 1)
+            self.assertEqual(result['status'], 'unexecuted')
+            self.assertNotIn('observation', result)
+        target.unlink()
+
+    def test_compilation_timeout_stops_before_any_reducer_observation(self):
+        with patch('harvest_mutants.cmd', return_value={'exit': None, 'timeout': True}) as command:
+            result = run_observation(ROOT, 'M1', 'unit-build-timeout', 1)
+        self.assertEqual(result['status'], 'unexecuted')
+        self.assertNotIn('observation', result)
+        self.assertEqual(command.call_count, 1)
 
 
 if __name__ == '__main__':

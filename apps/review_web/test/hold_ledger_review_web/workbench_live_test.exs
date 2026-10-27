@@ -7,13 +7,15 @@ defmodule HoldLedgerReviewWeb.WorkbenchLiveTest do
     {:ok, _view, html} = live(conn, "/workbench")
     assert html =~ "Decide what the ledger"
     assert html =~ "new-review-choices"
+
     for route <- ["/review", "/review/void_pending", "/review/receipts/fake"] do
       assert :error ==
-        Phoenix.Router.route_info(HoldLedgerReviewWeb.Router, "GET", route, "localhost")
+               Phoenix.Router.route_info(HoldLedgerReviewWeb.Router, "GET", route, "localhost")
     end
   end
 
-  test "loaded review contains focused cards, exact full witness, law matrix, graph and report links", %{conn: conn} do
+  test "loaded review contains focused cards, exact full witness, law matrix, graph and report links",
+       %{conn: conn} do
     {:ok, doc, _witness} = ReviewStore.create("P06")
     {:ok, view, html} = live(conn, "/workbench/#{doc["id"]}")
     assert html =~ "Your judgment"
@@ -29,9 +31,57 @@ defmodule HoldLedgerReviewWeb.WorkbenchLiveTest do
     {:ok, doc, witness} = ReviewStore.create("P04")
     {:ok, view, _} = live(conn, "/workbench/#{doc["id"]}")
     form = Adversarial.form(witness)
-    assert render_change(view, "draft_changed", %{"draft" => Map.put(form, "output_json", "{")}) =~ "draft-error"
+
+    assert render_change(view, "draft_changed", %{"draft" => Map.put(form, "output_json", "{")}) =~
+             "draft-error"
+
     {:ok, after_change} = ReviewStore.get(doc["id"])
     assert after_change["pinned_probes"] == []
     assert after_change["answers"] == []
+  end
+
+  test "submit re-decodes the raw whole form before any change event", %{conn: conn} do
+    {:ok, doc, witness} = ReviewStore.create("P04")
+    {:ok, view, _} = live(conn, "/workbench/#{doc["id"]}")
+    witness = put_in(witness, ["output", "after", "used_amount"], 99)
+    raw = Adversarial.form(witness)
+
+    view
+    |> form("#candidate-form", %{"draft" => raw})
+    |> render_submit(%{"draft" => %{"choice" => "unacceptable"}})
+
+    {:ok, saved} = ReviewStore.get(doc["id"])
+    assert hd(saved["pinned_probes"])["witness"] == witness
+    assert hd(saved["answers"])["choice"] == "unacceptable"
+    assert hd(saved["answers"])["probe_id"] == hd(saved["pinned_probes"])["id"]
+    # A subsequent change is only an ephemeral draft; it cannot revise the committed answer.
+    render_change(view, "draft_changed", %{"draft" => Map.put(raw, "output_json", "{")})
+    assert has_element?(view, "#escape-acceptable[disabled]")
+    assert has_element?(view, "#escape-unacceptable[disabled]")
+    assert has_element?(view, "#escape-unsure[disabled]")
+    assert render(view) =~ "Historical last-good evaluation only"
+    assert {:ok, ^saved} = ReviewStore.get(doc["id"])
+
+    view
+    |> form("#candidate-form", %{"draft" => Map.put(raw, "output_json", "{")})
+    |> render_submit(%{"draft" => %{"choice" => "unacceptable"}})
+
+    assert {:ok, ^saved} = ReviewStore.get(doc["id"])
+  end
+
+  test "every known full source link returns the exact hashed file; unknown IDs fail", %{
+    conn: conn
+  } do
+    alias HoldLedgerReview.{Anchor, Config}
+    {:ok, doc, _} = ReviewStore.create("P01")
+
+    for source <- doc["graph_snapshot"]["excerpts"] do
+      response = get(conn, "/workbench/#{doc["id"]}/source/#{source["id"]}")
+      bytes = response(response, 200)
+      assert Anchor.sha(bytes) == source["sha256"]
+      assert bytes == File.read!(Path.join(Config.root(), source["path"]))
+    end
+
+    assert response(get(conn, "/workbench/#{doc["id"]}/source/unknown"), 404)
   end
 end

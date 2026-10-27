@@ -85,21 +85,27 @@ controllers. The eight bounded seed JSON fixtures live in `priv/scenarios/`.
 Current record shape is specified by the separately managed milestone docset's
 `contracts/review.schema.json`, not a backward-compatible migration.
 
-The new ExUnit sources in `test/hold_ledger_review/` test graph, pointwise
-candidate and store transactions; `test/hold_ledger_review_web/` checks the
-LiveView and removed routes. For actual browser behavior, start Phoenix then
-run `npm install`, `npx playwright install chromium`, `npm test` from
-`test/browser/`. That Node project intentionally has no hand-written lockfile:
-the first-half sandbox could not reach the npm registry. Install locally and
-commit the genuine resolved lockfile. For **offline, isolated** M1–M10 patched
-reducer observation from code root, run `uv run --locked python scripts/harvest_mutants.py --execute`;
-then run the original-source assessor with the pinned Phoenix Mix wrapper. Static
-manifests never claim observed mutant outputs.
+The tests in `test/hold_ledger_review/` exercise graph provenance, pointwise
+candidates, the current document shape and store transactions; tests in
+`test/hold_ledger_review_web/` exercise the LiveView and source/export routes.
+For browser checks, start Phoenix in a separate terminal, then run `npm ci`,
+`npx playwright install chromium`, and `npm test` from `test/browser/`. The
+committed lockfile was resolved by a real npm installation. The browser tests
+create synthetic review files under ignored `tmp/review_studio/reviews/`.
 
-**Execution status:** the B source and test bodies were authored without the
-Elixir/OTP, Mix, Phoenix or Lean toolchain. Python-only provenance tests passed;
-all Elixir, browser, mutant execution and formal acceptance checks **must run
-and be fixed in the local second half**. Their presence is not a runtime pass.
+For offline, isolated M1–M10 reducer observation from the code root, run:
+
+```sh
+uv run --locked python scripts/harvest_mutants.py --execute
+uv run --locked python scripts/local_run.py --cwd apps/review_web mix run scripts/assess_mutant_harvest.exs -- ../../tmp/verification/mutant-harvest.json
+```
+
+The harvester forces scratch compilation and records source SHA-256, loaded
+BEAM identity, complete outputs and concrete assertion results. The assessor
+uses the original A evaluator and records both tested rows and the unexamined
+catalog. Native operations outside the review codec stay explicitly unprobeable;
+they are not escapes or formal failures. Static manifests never claim observed
+outputs. Generated logs and reports stay ignored.
 
 For a manual no-server challenge to the contract's meaning, use
 [`guides/interactive_review.md`](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md). Product, transaction and evidence specifications for the B workbench and

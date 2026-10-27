@@ -49,7 +49,7 @@ matrix, answer the critical Escape question, and export the saved review.
 Selecting a different seed opens a separate review to preserve card scope.
 Only deliberate pin and human answer submits are persisted; intermediate
 drafts are not. The app uses a *single* A-derived evaluator and strict codec.
-It has **not yet passed local B execution checks**. No AI call or remote
+No AI call or remote
 processor call is made; the former teaching-case UI, receipts and `/review`
 paths are removed. C handles configured AI, not this B app.
 

@@ -1,5 +1,5 @@
 defmodule HoldLedgerReview.ReviewReport do
-  @moduledoc """Readable scoped exports. A human judgment is not checker or deployment acceptance."""
+  @moduledoc "Readable scoped exports. A human judgment is not checker or deployment acceptance."
   alias HoldLedgerReview.{Canonical, Dossier}
 
   def json(review), do: Canonical.json(review) <> "\n"
@@ -9,7 +9,13 @@ defmodule HoldLedgerReview.ReviewReport do
     nodes = review["graph_snapshot"]["nodes"]
     laws = Enum.filter(nodes, &(&1["kind"] == "law"))
     native = Enum.filter(nodes, &(&1["kind"] == "lean"))
-    tested = review["pinned_probes"] |> Enum.flat_map(& &1["evaluation"]["law_rows"]) |> Enum.map(& &1["slug"]) |> Enum.uniq()
+
+    tested =
+      review["pinned_probes"]
+      |> Enum.flat_map(& &1["evaluation"]["law_rows"])
+      |> Enum.map(& &1["slug"])
+      |> Enum.uniq()
+
     remainder = Enum.reject(laws, &(String.replace_prefix(&1["id"], "law.", "") in tested))
     latest = Map.new(review["answers"], &{&1["card_id"], &1})
     cards = review["core_cards"] ++ review["accepted_ai_cards"]
@@ -35,10 +41,14 @@ defmodule HoldLedgerReview.ReviewReport do
       "\n## Questions and human answer history\n\n",
       Enum.map(cards, fn card ->
         answer = latest[card["id"]]
+
         "### #{card["id"]}: #{card["question"]}\n\n" <>
           "Kind: #{card["kind"]}; mandatory: #{card["mandatory"]}; critical: #{card["critical"]} (#{card["critical_reason"]}); sources: #{Enum.join(card["source_ids"], ", ")}\n\n" <>
-          if(answer, do: "Latest human choice: **#{answer["choice"]}**. #{implication(card, answer, review)}\n\n",
-            else: "Not answered.\n\n")
+          if(answer,
+            do:
+              "Latest human choice: **#{answer["choice"]}**. #{implication(card, answer, review)}\n\n",
+            else: "Not answered.\n\n"
+          )
       end),
       "### Supersession chronology\n\n",
       Enum.map(review["answers"], fn a ->
@@ -52,18 +62,32 @@ defmodule HoldLedgerReview.ReviewReport do
       "Native Lean obligations: #{Enum.map_join(native, ", ", &String.replace_prefix(&1["id"], "law.", ""))}. **Not a pointwise DSL probe**; independent checker status above applies only within its recorded report scope.\n\n",
       "Unchecked dimensions may include transition, result, counters, effects, identity, continued remote exposure, journal/replay, external fencing and unknown policy intent. A missing examined catcher is a **candidate gap to investigate**, never a statement that no maintained law exists.\n\n",
       "## AI job and provenance record\n\n",
-      if(review["ai_jobs"] == [], do: "AI disabled / no jobs in this review. No synthetic model response is asserted.\n\n", else:
-        Enum.map(review["ai_jobs"], fn j -> "- #{j["job_id"]}: #{j["request_kind"]}, #{j["status"]}, based on human revision #{j["based_on_human_revision"]}; output is a proposal, not a formal fact.\n" end)),
+      if(review["ai_jobs"] == [],
+        do: "AI disabled / no jobs in this review. No synthetic model response is asserted.\n\n",
+        else:
+          Enum.map(review["ai_jobs"], fn j ->
+            "- #{j["job_id"]}: #{j["request_kind"]}, #{j["status"]}, based on human revision #{j["based_on_human_revision"]}; output is a proposal, not a formal fact.\n"
+          end)
+      ),
       "\n## Scoped conclusion\n\n",
-      if(is_nil(conclusion), do: "**Unfinished review — no human conclusion confirmed.**\n\n", else:
-        "Human-confirmed outcome: **#{conclusion["outcome"]}**. Scope: #{conclusion["scope"]}. Reason: #{conclusion["rationale"]}. Unresolved: #{Enum.join(conclusion["unresolved_ids"], ", ")}. Evidence: #{Enum.join(conclusion["evidence_ids"], ", ")}. Confirmed #{conclusion["confirmed_at_utc"]}.\n\n"),
+      if(is_nil(conclusion),
+        do: "**Unfinished review — no human conclusion confirmed.**\n\n",
+        else:
+          "Human-confirmed outcome: **#{conclusion["outcome"]}**. Scope: #{conclusion["scope"]}. Reason: #{conclusion["rationale"]}. Unresolved: #{Enum.join(conclusion["unresolved_ids"], ", ")}. Evidence: #{Enum.join(conclusion["evidence_ids"], ", ")}. Confirmed #{conclusion["confirmed_at_utc"]}.\n\n"
+      ),
       "The human determines adequacy within the named scope. Pointwise probes do not establish every input, formal status, remote processor truthfulness, or deployment safety.\n"
-    ] |> IO.iodata_to_binary()
+    ]
+    |> IO.iodata_to_binary()
   end
 
   defp implication(card, answer, review) do
     probe = Enum.find(review["pinned_probes"], &(&1["id"] == answer["probe_id"]))
-    case Dossier.implication(card, answer["choice"], if(probe, do: probe["evaluation"], else: nil)) do
+
+    case Dossier.implication(
+           card,
+           answer["choice"],
+           if(probe, do: probe["evaluation"], else: nil)
+         ) do
       {:ok, text} -> text
       _ -> "Invalid answer vocabulary; manual investigation needed."
     end
@@ -71,6 +95,7 @@ defmodule HoldLedgerReview.ReviewReport do
 
   defp format_probe(p) do
     e = p["evaluation"]
+
     [
       "### #{p["id"]} · #{p["origin"]}\n\n",
       "Fingerprint: `#{p["fingerprint"]}` · evaluated against `#{p["source_digest"]}` · scope `#{e["scope"]}`\n\n",
@@ -83,7 +108,8 @@ defmodule HoldLedgerReview.ReviewReport do
       "- Pointwise checks (only relevant supported DSL source AST):\n",
       Enum.map(e["law_rows"], fn law ->
         "  - `#{law["slug"]}`: **#{law["label"]}**, #{law["reason"]}; bindings #{law["bindings_tested"]}; exhaustive for source domain: #{law["exhaustive_for_source_domain"]}; law SHA `#{law["source_sha256"]}`\n"
-      end), "\n"
+      end),
+      "\n"
     ]
   end
 end

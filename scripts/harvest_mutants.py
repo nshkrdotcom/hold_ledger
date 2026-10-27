@@ -20,7 +20,7 @@ import subprocess
 import sys
 import tempfile
 
-from run_mutants import ROOT, LEDGER, SPEC, MUTANTS, digest, patch_correctly_applies, scratch_project, cmd
+from run_mutants import ROOT, LEDGER, SPEC, MUTANTS, digest, patch_correctly_applies, scratch_project, cmd, evidence_of_assertion_failure
 
 INPUTS = ROOT / "scripts/mutant_inputs.json"
 MARKER = "MUTANT_OBSERVATION_JSON:"
@@ -45,7 +45,14 @@ def run_observation(project: Path, mutant: str, label: str, timeout: int) -> dic
     script = project / "scripts/local_run.py"
     args = [sys.executable, str(script), "mix", "run", "scripts/mutant_observe.exs", "--", mutant]
     target = ROOT / "tmp/verification/mutant-harvest-logs" / f"{mutant}-{label}.log"
+    build = cmd([sys.executable, str(script), "mix", "compile", "--force", "--warnings-as-errors"],
+                cwd=project, timeout=timeout,
+                log=target.with_name(f"{mutant}-{label}-build.log"))
+    if build["exit"] != 0 or build["timeout"]:
+        return {"status": "unexecuted", "build": build,
+                "error": "Scratch compilation failed; reducer was not observed"}
     info = cmd(args, cwd=project, timeout=timeout, log=target)
+    info["build"] = build
     output = target.read_text()
     matches = [line[len(MARKER):] for line in output.splitlines() if line.startswith(MARKER)]
     if info["exit"] == 0 and not info["timeout"] and len(matches) == 1:
@@ -53,7 +60,8 @@ def run_observation(project: Path, mutant: str, label: str, timeout: int) -> dic
             value = json.loads(matches[0])
             if value["input_id"] == mutant and set(value) == {
                     "input_id", "before", "event", "output", "oracle",
-                    "input_matches_original_spec", "counterexample_sha256"}:
+                    "input_matches_original_spec", "counterexample_sha256", "ledger_source_sha256", "ledger_beam_md5"} and value["ledger_source_sha256"] == digest(project / LEDGER) and re.fullmatch(r"[0-9a-f]{32}", value["ledger_beam_md5"]):
+                info["compiled_identity"] = {k: value[k] for k in ("ledger_source_sha256", "ledger_beam_md5")}
                 info["observation"] = value
                 info["status"] = "executed"
                 return info
@@ -114,8 +122,7 @@ def harvest_one(spec: tuple, inputs: dict, timeout: int) -> dict:
                            "--exclude", "laws", "--seed", "12345"], cwd=copy,
                           timeout=timeout, log=ROOT / "tmp/verification/mutant-harvest-logs" / f"{mutant}-test.log")
         text = (ROOT / test_result["log"]).read_text()
-        concrete_failure = test_result["exit"] == 2 and not test_result["timeout"] and (
-            "Assertion with" in text or "AssertionError" in text or "Expected truthy" in text or "match (==)" in text)
+        concrete_failure = test_result["exit"] == 2 and not test_result["timeout"] and evidence_of_assertion_failure(text, mutant)
         record["ordinary_test"] = dict(test_result,
             classification=("concrete_assertion_failure" if concrete_failure else
                             "passed" if test_result["exit"] == 0 else
@@ -158,7 +165,10 @@ def main() -> int:
         report.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
         observed = sum(v["provenance"] == "mutant_observed" for v in result["mutants"].values())
         print(f"Harvested {observed}/10 isolated outputs; original-source catcher mapping is a separate Phoenix command")
-        return 0 if not args.execute or observed == 10 else 2
+        assertions = all(isinstance(v["ordinary_test"], dict) and
+                         v["ordinary_test"]["classification"] == "concrete_assertion_failure"
+                         for v in result["mutants"].values())
+        return 0 if not args.execute or (observed == 10 and assertions) else 2
     except (OSError, ValueError, RuntimeError, AssertionError, subprocess.SubprocessError) as error:
         report.write_text(json.dumps({"mode": "INCOMPLETE", "error": str(error),
                                       "mutants": {}, "catcher_mapping": "NOT RUN"}, indent=2) + "\n")

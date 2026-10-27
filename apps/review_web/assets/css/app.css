@@ -5,7 +5,6 @@
 @source "../../lib/hold_ledger_review_web";
 @source "../../_build/dev/phoenix-colocated/hold_ledger_review_web/*/";
 @plugin "../vendor/heroicons";
-@plugin "daisyui/packages/bundle/daisyui" { themes: light --default; }
 :root { color-scheme: light; font-family: ui-sans-serif,system-ui,sans-serif; color: #233331; background: #f5f4ef; }
 :root { color-scheme: light; font-family: ui-sans-serif, system-ui, sans-serif; }
 body { margin: 0; }

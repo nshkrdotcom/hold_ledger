@@ -1,9 +1,10 @@
 defmodule HoldLedgerReview.AdversarialTest do
   use ExUnit.Case, async: false
-  alias HoldLedgerReview.{Adversarial, Canonical, ClaimProbe, Claims}
+  alias HoldLedgerReview.{Adversarial, Canonical, Claims}
 
   test "all eight seeded cases use the loaded source evaluator and independent Spec oracle" do
     assert :ok = Claims.freshness()
+
     for id <- Adversarial.seeds() do
       assert {:ok, witness} = Adversarial.seed(id)
       assert {:ok, decoded} = Adversarial.decode(witness)
@@ -16,10 +17,12 @@ defmodule HoldLedgerReview.AdversarialTest do
       assert evaluation["actual"] == evaluation["oracle"]
       assert details.actual_equals_oracle?
       assert evaluation["law_rows"] != []
+
       assert Enum.all?(evaluation["law_rows"], fn r ->
-        r["label"] in ~w(catches allows_here does_not_apply cant_check) and
-          r["slug"] in Adversarial.active_slugs(decoded.event)
-      end)
+               r["label"] in ~w(catches allows_here does_not_apply cant_check) and
+                 r["slug"] in Adversarial.active_slugs(decoded.event)
+             end)
+
       if id in ~w(P06 P07) do
         assert witness["follow_on"] == nil
         assert evaluation["follow_on_actual"] == nil
@@ -53,8 +56,12 @@ defmodule HoldLedgerReview.AdversarialTest do
     assert {:ok, evidence, _} = Adversarial.evaluate(submitted)
     assert evidence["candidate_hash"] == Canonical.digest(submitted["output"])
     assert {:error, :invalid_draft} = Adversarial.from_form(%{changed | "output_json" => "{"})
-    assert {:error, :invalid_draft} = Adversarial.from_form(%{changed | "event_json" => ~s({"type":"bogus"})})
-    assert {:error, :invalid_draft} = Adversarial.from_form(%{changed | "before_json" => ~s({"amount_limit":-1})})
+
+    assert {:error, :invalid_draft} =
+             Adversarial.from_form(%{changed | "event_json" => ~s({"type":"bogus"})})
+
+    assert {:error, :invalid_draft} =
+             Adversarial.from_form(%{changed | "before_json" => ~s({"amount_limit":-1})})
   end
 
   test "shape-valid, non-Spec-valid hypothetical is examined, not silently discarded" do
@@ -63,5 +70,25 @@ defmodule HoldLedgerReview.AdversarialTest do
     assert details.candidate_after_valid? == false
     assert evidence["follow_on_candidate"] == nil
     assert evidence["follow_on_actual"] == nil
+  end
+
+  test "exact-fit 99/100/101 edits use source eligibility and positive admission" do
+    {:ok, seed} = Adversarial.seed("P04")
+
+    for amount <- [99, 100, 101] do
+      witness = put_in(seed, ["event", "amount"], amount)
+      {:ok, evaluation, details} = Adversarial.evaluate(witness)
+      assert details.request_eligible? == amount <= 100
+      row = Enum.find(evaluation["law_rows"], &(&1["slug"] == "po_a2"))
+      assert row["label"] == if(amount <= 100, do: "catches", else: "does_not_apply")
+
+      assert evaluation["actual"]["result"] ==
+               if(amount <= 100, do: "admitted", else: "insufficient_amount")
+    end
+  end
+
+  test "null follow-on never inspects or steps either after-state" do
+    assert HoldLedgerReview.ClaimProbe.follow_on(:not_an_output, :not_an_output, nil) ==
+             %{actual: nil, candidate: nil, reason: :no_follow_on_event}
   end
 end

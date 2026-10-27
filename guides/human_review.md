@@ -37,12 +37,12 @@ Write down the unacceptable behavior before reading the explanation. Then ask:
 5. What remains assumed? Pure proofs do not establish disk durability or
    remote processor honesty.
 
-Practice with the [manual review exercise](interactive_review.md). The replacement web workbench is not yet exposed.
+Practice with the [manual review exercise](interactive_review.md). The source-anchored web workbench is available at `/workbench`.
 Record a separate human judgment: case/claim, reviewed source digest, policy
 anchor, witness, wrong alternative and predicate finding, proof status, limits,
 decision and reason. Acceptance/rejection needs a rationale and cited evidence;
-insufficient evidence need not invent either. Preserve old receipts when sources
-change. A human receipt is neither a proof certificate nor deployment authority.
+insufficient evidence need not invent either. Retain the source-bound review history when sources
+change; drift makes it read-only. A human review is neither a proof certificate nor deployment authority.
 
 ## Classify the diff
 

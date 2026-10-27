@@ -12,15 +12,20 @@ defmodule HoldLedgerReview.Adversarial do
 
   def seed(id) when id in @seeds do
     path = Application.app_dir(:hold_ledger_review_web, "priv/scenarios/#{id}.json")
+
     with {:ok, bytes} <- File.read(path),
          {:ok, json} <- Jason.decode(bytes),
          {:ok, _} <- decode(json) do
       {:ok, json}
     end
   end
+
   def seed(_), do: {:error, :unknown_seed}
 
-  def decode(%{"before" => before, "event" => event, "output" => output, "follow_on" => follow_on} = json)
+  def decode(
+        %{"before" => before, "event" => event, "output" => output, "follow_on" => follow_on} =
+          json
+      )
       when map_size(json) == 4 do
     with {:ok, b} <- TermCodec.decode_state(before),
          {:ok, e} <- TermCodec.decode_event(event),
@@ -31,6 +36,7 @@ defmodule HoldLedgerReview.Adversarial do
       _ -> {:error, :invalid_draft}
     end
   end
+
   def decode(_), do: {:error, :invalid_draft}
 
   def encode(%{before: before, event: event, output: output, follow_on: follow_on}) do
@@ -44,26 +50,26 @@ defmodule HoldLedgerReview.Adversarial do
 
   def from_form(form) when is_map(form) do
     keys = ~w(before_json event_json output_json follow_on_json)
-    if Enum.all?(keys, fn key -> is_binary(form[key]) and byte_size(form[key]) <= 12_000 end) do
-      decoded = Enum.map(keys, &Jason.decode(form[&1]))
-      if Enum.all?(decoded, &match?({:ok, _}, &1)) do
-        values = Enum.map(decoded, fn {:ok, v} -> v end)
-        [before, event, output, follow] = values
-        decode(%{"before" => before, "event" => event, "output" => output, "follow_on" => follow})
-      else
-        {:error, :invalid_draft}
-      end
+
+    with true <-
+           Enum.all?(keys, fn key -> is_binary(form[key]) and byte_size(form[key]) <= 12_000 end),
+         [{:ok, before}, {:ok, event}, {:ok, output}, {:ok, follow}] <-
+           Enum.map(keys, &Jason.decode(form[&1])) do
+      decode(%{"before" => before, "event" => event, "output" => output, "follow_on" => follow})
     else
-      {:error, :invalid_draft}
+      _ -> {:error, :invalid_draft}
     end
   end
+
   def from_form(_), do: {:error, :invalid_draft}
 
   def form(witness) do
-    %{"before_json" => Jason.encode!(witness["before"], pretty: true),
+    %{
+      "before_json" => Jason.encode!(witness["before"], pretty: true),
       "event_json" => Jason.encode!(witness["event"]),
       "output_json" => Jason.encode!(witness["output"], pretty: true),
-      "follow_on_json" => Jason.encode!(witness["follow_on"])}
+      "follow_on_json" => Jason.encode!(witness["follow_on"])
+    }
   end
 
   def evaluate(witness) do
@@ -75,33 +81,39 @@ defmodule HoldLedgerReview.Adversarial do
          {:ok, actual_json} <- TermCodec.encode_output(actual),
          {:ok, oracle_json} <- TermCodec.encode_output(oracle),
          {:ok, _candidate_json} <- TermCodec.encode_output(decoded.output),
-         {:ok, after} <- TermCodec.encode_state(elem(decoded.output, 0)) do
+         {:ok, after_json} <- TermCodec.encode_state(elem(decoded.output, 0)) do
       slugs = active_slugs(decoded.event)
       checks = ClaimProbe.probe_all(decoded.before, decoded.event, decoded.output, slugs: slugs)
       follow = ClaimProbe.follow_on(actual, decoded.output, decoded.follow_on)
+
       with {:ok, follow_actual} <- optional_output(follow.actual),
            {:ok, follow_candidate} <- optional_output(follow.candidate),
            :ok <- Claims.freshness() do
-        rows = Enum.map(slugs, fn slug ->
-          check = checks[slug]
-          %{"slug" => slug, "label" => label(check.status),
-            "reason" => inspect(check.reason),
-            "source_sha256" => Map.get(check, :source_sha256, ""),
-            "bindings_tested" => check.bindings_tested,
-            "exhaustive_for_source_domain" => check.exhaustive_for_source_domain}
-        end)
-        {:ok, %{
-          "candidate_hash" => Canonical.digest(witness["output"]),
-          "actual" => actual_json, "oracle" => oracle_json,
-          "law_rows" => rows, "follow_on_actual" => follow_actual,
-          "follow_on_candidate" => follow_candidate, "scope" => "pointwise_pure_ledger"
-        }, %{
-          checks: checks, candidate_after_valid?: Spec.valid?(elem(decoded.output, 0)),
-          actual_equals_oracle?: actual == oracle,
-          changed_fields: differences(actual_json, witness["output"]),
-          follow_reason: follow.reason, after: after,
-          request_eligible?: request_eligible(decoded.before, decoded.event)
-        }}
+        rows =
+          Enum.map(slugs, &law_row(&1, checks[&1]))
+
+        {:ok,
+         %{
+           "candidate_hash" => Canonical.digest(witness["output"]),
+           "actual" => actual_json,
+           "oracle" => oracle_json,
+           "law_rows" => rows,
+           "follow_on_actual" => follow_actual,
+           "follow_on_candidate" => follow_candidate,
+           "scope" => "pointwise_pure_ledger"
+         },
+         %{
+           checks: checks,
+           candidate_after_valid?: Spec.valid?(elem(decoded.output, 0)),
+           actual_equals_oracle?: actual == oracle,
+           changed_fields: differences(actual_json, witness["output"]),
+           follow_reason: follow.reason,
+           after: after_json,
+           request_eligible?: request_eligible(decoded.before, decoded.event)
+         }}
+      else
+        {:error, :source_or_compiled_code_drift} -> {:error, :stale_source}
+        error -> error
       end
     else
       false -> {:error, :invalid_before_state}
@@ -110,27 +122,47 @@ defmodule HoldLedgerReview.Adversarial do
     end
   end
 
+  defp law_row(slug, check) do
+    %{
+      "slug" => slug,
+      "label" => label(check.status),
+      "reason" => inspect(check.reason),
+      "source_sha256" => Map.get(check, :source_sha256, ""),
+      "bindings_tested" => check.bindings_tested,
+      "exhaustive_for_source_domain" => check.exhaustive_for_source_domain
+    }
+  end
+
   def active_slugs(event) do
-    operation = case event do
-      {:request, _, _} -> :request
-      {:void, _} -> :void
-      {:timeout, _} -> :timeout
-      {:dispatch, _} -> :dispatch
-    end
+    operation =
+      case event do
+        {:request, _, _} -> :request
+        {:void, _} -> :void
+        {:timeout, _} -> :timeout
+        {:dispatch, _} -> :dispatch
+      end
+
     generation = Claims.snapshot()
+
     generation.claims
     |> Enum.filter(fn {_slug, law} -> law.operation in [:step, operation] end)
     |> Enum.map(&elem(&1, 0))
     |> Enum.sort()
   end
 
-  defp request_eligible(before, {:request, key, amount}), do: Spec.request_eligible?(before, key, amount)
+  defp request_eligible(before, {:request, key, amount}),
+    do: Spec.request_eligible?(before, key, amount)
+
   defp request_eligible(_, _), do: nil
 
   def differences(actual, candidate) do
-    for key <- ~w(after result effects), actual[key] != candidate[key], do: %{
-      "field" => key, "actual" => actual[key], "hypothetical" => candidate[key]
-    }
+    for key <- ~w(after result effects),
+        actual[key] != candidate[key],
+        do: %{
+          "field" => key,
+          "actual" => actual[key],
+          "hypothetical" => candidate[key]
+        }
   end
 
   defp optional_event(nil), do: {:ok, nil}
@@ -142,9 +174,11 @@ defmodule HoldLedgerReview.Adversarial do
   # A non-Spec-valid but structurally valid candidate remains analyzable.
   # A follow-on step cannot be run from that state and is explicitly null.
   defp optional_output({:error, :invalid_state}), do: {:ok, nil}
-  defp optional_output(_), do: {:error, :invalid_follow_on}
 
-  defp label(status) when status in [:doesnt_apply, :not_probed], do: "does_not_apply"
-  defp label(status) when status in [:catches, :allows_here, :cant_check], do: Atom.to_string(status)
+  defp label(status) when status == :doesnt_apply, do: "does_not_apply"
+
+  defp label(status) when status in [:catches, :allows_here, :cant_check],
+    do: Atom.to_string(status)
+
   defp label(_), do: "cant_check"
 end
