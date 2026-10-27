@@ -9,6 +9,8 @@ runs:
         otp-version: '29.1.2'
         elixir-version: '1.20.4'
         version-type: strict
+        # All locked dependencies use Mix; avoid an unused Rebar download.
+        install-rebar: false
     - name: Install pinned uv and Python (source/toolchain keyed cache)
       uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
       with:
