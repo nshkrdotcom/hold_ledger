@@ -1,0 +1,69 @@
+{
+  "output": {
+    "filePath": "hold_ledger.xml",
+    "style": "xml",
+    "parsableStyle": true,
+    "compress": false,
+    "removeComments": false,
+    "removeEmptyLines": false
+  },
+  "include": [
+    "README.md",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "repomix.config.json",
+    ".gitignore",
+    ".formatter.exs",
+    ".tool-versions",
+    ".python-version",
+    "lean-toolchain",
+    "mix.exs",
+    "mix.lock",
+    "pyproject.toml",
+    "uv.lock",
+    ".github/**",
+    "lib/**",
+    "test/**",
+    "guides/**",
+    "verification/**",
+    "scripts/**",
+    "tooling_tests/**",
+    "mutants/**",
+    "apps/review_web/lib/**",
+    "apps/review_web/config/**",
+    "apps/review_web/test/**",
+    "apps/review_web/priv/prompts/**",
+    "apps/review_web/assets/css/**",
+    "apps/review_web/assets/js/**",
+    "apps/review_web/assets/tsconfig.json",
+    "apps/review_web/README.md",
+    "apps/review_web/AGENTS.md",
+    "apps/review_web/mix.exs",
+    "apps/review_web/mix.lock",
+    "apps/review_web/.formatter.exs",
+    "apps/review_web/.gitignore"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/_build/**",
+      "**/deps/**",
+      "**/node_modules/**",
+      "**/doc/**",
+      "**/tmp/**",
+      "**/.local/**",
+      "**/.venv/**",
+      "**/__pycache__/**",
+      "**/*.pyc",
+      "**/*.plt",
+      "**/*.plt.hash",
+      "**/.env",
+      "**/.env.*"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}

@@ -30,3 +30,6 @@ erl_crash.dump
 # Generated documentation and Hex package archives
 /doc/
 /hold_ledger-*.tar
+
+# Generated repository export
+/hold_ledger.xml
