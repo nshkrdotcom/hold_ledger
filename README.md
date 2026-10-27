@@ -7,11 +7,11 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A payment processor might authorize a hold and lose the reply. Your server sees a timeout. Is it safe to give that money back to the customer's available balance?
+Hold Ledger is a tutorial on formal verification with [Lynx](https://github.com/josevalim/lynx) and Lean 4 for developers who know Elixir. You’ll work through a small payment ledger, from ordinary tests to proofs of its behavior. You don’t need to know Lean to get started.
 
-No: the authorization may still be live. That small uncertainty is the thread running through Hold Ledger, an Elixir example for learning formal verification with [Lynx](https://github.com/josevalim/lynx) and Lean 4. It has a pure ledger, an independently written specification, a journaled OTP runtime, tests, and machine-checked laws. No prior Lean knowledge is needed: the crash course teaches enough to read a proof while you work with a small Elixir program.
+The ledger tracks payment holds. A processor can authorize a hold even when your server never receives the reply. After a timeout, the ledger must still count that hold against available capacity. The examples use cases like this to show how to state a requirement and prove that the code meets it.
 
-Because Lynx is new, the lessons show both sides of each example: the Elixir law and the Lean it generates. Later guides cover agent-assisted proof work and how to spot a proof of the wrong requirement.
+You’ll write laws in Elixir, inspect the Lean code that Lynx generates, and work through the proofs. Later guides cover working with coding agents and checking whether the claims you’ve proved match your requirements.
 
 ## Choose where to start
 
