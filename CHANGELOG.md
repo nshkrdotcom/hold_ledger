@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Built the one deterministic, source-anchored Phoenix human workbench for
+  policy graphs, five kinds of cards, bounded P01–P08 counterfactuals,
+  original-source law matrices and exact submitted-witness review decisions.
+- Added durable source-bound human review transactions (CAS, idempotency,
+  atomic JSON replacement, AI job provenance/state for later opt-in use),
+  full Markdown/JSON exports, browser/ExUnit acceptance sources and isolated
+  M1–M10 mutant-output harvest tools. Local Mix/Phoenix/Lean QC is pending.
+- Removed superseded neutral PageController and its test; prior review/receipt
+  UI remains absent. No compatibility/migration path or AI provider calls.
+
 - Authorized voids retain capacity in `:voiding` until trusted terminal confirmation.
 - One pure composite transition updates the ledger and outstanding void obligations during live application and replay; an independent Spec checks their coupling.
 - Explicit processor attestation for permanent terminal fencing and truthful confirmation; startup validates the declaration, not remote behavior.

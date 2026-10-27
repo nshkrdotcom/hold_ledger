@@ -3,10 +3,10 @@
 This directory is a **separate Phoenix Mix application** built against the pure
 Hold Ledger checkout. Milestone A replaces the old Review Studio evaluator,
 tuple codec, fixed teaching cases and receipt/AI explanation flow. The old
-`/review` and receipt routes are **removed**. Until Milestone B implements the
-new workbench interface, `/` is a neutral development entrypoint, not an
-interactive reviewer. No model, checker or remote processor is called by a
-claim probe.
+`/review` and receipt routes are **removed**. The only application workflow
+is the **Milestone B source-anchored human workbench**, available at `/` and
+`/workbench`; `/workbench/:id` reopens a durable local review. A source-claim
+probe makes **no model, formal-checker or remote-processor call**.
 
 The current application has **one** claim evaluator:
 
@@ -63,9 +63,14 @@ mix precommit
 mix phx.server
 ```
 
-Open `http://localhost:4000/` only to check startup. No Milestone A reviewer
-UI or AI flow is exposed. The app should start the claim generation without
-starting `HoldLedger.Server` or performing journal/remote operations. If a
+Open `http://localhost:4000/` for the human workbench, or `/workbench` to
+list/create durable reviews. Choose P01–P08, explore source and typed graph,
+edit raw bounded JSON as a complete what-if witness, and submit a human judgment
+or pin. The store re-evaluates **the submitted complete witness**, atomically
+persists matching source/probe/answer and maintains independent human and
+document revisions. Source/report generation drift makes existing reviews
+read-only; rebuild/restart and begin a new review. The app must not start
+`HoldLedger.Server`, perform remote operations, or synthesize a proof report. If a
 registered law, predicate, compiler or loaded module changes in development,
 stop probing and rebuild/restart before relying on results.
 
@@ -74,14 +79,29 @@ Run the root suite independently from the root checkout, including
 the root Lynx-dependent `HoldLedger.ProofCase.law_declarations/1` in its own
 test environment. Phoenix never imports that test-only module at runtime.
 
-Key Phoenix tests: `test/hold_ledger_review/claims_test.exs`,
-`test/hold_ledger_review/term_codec_test.exs`,
-`test/hold_ledger_review/proof_evidence_test.exs` and route/startup tests.
-The first two test modules execute the P01–P08 source-inspection expectations
-**only when Mix is run**. Their mere presence is not a passing runtime result.
+B workbench modules are `lib/hold_ledger_review/{design_graph,dossier,adversarial,review_store,review_report}.ex`,
+`lib/hold_ledger_review_web/live/workbench_live.ex`, and the source and export
+controllers. The eight bounded seed JSON fixtures live in `priv/scenarios/`.
+Current record shape is specified by the separately managed milestone docset's
+`contracts/review.schema.json`, not a backward-compatible migration.
+
+The new ExUnit sources in `test/hold_ledger_review/` test graph, pointwise
+candidate and store transactions; `test/hold_ledger_review_web/` checks the
+LiveView and removed routes. For actual browser behavior, start Phoenix then
+run `npm install`, `npx playwright install chromium`, `npm test` from
+`test/browser/`. That Node project intentionally has no hand-written lockfile:
+the first-half sandbox could not reach the npm registry. Install locally and
+commit the genuine resolved lockfile. For **offline, isolated** M1–M10 patched
+reducer observation from code root, run `uv run --locked python scripts/harvest_mutants.py --execute`;
+then run the original-source assessor with the pinned Phoenix Mix wrapper. Static
+manifests never claim observed mutant outputs.
+
+**Execution status:** the B source and test bodies were authored without the
+Elixir/OTP, Mix, Phoenix or Lean toolchain. Python-only provenance tests passed;
+all Elixir, browser, mutant execution and formal acceptance checks **must run
+and be fixed in the local second half**. Their presence is not a runtime pass.
 
 For a manual no-server challenge to the contract's meaning, use
-[`guides/interactive_review.md`](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md). Product,
-transaction and evidence specifications for the future B/C workbench live in
-the separately maintained milestone docset. Nothing here changes root proof
-acceptance or human policy authority.
+[`guides/interactive_review.md`](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md). Product, transaction and evidence specifications for the B workbench and
+later configured AI C phase live in the separate milestone docset. Nothing
+here changes root proof acceptance or human policy authority.

@@ -8,11 +8,11 @@ defmodule HoldLedgerReview.Application do
   @impl true
   def start(_type, _args) do
     HoldLedgerReview.Config.validate!()
-    # No model jobs are dispatched by the Milestone A source evaluator.
+    # Source generation first; the durable writer refuses a stale generation.
 
     children = [
-      {Task.Supervisor, name: HoldLedgerReview.Tasks},
       HoldLedgerReview.Claims,
+      HoldLedgerReview.ReviewStore,
       HoldLedgerReviewWeb.Telemetry,
       {DNSCluster,
        query: Application.get_env(:hold_ledger_review_web, :dns_cluster_query) || :ignore},

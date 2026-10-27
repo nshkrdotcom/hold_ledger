@@ -142,13 +142,16 @@ An agent can carry out this workflow under agreed policy:
 
 [Agentic verification](guides/agentic_verification.md) has a worked exercise and prompts; [Human review](guides/human_review.md) explains what may be delegated and includes a decision practice set. The repository's `AGENTS.md` contains instructions for an agent working on this codebase.
 
-The [source-backed claim evaluator](apps/review_web/README.md) is being built
-in the optional separate Phoenix companion. Milestone A replaces its old
-hand-coded evaluator and generic tuple codec, removes the former case/receipt
-routes, and adds tests for exact `test/laws` source expressions. **There is
-not yet a new interactive workbench**: Milestone B implements its human UI,
-and C implements the configured AI support. The
-[manual exercise](guides/interactive_review.md) works without the app.
+The optional [Phoenix claim workbench](apps/review_web/README.md) now has
+one deterministic, human-owned LiveView at `/` and `/workbench`. It reads
+actual policy and original law source, offers P01–P08 bounded what-if cases,
+runs the source-derived pointwise checker with the single strict tuple codec,
+and stores source-identified human reviews with JSON/Markdown exports. It
+does **not** execute mutations in the app, call a model, certify a formal
+proof or attest an external processor. Milestone B implementation is authored
+but its Elixir/Phoenix/browser acceptance is **not yet executed**; the local
+second half owns QC. Former `/review` and receipt routes remain removed. The
+[manual exercise](guides/interactive_review.md) also works without the app.
 
 ## Documentation map
 

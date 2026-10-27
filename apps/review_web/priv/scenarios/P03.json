@@ -1,0 +1,42 @@
+{
+  "before": {
+    "amount_limit": 100,
+    "hold_limit": 2,
+    "used_amount": 100,
+    "used_holds": 1,
+    "entries": [
+      {
+        "key": 1,
+        "amount": 100,
+        "status": "sent"
+      }
+    ]
+  },
+  "event": {
+    "type": "timeout",
+    "key": 1,
+    "amount": null
+  },
+  "output": {
+    "after": {
+      "amount_limit": 100,
+      "hold_limit": 2,
+      "used_amount": 0,
+      "used_holds": 0,
+      "entries": [
+        {
+          "key": 1,
+          "amount": 100,
+          "status": "declined"
+        }
+      ]
+    },
+    "result": "declined",
+    "effects": []
+  },
+  "follow_on": {
+    "type": "request",
+    "key": 2,
+    "amount": 100
+  }
+}

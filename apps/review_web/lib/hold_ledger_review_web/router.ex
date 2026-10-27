@@ -12,6 +12,10 @@ defmodule HoldLedgerReviewWeb.Router do
 
   scope "/", HoldLedgerReviewWeb do
     pipe_through :browser
-    get "/", PageController, :home
+    live "/", WorkbenchLive, :index
+    live "/workbench", WorkbenchLive, :index
+    live "/workbench/:id", WorkbenchLive, :show
+    get "/workbench/:id/export.:format", ExportController, :export
+    get "/workbench/:id/source/:source_id", SourceController, :show
   end
 end

@@ -41,12 +41,17 @@ ensures after-state validity, not exposure retention by itself. In an
 exact-fit request, `po_a2` requires positive admission; an implementation that
 always rejects may still preserve valid states.
 
-The source-backed evaluator in the optional
-[Phoenix companion](../apps/review_web/README.md) is engine-only following
-Milestone A. The former teaching-case UI, receipts and scripted/AI explanation
-routes were removed. The replacement human workbench is scheduled for
-Milestone B; configured AI integration for C. Do not expect `/review` to exist
-and do not claim to have saved a human decision through the current app.
+The optional [Phoenix workbench](../apps/review_web/README.md) implements
+this human reasoning loop at `/workbench`: start a P01–P08 review, read the
+original source and linked map, edit the complete bounded before/event/
+hypothetical-output/follow-on witness, inspect the source-derived pointwise
+matrix, answer the critical Escape question, and export the saved review.
+Selecting a different seed opens a separate review to preserve card scope.
+Only deliberate pin and human answer submits are persisted; intermediate
+drafts are not. The app uses a *single* A-derived evaluator and strict codec.
+It has **not yet passed local B execution checks**. No AI call or remote
+processor call is made; the former teaching-case UI, receipts and `/review`
+paths are removed. C handles configured AI, not this B app.
 
 ## Evidence and limits
 

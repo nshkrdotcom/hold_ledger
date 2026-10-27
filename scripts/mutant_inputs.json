@@ -1,0 +1,220 @@
+{
+  "M1": {
+    "before": {
+      "amount_limit": 1000,
+      "entries": [
+        {
+          "amount": 300,
+          "key": 11,
+          "status": "voided"
+        }
+      ],
+      "hold_limit": 3,
+      "used_amount": 0,
+      "used_holds": 0
+    },
+    "counterexample_path": "mutants/01_terminal_replay/counterexample_test.exs",
+    "counterexample_sha256": "891ab235043f4454fd7d0c548d61e239774056408c451c044ee768acaa81fa20",
+    "event": {
+      "amount": 300,
+      "key": 11,
+      "outcome": null,
+      "type": "request"
+    }
+  },
+  "M10": {
+    "before": {
+      "amount_limit": 100,
+      "entries": [
+        {
+          "amount": 100,
+          "key": 1,
+          "status": "authorized"
+        }
+      ],
+      "hold_limit": 2,
+      "used_amount": 100,
+      "used_holds": 1
+    },
+    "counterexample_path": "mutants/10_premature_void_release/counterexample_test.exs",
+    "counterexample_sha256": "7a81d0c7149a9e45288eb563e8d637e8446d51b63c2b8c6628841401e45908c5",
+    "event": {
+      "amount": null,
+      "key": 1,
+      "outcome": null,
+      "type": "void"
+    }
+  },
+  "M2": {
+    "before": {
+      "amount_limit": 1000,
+      "entries": [
+        {
+          "amount": 300,
+          "key": 11,
+          "status": "sent"
+        }
+      ],
+      "hold_limit": 3,
+      "used_amount": 300,
+      "used_holds": 1
+    },
+    "counterexample_path": "mutants/02_timeout_release/counterexample_test.exs",
+    "counterexample_sha256": "f4323664f9dfe9e91a9ca6ae9ce92ceac290ff9d5da40cc3f24308d0a7e07f47",
+    "event": {
+      "amount": null,
+      "key": 11,
+      "outcome": null,
+      "type": "timeout"
+    }
+  },
+  "M3": {
+    "before": {
+      "amount_limit": 1000,
+      "entries": [
+        {
+          "amount": 300,
+          "key": 11,
+          "status": "unknown"
+        }
+      ],
+      "hold_limit": 3,
+      "used_amount": 300,
+      "used_holds": 1
+    },
+    "counterexample_path": "mutants/03_retry_identity/counterexample_test.exs",
+    "counterexample_sha256": "326069e7f30821c276f737bea381242c5f15ead8d46f04097dcd8035973a77ef",
+    "event": {
+      "amount": null,
+      "key": 11,
+      "outcome": null,
+      "type": "retry"
+    }
+  },
+  "M4": {
+    "before": {
+      "amount_limit": 100,
+      "entries": [],
+      "hold_limit": 1,
+      "used_amount": 0,
+      "used_holds": 0
+    },
+    "counterexample_path": "mutants/04_exact_fit/counterexample_test.exs",
+    "counterexample_sha256": "b54f07a7258e74aa1db34f4fae343abbeebf107299e9faefb31053ddffc9e07f",
+    "event": {
+      "amount": 100,
+      "key": 11,
+      "outcome": null,
+      "type": "request"
+    }
+  },
+  "M5": {
+    "before": {
+      "amount_limit": 1000,
+      "entries": [],
+      "hold_limit": 3,
+      "used_amount": 0,
+      "used_holds": 0
+    },
+    "counterexample_path": "mutants/05_always_reject/counterexample_test.exs",
+    "counterexample_sha256": "da7c7410af8143933a80c87a5e100e5db0bcfe104acd180510f06d8b025e0510",
+    "event": {
+      "amount": 100,
+      "key": 22,
+      "outcome": null,
+      "type": "request"
+    }
+  },
+  "M6": {
+    "before": {
+      "amount_limit": 1000,
+      "entries": [
+        {
+          "amount": 300,
+          "key": 11,
+          "status": "sent"
+        }
+      ],
+      "hold_limit": 3,
+      "used_amount": 300,
+      "used_holds": 1
+    },
+    "counterexample_path": "mutants/06_ack_result/counterexample_test.exs",
+    "counterexample_sha256": "01d4f7bae63fbee3330f962dce34dbed903ca28dc5955c2fc91879e4f7c291b0",
+    "event": {
+      "amount": null,
+      "key": 11,
+      "outcome": null,
+      "type": "transport_ack"
+    }
+  },
+  "M7": {
+    "before": {
+      "amount_limit": 1000,
+      "entries": [
+        {
+          "amount": 300,
+          "key": 11,
+          "status": "authorized"
+        }
+      ],
+      "hold_limit": 3,
+      "used_amount": 300,
+      "used_holds": 1
+    },
+    "counterexample_path": "mutants/07_void_effect/counterexample_test.exs",
+    "counterexample_sha256": "f90b6baec6980b9a233aeaa4364bdd6c6737833646555ffb73a323d0137d6301",
+    "event": {
+      "amount": null,
+      "key": 11,
+      "outcome": null,
+      "type": "void"
+    }
+  },
+  "M8": {
+    "before": {
+      "amount_limit": 1000,
+      "entries": [
+        {
+          "amount": 300,
+          "key": 11,
+          "status": "sent"
+        }
+      ],
+      "hold_limit": 3,
+      "used_amount": 300,
+      "used_holds": 1
+    },
+    "counterexample_path": "mutants/08_decline_accounting/counterexample_test.exs",
+    "counterexample_sha256": "cffec353a164e36d4a6d0904ee92099b01e203982b384d4aa4ba2d86f4a7ebf0",
+    "event": {
+      "amount": null,
+      "key": 11,
+      "outcome": "declined",
+      "type": "processor_result"
+    }
+  },
+  "M9": {
+    "before": {
+      "amount_limit": 1000,
+      "entries": [
+        {
+          "amount": 300,
+          "key": 11,
+          "status": "sent"
+        }
+      ],
+      "hold_limit": 3,
+      "used_amount": 300,
+      "used_holds": 1
+    },
+    "counterexample_path": "mutants/09_restart_unknown/counterexample_test.exs",
+    "counterexample_sha256": "77a66855d01f62ad3cd87ab0f1d0947f72a6761f1ea8272534211990a463b042",
+    "event": {
+      "amount": null,
+      "key": null,
+      "outcome": null,
+      "type": "restart"
+    }
+  }
+}

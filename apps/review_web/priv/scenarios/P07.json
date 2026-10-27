@@ -1,0 +1,48 @@
+{
+  "before": {
+    "amount_limit": 250,
+    "hold_limit": 3,
+    "used_amount": 150,
+    "used_holds": 2,
+    "entries": [
+      {
+        "key": 1,
+        "amount": 50,
+        "status": "authorized"
+      },
+      {
+        "key": 2,
+        "amount": 100,
+        "status": "sent"
+      }
+    ]
+  },
+  "event": {
+    "type": "timeout",
+    "key": 2,
+    "amount": null
+  },
+  "output": {
+    "after": {
+      "amount_limit": 250,
+      "hold_limit": 3,
+      "used_amount": 100,
+      "used_holds": 1,
+      "entries": [
+        {
+          "key": 1,
+          "amount": 50,
+          "status": "voided"
+        },
+        {
+          "key": 2,
+          "amount": 100,
+          "status": "unknown"
+        }
+      ]
+    },
+    "result": "marked_unknown",
+    "effects": []
+  },
+  "follow_on": null
+}
