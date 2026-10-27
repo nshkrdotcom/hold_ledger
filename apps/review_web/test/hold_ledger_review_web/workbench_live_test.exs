@@ -27,6 +27,20 @@ defmodule HoldLedgerReviewWeb.WorkbenchLiveTest do
     assert render_click(element(view, "#source-toggle")) =~ "source-panel"
   end
 
+  test "AI is visibly optional, and forged clicks without opt-in cannot enqueue jobs", %{conn: conn} do
+    {:ok, doc, _} = ReviewStore.create("P01")
+    {:ok, view, html} = live(conn, "/workbench/#{doc["id"]}")
+    assert html =~ "configured inference service"
+    assert has_element?(view, "#ai-deck[disabled]")
+    assert has_element?(view, "#ai-challenge[disabled]")
+    assert has_element?(view, "#ai-followup[disabled]")
+    assert render_click(view, "ai_request", %{"kind" => "deck"}) =~
+             "Explicit AI consent"
+    assert {:ok, unchanged} = ReviewStore.get(doc["id"])
+    assert unchanged["human_revision"] == doc["human_revision"]
+    assert unchanged["ai_jobs"] == []
+  end
+
   test "malformed latest draft never saves the preceding valid Escape probe", %{conn: conn} do
     {:ok, doc, witness} = ReviewStore.create("P04")
     {:ok, view, _} = live(conn, "/workbench/#{doc["id"]}")

@@ -108,3 +108,16 @@ td small { display: block; color: var(--muted); max-width: 270px; overflow-wrap:
 @media (max-width: 1250px) { .review-grid { grid-template-columns: minmax(240px,1fr) minmax(380px,1.6fr); } .decision { grid-column: 1 / -1; } }
 @media (max-width: 750px) { .review-grid, .map-columns, .seed-grid { grid-template-columns: 1fr; } .decision { grid-column: auto; } .comparison { grid-template-columns: 1fr; } .site-header { align-items: flex-start; } .site-header .mode { font-size: .6rem; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Optional source-aware AI proposals never replace the human decision pane. */
+.ai-panel { border: 1px solid var(--color-border, #b4bdc8); border-radius: .8rem; padding: 1rem; margin: 1rem 0; background: color-mix(in srgb, currentColor 3%, transparent); }
+.ai-panel h3, .ai-panel h4 { margin: .5rem 0; }
+.ai-panel p { overflow-wrap: anywhere; }
+.ai-consent-label { display: flex; align-items: flex-start; gap: .6rem; margin: 1rem 0; line-height: 1.45; cursor: pointer; }
+.ai-consent-label input { margin-top: .25rem; flex: 0 0 auto; }
+.ai-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ai-actions button:disabled { opacity: .48; cursor: not-allowed; }
+.ai-job-list { list-style: none; padding: 0; display: grid; gap: .65rem; }
+.ai-job-list > li { border-top: 1px solid #8090a050; padding: .7rem 0; overflow-wrap: anywhere; }
+.ai-results pre { max-height: 12rem; overflow: auto; white-space: pre-wrap; font-size: .75rem; }
+.ai-results details summary { cursor: pointer; }

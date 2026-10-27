@@ -25,3 +25,10 @@ rapid edits under latency, keyboard/mobile use, all graph source bytes, five
 answer vocabularies, scoped confirmation and source-identity drift. Only freshly
 created synthetic review documents are changed by the drift test. Actual law-file
 drift is covered by the Phoenix tests using disposable source copies.
+
+Milestone C adds a browser regression for AI opt-in being **off by default**,
+including after reload; it never submits to the external provider. Actual
+configured-provider available/unavailable UX, the first discovery, accepted
+question, human disagreement and two answer-aware follow-ups across reconnect
+are local C quality checks requiring explicit opt-in, not simulated by this
+browser suite. See the docset's `handoffs/milestone-C-local.md`.

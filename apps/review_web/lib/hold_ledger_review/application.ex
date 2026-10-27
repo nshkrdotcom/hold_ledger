@@ -12,6 +12,7 @@ defmodule HoldLedgerReview.Application do
 
     children = [
       HoldLedgerReview.Claims,
+      {Task.Supervisor, name: HoldLedgerReview.AITaskSupervisor},
       HoldLedgerReview.ReviewStore,
       HoldLedgerReviewWeb.Telemetry,
       {DNSCluster,

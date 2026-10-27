@@ -264,3 +264,18 @@ test('a drifted saved source identity is visibly read-only and cannot accept ano
   expect(after.pinned_probes).toEqual(saved.pinned_probes);
   expect(after.status).toBe('stale_read_only');
 });
+
+
+test('AI opt-in gate never sends source through a disabled workbench', async ({page}) => {
+  await newReview(page, 'P01');
+  await expect(page.locator('#ai-collaboration')).toBeVisible();
+  await expect(page.locator('#ai-consent')).not.toBeChecked();
+  for (const selector of ['#ai-deck', '#ai-challenge', '#ai-followup']) {
+    await expect(page.locator(selector)).toBeDisabled();
+  }
+  await page.reload();
+  await expect(page.locator('#ai-consent')).not.toBeChecked();
+  const record = await (await page.request.get(`${new URL(page.url()).pathname}/export.json`)).json();
+  expect(record.ai_jobs).toHaveLength(0);
+  expect(record.answers).toHaveLength(0);
+});

@@ -15,7 +15,8 @@ defmodule HoldLedgerReview.ReviewStore do
     Config,
     DesignGraph,
     Dossier,
-    ProofEvidence
+    ProofEvidence,
+    AIProtocol
   }
 
   @id_pattern ~r/\A[A-Za-z0-9_-]{16,80}\z/
@@ -233,7 +234,8 @@ defmodule HoldLedgerReview.ReviewStore do
     {:reply, reply, state}
   end
 
-  defp persist_completion(_state, doc, {:ok, doc}), do: {:ok, doc}
+  defp persist_completion(_state, doc, {:ok, unchanged}) when unchanged == doc,
+    do: {:ok, doc}
 
   defp persist_completion(state, _doc, {:ok, updated}) do
     with :ok <- persist(state, updated), do: {:ok, updated}
@@ -386,7 +388,12 @@ defmodule HoldLedgerReview.ReviewStore do
         "at_utc" => now()
       }
 
-      {:ok, Map.update!(doc, "ai_jobs", &(&1 ++ [job])), nil, nil}
+      updated =
+        doc
+        |> Map.update!("ai_jobs", &(&1 ++ [job]))
+        |> update_in(["source", "prompt_digests"], &Map.put(&1, command["request_kind"], command["prompt_hash"]))
+
+      {:ok, updated, nil, nil}
     else
       false -> {:error, :invalid_job}
       err -> err
@@ -453,7 +460,12 @@ defmodule HoldLedgerReview.ReviewStore do
          job when is_map(job) <- Enum.find(doc["ai_jobs"], &(&1["job_id"] == command["job_id"])),
          true <- command["input_digest"] == job["input_digest"],
          true <- command["source_digest"] == job["source_digest"],
-         true <- valid_completion_body?(command) do
+         true <- valid_completion_body?(command),
+         true <-
+           job["status"] != "pending" or
+             completion_status(doc, job, command) == "discarded_late" or
+             is_nil(command["validated_output"]) or
+             AIProtocol.persistable?(doc, job, command["validated_output"]) do
       complete_matching_job(doc, job, command)
     else
       _ -> {:error, :invalid_job_completion}
@@ -516,9 +528,9 @@ defmodule HoldLedgerReview.ReviewStore do
     end
   end
 
-  # C supplies the protocol validator; B only persists already validated proposals.
-  # All jobs conservatively require the exact dispatch human revision. A future
-  # source-only deck exemption must be justified by its actual prompt context.
+  # The store checks completed envelopes a second time before applying proposals.
+  # All jobs require the exact dispatch human revision; source-only discovery
+  # does not gain authority over a human action occurring while it is in flight.
   defp validate_suggestions(doc, %{
          "status" => "complete",
          "validated_output" => %{"suggested_cards" => cards}
@@ -832,12 +844,21 @@ defmodule HoldLedgerReview.ReviewStore do
         _ -> {:error, :write_failed}
       end
       |> case do
-        :ok -> :ok
-        _ -> {:error, :write_failed}
+        :ok ->
+          notify(doc["id"])
+          :ok
+
+        _ ->
+          {:error, :write_failed}
       end
     end
   rescue
     _ -> {:error, :write_failed}
+  end
+
+  defp notify(id) do
+    if Process.whereis(HoldLedgerReview.PubSub),
+      do: Phoenix.PubSub.broadcast(HoldLedgerReview.PubSub, "review:" <> id, {:review_updated, id})
   end
 
   def atomic_write(path, bytes) do

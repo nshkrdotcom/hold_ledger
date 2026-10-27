@@ -111,3 +111,76 @@ For a manual no-server challenge to the contract's meaning, use
 [`guides/interactive_review.md`](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md). Product, transaction and evidence specifications for the B workbench and
 later configured AI C phase live in the separate milestone docset. Nothing
 here changes root proof acceptance or human policy authority.
+
+## Milestone C: optional configured-model collaboration
+
+Milestone C adds one **opt-in** Inference path to the existing workbench; it does
+not change the provider/model, add an alternative evaluator, resurrect the
+Explainer routes or authorize model-written judgments. It reuses
+`Inference.Client.new!/1`, `Inference.capabilities/1`, JSON-Schema
+`Inference.Request.from_messages/2`, and `Inference.complete/2` with the
+configured ASM/Codex adapter. Without declared JSON-Schema support, requests
+fail closed. Failures never block human review or source-based what-if checking.
+
+- `AI` is the configured provider boundary, `AIPacket` creates bounded
+  source-linked packets, and `AIProtocol` validates exact schemas plus packet
+  IDs/citations, independent pointwise predictions and typed challenge witnesses.
+  Discovery sends *source-only* graph snippets and unlabeled synthetic probes;
+  the hidden rubric, fixture case names, expected matrix, mutant labels and
+  human answers are not included. Verified noncontiguous source excerpts are
+  marked; source/digest drift refuses a packet. Follow-up sends the latest
+  **recorded** human answer, computed evidence and prior model question **only
+  on the explicit follow-up opt-in**.
+- `AIJobs` starts one pending request per review via the single-writer
+  `ReviewStore`, then runs the provider call in `Task.Supervisor` independently
+  of the LiveView. A completed result is validated again at the commit boundary.
+  A stale human revision/source is discarded; restart interrupts pending work;
+  there is no implicit resend. `completion_digest` retains exact-retry
+  idempotency. All model questions remain `ai_proposed` suggestions until
+  explicitly accepted by a person; the human answer CAS and conclusion remain
+  separate.
+- The UI requires a fresh checkbox opt-in for **each** request. Source/graph
+  evidence is used for discovery; challenge additionally sends the current
+  draft; follow-up additionally sends reviewer choice/reason and computed
+  examples. The AI history is durable, reveals computed contradictions before
+  model readings, links suggestions to sources, and lets the user try a typed
+  challenge as an **unsaved** draft.
+
+Controlled ExUnit tests live in
+`test/hold_ledger_review/{ai_protocol,ai_jobs}_test.exs`, with a test-only
+`test/support/controlled_adapter.ex`; UI no-consent checks live in the LiveView
+and Playwright suites. These controlled tests are not live provider evidence.
+
+### Configured-model quality benchmark (requires deliberate data-sharing consent)
+
+The actual evaluation must run **locally with the configured provider and
+credentials**. From the repository root, after the required QC/toolchain setup,
+with explicit authorization to transmit selected source and synthetic draft
+content to that provider:
+
+```sh
+uv run --locked python scripts/local_run.py --cwd apps/review_web mix run scripts/benchmark_discovery.exs -- --allow-external-source-data
+```
+
+Without that flag the benchmark **refuses without sending**. It runs source-only
+discovery and one typed challenge on each of three policy situations, writing a
+real-provider result to ignored `tmp/review_studio/benchmarks/` only if the
+invocation runs. Errors remain errors, not substituted controlled fixtures.
+The model never receives `priv/benchmark/rubric.json` or the scorer.
+
+Run the separate private offline scorer against the **actual generated path**:
+
+```sh
+python3 apps/review_web/scripts/score_discovery.py tmp/review_studio/benchmarks/discovery-<actual-digest>.json
+python3 -m unittest discover -s apps/review_web/scripts -p 'test_score_discovery.py' -v
+```
+
+The scorer's six criteria and source-link checks yield only provisional lexical
+previews unless the reviewer supplies a complete `--adjudication` JSON mapping
+`R1`–`R6` to `label`, `rationale` and `source_evidence`. Only semantic review
+of actual source-linked model statements can establish discovery quality;
+benchmark success does not establish formal verification or a human conclusion.
+A development target is 4/6 properly surfaced, zero unchallenged false proof
+status claims, and one genuinely novel valid challenge. Preserve the actual
+run log, latency, redundancies, prediction conflicts, challenge novelty and
+human-adjudication record as **local C QC**, not as a fabricated first-half pass.
