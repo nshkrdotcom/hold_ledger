@@ -145,8 +145,13 @@ defmodule HoldLedgerReview.TermCodec do
   defp decode_entry(%{"key" => key, "amount" => amount, "status" => status} = obj)
        when map_size(obj) == 3 do
     case Enum.find(@statuses, &(Atom.to_string(&1) == status)) do
-      nil -> {:error, :invalid_state}
-      atom -> if key?(key) and positive?(amount), do: {:ok, {key, amount, atom}}, else: {:error, :invalid_state}
+      nil ->
+        {:error, :invalid_state}
+
+      atom ->
+        if key?(key) and positive?(amount),
+          do: {:ok, {key, amount, atom}},
+          else: {:error, :invalid_state}
     end
   end
 

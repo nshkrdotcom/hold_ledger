@@ -14,7 +14,9 @@ The current application has **one** claim evaluator:
   catalog paths against a live checkout inventory, reads trusted Elixir law AST
   and binds the exact source bytes plus relevant dependencies to an independent
   digest. `HoldLedgerReview.Config.source_matches?/1` separately checks the
-  compiled pure Ledger/Spec source.
+  compiled pure Ledger/Spec source. Build-time dependency hashes and core BEAM
+  identities also prevent a restart with stale compiled code from blessing
+  changed evaluator source.
 - `HoldLedgerReview.Claims.Compiler` audits supported `requires`/`expects`
   expressions, resolves approved aliases, demands identical reducer-call
   signatures and replaces every occurrence with a hygienic candidate output.
@@ -31,6 +33,8 @@ The current application has **one** claim evaluator:
   `Spec.expected_step`, and reports per-binding provenance, completeness and
   the bounded four-label result. A different reducer operation is marked
   `:not_probed`, not silently treated as a green claim.
+  Only required positive lookup equalities justify finite entry enumeration;
+  an optional equality under `or` cannot certify an exhaustive domain.
 - `HoldLedgerReview.TermCodec` is the **only** native event/effect/state/output
   codec. Events/effects use exact `type`/`key`/`amount` JSON with `null` for
   arity-two operations; outputs use exact `after`/`result`/`effects`. Statuses,
@@ -77,7 +81,7 @@ The first two test modules execute the P01–P08 source-inspection expectations
 **only when Mix is run**. Their mere presence is not a passing runtime result.
 
 For a manual no-server challenge to the contract's meaning, use
-[`guides/interactive_review.md`](../../guides/interactive_review.md). Product,
+[`guides/interactive_review.md`](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md). Product,
 transaction and evidence specifications for the future B/C workbench live in
 the separately maintained milestone docset. Nothing here changes root proof
 acceptance or human policy authority.

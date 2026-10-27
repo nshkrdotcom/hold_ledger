@@ -10,7 +10,6 @@ defmodule HoldLedgerReview.ClaimProbe do
   alias HoldLedgerReview.Claims.Compiler
 
   @max_bindings 8
-  @test_environment Mix.env() == :test
 
   def labels do
     %{
@@ -35,7 +34,8 @@ defmodule HoldLedgerReview.ClaimProbe do
          {:ok, event_json} <- TermCodec.encode_event(event),
          {:ok, candidate_json} <- TermCodec.encode_output(candidate),
          true <- Spec.valid?(before),
-         {:ok, bindings} <- bindings(law, before, event, Keyword.get(opts, :binding_limit, @max_bindings)) do
+         {:ok, bindings} <-
+           bindings(law, before, event, Keyword.get(opts, :binding_limit, @max_bindings)) do
       result =
         evaluate_bindings(law, bindings, before, event, candidate, %{
           before: before_json,
@@ -46,8 +46,7 @@ defmodule HoldLedgerReview.ClaimProbe do
 
       # A deterministic test-only boundary can change an isolated checkout
       # between evaluation and publication. Never publish the old green row.
-      if @test_environment and is_function(opts[:before_finish], 0),
-        do: opts[:before_finish].()
+      before_finish(opts)
 
       case Claims.freshness(root) do
         :ok -> result
@@ -55,28 +54,52 @@ defmodule HoldLedgerReview.ClaimProbe do
       end
     else
       {:not_probed, other} ->
-        %{unavailable(slug, {:different_operation, other}) | status: :not_probed,
-          uncovered_remainder: []}
-      {:error, reason} -> unavailable(slug, reason)
-      false -> unavailable(slug, :invalid_before_state)
+        %{
+          unavailable(slug, {:different_operation, other})
+          | status: :not_probed,
+            uncovered_remainder: []
+        }
+
+      {:error, reason} ->
+        unavailable(slug, reason)
+
+      false ->
+        unavailable(slug, :invalid_before_state)
     end
   rescue
     _ -> unavailable(slug, :source_expression_error)
   end
 
-  def follow_on(actual, candidate, nil),
+  if Mix.env() == :test do
+    defp before_finish(opts) do
+      if is_function(opts[:before_finish], 0), do: opts[:before_finish].()
+    end
+  else
+    defp before_finish(_opts), do: :ok
+  end
+
+  def follow_on(_actual, _candidate, nil),
     do: %{actual: nil, candidate: nil, reason: :no_follow_on_event}
 
   def follow_on({actual_after, _, _}, {candidate_after, _, _}, event) do
     case TermCodec.encode_event(event) do
       {:ok, _} ->
         %{
-          actual: if(Spec.valid?(actual_after), do: {:ok, Ledger.step(actual_after, event)}, else: {:error, :invalid_state}),
-          candidate: if(Spec.valid?(candidate_after), do: {:ok, Ledger.step(candidate_after, event)}, else: {:error, :invalid_state}),
+          actual:
+            if(Spec.valid?(actual_after),
+              do: {:ok, Ledger.step(actual_after, event)},
+              else: {:error, :invalid_state}
+            ),
+          candidate:
+            if(Spec.valid?(candidate_after),
+              do: {:ok, Ledger.step(candidate_after, event)},
+              else: {:error, :invalid_state}
+            ),
           reason: :pure_ledger_calculation
         }
 
-      _ -> %{actual: nil, candidate: nil, reason: :invalid_follow_on_event}
+      _ ->
+        %{actual: nil, candidate: nil, reason: :invalid_follow_on_event}
     end
   end
 
@@ -88,15 +111,16 @@ defmodule HoldLedgerReview.ClaimProbe do
 
       case {extras, lookup} do
         {[], _} ->
-          {:ok, %{rows: [%{values: input, origins: origins}], exhaustive?: true,
-                  reason: "Every reducer argument is exactly determined by the event and before-state", truncated?: false}}
+          {:ok,
+           %{
+             rows: [%{values: input, origins: origins}],
+             exhaustive?: true,
+             reason: "Every reducer argument is exactly determined by the event and before-state",
+             truncated?: false
+           }}
 
         {_, {:lookup, pattern}} ->
-          if Enum.all?(extras, &Map.has_key?(entry_pattern_fields(pattern), &1)) do
-            lookup_bindings(before, pattern, input, origins, extras, limit)
-          else
-            {:error, :incomplete_binding_domain}
-          end
+          bind_lookup_extras(before, pattern, input, origins, extras, limit)
 
         _ ->
           {:error, :incomplete_binding_domain}
@@ -106,14 +130,25 @@ defmodule HoldLedgerReview.ClaimProbe do
 
   defp bindings(_, _, _, _), do: {:error, :invalid_binding_limit}
 
+  defp bind_lookup_extras(before, pattern, input, origins, extras, limit) do
+    if Enum.all?(extras, &Map.has_key?(entry_pattern_fields(pattern), &1)),
+      do: lookup_bindings(before, pattern, input, origins, extras, limit),
+      else: {:error, :incomplete_binding_domain}
+  end
+
   defp target_binding(state, [event_param | _], :step, before, event) do
     {:ok, %{state => before, event_param => event},
      %{state => %{kind: :before_state}, event_param => %{kind: :witness_event}}}
   end
 
-  defp target_binding(state, [key_param, amount_param | _], :request, before, {:request, key, amount}) do
-    {:ok,
-     %{state => before, key_param => key, amount_param => amount},
+  defp target_binding(
+         state,
+         [key_param, amount_param | _],
+         :request,
+         before,
+         {:request, key, amount}
+       ) do
+    {:ok, %{state => before, key_param => key, amount_param => amount},
      %{
        state => %{kind: :before_state},
        key_param => %{kind: :request_field, field: :key},
@@ -133,16 +168,18 @@ defmodule HoldLedgerReview.ClaimProbe do
   # {:ok, {key,amount,status}}. Extract names/literals from that *AST pattern*.
   # An unsupported lookup shape must not silently produce exhaustive silence.
   defp source_lookup(law, state_param) do
-    {_, patterns} =
-      Macro.prewalk(law.normalized_requires, [], fn
-        {cmp, _, [lhs, rhs]} = node, acc when cmp in [:==, :===] ->
+    patterns =
+      law.normalized_requires
+      |> required_conjuncts()
+      |> Enum.flat_map(fn
+        {cmp, _, [lhs, rhs]} when cmp in [:==, :===] ->
           case lookup_pattern(lhs, rhs, state_param) || lookup_pattern(rhs, lhs, state_param) do
-            nil -> {node, acc}
-            pattern -> {node, [pattern | acc]}
+            nil -> []
+            pattern -> [pattern]
           end
 
-        node, acc ->
-          {node, acc}
+        _ ->
+          []
       end)
 
     case patterns do
@@ -151,6 +188,13 @@ defmodule HoldLedgerReview.ClaimProbe do
       _ -> {:error, :ambiguous_lookup_binding}
     end
   end
+
+  # Only a necessary positive conjunct licenses a finite binding domain.
+  # An equality under `or` or `not` does not constrain every satisfying input.
+  defp required_conjuncts({:and, _, [left, right]}),
+    do: required_conjuncts(left) ++ required_conjuncts(right)
+
+  defp required_conjuncts(ast), do: [ast]
 
   defp lookup_pattern(
          {{:., _, [{:__aliases__, _, [:HoldLedger, :Spec]}, :lookup]}, _,
@@ -175,37 +219,7 @@ defmodule HoldLedgerReview.ClaimProbe do
     {_, _, _, _, entries} = before
 
     eligible =
-      Enum.flat_map(entries, fn {key, _amount, _status} = entry ->
-        case bind_pattern(pattern, {:ok, entry}, initial) do
-          {:ok, values} when map_size(values) >= map_size(initial) ->
-            if Enum.all?(extras, &Map.has_key?(values, &1)) do
-              fields = entry_pattern_fields(pattern)
-
-              discovered =
-                Map.new(extras, fn param ->
-                  {param, %{kind: :existing_entry, entry_key: key,
-                            field: Map.fetch!(fields, param)}}
-                end)
-
-              refined =
-                Enum.reduce(fields, origins, fn {param, field}, acc ->
-                  if Map.has_key?(acc, param) and field in [:key, :amount] do
-                    Map.put(acc, param,
-                      %{kind: :event_field_and_existing_entry, field: field, entry_key: key,
-                        event_origin: Map.fetch!(acc, param)})
-                  else
-                    acc
-                  end
-                end)
-
-              [%{values: values, origins: Map.merge(refined, discovered)}]
-            else
-              []
-            end
-
-          _ -> []
-        end
-      end)
+      Enum.flat_map(entries, &entry_binding(&1, pattern, initial, origins, extras))
 
     if length(eligible) > limit do
       {:error, :truncated_binding_domain}
@@ -214,9 +228,40 @@ defmodule HoldLedgerReview.ClaimProbe do
        %{
          rows: eligible,
          exhaustive?: true,
-         reason: "The source lookup equality pins all remaining formals to the finite pre-state entries",
+         reason:
+           "The source lookup equality pins all remaining formals to the finite pre-state entries",
          truncated?: false
        }}
+    end
+  end
+
+  defp entry_binding({key, _, _} = entry, pattern, initial, origins, extras) do
+    with {:ok, values} <- bind_pattern(pattern, {:ok, entry}, initial),
+         true <- Enum.all?(extras, &Map.has_key?(values, &1)) do
+      fields = entry_pattern_fields(pattern)
+
+      discovered =
+        Map.new(extras, fn param ->
+          {param, %{kind: :existing_entry, entry_key: key, field: Map.fetch!(fields, param)}}
+        end)
+
+      refined = Enum.reduce(fields, origins, &refine_origin(&1, &2, key))
+      [%{values: values, origins: Map.merge(refined, discovered)}]
+    else
+      _ -> []
+    end
+  end
+
+  defp refine_origin({param, field}, origins, key) do
+    if Map.has_key?(origins, param) and field in [:key, :amount] do
+      Map.put(origins, param, %{
+        kind: :event_field_and_existing_entry,
+        field: field,
+        entry_key: key,
+        event_origin: Map.fetch!(origins, param)
+      })
+    else
+      origins
     end
   end
 
@@ -234,29 +279,20 @@ defmodule HoldLedgerReview.ClaimProbe do
 
   defp bind_pattern({:{}, _, elems}, value, existing) when is_tuple(value) do
     if tuple_size(value) == length(elems) do
-      Enum.zip(elems, Tuple.to_list(value))
-      |> Enum.reduce_while({:ok, existing}, fn {part, actual}, {:ok, acc} ->
-        case bind_pattern(part, actual, acc) do
-          {:ok, updated} -> {:cont, {:ok, updated}}
-          error -> {:halt, error}
-        end
-      end)
+      bind_parts(Enum.zip(elems, Tuple.to_list(value)), existing)
     else
       {:error, :pattern_mismatch}
     end
   end
 
-  defp bind_pattern(pattern, value, existing) when is_tuple(pattern) and tuple_size(pattern) == 2 and is_tuple(value) and tuple_size(value) == 2 do
-    Enum.zip(Tuple.to_list(pattern), Tuple.to_list(value))
-    |> Enum.reduce_while({:ok, existing}, fn {part, actual}, {:ok, acc} ->
-      case bind_pattern(part, actual, acc) do
-        {:ok, updated} -> {:cont, {:ok, updated}}
-        error -> {:halt, error}
-      end
-    end)
+  defp bind_pattern(pattern, value, existing)
+       when is_tuple(pattern) and tuple_size(pattern) == 2 and is_tuple(value) and
+              tuple_size(value) == 2 do
+    bind_parts(Enum.zip(Tuple.to_list(pattern), Tuple.to_list(value)), existing)
   end
 
-  defp bind_pattern({name, _, ctx}, value, existing) when is_atom(name) and (is_nil(ctx) or is_atom(ctx)) do
+  defp bind_pattern({name, _, ctx}, value, existing)
+       when is_atom(name) and (is_nil(ctx) or is_atom(ctx)) do
     case Map.fetch(existing, name) do
       :error -> {:ok, Map.put(existing, name, value)}
       {:ok, ^value} -> {:ok, existing}
@@ -266,6 +302,16 @@ defmodule HoldLedgerReview.ClaimProbe do
 
   defp bind_pattern(value, value, existing), do: {:ok, existing}
   defp bind_pattern(_, _, _), do: {:error, :pattern_mismatch}
+
+  defp bind_parts(parts, existing) do
+    Enum.reduce_while(parts, {:ok, existing}, fn {part, actual}, {:ok, acc} ->
+      case bind_pattern(part, actual, acc) do
+        {:ok, updated} -> {:cont, {:ok, updated}}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
   defp variable?({name, _, ctx}, name) when is_nil(ctx) or is_atom(ctx), do: true
   defp variable?(_, _), do: false
 
@@ -280,33 +326,17 @@ defmodule HoldLedgerReview.ClaimProbe do
       rows =
         Enum.map(bindings.rows, fn binding ->
           values = Enum.map(law.formals, &Map.fetch!(binding.values, &1))
-          origins = Map.new(binding.origins, fn {k, v} -> {Atom.to_string(k), v} end)
+          origins = string_keys(binding.origins)
 
           outcome =
-            case Claims.evaluate(law.slug, values, candidate, encoded.root) do
-              {:ok, %{requires: true, actual: source_actual, candidate: substituted,
-                      operation_output: operation_output}} ->
-                if operation_output == actual and is_boolean(source_actual) and is_boolean(substituted) do
-                  %{requires: true, source_actual_expects: source_actual, substituted_expects: substituted}
-                else
-                  %{requires: :error, source_actual_expects: :error, substituted_expects: :error,
-                    reason: :operation_mismatch_or_bad_expression}
-                end
-
-              {:ok, %{requires: false}} ->
-                %{requires: false, source_actual_expects: nil, substituted_expects: nil}
-
-              _ ->
-                %{requires: :error, source_actual_expects: :error, substituted_expects: :error,
-                  reason: :source_expression_error}
-            end
+            binding_outcome(Claims.evaluate(law.slug, values, candidate, encoded.root), actual)
 
           Map.merge(outcome, %{
             law_slug: law.slug,
             source_sha256: law.source_sha256,
             evaluator_id: generation.evaluator_id,
             formal_parameters: Enum.map(law.formals, &Atom.to_string/1),
-            actual_binding_values: Map.new(binding.values, fn {k, v} -> {Atom.to_string(k), binding_json(v)} end),
+            actual_binding_values: binding_values(binding.values),
             binding_origin: origins,
             call_signature: law.call_signature,
             occurrence_count: law.occurrence_count,
@@ -343,19 +373,57 @@ defmodule HoldLedgerReview.ClaimProbe do
     end
   end
 
+  defp string_keys(map), do: Map.new(map, fn {key, value} -> {Atom.to_string(key), value} end)
+
+  defp binding_values(map),
+    do: Map.new(map, fn {key, value} -> {Atom.to_string(key), binding_json(value)} end)
+
+  defp binding_outcome(
+         {:ok,
+          %{
+            requires: true,
+            actual: source_actual,
+            candidate: substituted,
+            operation_output: operation_output
+          }},
+         actual
+       ) do
+    if operation_output == actual and is_boolean(source_actual) and is_boolean(substituted) do
+      %{requires: true, source_actual_expects: source_actual, substituted_expects: substituted}
+    else
+      binding_error(:operation_mismatch_or_bad_expression)
+    end
+  end
+
+  defp binding_outcome({:ok, %{requires: false}}, _),
+    do: %{requires: false, source_actual_expects: nil, substituted_expects: nil}
+
+  defp binding_outcome(_, _), do: binding_error(:source_expression_error)
+
+  defp binding_error(reason),
+    do: %{
+      requires: :error,
+      source_actual_expects: :error,
+      substituted_expects: :error,
+      reason: reason
+    }
+
+  defp applicable_with?(row, field, value), do: row[:requires] == true and row[field] == value
+
   defp aggregate(rows, exhaustive?) do
     cond do
-      Enum.any?(rows, &(&1[:source_actual_expects] == false and &1[:requires] == true)) ->
+      Enum.any?(rows, &applicable_with?(&1, :source_actual_expects, false)) ->
         {:cant_check, :actual_contract_alarm}
 
       Enum.any?(rows, &(&1[:requires] == :error)) ->
         {:cant_check, :source_expression_error}
 
-      Enum.any?(rows, &(&1[:requires] == true and &1[:substituted_expects] == false)) ->
+      Enum.any?(rows, &applicable_with?(&1, :substituted_expects, false)) ->
         {:catches, :source_expression_rejects_candidate}
 
-      Enum.any?(rows, &(&1[:requires] == true and &1[:substituted_expects] == true)) ->
-        {:allows_here, if(exhaustive?, do: :all_source_derived_bindings_tested, else: :tested_only)}
+      Enum.any?(rows, &applicable_with?(&1, :substituted_expects, true)) ->
+        {:allows_here,
+         if(exhaustive?, do: :all_source_derived_bindings_tested, else: :tested_only)}
 
       exhaustive? ->
         {:doesnt_apply, :no_applicable_source_binding}

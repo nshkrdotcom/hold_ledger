@@ -1,9 +1,21 @@
 defmodule HoldLedgerReview.Config do
   @moduledoc "Validated local checkout configuration."
+  @build_root Path.expand("../../../..", __DIR__)
+  @build_sources HoldLedgerReview.Claims.Source.support_sources()
+  for relative <- @build_sources do
+    @external_resource Path.join(@build_root, relative)
+  end
+
+  @build_hashes Map.new(@build_sources, fn relative ->
+                  {relative, :crypto.hash(:sha256, File.read!(Path.join(@build_root, relative)))}
+                end)
   @ledger_source HoldLedger.Ledger.module_info(:compile)[:source] |> to_string()
   @spec_source HoldLedger.Spec.module_info(:compile)[:source] |> to_string()
   @external_resource @ledger_source
   @external_resource @spec_source
+  @compiled_modules Map.new([HoldLedger.Ledger, HoldLedger.Spec], fn module ->
+                      {module, module.module_info(:md5)}
+                    end)
   @compiled_hashes Map.new(
                      [
                        {"lib/hold_ledger/ledger.ex", @ledger_source},
@@ -17,6 +29,25 @@ defmodule HoldLedgerReview.Config do
     Enum.all?(@compiled_hashes, fn {relative, hash} ->
       case File.read(Path.join(root, relative)) do
         {:ok, bytes} -> :crypto.hash(:sha256, bytes) == hash
+        _ -> false
+      end
+    end)
+  end
+
+  def loaded_core_matches? do
+    Enum.all?(@compiled_modules, fn {module, expected} ->
+      module.module_info(:md5) == expected
+    end)
+  rescue
+    _ -> false
+  end
+
+  # Unlike source_matches?/1, this also binds the evaluator implementation to
+  # its build. Restarting with --no-compile cannot bless changed compiler bytes.
+  def build_matches?(root) do
+    Enum.all?(@build_hashes, fn {relative, expected} ->
+      case HoldLedgerReview.Anchor.read_under(root, relative) do
+        {:ok, bytes} -> :crypto.hash(:sha256, bytes) == expected
         _ -> false
       end
     end)

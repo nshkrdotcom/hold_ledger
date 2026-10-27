@@ -5,7 +5,11 @@ defmodule HoldLedgerReview.Claims.Compiler do
   call in the original `expects`, never an independently handwritten predicate.
   """
 
+  alias HoldLedgerReview.Claims.Source
+
   @generated HoldLedgerReview.Claims.Generated
+  # This module is created only after the trusted source has been audited.
+  @compile {:no_warn_undefined, {@generated, :claim_manifest_sha256, 0}}
   @initial ~w(po_b1_void po_b1_timeout po_b2 po_b3 po_a2 po_a4_conflict po_a4_duplicate po_exposure_retain po_s)
   @ops %{step: 2, request: 3, void: 2, timeout: 2}
   @spec_calls %{
@@ -19,10 +23,24 @@ defmodule HoldLedgerReview.Claims.Compiler do
     expected_step: 2
   }
   @local_operators %{
-    :"|" => 2,
-    and: 2, or: 2, not: 1, in: 2, ==: 2, ===: 2,
-    !=: 2, !==: 2, <: 2, >: 2, <=: 2, >=: 2,
-    +: 2, -: 2, *: 2, elem: 2, is_integer: 1
+    :| => 2,
+    and: 2,
+    or: 2,
+    not: 1,
+    in: 2,
+    ==: 2,
+    ===: 2,
+    !=: 2,
+    !==: 2,
+    <: 2,
+    >: 2,
+    <=: 2,
+    >=: 2,
+    +: 2,
+    -: 2,
+    *: 2,
+    elem: 2,
+    is_integer: 1
   }
   @literal_atoms ~w(
     ok reserved sent unknown authorized voiding declined voided
@@ -61,7 +79,9 @@ defmodule HoldLedgerReview.Claims.Compiler do
 
   def compile(manifest_sha, claims) when is_binary(manifest_sha) and is_map(claims) do
     if Code.ensure_loaded?(@generated) do
-      if @generated.claim_manifest_sha256() == manifest_sha do
+      module = @generated
+
+      if module.claim_manifest_sha256() == manifest_sha do
         {:ok, @generated}
       else
         {:error, :source_or_compiled_code_drift}
@@ -77,7 +97,7 @@ defmodule HoldLedgerReview.Claims.Compiler do
           @moduledoc false
           @compile :debug_info
           def claim_manifest_sha256, do: unquote(manifest_sha)
-          def compiler_version, do: unquote(HoldLedgerReview.Claims.Source.version())
+          def compiler_version, do: unquote(Source.version())
           unquote_splicing(definitions)
         end
 
@@ -91,52 +111,57 @@ defmodule HoldLedgerReview.Claims.Compiler do
   end
 
   defp definitions(%{slug: slug, formals: names} = law) do
-    vars = Enum.map(names, &Macro.var(&1, nil))
-    candidate_var = Macro.var(:__candidate_output__, nil)
-    requires = law.normalized_requires
-    expects = law.normalized_expects
-    candidate = law.substituted_expects
-    target = law.target_ast
-
     [
-      quote do
-        def requires(unquote(slug), [unquote_splicing(vars)]), do: unquote(requires)
-      end,
-      quote do
-        def actual(unquote(slug), [unquote_splicing(vars)]), do: unquote(expects)
-      end,
-      quote do
-        def candidate(unquote(slug), [unquote_splicing(vars)], unquote(candidate_var)),
-          do: unquote(candidate)
-      end,
-      quote do
-        def target(unquote(slug), [unquote_splicing(vars)]), do: unquote(target)
-      end
+      definition(:requires, slug, names, law.normalized_requires),
+      definition(:actual, slug, names, law.normalized_expects),
+      definition(:candidate, slug, names, law.substituted_expects),
+      definition(:target, slug, names, law.target_ast)
     ]
   end
 
-  defp expand(ast, aliases) do
-    try do
-      {expanded, unresolved} =
-        Macro.postwalk(ast, [], fn
-          {{:., dot_meta, [{:__aliases__, _, [name]}, fun]}, meta, args}, problems
-          when name in [:Ledger, :Spec] ->
-            if name in aliases do
-              qualified = {:__aliases__, [], [:HoldLedger, name]}
-              {{{:., dot_meta, [qualified, fun]}, meta, args}, problems}
-            else
-              {{{:., dot_meta, [{:__aliases__, [], [name]}, fun]}, meta, args},
-               [:unresolved_alias | problems]}
-            end
+  defp definition(function, slug, names, expression) do
+    {_, used} =
+      Macro.prewalk(expression, MapSet.new(), fn
+        {name, _, nil} = node, acc when is_atom(name) -> {node, MapSet.put(acc, name)}
+        node, acc -> {node, acc}
+      end)
 
-          node, problems ->
-            {node, problems}
-        end)
+    vars =
+      Enum.map(names, fn name ->
+        Macro.var(if(MapSet.member?(used, name), do: name, else: :_), nil)
+      end)
 
-      if unresolved == [], do: {:ok, expanded}, else: {:error, :unresolved_alias}
-    rescue
-      _ -> {:error, :unresolved_alias}
+    args = [slug, vars]
+    args = if function == :candidate, do: args ++ [candidate_variable()], else: args
+
+    quote do
+      def unquote(function)(unquote_splicing(args)), do: unquote(expression)
     end
+  end
+
+  # A separate AST context prevents capture by any source formal name.
+  defp candidate_variable, do: Macro.var(:candidate_output, __MODULE__)
+
+  defp expand(ast, aliases) do
+    {expanded, unresolved} =
+      Macro.postwalk(ast, [], fn
+        {{:., dot_meta, [{:__aliases__, _, [name]}, fun]}, meta, args}, problems
+        when name in [:Ledger, :Spec] ->
+          if name in aliases do
+            qualified = {:__aliases__, [], [:HoldLedger, name]}
+            {{{:., dot_meta, [qualified, fun]}, meta, args}, problems}
+          else
+            {{{:., dot_meta, [{:__aliases__, [], [name]}, fun]}, meta, args},
+             [:unresolved_alias | problems]}
+          end
+
+        node, problems ->
+          {node, problems}
+      end)
+
+    if unresolved == [], do: {:ok, expanded}, else: {:error, :unresolved_alias}
+  rescue
+    _ -> {:error, :unresolved_alias}
   end
 
   defp validate(ast, formals, reducer_allowed?) do
@@ -149,19 +174,28 @@ defmodule HoldLedgerReview.Claims.Compiler do
        when is_integer(term) and term >= 0 and term <= 1_000_000,
        do: true
 
-  defp valid_ast?(term, _formals, _reducer?) when term in [true, false, nil] or term in @literal_atoms,
-    do: true
+  defp valid_ast?(term, _formals, _reducer?)
+       when term in [true, false, nil] or term in @literal_atoms,
+       do: true
 
   defp valid_ast?({:{}, _, args}, formals, reducer?) when is_list(args) and length(args) <= 16,
     do: Enum.all?(args, &valid_ast?(&1, formals, reducer?))
 
-  defp valid_ast?({{:., _, [{:__aliases__, _, [:HoldLedger, :Spec]}, fun]}, _, args}, formals, reducer?)
+  defp valid_ast?(
+         {{:., _, [{:__aliases__, _, [:HoldLedger, :Spec]}, fun]}, _, args},
+         formals,
+         reducer?
+       )
        when is_list(args) do
     Map.get(@spec_calls, fun) == length(args) and
       Enum.all?(args, &valid_ast?(&1, formals, reducer?))
   end
 
-  defp valid_ast?({{:., _, [{:__aliases__, _, [:HoldLedger, :Ledger]}, fun]}, _, args}, formals, true)
+  defp valid_ast?(
+         {{:., _, [{:__aliases__, _, [:HoldLedger, :Ledger]}, fun]}, _, args},
+         formals,
+         true
+       )
        when is_list(args) do
     Map.get(@ops, fun) == length(args) and Enum.all?(args, &valid_ast?(&1, formals, true))
   end
@@ -188,12 +222,14 @@ defmodule HoldLedgerReview.Claims.Compiler do
     calls = target_calls(expects)
 
     case calls do
-      [] -> {:error, :no_target_reducer_call}
+      [] ->
+        {:error, :no_target_reducer_call}
+
       [first | rest] ->
-        signature = Macro.to_string(first)
+        signature = semantic_ast(first)
 
         cond do
-          not Enum.all?(rest, &(Macro.to_string(&1) == signature)) ->
+          not Enum.all?(rest, &(semantic_ast(&1) == signature)) ->
             {:error, :non_equivalent_reducer_calls}
 
           not exact_formal_call?(first, formals) ->
@@ -205,20 +241,21 @@ defmodule HoldLedgerReview.Claims.Compiler do
     end
   end
 
-  defp exact_formal_call?({{:., _, [_, fun]}, _, args}, [state | other_formals]) do
-    case {fun, args} do
-      {:step, [s, event]} ->
-        variable?(s, state) and length(other_formals) >= 1 and variable?(event, hd(other_formals))
+  defp exact_formal_call?({{:., _, [_, :step]}, _, [s, event]}, [state, event_name | _]) do
+    variable?(s, state) and variable?(event, event_name)
+  end
 
-      {op, [s, key, amount]} when op == :request ->
-        variable?(s, state) and length(other_formals) >= 2 and
-          variable?(key, hd(other_formals)) and variable?(amount, Enum.at(other_formals, 1))
+  defp exact_formal_call?({{:., _, [_, :request]}, _, [s, key, amount]}, [
+         state,
+         key_name,
+         amount_name | _
+       ]) do
+    variable?(s, state) and variable?(key, key_name) and variable?(amount, amount_name)
+  end
 
-      {op, [s, key]} when op in [:void, :timeout] ->
-        variable?(s, state) and length(other_formals) >= 1 and variable?(key, hd(other_formals))
-
-      _ -> false
-    end
+  defp exact_formal_call?({{:., _, [_, op]}, _, [s, key]}, [state, key_name | _])
+       when op in [:void, :timeout] do
+    variable?(s, state) and variable?(key, key_name)
   end
 
   defp exact_formal_call?(_, _), do: false
@@ -240,12 +277,19 @@ defmodule HoldLedgerReview.Claims.Compiler do
     Enum.reverse(calls)
   end
 
+  defp semantic_ast(ast) do
+    Macro.prewalk(ast, fn
+      {name, meta, args} when is_list(meta) -> {name, [], args}
+      node -> node
+    end)
+  end
+
   defp replace_all(ast, target) do
-    signature = Macro.to_string(target)
+    signature = semantic_ast(target)
 
     Macro.postwalk(ast, 0, fn node, replaced ->
-      if Macro.to_string(node) == signature do
-        {Macro.var(:__candidate_output__, nil), replaced + 1}
+      if semantic_ast(node) == signature do
+        {candidate_variable(), replaced + 1}
       else
         {node, replaced}
       end

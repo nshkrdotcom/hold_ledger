@@ -1,6 +1,6 @@
 defmodule HoldLedgerReview.ClaimsTest do
   use ExUnit.Case, async: false
-  alias HoldLedgerReview.{Claims, ClaimProbe, Config, TermCodec}
+  alias HoldLedgerReview.{ClaimProbe, Claims, Config, TermCodec}
   alias HoldLedgerReview.Claims.{Compiler, Source}
 
   @fixture_dir Path.expand("../fixtures/claims", __DIR__)
@@ -28,21 +28,30 @@ defmodule HoldLedgerReview.ClaimsTest do
   test "source extraction, exact call multiplicity and compiled actual/candidate divergence" do
     root = Config.root()
 
-    for {slug, sites} <- [{"po_b3", 3}, {"po_b2", 3}, {"po_a2", 2},
-                           {"po_exposure_retain", 1}, {"po_b1_void", 1},
-                           {"po_b1_timeout", 1}, {"po_s", 1}] do
+    for {slug, sites} <- [
+          {"po_b3", 3},
+          {"po_b2", 3},
+          {"po_a2", 2},
+          {"po_exposure_retain", 1},
+          {"po_b1_void", 1},
+          {"po_b1_timeout", 1},
+          {"po_s", 1}
+        ] do
       assert {:ok, claim} = Claims.claim(slug)
       assert claim.occurrence_count == sites
       assert claim.residual_target_count == 0
       assert claim.source_sha256 == source_hash(root, claim.source_file)
-      assert Macro.to_string(claim.normalized_expects) != Macro.to_string(claim.substituted_expects)
+
+      assert Macro.to_string(claim.normalized_expects) !=
+               Macro.to_string(claim.substituted_expects)
+
       assert claim.source_text != ""
       assert {:ok, parsed} = Source.declaration(root, law_record(slug))
       assert parsed.formals == claim.formals
       assert Macro.to_string(parsed.expects) == Macro.to_string(claim.expects)
     end
 
-    {before, event, output, _} = fixture("P04")
+    {before, _event, output, _} = fixture("P04")
     assert {:ok, claim} = Claims.claim("po_a2")
     assert claim.formals == [:s, :key, :amount]
     assert {:ok, checks} = Claims.evaluate("po_a2", [before, 11, 100], output)
@@ -59,7 +68,13 @@ defmodule HoldLedgerReview.ClaimsTest do
 
       for {slug, expected} <- claims do
         row = ClaimProbe.probe(slug, before, event, output)
-        status = if(expected == "does_not_apply", do: :doesnt_apply, else: String.to_existing_atom(expected))
+
+        status =
+          if(expected == "does_not_apply",
+            do: :doesnt_apply,
+            else: String.to_existing_atom(expected)
+          )
+
         assert row.status == status, "#{id}/#{slug}: #{inspect(row)}"
         assert row.exhaustive_for_source_domain
         assert row.evaluator_id == Claims.snapshot().evaluator_id
@@ -88,8 +103,12 @@ defmodule HoldLedgerReview.ClaimsTest do
     assert Enum.sort(Enum.map(row.rows, & &1.actual_binding_values["key"])) == [1, 2]
     assert Enum.all?(row.rows, &(&1.actual_binding_values["event"]["type"] == "timeout"))
     assert Enum.all?(row.rows, &(&1.binding_origin["amount"].kind == :existing_entry))
-    assert Enum.any?(row.rows, &(&1.actual_binding_values["key"] != elem(event, 1) and
-                                 &1.substituted_expects == false))
+
+    assert Enum.any?(
+             row.rows,
+             &(&1.actual_binding_values["key"] != elem(event, 1) and
+                 &1.substituted_expects == false)
+           )
 
     truncated = ClaimProbe.probe("po_exposure_retain", before, event, output, binding_limit: 1)
     assert truncated.status == :cant_check
@@ -101,8 +120,10 @@ defmodule HoldLedgerReview.ClaimsTest do
     conflict = Enum.find(vector, &(&1["law"] == "po_a4_conflict"))
     duplicate = Enum.find(vector, &(&1["law"] == "po_a4_duplicate"))
 
-    for {v, slug, expected} <- [{conflict, "po_a4_conflict", :allows_here},
-                                 {duplicate, "po_a4_duplicate", :allows_here}] do
+    for {v, slug, expected} <- [
+          {conflict, "po_a4_conflict", :allows_here},
+          {duplicate, "po_a4_duplicate", :allows_here}
+        ] do
       {:ok, before} = TermCodec.decode_state(v["before"])
       {:ok, event} = TermCodec.decode_event(v["event"])
       output = HoldLedger.Ledger.step(before, event)
@@ -111,8 +132,11 @@ defmodule HoldLedgerReview.ClaimsTest do
       assert row.bindings_tested == 1
       assert hd(row.rows).requires == true
       assert hd(row.rows).actual_binding_values["amount"] == elem(event, 2)
-      assert hd(row.rows).binding_origin["amount"].kind in
-               [:request_field, :event_field_and_existing_entry]
+
+      assert hd(row.rows).binding_origin["amount"].kind in [
+               :request_field,
+               :event_field_and_existing_entry
+             ]
 
       if slug == "po_a4_conflict" do
         assert hd(row.rows).actual_binding_values["original"] == 50
@@ -123,9 +147,16 @@ defmodule HoldLedgerReview.ClaimsTest do
 
     {:ok, before} = TermCodec.decode_state(conflict["before"])
     output = HoldLedger.Ledger.step(before, {:request, 1, 60})
-    assert ClaimProbe.probe("po_a4_duplicate", before, {:request, 1, 60}, output).status == :doesnt_apply
-    assert ClaimProbe.probe("po_a4_conflict", before, {:request, 1, 50},
-             HoldLedger.Ledger.step(before, {:request, 1, 50})).status == :doesnt_apply
+
+    assert ClaimProbe.probe("po_a4_duplicate", before, {:request, 1, 60}, output).status ==
+             :doesnt_apply
+
+    assert ClaimProbe.probe(
+             "po_a4_conflict",
+             before,
+             {:request, 1, 50},
+             HoldLedger.Ledger.step(before, {:request, 1, 50})
+           ).status == :doesnt_apply
   end
 
   test "po_b2 scans existing unknown entries, not arbitrary sent entries or event key" do
@@ -146,20 +177,54 @@ defmodule HoldLedgerReview.ClaimsTest do
   test "unsupported aliases/AST, no reducer and non-equivalent calls fail closed" do
     {:ok, law} = Claims.claim("po_b3")
     assert {:error, :unresolved_alias} = Compiler.prepare(%{law | aliases: []})
-    assert {:error, :unsupported_ast} = Compiler.prepare(%{law | expects: quote(do: System.cmd("sh", []))})
-    assert {:error, :no_target_reducer_call} = Compiler.prepare(%{law | expects: quote(do: Spec.valid?(s))})
-
-    assert {:error, :non_equivalent_reducer_calls} =
-             Compiler.prepare(%{law | expects: quote(do: Ledger.step(s, event) == Ledger.void(s, 1))})
-
-    {:ok, request_law} = Claims.claim("po_a2")
-    assert {:error, :unsupported_call_signature} =
-             Compiler.prepare(%{request_law | expects: quote(do: Ledger.request(s, amount, key) == {s, :admitted, []})})
 
     assert {:error, :unsupported_ast} =
-             Compiler.prepare(%{law | expects: quote(do: apply(Ledger, :step, [s, event]))})
+             Compiler.prepare(%{law | expects: quote(do: System.cmd("sh", []))})
 
-    assert ClaimProbe.probe("po_a2", elem(fixture("P01"), 0), {:void, 1}, elem(fixture("P01"), 2)).status == :not_probed
+    assert {:error, :no_target_reducer_call} =
+             Compiler.prepare(%{law | expects: quote(do: Spec.valid?(s))})
+
+    assert {:error, :non_equivalent_reducer_calls} =
+             Compiler.prepare(%{
+               law
+               | expects: quote(do: Ledger.step(s, event) == Ledger.void(s, 1))
+             })
+
+    {:ok, request_law} = Claims.claim("po_a2")
+
+    assert {:error, :unsupported_call_signature} =
+             Compiler.prepare(%{
+               request_law
+               | expects: quote(do: Ledger.request(s, amount, key) == {s, :admitted, []})
+             })
+
+    unsafe_apply =
+      {:apply, [], [{:__aliases__, [], [:Ledger]}, :step, [{:s, [], nil}, {:event, [], nil}]]}
+
+    assert {:error, :unsupported_ast} = Compiler.prepare(%{law | expects: unsafe_apply})
+
+    assert ClaimProbe.probe("po_a2", elem(fixture("P01"), 0), {:void, 1}, elem(fixture("P01"), 2)).status ==
+             :not_probed
+  end
+
+  test "source imports and macro overrides are rejected without execution" do
+    tmp = cloned_sources()
+    path = Path.join(tmp, "test/laws/po_b3_test.exs")
+    source = File.read!(path)
+
+    for directive <- [
+          "import Untrusted",
+          "require Untrusted",
+          "use Untrusted",
+          "defmacro is_integer(x), do: x"
+        ] do
+      File.write!(
+        path,
+        String.replace(source, "use ExUnit.Case", "use ExUnit.Case\n  " <> directive)
+      )
+
+      assert {:error, :unsupported_source_context} = Source.declaration(tmp, law_record("po_b3"))
+    end
   end
 
   test "law edits, inventory additions/deletions and catalog changes invalidate the independent manifest" do
@@ -194,7 +259,12 @@ defmodule HoldLedgerReview.ClaimsTest do
     compiler = Path.join(tmp, "apps/review_web/lib/hold_ledger_review/claims/compiler.ex")
     File.write!(compiler, File.read!(compiler) <> "\n# compiled dependency edit\n")
     assert {:error, :source_or_compiled_code_drift} = Claims.freshness(tmp)
-    File.cp!(Path.join(Config.root(), "apps/review_web/lib/hold_ledger_review/claims/compiler.ex"), compiler)
+
+    File.cp!(
+      Path.join(Config.root(), "apps/review_web/lib/hold_ledger_review/claims/compiler.ex"),
+      compiler
+    )
+
     assert :ok = Claims.freshness(tmp)
 
     catalog = Path.join(tmp, "verification/laws.json")
@@ -208,10 +278,14 @@ defmodule HoldLedgerReview.ClaimsTest do
     {before, event, candidate, _} = fixture("P01")
 
     assert :ok = Claims.freshness(tmp)
+
     row =
       ClaimProbe.probe("po_b1_void", before, event, candidate,
         root: tmp,
-        before_finish: fn -> File.write!(source, File.read!(source) <> "\n# changed in flight") end)
+        before_finish: fn ->
+          File.write!(source, File.read!(source) <> "\n# changed in flight")
+        end
+      )
 
     assert row.status == :cant_check
     assert row.reason == :source_or_compiled_code_drift
@@ -220,17 +294,184 @@ defmodule HoldLedgerReview.ClaimsTest do
   test "invalid or out-of-range native inputs fail before any reducer invocation" do
     {before, event, output, _} = fixture("P01")
     assert ClaimProbe.probe("po_b3", before, {:request, 1, -3}, output).status == :cant_check
-    assert ClaimProbe.probe("po_b3", before, event, {elem(output, 0), :arbitrary, []}).status == :cant_check
-    assert ClaimProbe.probe("po_b3", {100, 2, 0, 0, [{1, -5, :sent}]}, event, output).status == :cant_check
-    assert ClaimProbe.probe("po_b3", before, event, output, binding_limit: 0).status == :cant_check
+
+    assert ClaimProbe.probe("po_b3", before, event, {elem(output, 0), :arbitrary, []}).status ==
+             :cant_check
+
+    assert ClaimProbe.probe("po_b3", {100, 2, 0, 0, [{1, -5, :sent}]}, event, output).status ==
+             :cant_check
+
+    assert ClaimProbe.probe("po_b3", before, event, output, binding_limit: 0).status ==
+             :cant_check
   end
 
   test "concurrent readers share the one immutable evaluator generation" do
     {before, event, output, _} = fixture("P05")
-    tasks = for _ <- 1..12, do: Task.async(fn -> ClaimProbe.probe("po_b3", before, event, output) end)
+
+    tasks =
+      for _ <- 1..12, do: Task.async(fn -> ClaimProbe.probe("po_b3", before, event, output) end)
+
     rows = Enum.map(tasks, &Task.await(&1, 15_000))
     assert Enum.all?(rows, &(&1.status == :catches))
     assert rows |> Enum.map(& &1.evaluator_id) |> Enum.uniq() |> length() == 1
+  end
+
+  test "missing follow-on performs no reducer calculation, even for invalid outputs" do
+    assert ClaimProbe.follow_on(:not_an_output, :not_an_output, nil) ==
+             %{actual: nil, candidate: nil, reason: :no_follow_on_event}
+  end
+
+  test "candidate binding has a separate context from source formals" do
+    {:ok, law} = Claims.claim("po_b1_void")
+
+    rename = fn ast ->
+      Macro.prewalk(ast, fn
+        {:s, meta, nil} -> {:candidate_output, meta, nil}
+        node -> node
+      end)
+    end
+
+    renamed = %{
+      law
+      | formals: [:candidate_output, :key],
+        requires: rename.(law.requires),
+        expects: rename.(law.expects)
+    }
+
+    assert {:ok, prepared} = Compiler.prepare(renamed)
+    assert prepared.residual_target_count == 0
+
+    {_, contexts} =
+      Macro.prewalk(prepared.substituted_expects, [], fn
+        {:candidate_output, _, context} = node, acc -> {node, [context | acc]}
+        node, acc -> {node, acc}
+      end)
+
+    assert Compiler in contexts
+    refute nil in contexts
+  end
+
+  test "equivalent reducer AST ignores location metadata" do
+    {:ok, law} = Claims.claim("po_b3")
+
+    {expects, _} =
+      Macro.prewalk(law.expects, 0, fn
+        {{:., _, [{:__aliases__, _, [:Ledger]}, :step]}, _, _} = node, n ->
+          changed = Macro.update_meta(node, &Keyword.put(&1, :line, 100 + n))
+          {changed, n + 1}
+
+        node, n ->
+          {node, n}
+      end)
+
+    assert {:ok, prepared} = Compiler.prepare(%{law | expects: expects})
+    assert prepared.occurrence_count == 3
+    assert prepared.residual_target_count == 0
+  end
+
+  test "optional lookup equalities cannot certify an exhaustive entry domain" do
+    tmp = cloned_sources()
+    path = Path.join(tmp, "test/laws/po_exposure_retain_test.exs")
+    source = File.read!(path)
+    # The OR makes the lookup optional; its integers no longer have a finite domain.
+    changed =
+      String.replace(
+        source,
+        "Spec.valid?(state)",
+        "true or Spec.valid?(state)",
+        global: false
+      )
+
+    assert changed != source
+    File.write!(path, changed)
+
+    run_isolated!(tmp, """
+    %{status: :cant_check, reason: :incomplete_binding_domain} =
+      ClaimProbe.probe("po_exposure_retain", {100, 2, 100, 1, [{1, 100, :authorized}]},
+        {:void, 1}, {{100, 2, 0, 0, [{1, 100, :voided}]}, :voided, []})
+    """)
+  end
+
+  test "loaded Ledger and Spec drift blocks probes and initialization in isolated VMs" do
+    for module <- [HoldLedger.Ledger, HoldLedger.Spec] do
+      run_isolated!(Config.root(), """
+      module = #{inspect(module)}
+      source = module.module_info(:compile)[:source] |> to_string() |> File.read!()
+      changed = String.replace(source, "defmodule #{inspect(module)} do",
+        "defmodule #{inspect(module)} do\n  def source_identity_probe, do: :changed\n", global: false)
+      true = changed != source
+      Code.compiler_options(ignore_module_conflict: true)
+      Code.compile_string(changed)
+      true = Config.source_matches?(root)
+      false = Config.loaded_core_matches?()
+      {:error, :source_or_compiled_code_drift} = Claims.freshness(root)
+      %{status: :unavailable, reason: :source_or_compiled_code_drift} = Claims.initialize(root)
+      %{status: :cant_check, reason: :source_or_compiled_code_drift} =
+        ClaimProbe.probe("po_b3", {100, 2, 0, 0, []}, {:request, 1, 100},
+          {{100, 2, 0, 0, []}, :insufficient_amount, []})
+      """)
+    end
+  end
+
+  test "law drift refuses in-process regeneration and controlled restart creates a matching generation" do
+    tmp = cloned_sources()
+    path = Path.join(tmp, "test/laws/po_b1_void_test.exs")
+    File.write!(path, File.read!(path) <> "\n# controlled restart generation\n")
+    assert {:error, :source_or_compiled_code_drift} = Claims.freshness(tmp)
+
+    assert %{status: :unavailable, reason: :source_or_compiled_code_drift} =
+             Claims.initialize(tmp)
+
+    {:ok, source} = Source.snapshot(tmp)
+    refute source.sha256 == Claims.snapshot().source.sha256
+
+    run_isolated!(tmp, """
+    :ok = Claims.freshness(root)
+    #{inspect(source.sha256)} = Claims.snapshot().module.claim_manifest_sha256()
+    %{status: :allows_here} = ClaimProbe.probe("po_b1_void",
+      {100, 2, 100, 1, [{1, 100, :authorized}]}, {:void, 1},
+      {{100, 2, 100, 1, [{1, 100, :voiding}]}, :voiding, [{:void, 1}]})
+    """)
+  end
+
+  test "restart with stale compiler build cannot create a matching generation" do
+    tmp = cloned_sources()
+    path = Path.join(tmp, "apps/review_web/lib/hold_ledger_review/claims/compiler.ex")
+    File.write!(path, File.read!(path) <> "\n# stale build must fail at startup\n")
+
+    run_isolated!(
+      tmp,
+      """
+      true = Config.source_matches?(root)
+      false = Config.build_matches?(root)
+      %{status: :unavailable, reason: :source_or_compiled_code_drift} = Claims.snapshot()
+      {:error, :source_or_compiled_code_drift} = Claims.freshness(root)
+      """,
+      false
+    )
+  end
+
+  defp run_isolated!(root, body, ready? \\ true) do
+    # Independent disposable BEAM: never purge/replace the suite's active evaluator.
+    paths = Enum.flat_map(:code.get_path(), &["-pa", to_string(&1)])
+
+    script = """
+    alias HoldLedgerReview.{ClaimProbe, Claims, Config}
+    root = #{inspect(root)}
+    Application.put_env(:hold_ledger_review_web, :ledger_root, root)
+    {:ok, _} = Claims.start_link([])
+    #{if ready?, do: ":ok = Claims.freshness(root)", else: ""}
+    #{body}
+    IO.puts("ISOLATED_LIFECYCLE_OK")
+    """
+
+    {output, status} =
+      System.cmd(System.find_executable("elixir"), paths ++ ["-e", script],
+        stderr_to_stdout: true
+      )
+
+    assert status == 0, output
+    assert output =~ "ISOLATED_LIFECYCLE_OK"
   end
 
   defp source_hash(root, path) do
@@ -260,7 +501,9 @@ defmodule HoldLedgerReview.ClaimsTest do
     on_exit(fn -> File.rm_rf!(path) end)
     {:ok, manifest} = Source.snapshot(original)
 
-    for relative <- Map.keys(manifest.file_sha256) ++ ["verification/laws.json", "verification/obligations.json"] do
+    for relative <-
+          Map.keys(manifest.file_sha256) ++
+            ["verification/laws.json", "verification/obligations.json"] do
       target = Path.join(path, relative)
       File.mkdir_p!(Path.dirname(target))
       File.cp!(Path.join(original, relative), target)

@@ -6,8 +6,8 @@ defmodule HoldLedgerReview.Claims do
   *every* new probe. Drift requires a controlled rebuild/restart (no hot purge).
   """
   use GenServer
-  alias HoldLedgerReview.{Config, Claims, Anchor}
-  alias Claims.{Source, Compiler}
+  alias HoldLedgerReview.{Anchor, Config, TermCodec}
+  alias HoldLedgerReview.Claims.{Compiler, Source}
 
   @fingerprinted [
     HoldLedger.Ledger,
@@ -30,7 +30,10 @@ defmodule HoldLedgerReview.Claims do
   end
 
   def initialize(root) do
-    with {:ok, source} <- Source.snapshot(root),
+    with true <-
+           Config.source_matches?(root) and Config.loaded_core_matches?() and
+             Config.build_matches?(root),
+         {:ok, source} <- Source.snapshot(root),
          {raw, errors} <- Source.extract(root, source),
          {compiled, diagnostics} <- compile_claims(raw, errors),
          {:ok, generated} <- Compiler.compile(source.sha256, compiled),
@@ -45,9 +48,11 @@ defmodule HoldLedgerReview.Claims do
         loaded_fingerprint: fingerprint,
         generated_identity: generated_identity,
         module: generated,
-        evaluator_id: Anchor.sha(source.sha256 <> fingerprint <> generated_identity <> Source.version())
+        evaluator_id:
+          Anchor.sha(source.sha256 <> fingerprint <> generated_identity <> Source.version())
       }
     else
+      false -> %{status: :unavailable, reason: :source_or_compiled_code_drift, diagnostics: %{}}
       {:error, reason} -> %{status: :unavailable, reason: reason, diagnostics: %{}}
     end
   end
@@ -81,7 +86,8 @@ defmodule HoldLedgerReview.Claims do
           :error -> {:error, Map.get(errors, slug, :unknown_law)}
         end
 
-      %{reason: reason} -> {:error, reason}
+      %{reason: reason} ->
+        {:error, reason}
     end
   end
 
@@ -91,6 +97,8 @@ defmodule HoldLedgerReview.Claims do
     case snapshot() do
       %{status: :ready} = generation ->
         with true <- Config.source_matches?(root),
+             true <- Config.loaded_core_matches?(),
+             true <- Config.build_matches?(root),
              {:ok, current} <- Source.snapshot(root),
              true <- current.sha256 == generation.source.sha256,
              {:ok, current_fingerprint} <- loaded_fingerprint(),
@@ -104,7 +112,8 @@ defmodule HoldLedgerReview.Claims do
           _ -> {:error, :source_or_compiled_code_drift}
         end
 
-      _ -> {:error, :source_or_compiled_code_drift}
+      _ ->
+        {:error, :source_or_compiled_code_drift}
     end
   end
 
@@ -119,8 +128,11 @@ defmodule HoldLedgerReview.Claims do
       end
     end)
     |> case do
-      {:ok, fingerprints} -> {:ok, fingerprints |> Enum.sort() |> :erlang.term_to_binary() |> Anchor.sha()}
-      error -> error
+      {:ok, fingerprints} ->
+        {:ok, fingerprints |> Enum.sort() |> :erlang.term_to_binary() |> Anchor.sha()}
+
+      error ->
+        error
     end
   end
 
@@ -140,20 +152,20 @@ defmodule HoldLedgerReview.Claims do
 
   def evaluate(slug, formal_values, output, root \\ Config.root()) do
     with :ok <- freshness(root),
-         {:ok, _} <- HoldLedgerReview.TermCodec.encode_output(output),
+         {:ok, _} <- TermCodec.encode_output(output),
          {:ok, _law} <- claim(slug) do
       module = snapshot().module
 
       evaluation =
         try do
-          case apply(module, :requires, [slug, formal_values]) do
+          case module.requires(slug, formal_values) do
             true ->
               {:ok,
                %{
                  requires: true,
-                 actual: apply(module, :actual, [slug, formal_values]),
-                 candidate: apply(module, :candidate, [slug, formal_values, output]),
-                 operation_output: apply(module, :target, [slug, formal_values])
+                 actual: module.actual(slug, formal_values),
+                 candidate: module.candidate(slug, formal_values, output),
+                 operation_output: module.target(slug, formal_values)
                }}
 
             false ->

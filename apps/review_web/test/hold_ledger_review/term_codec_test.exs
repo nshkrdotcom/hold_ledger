@@ -1,7 +1,7 @@
 defmodule HoldLedgerReview.TermCodecTest do
   use ExUnit.Case, async: true
-  alias HoldLedgerReview.{Canonical, TermCodec}
   alias HoldLedger.{Ledger, Spec}
+  alias HoldLedgerReview.{Canonical, TermCodec}
 
   @fixture_dir Path.expand("../fixtures/claims", __DIR__)
 
@@ -19,7 +19,9 @@ defmodule HoldLedgerReview.TermCodecTest do
       assert {:ok, ^effect} = TermCodec.decode_effect(json)
     end
 
-    assert {:error, :unsupported_event} = TermCodec.encode_event({:processor_result, 1, :approved})
+    assert {:error, :unsupported_event} =
+             TermCodec.encode_event({:processor_result, 1, :approved})
+
     assert {:error, :unsupported_effect} = TermCodec.encode_effect({:dispatch, 1})
   end
 
@@ -46,7 +48,9 @@ defmodule HoldLedgerReview.TermCodecTest do
     end
 
     assert {:error, :invalid_effect} = TermCodec.decode_effect(%{"type" => "void", "key" => 1})
-    assert {:error, :invalid_effect} = TermCodec.decode_effect(%{"type" => "void", "key" => 1, "amount" => 2})
+
+    assert {:error, :invalid_effect} =
+             TermCodec.decode_effect(%{"type" => "void", "key" => 1, "amount" => 2})
   end
 
   test "complete outputs and independent oracle serialize identically in shape" do
@@ -77,12 +81,38 @@ defmodule HoldLedgerReview.TermCodecTest do
     {:ok, state} = TermCodec.decode_state(load("P01.json")["before"])
     {:ok, json} = TermCodec.encode_state(state)
     assert {:error, :invalid_state} = TermCodec.decode_state(Map.put(json, "untrusted", "yes"))
-    assert {:error, :invalid_state} = TermCodec.decode_state(put_in(json, ["entries", Access.at(0), "status"], "eval"))
-    assert {:error, :invalid_state} = TermCodec.decode_state(put_in(json, ["entries", Access.at(0), "amount"], -1))
-    assert {:error, :invalid_state} = TermCodec.decode_state(%{json | "entries" => List.duplicate(hd(json["entries"]), 9)})
-    assert {:error, :invalid_output} = TermCodec.decode_output(%{"after" => json, "result" => "voiding", "effects" => [], "extra" => 1})
-    assert {:error, :invalid_result} = TermCodec.decode_output(%{"after" => json, "result" => "user_passed", "effects" => []})
-    assert {:error, :invalid_output} = TermCodec.decode_output(%{"after" => json, "result" => "voiding", "effects" => List.duplicate(%{"type" => "void", "key" => 1, "amount" => nil}, 9)})
+
+    assert {:error, :invalid_state} =
+             TermCodec.decode_state(put_in(json, ["entries", Access.at(0), "status"], "eval"))
+
+    assert {:error, :invalid_state} =
+             TermCodec.decode_state(put_in(json, ["entries", Access.at(0), "amount"], -1))
+
+    assert {:error, :invalid_state} =
+             TermCodec.decode_state(%{json | "entries" => List.duplicate(hd(json["entries"]), 9)})
+
+    assert {:error, :invalid_output} =
+             TermCodec.decode_output(%{
+               "after" => json,
+               "result" => "voiding",
+               "effects" => [],
+               "extra" => 1
+             })
+
+    assert {:error, :invalid_result} =
+             TermCodec.decode_output(%{
+               "after" => json,
+               "result" => "user_passed",
+               "effects" => []
+             })
+
+    assert {:error, :invalid_output} =
+             TermCodec.decode_output(%{
+               "after" => json,
+               "result" => "voiding",
+               "effects" => List.duplicate(%{"type" => "void", "key" => 1, "amount" => nil}, 9)
+             })
+
     assert {:error, :unsupported_result} = TermCodec.encode_output({state, :user_passed, []})
     assert {:error, :unsupported_state} = TermCodec.encode_state({0, 0, -1, 0, []})
   end

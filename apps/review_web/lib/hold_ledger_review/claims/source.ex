@@ -23,6 +23,7 @@ defmodule HoldLedgerReview.Claims.Source do
   )
 
   def version, do: @compiler_version
+  def support_sources, do: @support_sources
 
   def snapshot(root) do
     with {:ok, catalog_bytes} <- Anchor.read_under(root, "verification/laws.json"),
@@ -31,11 +32,19 @@ defmodule HoldLedgerReview.Claims.Source do
          {:ok, obligations} <- Jason.decode(obligation_bytes),
          {:ok, laws} <- validate_catalog(root, catalog, obligations),
          {:ok, files} <- law_inventory(root),
-         true <- Enum.sort(Enum.map(Enum.filter(laws, &(&1["kind"] != "lean")), & &1["file"])) == files,
-         {:ok, pairs} <- source_pairs(root, files ++ Enum.map(Enum.filter(laws, &(&1["kind"] == "lean")), & &1["file"])) do
+         true <-
+           Enum.sort(Enum.map(Enum.filter(laws, &(&1["kind"] != "lean")), & &1["file"])) == files,
+         {:ok, pairs} <-
+           source_pairs(
+             root,
+             files ++ Enum.map(Enum.filter(laws, &(&1["kind"] == "lean")), & &1["file"])
+           ) do
       digest =
         Anchor.sha(
-          :erlang.term_to_binary({@compiler_version, [{"catalog", catalog_bytes}, {"obligations", obligation_bytes} | pairs]})
+          :erlang.term_to_binary(
+            {@compiler_version,
+             [{"catalog", catalog_bytes}, {"obligations", obligation_bytes} | pairs]}
+          )
         )
 
       {:ok,
@@ -58,25 +67,27 @@ defmodule HoldLedgerReview.Claims.Source do
     Enum.reduce(catalog, {%{}, %{}}, fn law, {claims, errors} ->
       slug = law["slug"]
 
-      if law["kind"] == "lean" do
-        {claims, Map.put(errors, slug, :native_lean_obligation)}
-      else
-        case declaration(root, law) do
-          {:ok, declaration} -> {Map.put(claims, slug, declaration), errors}
-          {:error, reason} -> {claims, Map.put(errors, slug, reason)}
-        end
+      case extract_declaration(root, law) do
+        {:ok, declaration} -> {Map.put(claims, slug, declaration), errors}
+        {:error, reason} -> {claims, Map.put(errors, slug, reason)}
       end
     end)
   end
+
+  defp extract_declaration(_root, %{"kind" => "lean"}), do: {:error, :native_lean_obligation}
+  defp extract_declaration(root, law), do: declaration(root, law)
 
   def declaration(root, law) do
     file = law["file"]
 
     with {:ok, bytes} <- Anchor.read_under(root, file),
-         {:ok, ast} <- Code.string_to_quoted(bytes, file: file, columns: true, token_metadata: true),
+         {:ok, ast} <-
+           Code.string_to_quoted(bytes, file: file, columns: true, token_metadata: true),
+         :ok <- validate_context(ast),
          {:ok, aliases} <- aliases(ast),
          [{{name, _meta, args}, opts, law_meta, original}] <- law_nodes(ast),
-         true <- is_list(args) and length(args) == law["arity"] and Atom.to_string(name) == law["law"],
+         true <-
+           is_list(args) and length(args) == law["arity"] and Atom.to_string(name) == law["law"],
          {:ok, formals} <- formal_names(args),
          true <- Keyword.keyword?(opts),
          {:ok, expects} <- Keyword.fetch(opts, :expects) do
@@ -91,7 +102,8 @@ defmodule HoldLedgerReview.Claims.Source do
          source_sha256: Anchor.sha(bytes),
          source_line: line,
          source_end_line: closing,
-         source_text: lines |> Enum.slice((line - 1)..max(line - 1, closing - 1)) |> Enum.join("\n"),
+         source_text:
+           lines |> Enum.slice((line - 1)..max(line - 1, closing - 1)) |> Enum.join("\n"),
          full_source_text: bytes,
          formals: formals,
          requires: Keyword.get(opts, :requires, true),
@@ -109,6 +121,24 @@ defmodule HoldLedgerReview.Claims.Source do
     end
   rescue
     _ -> {:error, :unparseable_law_source}
+  end
+
+  # Imported/local macros can change an allowed operator's meaning. Never
+  # expand or execute the surrounding module to discover its semantics.
+  defp validate_context(ast) do
+    {_, directives} =
+      Macro.prewalk(ast, [], fn
+        {name, _, _} = node, acc
+        when name in [:use, :import, :require, :def, :defp, :defmacro, :defmacrop] ->
+          {node, [Macro.to_string(node) | acc]}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    if Enum.all?(directives, &(&1 in ["use ExUnit.Case", "use HoldLedger.ProofCase"])),
+      do: :ok,
+      else: {:error, :unsupported_source_context}
   end
 
   defp formal_names(args) do
@@ -149,7 +179,12 @@ defmodule HoldLedgerReview.Claims.Source do
       "alias HoldLedger.Attempts" => [:Attempts],
       "alias HoldLedger.Environment" => [:Environment],
       "alias HoldLedger.{Ledger, Spec}, warn: false" => [:Ledger, :Spec],
-      "alias HoldLedger.{Attempts, Environment, Ledger, Spec}" => [:Attempts, :Environment, :Ledger, :Spec]
+      "alias HoldLedger.{Attempts, Environment, Ledger, Spec}" => [
+        :Attempts,
+        :Environment,
+        :Ledger,
+        :Spec
+      ]
     }
 
     if Enum.all?(found, &Map.has_key?(approved, &1)) do
@@ -167,48 +202,55 @@ defmodule HoldLedgerReview.Claims.Source do
     o_slugs = Enum.map(obligations, & &1["slug"])
     by_slug = Map.new(laws, fn law -> {law["slug"], law} end)
 
-    obligations_match? =
-      Enum.all?(obligations, fn obligation ->
-        case Map.get(by_slug, obligation["slug"]) do
-          nil -> false
-          law ->
-            obligation["id"] == law["id"] and
-              (if law["kind"] == "lean",
-                 do: obligation["kind"] == "lean" and
-                       obligation["module"] == law["module"] and
-                       obligation["theorems"] == law["theorems"],
-                 else: obligation["law"] == law["law"] and
-                       obligation["arity"] == law["arity"])
-        end
-      end)
-
     correct =
-      laws != [] and length(Enum.uniq(ids)) == length(ids) and
-        length(Enum.uniq(slugs)) == length(slugs) and
+      laws != [] and unique?(slugs) and
         Enum.sort(ids) == Enum.sort(o_ids) and Enum.sort(slugs) == Enum.sort(o_slugs) and
-        obligations_match? and
-        Enum.all?(laws, fn law ->
-          kind = if law["kind"] == "lean", do: "lean", else: "dsl"
-          file = law["file"]
-
-          law["kind"] in [nil, "lean"] and
-            is_binary(law["slug"]) and Regex.match?(~r/\A[a-z0-9_]+\z/, law["slug"]) and
-            is_binary(law["id"]) and is_binary(file) and
-            (if kind == "lean",
-               do: String.starts_with?(file, "test/support/lean/") and String.ends_with?(file, ".lean"),
-               else: file == "test/laws/" <> law["slug"] <> "_test.exs" and
-                       law["law"] == law["slug"] and is_integer(law["arity"]) and law["arity"] > 0) and
-            match?({:ok, _}, Anchor.read_under(root, file))
-        end)
+        Enum.all?(obligations, &obligation_matches?(&1, by_slug)) and
+        Enum.all?(laws, &valid_catalog_law?(&1, root))
 
     if correct do
-      {:ok, Enum.map(laws, &Map.put(&1, "kind", if(&1["kind"] == "lean", do: "lean", else: "dsl")))}
+      {:ok,
+       Enum.map(laws, &Map.put(&1, "kind", if(&1["kind"] == "lean", do: "lean", else: "dsl")))}
     else
       {:error, :invalid_claim_catalog}
     end
   end
 
   defp validate_catalog(_, _, _), do: {:error, :invalid_claim_catalog}
+
+  defp unique?(values), do: length(Enum.uniq(values)) == length(values)
+
+  defp obligation_matches?(obligation, by_slug) do
+    case Map.get(by_slug, obligation["slug"]) do
+      nil -> false
+      law -> obligation["id"] == law["id"] and same_obligation?(law, obligation)
+    end
+  end
+
+  defp same_obligation?(%{"kind" => "lean"} = law, obligation) do
+    obligation["kind"] == "lean" and obligation["module"] == law["module"] and
+      obligation["theorems"] == law["theorems"]
+  end
+
+  defp same_obligation?(law, obligation) do
+    obligation["law"] == law["law"] and obligation["arity"] == law["arity"]
+  end
+
+  defp valid_catalog_law?(law, root) do
+    law["kind"] in [nil, "lean"] and
+      is_binary(law["slug"]) and Regex.match?(~r/\A[a-z0-9_]+\z/, law["slug"]) and
+      is_binary(law["id"]) and is_binary(law["file"]) and valid_law_path?(law) and
+      match?({:ok, _}, Anchor.read_under(root, law["file"]))
+  end
+
+  defp valid_law_path?(%{"kind" => "lean", "file" => file}) do
+    String.starts_with?(file, "test/support/lean/") and String.ends_with?(file, ".lean")
+  end
+
+  defp valid_law_path?(law) do
+    law["file"] == "test/laws/" <> law["slug"] <> "_test.exs" and
+      law["law"] == law["slug"] and is_integer(law["arity"]) and law["arity"] > 0
+  end
 
   defp law_inventory(root) do
     # Include *all* .exs paths. A new non-test-named file must not evade
@@ -224,7 +266,9 @@ defmodule HoldLedgerReview.Claims.Source do
   end
 
   defp source_pairs(root, law_files) do
-    Enum.reduce_while(Enum.sort(Enum.uniq(law_files ++ @support_sources)), {:ok, []}, fn path, {:ok, acc} ->
+    Enum.reduce_while(Enum.sort(Enum.uniq(law_files ++ @support_sources)), {:ok, []}, fn path,
+                                                                                         {:ok,
+                                                                                          acc} ->
       case Anchor.read_under(root, path) do
         {:ok, bytes} -> {:cont, {:ok, [{path, bytes} | acc]}}
         _ -> {:halt, {:error, {:missing_or_unsafe_source, path}}}

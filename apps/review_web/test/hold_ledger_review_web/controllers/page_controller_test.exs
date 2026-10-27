@@ -8,7 +8,8 @@ defmodule HoldLedgerReviewWeb.PageControllerTest do
 
   test "superseded routes do not resolve" do
     for route <- ["/review", "/review/void_pending", "/review/receipts/fake"] do
-      assert :error = Phoenix.Router.route_info(HoldLedgerReviewWeb.Router, "GET", route, "localhost")
+      assert :error =
+               Phoenix.Router.route_info(HoldLedgerReviewWeb.Router, "GET", route, "localhost")
     end
   end
 end
