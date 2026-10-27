@@ -48,7 +48,7 @@ mix run scripts/demo.exs
 
 The demo creates a fresh temporary journal and uses a deterministic simulated processor. It shows a lost reply, restart, reconciliation, retry and void. Its default seed is `4808`; set `HOLD_LEDGER_SEED` to another nonnegative integer to vary synthetic identities. The script prints the journal directory and leaves it for inspection. Remove that **printed temporary directory** when you are finished, not an active application journal.
 
-You should see that `:unknown` holds keep their capacity after a lost reply. That behavior is the question we will later turn into a proof obligation.
+The demo shows that `:unknown` holds keep their capacity after a lost reply. The crash course [connects this behavior to a ledger law](formal_verification_crash_course.md#which-law-catches-which-mistake) and a mutation that releases capacity too early.
 
 ## Use the pure API
 

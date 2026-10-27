@@ -2,7 +2,7 @@
 
 You know how to test Elixir. What changes when you want to show that a behavior holds for **every** input in a stated domain, rather than the examples a test runner happens to try?
 
-Start with a capacity check you could write in Elixir. You'll run a small Lynx law before tackling one with integer inputs, change `>` to `>=` to see what breaks, and write a second law yourself. The ledger example comes last. You need Elixir and testing experience, not Lean.
+Start with a capacity check in Elixir. You'll prove a claim about one fixed call, extend it to every integer pair that fits, and see what breaks when you change `>` to `>=`. Then you'll write a law for requests over capacity and follow a maintained ledger proof. You need Elixir and testing experience, but no Lean.
 
 You'll write proof tactics, not only read them. When a proof fails, don't weaken the law just to make Lean accept it.
 
@@ -22,7 +22,7 @@ end
 
 An ordinary test might assert `admit(3, 10) == :ok`. That checks one request with room to spare. Another test, `admit(10, 10) == :ok`, checks an exact fit. If we accidentally change `>` to `>=`, the first test still passes and the second catches the bug.
 
-A property test lets us describe a whole family of fitting requests. Generate an integer `remaining` and a nonnegative `gap`, then request `remaining - gap`. Every generated request should return `:ok`. A gap of zero checks equality; positive gaps check requests with room to spare.
+A property test lets us describe a whole family of fitting requests. Generate an integer `remaining` and a nonnegative `gap`, then request `remaining - gap`. Every generated request should return `:ok`. When the generator chooses a gap of zero, the request is an exact fit; positive gaps leave room to spare. A separate exact-fit test ensures that boundary is checked on every run.
 
 The property describes what we want generally, but a test run only tries the values it generates. A proof addresses the general statement:
 
@@ -30,7 +30,7 @@ The property describes what we want generally, but a test run only tries the val
 
 The “if” part is the **precondition**: the inputs under which the promise applies. The promised result is the **postcondition**. Together they form a **contract**. Lynx calls an executable claim like this a **law**, written with `requires:` and `expects:`.
 
-The tests and proof below all use that same law. The tests give us concrete cases to inspect and debug. The proof must account for every integer pair satisfying the precondition, including exact fits and integers too large for a machine word. It also permits negative values, because we have not added a positivity requirement.
+The capacity test, property and proof will use this general law. It covers exact fits and integers too large for a machine word. It also permits negative values, because we have not required positive amounts. Before proving it, we’ll look at how Lean checks a proof and try a Lynx law for one fixed call.
 
 ## What Lean checks
 
@@ -208,7 +208,7 @@ uv run --locked python scripts/local_run.py mix test tmp/cap_test.exs --exclude 
 LYNX_CACHE=0 LYNX_DEBUG=lean uv run --locked python scripts/local_run.py mix test tmp/cap_test.exs --only laws
 ```
 
-A successful ordinary run reports two passes: one exact-fit test and one generated property. A successful proof run reports one passing law. Check the exit status as well as the summary. Lynx makes `fits/2` callable in Elixir: it checks `requires`, then `expects`, raising if either fails. `non_negative_integer()` includes zero, so the property exercises exact fits as well as requests below capacity. The test’s `(1, 1)` is a **witness**, a concrete input satisfying the precondition. It gives us one case we can inspect alongside the general proof.
+A successful ordinary run reports two passes: one exact-fit test and one generated property. A successful proof run reports one passing law. Check the exit status as well as the summary. Lynx makes `fits/2` callable in Elixir: it checks `requires`, then `expects`, raising if either fails. `non_negative_integer()` can generate zero, so the property can exercise exact fits. The explicit `(1, 1)` test checks that boundary on every run. That pair is also a **witness**: a concrete input satisfying the precondition.
 
 ## Read the translated function
 
@@ -346,9 +346,9 @@ not_over : ¬b < a
 
 This is the start of the diagnostic; the remaining lines handle exceptions and compare the result with `:ok`. Read the facts before the nested matches. `requires` still permits `a = b`, but the changed branch tests `b ≤ a` and returns `:full` at equality. The concrete failure `fits(0, 0)` confirms that the claim is false for the mutant. A different unsolved goal without such a witness would leave the claim unresolved.
 
-Restore `>` and rerun both checks. This is mutation testing: checking whether deliberately planted faults are detected. If a mutation survives, inspect whether it preserves behavior, exposes missing coverage, or reflects an incomplete run.
+This is mutation testing: checking whether deliberately planted faults are detected. If a mutation survives, inspect whether it preserves behavior, exposes missing coverage, or reflects an incomplete run.
 
-The exact-fit failure is a counterexample to the mutant. Restore the original `>` comparison before writing your next law.
+The mutation is confined to `tmp/cap_mutant_test.exs`. Continue in `tmp/cap_test.exs`, which still has the original `>` comparison.
 
 ## Write a law yourself
 
@@ -510,7 +510,7 @@ No integer satisfies both hypotheses. The proof establishes nothing about any ac
 ## Exercises and solutions
 
 1. **Boundary witness.** Add an exact-fit test for an integer larger than `2 ** 64`. Does the toy claim allow negative integers too?
-2. **Mutation.** Make the comparison change above. Run both ordinary checks and the proof. Explain the smallest executable failure, then restore the function.
+2. **Mutation.** Make the comparison change in `tmp/cap_mutant_test.exs`. Run both ordinary checks and the proof, then explain the smallest executable failure. Continue the other exercises in the unchanged `tmp/cap_test.exs`.
 3. **Write the second law.** Complete the [over-capacity law](#write-a-law-yourself). Keep the statement unchanged, add the witness and property, and finish the Lean proof.
 4. **Read before changing.** Open `test/laws/po_a4_duplicate_test.exs`. Which assumptions describe the input, and which exact outputs does the conclusion require? Would requiring only a valid resulting state preserve the duplicate guarantee?
 
@@ -520,7 +520,7 @@ Try the exercises before reading these answers.
 
 For exercise 1, `assert fits(10 ** 30, 10 ** 30)` and `assert fits(-1, -1)` both pass. Elixir integers are arbitrary precision. Real hold amounts must be positive; the toy function has no such rule.
 
-For exercise 2, `fits(0, 0)` has a true precondition and a false conclusion under `>=`. Restoring `>` repairs that violation.
+For exercise 2, `fits(0, 0)` has a true precondition and a false conclusion under the mutant’s `>=` comparison. The original `cap_test.exs` admits this request.
 
 For exercise 3, add this complete declaration inside the existing `laws "capacity"` block:
 

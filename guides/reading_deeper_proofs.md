@@ -6,18 +6,7 @@ Start here after you can read a `requires:`/`expects:` law and recognize a Lean 
 
 ## Inspect declarations and assumptions
 
-Before calling a diff a proof repair, identify the declaration around the changed lines. Lean uses similar syntax for a function body and a proof body, but changing them has different consequences.
-
-| Declaration or command | What to inspect |
-|---|---|
-| `def fits ... := ...` | The definition gives `fits` its meaning. Changing the body can change what claims using it mean. A body starting with `by` is still a definition. |
-| `theorem name ... : P := by ...` | The binders and `P` state the claim; the body constructs its proof. Check that both the statement and its dependencies stayed fixed. |
-| `axiom name : P` | Introduces `P` as an assumption without a proof. A theorem using it depends on that assumption. |
-| `sorry` | Fills a proof gap using `sorryAx`. Lean can accept the declaration with a warning; the required proof is still missing. |
-| `variable`, `instance`, `import` | Can change available parameters, inferred operations or dependencies. Read the surrounding context and imported definitions. |
-| Options, syntax and elaborators | Can affect how source becomes a statement or proof term. Inspect their effect before classifying the diff. |
-
-Try a declaration with a definition you can inspect:
+Start with a definition and a theorem that uses it:
 
 ```lean
 import Lean
@@ -32,11 +21,24 @@ theorem exact_fit (amount : Int) : within amount amount := by
 #print axioms exact_fit
 ```
 
-Save it as `tmp/declarations.lean` and run `uv run --locked python scripts/local_run.py lean tmp/declarations.lean`. `#print exact_fit` prints the theorem and its proof term. `#print axioms exact_fit` lists the axioms used by the proof, including dependencies reached through other declarations. Compare that list with the project's allowed axiom policy and investigate unfamiliar names.
+Save it as `tmp/declarations.lean` and run `uv run --locked python scripts/local_run.py lean tmp/declarations.lean`. `within` defines what it means for an amount to fit. The theorem proves that an amount fits a limit equal to itself. Its proof unfolds the definition, then uses `omega` to establish the inequality.
 
-A custom axiom can move the desired conclusion into an assumption. `sorryAx` signals an admitted gap. Neither belongs in a completed Hold Ledger proof. The [verification checks](verification.md) inspect exports and enforce the axiom policy; `#print axioms` is a local inspection aid, not a replacement for them.
+Now imagine changing `within` to always return `True`. The theorem can still pass, but its conclusion no longer checks a capacity bound. To understand a theorem, read the definitions it uses as well as its statement.
 
-Now imagine changing `within` to always return `True`. The theorem can still pass, with no new axiom, while saying nothing about capacity. Axiom inspection cannot detect every weakened claim. Read the definitions as well as the statement, then use the [review tiers](human_review.md#classify-the-diff) to classify the actual change.
+The two `#print` commands help with that inspection. `#print exact_fit` prints the theorem and its proof term. `#print axioms exact_fit` lists the axioms used by the proof, including those used by its dependencies. Compare that list with the project's [allowed axiom policy](verification.md#coverage-and-provenance). Axiom inspection would not catch the change to `within`: weakening a definition need not introduce an axiom.
+
+When reviewing a change, first identify which kind of declaration it affects:
+
+| Declaration or command | What to inspect |
+|---|---|
+| `def within ... := ...` | The definition gives `within` its meaning. Changing the body can change what claims using it mean. A body starting with `by` is still a definition. |
+| `theorem name ... : P := by ...` | The binders and `P` state the claim; the body constructs its proof. Check that both the statement and its dependencies stayed fixed. |
+| `axiom name : P` | Introduces `P` as an assumption without a proof. A theorem using it depends on that assumption. |
+| `sorry` | Fills a proof gap using `sorryAx`. Lean can accept the declaration with a warning; the required proof is still missing. |
+| `variable`, `instance`, `import` | Can change available parameters, inferred operations or dependencies. Read the surrounding context and imported definitions. |
+| Options, syntax and elaborators | Can affect how source becomes a statement or proof term. Inspect their effect before classifying the diff. |
+
+A custom axiom can assume the conclusion you wanted to prove. `sorryAx` signals an admitted gap. Neither belongs in a completed Hold Ledger proof. The [verification checks](verification.md) inspect exports and enforce the axiom policy; `#print axioms` helps you inspect a theorem locally. Use the [review tiers](human_review.md#classify-the-diff) to classify changes to declarations and their dependencies.
 
 ## Open the predicate before trusting its name
 
@@ -241,7 +243,7 @@ Run `uv run --locked python scripts/local_run.py lean tmp/toy_run.lean`. It chec
 
 `ToyRun state amounts final` says the listed amounts take the initial state to the final one. `empty` admits an empty history with unchanged state. `next` needs two facts: the first step succeeds, and the remaining history runs from that step's result to `final`. In the example, `rfl` checks the first step by evaluation and `ToyRun.empty 2` supplies the empty tail.
 
-**Checkpoint:** does this relation admit `[2, 0]` from state `0`? Does any constructor mention disk? The zero step returns `none`, so no `next` constructor can supply its success premise. No constructor records a write or flush; a proof about `ToyRun` cannot establish storage durability.
+The history `[2, 0]` cannot run from state `0`: the zero step returns `none`, so it cannot satisfy the success premise of `next`. The relation says only what its constructors require.
 
 The production relation `Committed` in `test/support/lean/Recovery.lean` follows the same pattern. Its `next` constructor requires a translated `Composite.step/2` result wrapped in `Except.ok`, followed by a committed tail. That result may describe a rejected ledger operation: `Except.ok` means evaluation succeeded. The states and events are `Lynx.Term` values, while the history itself is a native Lean list.
 

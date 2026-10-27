@@ -160,7 +160,7 @@ The [Testing guide](testing.md#deliberate-mutations) describes the optional isol
 
 | Result | What it establishes |
 |---|---|
-| Development proof attempt | The selected development check completed, not necessarily full exported-checker acceptance. |
+| Successful development proof check | The selected laws passed the development checker; full acceptance still needs exports and independent checks. |
 | Catalog `supported` | A proof implementation is registered; this is not execution evidence. |
 | Full acceptance | Every required obligation passed fresh proof/export checks, all six checker configurations and axiom checks for the reviewed source. A subset is partial acceptance. |
 | CI green | The required jobs succeeded. The `formal-gate` job always runs, but the full `formal` job is conditional; see below. |
@@ -182,6 +182,17 @@ Consider three changes involving a pending void:
 | An agent proposes classifying future timeout repairs automatically | Evaluate it on previously reviewed changes, including hidden predicate edits and misleading “proof-only” summaries | Decide which cases the evidence supports delegating and which still need review |
 
 For the first row, start with `s = {100, 2, 100, 1, [{1, 100, :voiding}]}`. Applying `{:timeout, 1}` must return `{s, :stale, []}`. Releasing capacity would contradict that trace.
+
+For the 24-hour request, the report should state the choice and its consequences:
+
+```text
+Decision needed (human): May an unconfirmed authorization release capacity
+ after 24 hours? Keeping the current rule can retain capacity indefinitely.
+ Releasing on elapsed time can admit new holds while the old authorization
+ remains live. A processor-enforced expiry would need a documented guarantee
+ and separate approval. Meanwhile, reproduce the pending-void trace and check
+ the existing retention law without changing it.
+```
 
 For the classification example, justify each expected classification with the diff and the requirement it affects. A replayable violation, such as a mutant failing a policy trace, can support that judgment. An agent can replay the check; agreeing with another generated label is not enough.
 

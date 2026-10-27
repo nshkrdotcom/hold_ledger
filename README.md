@@ -151,7 +151,7 @@ Start with the learning path above. Use this table to find a lesson, a procedure
 | [Formal verification crash course](guides/formal_verification_crash_course.md) | Run a first Lynx law, write another and read a ledger proof |
 | [Reading deeper proofs](guides/reading_deeper_proofs.md) | Inspect predicates, follow shared proofs and read recursive history models |
 | [Getting started](guides/getting-started.md) | Prerequisites, local tools and first run |
-| [Agentic verification](guides/agentic_verification.md) | A complete contract challenge and agent-assisted verification task |
+| [Agentic verification](guides/agentic_verification.md) | Contract challenges, agent prompts and review exercises |
 | [Human review](guides/human_review.md) | Change classification, escalation and seven review exercises |
 | [Specification assurance](guides/specification_assurance.md) | Vacuity, missing guarantees, contract comparison and research |
 | [Architecture](guides/architecture.md) | How the pure core, reference model, runtime and proofs fit together |
