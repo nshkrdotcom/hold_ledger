@@ -27,10 +27,6 @@ If you're new to Lean, start with the crash course. You'll run a small proof, br
 
 [Specification assurance](guides/specification_assurance.md) deals with proofs of inadequate requirements. [Verification](guides/verification.md) explains what the checkers establish. The [assurance audit](guides/audit.md) covers the whole system and is not part of the first lesson.
 
-The operator directs the agent; the reviewer judges claims and evidence; the policy
-owner resolves disputed behavior. [Interactive review](guides/interactive_review.md)
-provides a manual exercise and an optional local Phoenix workbench.
-
 ## Try it on a supported machine
 
 The supported checkout runs on **Ubuntu 26.04 x86_64**, with Erlang/OTP **29.1.2**, Elixir **1.20.4** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, and Git. The demo and focused proofs don't need `bwrap` (Bubblewrap). The full independent checker does. Onboarding checks your existing Elixir/OTP installation; it won't install those tools.
@@ -146,6 +142,14 @@ An agent can carry out this workflow under agreed policy:
 
 [Agentic verification](guides/agentic_verification.md) has a worked exercise and prompts; [Human review](guides/human_review.md) explains what may be delegated and includes a decision practice set. The repository's `AGENTS.md` contains instructions for an agent working on this codebase.
 
+You can try that review process in [Review Studio](https://github.com/nshkrdotcom/hold_ledger/blob/main/apps/review_web/README.md),
+a local Phoenix app. Predict a ledger transition, compare deliberately wrong
+outputs, inspect the claim and its sources, and record your judgment. It's a spike
+for figuring out what helps a person catch an inadequate contract when an agent
+can produce a passing proof. It runs without an AI account; an optional model can
+explain the evidence and suggest questions. The
+[manual exercise](guides/interactive_review.md) works without the app.
+
 ## Documentation map
 
 Start with the learning path above. Use this table to find a lesson, a procedure or a reference when you need it.
@@ -157,6 +161,7 @@ Start with the learning path above. Use this table to find a lesson, a procedure
 | [Getting started](guides/getting-started.md) | Prerequisites, local tools and first run |
 | [Agentic verification](guides/agentic_verification.md) | Contract challenges, agent prompts and review exercises |
 | [Human review](guides/human_review.md) | Change classification, escalation and seven review exercises |
+| [Interactive review](guides/interactive_review.md) | Practice reviewing a claim manually or in the optional Phoenix app |
 | [Specification assurance](guides/specification_assurance.md) | Vacuity, missing guarantees, contract comparison and research |
 | [Architecture](guides/architecture.md) | How the pure core, reference model, runtime and proofs fit together |
 | [Specification](guides/specification.md) | The exact ledger state and event contract |
