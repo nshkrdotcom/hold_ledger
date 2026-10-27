@@ -20,7 +20,9 @@ alias HoldLedger.{Server, Processor.Sim}
 Server.status(ledger)
 ```
 
-A dedicated path has one owner in this BEAM instance. Capacities must match the
+`caps: {10_000, 3}` sets an amount limit of 10,000 cents and a limit of three concurrent holds.
+
+A dedicated path has one owner in this BEAM instance. These limits must match the
 persisted configuration. `start_link/1` accepts a registered `:name` and an
 `:effect_supervisor`. Stop with `GenServer.stop/1`. Configure supervised startup
 with `config :hold_ledger, :server_options, path: ..., caps: ...` before starting
@@ -29,36 +31,26 @@ the application; the default application does not open an account.
 ## Persistence and input authority
 
 The ordering is deliberate: an accepted event must survive a restart before any local state transition or processor effect depends on it. Admitted input is appended and synced before accounting or effects. Reserved
-internal submissions return `{:error, :reserved_event}` after syncing a bounded
-`{:rejected_submission, tag}` marker. Malformed inputs use a bounded
-`{:malformed_submission, :other}` marker and return `{:ok, :malformed}`. Raw
-arbitrary processor terms and rejected payloads are not retained. Frames have a
+internal submissions return `{:error, :reserved_event}` after syncing a
+`{:rejected_submission, tag}` marker. Malformed inputs use a
+`{:malformed_submission, :other}` marker and return `{:ok, :malformed}`. Arbitrary processor terms and rejected payloads are not retained. These markers have fixed shapes and tags from a finite set; their size does not grow with the rejected payload. Frames have a
 64 KiB payload limit. Oversized input fails before local application.
 
-`submit/2`, `processor_callback/3`, and the processor callback mailbox route
-trust the integrating application. They do not authenticate approved/declined
-reports. Internal void completions and lookup observations use correlated task
+The integrating application must authenticate approved/declined reports before passing them to `submit/2`, `processor_callback/3`, or the processor callback mailbox. Server trusts these reports. Internal void completions and lookup observations use correlated task
 references and cannot be submitted publicly. Code controlling the VM remains
 outside this boundary.
 
-Append/sync failure leaves accounting unchanged and poisons writes. An
-unacknowledged append may still exist on disk. Recovery uses actual verified
-history. The default Spec monitor checks validity after each live event; an
+Append/sync failure leaves accounting unchanged and marks the writer **poisoned**: it refuses further commits and new attempts because an unacknowledged append may still exist on disk. Recovery uses the verified records on disk. The default Spec monitor checks validity after each live event; an
 invalid state exits with a shutdown/quarantine reason, and the transient child
 is not automatically restarted for that shutdown. Preserve the journal and use
 read-only inspection. Do not skip a persisted input to restore availability.
 
 ## Attempts and deadlines
 
-A deadline can end a *local task* without ending the processor's remote work. That distinction drives the attempt lifecycle. `HoldLedger.Attempts` is a separate pure lifecycle model with operation laws and
-a typed finite-history theorem bridged to its translated implementation. Its
-interleaving properties also check duplicate persistence/retirement intents.
-The history proofs establish at-most-once persist intents and require persistence
-before retirement; physical writes remain outside that model.
+A deadline can end a *local task* without ending the processor's remote work. `HoldLedger.Attempts` tracks each local attempt through its phases. The [lifecycle proof reference](verification.md#lifecycle-history-theorem) describes its logical guarantees and their limits.
 Server maps logical attempts to
 `Task.Supervisor.async_nolink` tasks, monitor references, callers, and timers.
-A result or completed shutdown enters committing; persistence success retires
-it and releases the slot. Persistence failure poisons the lifecycle.
+When a result or completed shutdown arrives, the attempt enters `:committing`. A successful journal write retires the attempt and releases its slot. Persistence failure poisons the lifecycle.
 
 Options and defaults:
 
@@ -92,9 +84,8 @@ callback or a new lookup may establish the outcome.
 ## Durable voids
 
 Voids bring the central safety rule into the runtime: capacity stays held until trusted completion, even if the server crashes or retries. An authorized void enters `:voiding`, retains its amount and slot, and creates
-exactly one durable obligation. A reserved void releases immediately with no
-remote call. The composite invariant requires the exact voiding-key set to equal
-the unique obligation-key set. `Composite.step/2` is the shared live/replay fold;
+exactly one **void obligation**, a durable record of remote void work still owed. It stores the key and retry metadata; it is not a proof obligation. A reserved void releases immediately with no
+remote call. The composite invariant requires exactly one void obligation for each voiding key, with no extra obligations. `Composite.step/2` applies the same transition during live operation and replay;
 `Spec.expected_composite_step/2` independently models its behavior.
 
 Only correlated `{:ok, :voided}` or `{:ok, :already_voided}` results produce the
@@ -104,8 +95,7 @@ retirement record or observable half-completed durable state. Public submission
 of this event is rejected. Not-found, errors, deadlines and lost replies retain
 both capacity and the obligation.
 
-Recovery folds every accepted prefix, checks composite validity, durably records
-restart and redrives pending voids. Historical authorization effects are never
+Recovery replays the accepted journal prefix, checks composite validity, records and syncs restart, then retries pending voids. Historical authorization effects are never
 reissued. The key, within its account/processor scope, is the remote identity.
 Exactly one active/stopping void attempt exists per key in one Server lifetime;
 remote work and orphaned workers can overlap a replacement lifetime, so repeated
@@ -113,22 +103,24 @@ calls must remain safe remotely.
 
 After the durable automatic attempt budget is exhausted, the hold and obligation
 remain visible. `Server.redrive_void(ledger, key)` resets that budget explicitly;
-active keys return `{:error, :attempt_active}`. An unavailable processor can hold
-capacity indefinitely. There is no timeout release or operator write-off.
+active keys return `{:error, :attempt_active}`. The [retention rule](specification.md#pending-voids-and-composite-recovery) still applies after retries are exhausted. See [Troubleshooting](troubleshooting.md#a-hold-stays-voiding-or-an-adapter-is-rejected) for the operator response.
 
 Configured processors must supply an integrator-attested declaration through
 `capabilities/1`. Startup rejects missing, malformed or unsupported declarations;
-it cannot detect a false claim. See [Processors](processors.md) for the permanent
-terminal fence required before confirmation can release capacity.
+it cannot detect a false claim. See [Processors](processors.md#terminal-attestation-and-retention) for the permanent fencing guarantee required before confirmation can release capacity.
 
 ## Lookup and inspection
 
 ```elixir
+# Look up key 11 and record the observed outcome.
 Server.reconcile(ledger, 11)
+# Look it up, then retry the same key if it is still eligible and not found.
 Server.retry_after_lookup(ledger, 11)
-Server.inspect_work(ledger, :unknown, 0, 100)
-Server.inspect_work(ledger, :voids, 0, 100)
-Server.inspect_work(ledger, :conflicts, 0, 100)
+
+# Each page starts at offset 0 and contains at most 100 items.
+Server.inspect_work(ledger, :unknown, 0, 100)    # unknown holds
+Server.inspect_work(ledger, :voids, 0, 100)      # pending void work
+Server.inspect_work(ledger, :conflicts, 0, 100)  # conflicting processor reports
 ```
 
 Lookup intent is synced before launching asynchronous work. Server remains

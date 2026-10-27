@@ -10,7 +10,7 @@ uv run --locked python scripts/onboard.py --profile proofs
 uv run --locked python scripts/local_run.py python scripts/doctor.py
 ```
 
-Select the installed Elixir 1.20.4/OTP 29.1.2 pair before onboarding. A matching
+Select the pinned Elixir/OTP pair listed in [Getting started](getting-started.md#environment) before onboarding. A matching
 OTP major version is not enough. Provision pinned Lean locally with
 `uv run --locked python scripts/onboard.py --provision`. A checksum failure must
 be resolved by obtaining the pinned release, not by bypassing verification.
@@ -21,7 +21,7 @@ A fresh `mix test` compiles the test-only Lynx dependency, whose build invokes
 Lake. If that fails with `System.cmd("lake", ...)` and `:enoent`, activate the
 repository-local toolchain as shown in [Getting started](getting-started.md).
 
-## Proofs do not run or fail
+## A proof fails or does not start
 
 A failed proof attempt is not automatically a counterexample. First check whether Lean ran, what it reported, and whether the contract has an independently justified witness.
 
@@ -32,11 +32,16 @@ sandbox is a failed prerequisite; do not disable isolation to report acceptance.
 A proof may fail because of an incorrect law, an incomplete proof, translation
 changes, exhausted resources or a missing tool. Inspect the log under
 `tmp/verification/` and obtain a concrete Elixir counterexample before calling
-it an application bug. `--supported-only` requires every cataloged group;
-missing, skipped or failed proof results cannot count as acceptance.
+it an application bug. To require every cataloged group, run:
 
-Nanoda may overflow its worker stack on B3. The checker runner retains the failed
-bundled result and tries the same pinned binary/export in a sandbox with one
+```sh
+uv run --locked python scripts/run_laws.py --supported-only --stage full \
+  --report tmp/verification/checked.json
+```
+
+Missing, skipped or failed proof results cannot count as acceptance.
+
+Nanoda is one of the independent proof checkers used in the full verification stage. If it reports a worker-stack overflow, the runner retains the failed bundled result and retries with the same pinned binary/export in a sandbox with one
 thread and a 256 MiB process stack. It only counts acceptance if the retry
 succeeds and the allowed-axiom audit passes. It never changes host policy.
 
@@ -64,15 +69,15 @@ reprovisioning; remove only known disposable paths, never an active journal.
 
 ## A hold stays voiding or an adapter is rejected
 
-Voiding retains capacity until positive terminal confirmation. Inspect the
-pending obligation and its durable attempt budget; an authorized operator can
-use `Server.redrive_void/2`. An exhausted budget, absent lookup record or elapsed
-time does not release capacity. If the processor never provides reliable
-confirmation, capacity stays held indefinitely.
+Voiding retains capacity until positive terminal confirmation. Inspect the pending void record and its durable attempt budget with
+`Server.inspect_work(ledger, :voids, 0, 100)`. After the automatic budget is
+exhausted, an authorized operator can use `Server.redrive_void(ledger, key)` to
+reset it and retry. Preserve the journal while investigating. Retries do not
+change the [capacity-retention rule](specification.md#pending-voids-and-composite-recovery).
 
 A `:missing_terminal_attestation` startup error means the adapter declaration is
 absent or unsupported. Implement the processor contract only if the integrator
-can attest to permanent terminal non-resurrection, including void-before-authorize.
+can attest to [permanent fencing](processors.md#terminal-attestation-and-retention), including a void received before authorization.
 A declaration passing validation is not evidence that the remote service is honest.
 
-For an unresolved processor outcome, the safe fallback is to keep capacity held and preserve the journal while investigating. [Runtime and recovery](runtime.md) covers the available inspection and reconciliation operations.
+[Runtime and recovery](runtime.md#lookup-and-inspection) explains the inspection and reconciliation calls.

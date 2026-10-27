@@ -427,7 +427,7 @@ The correct transition keeps the cached amount at `300`. The broken state claims
 
 ### Which law catches which mistake?
 
-The repository gives required claims **obligation** labels such as PO-A4. A **group** is the unit selected by the verification runner and may contain several theorems. `verification/laws.json` gives each group a command-line slug, such as `po_a4_duplicate`. A report filename such as `po_a4-learning.json` is simply where the command saves its results.
+The repository gives required claims **proof obligation** labels such as PO-A4. A **group** is the unit selected by the verification runner and may contain several theorems. `verification/laws.json` gives each group a command-line slug, such as `po_a4_duplicate`. A report filename such as `po_a4-learning.json` is simply where the command saves its results.
 
 Hold Ledger has ten mutation patches under `mutants/`. Two show why the statement matters:
 
@@ -565,7 +565,7 @@ Continue with [Reading deeper proofs](reading_deeper_proofs.md) for shared lemma
 
 | Term | Meaning here |
 |---|---|
-| Law / obligation | A law is an executable claim declared with `law`; an obligation is a claim the project requires checked, including Lean-only theorems. `PO-*` labels identify obligations. |
+| Law / proof obligation | A law is an executable claim declared with `law`; a proof obligation is a claim the project requires checked, including Lean-only theorems. `PO-*` labels identify proof obligations. |
 | Group / catalog entry | A group is a unit selected for verification and may contain multiple theorems. `verification/laws.json` registers each group; `verification/obligations.json` records the required inventory. |
 | Precondition / hypothesis | An assumption under which the claim must hold; Lynx writes the precondition as `requires:`. |
 | Contract | The precondition and postcondition together: `requires:` and `expects:`. |

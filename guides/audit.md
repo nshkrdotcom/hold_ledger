@@ -26,7 +26,7 @@ settlement, expiration, pruning or distributed ownership. Its
 |---|---|
 | Local accounting | Holding entries consume amount and slot capacity; the counters agree with the entries. |
 | Remote exposure | Live authorizations stay within those limits in the coupled model, under its processor assumptions. |
-| Composite histories | The ledger and obligations remain consistent; folding accepted events reconstructs the recorded abstract state. |
+| Composite histories | The ledger and pending void records remain consistent; folding accepted events reconstructs the recorded abstract state. |
 | Attempt histories | Typed logical events preserve attempt safety within a Server lifetime. Persistence intents and acknowledgments carry no physical durability guarantee. |
 | OTP execution and storage | Server, task and journal behavior must implement those models. This correspondence and physical durability are outside the pure proofs. |
 
@@ -34,7 +34,7 @@ The decisive policy is that an authorized hold enters `:voiding` and retains
 capacity until trusted terminal confirmation. A reserved hold can be voided
 immediately because it has issued no authorization. A sent or unknown hold
 cannot be cancelled through `void`; it remains held until reliable evidence
-resolves it. There is no timeout release or operator write-off. Identities stay
+resolves it. The [retention rule](specification.md#pending-voids-and-composite-recovery) applies; [Troubleshooting](troubleshooting.md#a-hold-stays-voiding-or-an-adapter-is-rejected) covers inspection and retries. Identities stay
 remembered permanently, so entries can grow without bound. These are policy
 choices to approve before relying on the proofs.
 
@@ -58,7 +58,7 @@ establish that the service honors the contract.
 
 ## Hold Ledger under the microscope
 
-The route below moves from the remote behavior we assume, to the local obligations we prove, and finally to the runtime that must implement them. Do not swap evidence between layers: an abstract history theorem does not establish journal `fsync`, and a fault test does not establish a universal model invariant.
+The route below moves from the remote behavior we assume, to the local proof obligations we check, and finally to the runtime that must implement them. Do not swap evidence between layers: an abstract history theorem does not establish journal `fsync`, and a fault test does not establish a universal model invariant.
 
 ### Exposure: read the environment as part of the specification
 
@@ -68,7 +68,7 @@ The environment determines which remote executions the theorem covers. Start in
 Issuing an authorization, remote delivery, observing a result, remote void and
 local confirmation are separate operations. Follow the delayed-confirmation
 trace through them. Identify where truthful observations, identity/payload
-binding and terminal non-resurrection enter the model.
+binding and [permanent fencing](processors.md#terminal-attestation-and-retention) enter the model.
 
 [`ExposureModel.lean`][exposure-proof] states `model_preserves`, `model_history`
 and `model_bounds`. Preservation ranges over any pair satisfying
@@ -82,19 +82,17 @@ extra hypothesis. Follow the encoding lemmas far enough to establish that every
 Spec-valid pair has the representation the proof uses.
 
 The unseen-key trace belongs to the environment contract. `void_before_issue`
-establishes that case separately; the coupled model requires an existing void
-obligation, so it does not exercise an unseen-key void along that path.
+establishes that case separately; the coupled model requires an existing
+void obligation, so it does not exercise an unseen-key void along that path.
 
 The separate causal-history bound in `ExposureBound.lean` has different
 hypotheses. Its `CausalLive` witness is not interchangeable with a proof that
 arbitrary coupled executions preserve the pair invariant. Decide which theorem
 supports the claim being reviewed.
 
-The adapter contract in [Processors](processors.md) is the deployment
-obligation. `Processor.validate/1` checks an integrator's declaration. It cannot
+The adapter contract in [Processors](processors.md#terminal-attestation-and-retention) is a deployment requirement. `Processor.validate/1` checks an integrator's declaration. It cannot
 detect a false declaration, and the in-memory simulator's tombstones do not
-survive its process. Even a truthful processor can remain unavailable
-indefinitely; the model provides no eventual-release guarantee.
+survive its process. The model provides no eventual-release guarantee; apply the [retention rule](specification.md#pending-voids-and-composite-recovery) if the processor stays unavailable.
 
 ### Laws and oracle: separate shared policy from independent arithmetic
 
@@ -120,19 +118,19 @@ against the intended API semantics.
 
 ### Composite state: look for lost obligations
 
-An accounting proof can miss a lost obligation. Compare
+An accounting proof can miss a lost void record. Compare
 [`Composite.step/2`][composite] with `Spec.expected_composite_step/2` and
 `Spec.composite_valid?/1`. The invariant requires exactly the same physical keys
-in voiding entries and obligations, with no duplicate obligations and valid
+in voiding entries and void obligations, with no duplicate records and valid
 attempt metadata. Merely checking that a lookup finds each key could miss a
 duplicate or shadowed entry.
 
-Opening a void and creating its obligation is one transition. The single
-`{:void_confirmed, key}` event releases capacity and removes the obligation in
+Opening a void and creating its work record is one transition. The single
+`{:void_confirmed, key}` event releases capacity and removes the work record in
 one transition. In [`CompositeSafety.lean`][composite-proof], examine
 `composite_preserves`, `composite_oracle_history`, `open_obligation` and
 `confirmation_once` against those requirements. A ledger-valid voiding entry can
-still have no obligation and nothing to redrive. Removing an obligation without
+still have no void record and nothing to redrive. Removing that record without
 trustworthy completion can conceal live exposure. Neither coupling nor
 uniqueness establishes that retries will eventually succeed.
 
@@ -150,7 +148,7 @@ In [`AttemptSafety.lean`][attempt-proof], read `Valid`, `Retired`, `Persisted`
 and `TranslatedRun` before the history theorems. `step_bridge` connects the
 typed model to the translated `Attempts.step/2`. The histories range over typed
 logical events and attempt IDs. The mapping from PIDs, monitor references and
-mailbox messages remains a runtime obligation. At-most-once persistence and
+mailbox messages remains a runtime responsibility. At-most-once persistence and
 retirement count logical intents; a recorded persistence intent does not mean a
 physical write succeeded.
 
@@ -177,7 +175,7 @@ truthful processor approval. The first eligible processor result wins; conflict
 recording does not reverse that policy.
 
 The embedding application must authenticate and authorize callers before they
-reach these APIs. Bounded rejection markers constrain stored payloads; they
+reach these APIs. Fixed-shape rejection markers avoid storing rejected payloads; they
 provide no authentication.
 
 For the journal, concentrate on the durability assumptions and recovery

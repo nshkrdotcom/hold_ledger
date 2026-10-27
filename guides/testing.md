@@ -15,9 +15,9 @@ uv run --locked python -m unittest discover -s tooling_tests -v
 
 The ordinary suite covers deterministic transitions, malformed inputs, a worked
 trace, independent spec comparisons, precondition witnesses and journal/runtime
-faults. Ledger and composite StreamData properties use 10,000 generated examples; the attempt interleaving property has its own bounded configuration. The coverage helper reports candidate eligibility and discards.
+faults. Ledger and composite StreamData properties use 10,000 generated examples. The attempt interleaving property runs 1,000 histories of at most 100 events each. The coverage helper reports candidate eligibility and discards.
 Plain `mix test` excludes the expensive `:laws` tag by default; `mix test --only laws` explicitly selects proof attempts. These modules invoke Lean verification rather than cheap property tests. Formal groups have separate runs
-described in [Verification](verification.md). Multiple groups share one cold
+described in [Verification](verification.md). Multiple groups share one uncached
 verification request, while ordinary tests exercise the proof adapter’s
 dependency ordering, cache invalidation and fail-closed result checks.
 
@@ -40,6 +40,10 @@ Faults include injected append/sync/disk-full failures, actual truncated journal
 files, process crashes, lost replies, repeated callbacks and concurrent inputs.
 `allow_faults: true` enables the server's test-only injected-failure interface.
 These tests do not model physical power loss or prove the storage hardware.
+
+### Runtime lifecycle properties
+
+The attempt lifecycle has independent transition assertions and StreamData interleaving properties. Controlled processor fixtures synchronize worker entry/replies through messages, including worker death, lookup exceptions, blocked calls and Server death with surviving nolink tasks. A tooling guard inspects effective ExUnit tags and rejects an outbox feature with a missing or skipped forged-completion regression. These tests are separate from the ledger proof groups.
 
 ## Deliberate mutations
 
@@ -73,7 +77,7 @@ runs concrete assertions, ordinary tests and targeted formal attempts on copies:
 uv run --locked python scripts/run_mutants.py --execute --report tmp/mutants.json
 ```
 
-A complete matching cold acceptance report can supply the baseline without
+A complete matching uncached acceptance report can supply the baseline without
 repeating the same checks:
 
 ```sh
@@ -88,15 +92,35 @@ is a detection experiment, not a newly discovered application bug. A failed
 formal attempt alone is not a counterexample. The live reducer and Spec are
 checked unchanged by the runner.
 
+### Generated operator mutations
+
+To try generated changes to arithmetic and comparison operators:
+
+```sh
+uv run --locked python scripts/mutation_campaign.py --formal-budget 1
+```
+
+The generated operator changes and logs for each candidate stay under ignored
+`tmp/mutation-campaign/`. Correct-source controls run first. Each candidate runs
+ordinary examples and executable properties. Only candidates that pass the ordinary checks
+consume the targeted-proof budget. Passing the targeted proof does not show that a mutant passes every required law. Tool failures and candidates left unchecked when the budget runs out are reported separately.
+Run the ten hand-written mutants separately with `run_mutants.py`.
+
 ## Documentation and package
 
-Build HexDocs to check that the guides render, and build the Hex archive to check packaging. CI also executes the complete tutorial examples directly from the crash course, Reading deeper proofs and Agentic verification. From a source checkout with the pinned tools, run the same check locally:
+### Execute the tutorial examples
+
+CI runs examples extracted from the crash course, Reading deeper proofs and Agentic verification. From a source checkout with the pinned tools, run the same check locally:
 
 ```sh
 uv run --locked python scripts/check_tutorials.py
 ```
 
-The runner checks the README example, standalone Lean examples, ledger witnesses, accounting and contract challenges, the toy law and its optional extension, and selected source excerpts. It requires the exact-fit mutant to produce both a concrete ordinary failure and the documented proof diagnostic. It also checks that `omega` alone fails on the unchanged translated claim. Each command has a five-minute timeout; logs and extracted files go under `tmp/tutorial-checks/`. These development proofs do not run the full exported-checker acceptance pipeline.
+The runner checks the README example, standalone Lean examples, ledger witnesses, accounting and contract challenges, the capacity law and the over-capacity exercise, and selected source excerpts. It requires the exact-fit mutant to produce both a concrete ordinary failure and the documented proof diagnostic. It also checks that `omega` alone fails on the unchanged translated claim. Each command has a five-minute timeout; logs and extracted files go under `tmp/tutorial-checks/`. These development proofs do not run the full exported-checker acceptance pipeline.
+
+### Build the guides and source package
+
+Build HexDocs to check rendering and the Hex archive to check packaging:
 
 ```sh
 mix docs --warnings-as-errors
@@ -107,10 +131,6 @@ All `guides/*.md` are included in HexDocs and the Hex source archive. Package
 building is local; it does not publish anything. Source-checkout tests and proof
 scripts are available in Git. CI runs ordinary checks, guide generation and
 package building; an always-running formal gate requires full proof/export checks for proof-relevant changes. Native mutation experiments remain explicit manual options.
-
-## Runtime lifecycle properties
-
-The attempt lifecycle has independent transition assertions and StreamData interleaving properties. Controlled processor fixtures synchronize worker entry/replies through messages, including worker death, lookup exceptions, blocked calls and Server death with surviving nolink tasks. A tooling guard inspects effective ExUnit tags and rejects an outbox feature with a missing or skipped forged-completion regression. These tests are separate from the ledger proof groups.
 
 ## Synthetic runtime measurements
 
@@ -133,10 +153,12 @@ uv run --locked python scripts/run_differential.py --samples 100 --timeout 300
 The deterministic seed is recorded in `tmp/differential/report.json`. The harness
 translates actual compiled definitions and evaluates the emitted modules using
 Lean's normal frontend. It compares sampled outcomes to BEAM and kernel-checks
-a small deterministic subset plus golden literal vectors. Encoder unit tests
+a small deterministic subset plus golden literal vectors.
+
+Encoder unit tests
 check exact types, float bits, existing atoms, malformed tags and nesting.
-Compiled comparison and kernel checking are distinct evidence, neither universal
-translator correctness. Unexpected failures and warning diagnostics fail the run.
+Compiled comparison and kernel checking provide different evidence. Neither proves that the translator is correct for every program. Unexpected failures and warning diagnostics fail the run.
+
 Samples include generated Ledger/Spec inputs and deterministic lifecycle,
 composite, environment and coupled-exposure traces. Those traces exercise
 deadline/shutdown/retirement, duplicate completion, void-before-authorize fencing
@@ -145,24 +167,12 @@ histories. The report lists comparison counts by module and function.
 
 The codec is independently implemented in `verification/DifferentialCodec.lean`.
 Cross-engine golden vectors exercise encode and decode in both directions.
-The harness retains every encoded case and source hashes. On a semantic mismatch,
-a bounded shrinker accepts only candidates that reproduce the evaluator mismatch;
+The harness retains every encoded case and source hashes.
+
+On a semantic mismatch,
+the shrinker tries a limited number of smaller cases and accepts only candidates that reproduce the evaluator mismatch;
 the minimized case and its identity remain in `tmp/differential/mismatch.json`.
-Translation and evaluator failures cannot become shrink successes. The CI campaign is
-bounded; use `--samples 1000` for a larger deterministic run.
-
-For a broader, finite syntax-aware arithmetic/comparison campaign:
-
-```sh
-uv run --locked python scripts/mutation_campaign.py --formal-budget 1
-```
-
-The generated operator universe and per-candidate logs stay under ignored
-`tmp/mutation-campaign/`. Correct-source controls run first. Each candidate runs
-ordinary examples and executable properties. Only unresolved ordinary survivors
-consume the targeted-proof budget. Targeted acceptance is not full-catalog
-survival; tool failures and budget-limited candidates remain separately classified.
-The curated ten mutation experiment remains a separate native check.
+Translation and evaluator failures cannot become shrink successes. CI uses 100 generated samples; use `--samples 1000` for a larger deterministic run.
 
 Kernel codec coverage is deliberately recorded separately: atom encode/decode and
 literal vectors are kernel-checked. The pinned decimal parser did not reduce in

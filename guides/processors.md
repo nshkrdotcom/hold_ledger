@@ -16,21 +16,22 @@ void(context, integer_key)
 Configure Server with `processor: {YourProcessor, context}`. Authorization can
 return `{:ok, :approved | :declined}`, `{:lost, :request | :reply}`, a delayed
 reply, or a list of synthetic callbacks. Lookup returns an approved/declined
-outcome, `:not_found`, or an error. Void returns `{:ok, :voided}`, `{:ok, :already_voided}`, or an error. Not-found is unresolved. See the
+outcome, `:not_found`, or an error. Void returns `{:ok, :voided}`, `{:ok, :already_voided}`, or an error. See the
 behavior's API documentation for exact types.
 
 ## Simulator
 
-Use the simulator to see how ordinary-looking failures change what the ledger can safely conclude. It can drop a reply after executing an authorization, deliver callbacks twice, or keep lookup unavailable. The following is a small interactive example:
+Use the simulator to see what the ledger can conclude after a failed request. It can drop a reply after executing an authorization, deliver callbacks twice, or keep lookup unavailable. Try a lost reply:
 
 ```elixir
 alias HoldLedger.Processor.Sim
 {:ok, sim} = Sim.start_link(dedupe: true)
 :ok = Sim.queue_fault(sim, :authorize, :execute_then_drop)
-Sim.snapshot(sim)
+{:lost, :reply} = Sim.authorize(sim, 11, 100)
+[%{key: 11, amount: 100, status: :active}] = Sim.snapshot(sim).active
 ```
 
-Faults are consumed FIFO per operation:
+The call reports a lost reply, but the snapshot shows an active hold. Faults are consumed in the order queued for each operation:
 
 | Operation | Fault | Meaning |
 |---|---|---|
@@ -38,14 +39,15 @@ Faults are consumed FIFO per operation:
 | Authorize | `:execute_then_drop` | Hold executes but the reply is lost |
 | Authorize | `{:delay, milliseconds}` | Deliver the outcome later |
 | Authorize | `:duplicate_callback` | Deliver the result twice |
-| Authorize | `{:out_of_order, outcomes}` | Deliver specified outcomes in order |
+| Authorize | `{:out_of_order, outcomes}` | Return callbacks in the supplied list order; choose that order to simulate unexpected delivery |
 | Lookup | `:unavailable` | Lookup cannot establish the outcome |
 | Void | `:unavailable` | External void fails |
 
 Default decisions are approved. Supply `decisions: [{key, :declined}]` to set
 specific outcomes. The snapshot shows receiver records, active holds, attempts
-and voids. With `dedupe: false`, retries can create multiple receiver holds for
-one local request. The demo exhibits that mismatch.
+and voids.
+
+With `dedupe: false`, retries can create multiple receiver holds for one local request. Server rejects this unsupported configuration, but direct simulator calls can demonstrate the failure. The [demo](getting-started.md#run-the-demonstration) includes that experiment.
 
 ## Contract required of a real adapter
 
@@ -55,31 +57,28 @@ semantics strong enough for reconciliation. The ledger does not prove those
 properties. Network success alone is insufficient evidence of authorization,
 and an authorized void keeps capacity held until terminal confirmation.
 
-The simulator has no network integration and is not a production payment adapter.
-
 ## Void identity and completion
 
-Repeated void calls use the same hold key in the configured account/processor scope. The adapter must make that operation repeatable for the required retention lifetime, including execution with a lost reply. A local task kill does not cancel remote work. Unexpected replies and arbitrary error terms are normalized into bounded failure atoms; they cannot mark a void complete. `:not_found` is not confirmation of a void.
+Repeated void calls use the same hold key in the configured account/processor scope. The adapter must make that operation repeatable for the required retention lifetime, including execution with a lost reply. A local task kill does not cancel remote work. Unexpected replies and arbitrary error terms become one of a fixed set of failure atoms; they cannot mark a void complete. `:not_found` leaves the outcome unresolved and is not confirmation of a void.
 
 ## Terminal attestation and retention
 
-`capabilities(context)` returns
-`%{terminal_confirmation: true, non_resurrection: :permanent}` for a supported
-adapter. This is an integrator attestation. Validation checks its presence and
-shape, not the service's actual behavior. Callback authority, correct payload
-binding, truthful declines and deduplication remain external assumptions.
+A processor must guarantee that a confirmed void cannot later become an active authorization. This is **permanent fencing**: once the key is voided, no delayed or repeated authorization may create or reactivate a hold for that key. It applies even if the void arrives before the first authorization, and it must survive expiry of ordinary deduplication and lookup records.
 
-A positive void confirmation must establish terminal non-exposure: even a void
-that arrives before the first authorize must fence the identity, preventing every
-later delayed or repeated authorization. The guarantee must survive expiration
-of ordinary deduplication/lookup records. This contract uses permanent fencing;
-an adapter that cannot attest to it is unsupported. `not_found` is unresolved.
-The in-memory simulator retains tombstones until that simulator is stopped;
-it is not evidence that a real processor or a restarted simulator persists them.
+For example, suppose the amount limit is 100 and there are two slots. One key holds 100 while its void is pending. Releasing that capacity before confirmation could admit another 100, leaving the processor holding 200. Even after confirmation, that risk returns if a delayed authorization can reactivate the voided key. The [audit traces](audit.md#hold-ledger-the-top-level-view) examine both cases.
 
-`dedupe: false` is an intentionally unsupported simulator configuration for Server.
-It remains useful for direct simulator experiments demonstrating failed receiver
-assumptions. A supported processor can still be unavailable indefinitely; in that
-case a voiding hold retains capacity indefinitely without a write-off path.
+`capabilities(context)` must return
+`%{terminal_confirmation: true, non_resurrection: :permanent}`. Here
+`non_resurrection` is the API name for permanent fencing. The declaration is an
+integrator's attestation: startup checks its shape and values, not the service's
+behavior. An adapter that cannot make this guarantee is unsupported. Callback
+authentication, correct identity/amount binding, truthful declines and
+deduplication also remain external assumptions.
 
-If you are changing the adapter or its deployment, pair this contract with the [durable-void path](runtime.md#durable-voids) and [runtime fault tests](testing.md#targeted-runtime-tests). No adapter declaration substitutes for testing and operational evidence from the external service.
+The simulator remembers voided keys in records called *tombstones*. Those records
+last only until the simulator stops; they do not demonstrate persistence across
+a restart or in a real service.
+
+A supported processor can still remain unavailable. The [retention rule](specification.md#pending-voids-and-composite-recovery) then applies; see [Troubleshooting](troubleshooting.md#a-hold-stays-voiding-or-an-adapter-is-rejected) for inspection and retry options.
+
+If you are changing the adapter or its deployment, pair this contract with the [durable-void path](runtime.md#durable-voids) and [runtime fault tests](testing.md#targeted-runtime-tests). Check the service's behavior as well as its declaration.

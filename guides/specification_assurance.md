@@ -12,7 +12,7 @@ It helps to keep three questions separate, because no single green check answers
 
 | Question | Evidence that can answer it |
 |---|---|
-| Does the implementation satisfy its formal claim? | A completed check of the exact theorem, dependencies and translated source, with approved assumptions |
+| Does the implementation satisfy its formal claim? | A passing check of the exact theorem, dependencies and translated source, with approved assumptions |
 | Does the formal claim distinguish required from forbidden behavior? | Independently justified examples, wrong-output challenges, domain checks, counterexamples, contract comparison and targeted mutations |
 | Does the chosen claim cover the requirements that matter? | Examination of the requirement sources, missing cases, tradeoffs and external boundaries; a decision when sources disagree |
 
@@ -34,7 +34,7 @@ A rule requiring `amount < remaining` instead of `amount <= remaining` excludes 
 
 ### Missing guarantees
 
-A sorting function constrained only to return a sorted list could return `[]` for every input. The output is sorted but does not preserve the input's elements. A useful sorting contract needs both ordering and **multiset preservation**, so repeated values cannot disappear. For a valid input `[2, 2, 1]`, the output `[1, 2]` should be rejected by the contract even if the actual implementation always returns `[1, 2, 2]`.
+A sorting function constrained only to return a sorted list could return `[]` for every input. The output is sorted but does not preserve the input's elements. A useful sorting contract needs both ordering and **multiset preservation**, so repeated values cannot disappear. For a valid input `[2, 2, 1]`, the output `[1, 2]` should be rejected by the contract even if the actual implementation returns `[1, 2, 2]` for this input.
 
 The Hold Ledger analogue is a postcondition checking `Spec.valid?/1` but omitting the required `{:void, key}` effect or the `:voiding` transition. The wrong output can still contain a valid ledger. See the [worked void example](agentic_verification.md#3-try-to-break-the-contract).
 
@@ -71,14 +71,14 @@ A green proof still needs review against the required behavior, whichever direct
 
 ## Comparison needs a reference
 
-Logical comparison can establish how two contracts relate *if the necessary implications are proved*. In the usual refinement view, permitting more valid inputs and guaranteeing at least as much about outputs is a stronger service contract. Be careful with the word **stronger**:
+Logical comparison can establish how two contracts relate *if the necessary implications are proved*. In contract refinement, a replacement accepts at least the inputs the reference accepts and guarantees at least as much about their results. The standard terms **stronger** and **weaker** describe different changes on each side of a contract:
 
-- A **stronger precondition** (`P` admits fewer inputs) makes the caller's obligation harder and reduces the implementation's promise.
+- A **stronger precondition** (`P` admits fewer inputs) requires more from the caller and reduces the implementation's promise.
 - A **weaker precondition** admits more inputs and asks the implementation to work in more cases.
 - A **stronger postcondition** (`Q` permits fewer outputs for each allowed input) promises more about a result.
 - A **weaker postcondition** permits more outputs and therefore promises less.
 
-If both directions of the relevant implications are proved under their stated conditions, the candidate and reference contracts are equivalent for those conditions. If only one direction is proved, a one-way refinement relation may be established. A rejected implication proof establishes only that the checker did not prove it. A counterexample satisfying one condition and violating the other can establish a genuine difference. Timeouts and incomplete obligations remain unresolved.
+If both directions of the relevant implications are proved under their stated conditions, the candidate and reference contracts are equivalent for those conditions. If only one direction is proved, a one-way refinement relation may be established. A rejected implication proof establishes only that the checker did not prove it. A counterexample satisfying one condition and violating the other can establish a genuine difference. Timeouts and unfinished implication checks remain unresolved.
 
 For example, compare the admission precondition with a candidate that excludes exact fits. The following expressions compare the two predicates on an exact-fit request:
 
@@ -116,7 +116,7 @@ You can skip the research and still use the exercises above. It concerns Verus f
 
 The I/O checks used the available validated cases; some suites lacked one or more case kinds.
 
-The 53.5% figure is **not a confirmed error rate**. A comparison flag may mean only that an implication proof failed. Among flagged artifacts, 44.7% had a counterexample or a proved triviality obligation; 55.0% were flagged by comparison alone.
+The 53.5% figure is **not a confirmed error rate**. A comparison flag may mean only that an implication proof failed. A concrete counterexample or a proved vacuity claim provides stronger evidence of a defect.
 
 The study also looked for defects in reference contracts. Its authors screened a deliberately selected set of 61 references and identified 36 *candidate* defects. That is a yield in a selected sample, not an estimate of defect prevalence in the benchmark. Repairing one reference made 10 of its 11 failing artifact comparisons provably equivalent. The result is a reason to challenge the oracle as well as the generated contract.
 
@@ -126,8 +126,6 @@ See [VerusEval, sections 3–6](https://arxiv.org/html/2610.26464v1) (October 20
 
 See the [Verus-SpecGym paper](https://arxiv.org/abs/2605.26457) (May 2026) and [code and benchmark](https://github.com/formal-verif-is-cool/verus-spec-gym).
 
-Both studies examine Verus, not Elixir/Lynx. Their methods suggest ways to challenge a specification. Their measured rates do not apply to Hold Ledger or production deployments.
-
 ## Where assurance stops
 
-Hold Ledger's pure laws reason about translated Elixir functions under declared hypotheses. They do not by themselves establish that the BEAM compiler and translator agree on every program, that every journal sync survives physical failure, or that a real processor honors deduplication and terminal non-resurrection. [Verification](verification.md) distinguishes full proof acceptance from supported catalog entries and development attempts. [Testing](testing.md) distinguishes runtime and fault-injection evidence. [Assurance audit](audit.md) walks through the actual trust boundaries.
+Hold Ledger's pure laws reason about translated Elixir functions under declared hypotheses. They do not by themselves establish that the BEAM compiler and translator agree on every program, that every journal sync survives physical failure, or that a real processor honors deduplication and [permanent fencing](processors.md#terminal-attestation-and-retention). [Verification](verification.md) distinguishes full proof acceptance from supported catalog entries and development attempts. [Testing](testing.md) distinguishes runtime and fault-injection evidence. [Assurance audit](audit.md) walks through the actual trust boundaries.

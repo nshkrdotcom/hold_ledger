@@ -70,7 +70,7 @@ Use this checklist for Tier 1 review:
 1. **Did the claim weaken?** Look for a stronger hypothesis, narrower domain, weaker conclusion or new environment assumption. Expand predicates rather than trusting names such as `valid` or `safe`.
 2. **Can the hypotheses hold?** Run a concrete witness—an input satisfying the hypotheses. Check that excluded boundary cases are intentional; one witness does not establish adequate coverage.
 3. **Does it match policy?** Compare with traces whose expected outcomes come from policy, rather than the implementation or oracle.
-4. **Are obligations still required?** Compare against the base revision and requirements, not merely two inventories edited together. Nothing should disappear through selection, status, skipping or timeout handling.
+4. **Are proof obligations still required?** Compare against the base revision and requirements, not merely two inventories edited together. Nothing should disappear through selection, status, skipping or timeout handling.
 5. **Is Spec independent?** The oracle (the independent reference specification) and implementation never call each other. If both changed, review each against the independently agreed policy; agreement alone is insufficient.
 6. **Are the foundations intact?** Inspect changes to axioms, escape checks, translated definitions, adapters, toolchain and gate behavior.
 
@@ -132,7 +132,7 @@ An edit confined to a literal heartbeat or timeout budget changes the resources 
 |---|---|---|
 | Impossible precondition | `requires`, called predicates | Construct a witness; look for contradictory bounds. |
 | Conclusion omits the promised effect or admission | `expects` | Replay a trace that requires progress; “state unchanged” is correct only for specified cases. |
-| Hard inputs disappear | New guards or typed encodings | Compare domains with the base revision; PO-B5 (a catalog label for a terminal-preservation obligation) permits lookup queries where `1 == 1.0`. |
+| Hard inputs disappear | New guards or typed encodings | Compare domains with the base revision; PO-B5 (a catalog label for a terminal-preservation proof obligation) permits lookup queries where `1 == 1.0`. |
 | Desired result becomes a caller assumption | Hypotheses of the top-level theorem and its helper lemmas | Follow each assumption to independent evidence; do not assume the conclusion. |
 | `valid?` becomes easier to satisfy | Spec or Lean definitions | Check whether it still requires exact totals, uniqueness and intended statuses. |
 | Spec changes to match faulty code | Implementation and oracle diffs | Compare both with the policy traces. |
@@ -160,9 +160,9 @@ The [Testing guide](testing.md#deliberate-mutations) describes the optional isol
 
 | Result | What it establishes |
 |---|---|
-| Successful development proof check | The selected laws passed the development checker; full acceptance still needs exports and independent checks. |
+| Development proof attempt | If it passed, the selected laws passed the development checker. Full acceptance still needs exports and independent checks. |
 | Catalog `supported` | A proof implementation is registered; this is not execution evidence. |
-| Full acceptance | Every required obligation passed fresh proof/export checks, all six checker configurations and axiom checks for the reviewed source. A subset is partial acceptance. |
+| Full acceptance | Every required proof obligation passed fresh proof/export checks, all six checker configurations and axiom checks for the reviewed source. A subset is partial acceptance. |
 | CI green | The required jobs succeeded. The `formal-gate` job always runs, but the full `formal` job is conditional; see below. |
 
 With a readable base-to-head diff, README/guides-only edits do not trigger the full formal job. `scripts/formal_gate.py` selects it for paths such as `lib/`, laws and `mix.exs`; an explicit request or unavailable diff also requires it.

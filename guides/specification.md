@@ -2,7 +2,7 @@
 
 This is the behavioral contract to consult **before** asking an agent to prove or change a ledger operation. The ledger models authorization holds for one account, not fund transfer or settlement. `HoldLedger.Spec` is an independently implemented executable reference for this policy; agreement with the implementation is useful evidence but cannot decide whether the policy itself is right.
 
-The central rule is simple: an issued or potentially issued authorization continues consuming local capacity until reliable terminal evidence allows release. That is why timeout, restart and a local void of an authorized hold do not free it. Voiding an undispatched `:reserved` hold releases capacity immediately.
+An issued or potentially issued authorization continues consuming local capacity until reliable terminal evidence allows release. That is why timeout, restart and a local void of an authorized hold do not free it. Voiding an undispatched `:reserved` hold releases capacity immediately.
 
 ## State and validity
 
@@ -51,20 +51,17 @@ acknowledgments, which always return `:stale`. Existing entries in ineligible
 statuses return `:stale`. Malformed shapes, noninteger keys, nonpositive amounts
 and unknown processor outcomes return `:malformed` before lookup.
 
-For requests, duplicate/conflict checks precede capacity checks. If both caps
-would fail, the hold limit takes precedence. An exact amount fit is admitted.
+For requests, duplicate/conflict checks precede capacity checks. If both limits
+would be exceeded, the result is `:insufficient_holds`. An exact amount fit is admitted.
 All non-applied results leave the entire state identical and emit no effects.
 
 ## Uncertain outcomes and identities
 
-The purpose of `:unknown` is to tell the truth: we do not yet know what happened remotely. A timeout or restart never releases capacity. An unknown entry keeps its own
-amount and hold contribution, although unrelated requests can change global
+An entry is `:unknown` when an authorization may have executed but its outcome is unresolved. A timeout or restart never releases capacity. An unknown entry keeps its own
+amount and hold slot, although unrelated requests can change global
 counters. Retrying reuses the original key and amount. A transport acknowledgment
 cannot authorize a hold. Declined and voided keys cannot allocate again.
 An approved authorization continues consuming capacity while voiding, until a trusted terminal confirmation is journaled.
-
-Effects describe intended I/O. The pure API does not establish that a processor
-received or honored them. An authorized void retains capacity until a trusted terminal external confirmation.
 
 ## Replay
 
@@ -77,24 +74,21 @@ key expiry, pruning or multiple owners.
 ## Pending voids and composite recovery
 
 The ledger alone records the entry's status. The composite state also remembers the remote work still owed, so a crash cannot turn an unfinished void into freed capacity. `{:void_confirmed, key}` applies only to a voiding hold, returns `:voided`,
-releases its amount and slot exactly once, and emits no effects. Other known
-statuses return `:stale`; a missing integer key returns `:not_found` and a
-noninteger key returns `:malformed`. This event is internal to the Server;
-public attempts to submit it produce a bounded rejection marker.
+releases its amount and slot exactly once, and emits no effects. The [event rules](#events) also apply to stale, missing and malformed keys. This event is internal to Server; public attempts to submit it produce a rejection marker without storing the submitted payload.
 
-The composite state is `{ledger, obligations}`. The exact set of voiding keys
-equals the obligation keys, and each key has exactly one obligation. Entering
+The composite state is `{ledger, obligations}`, where each **void obligation** records remote void work still owed. The exact set of voiding keys
+equals the keys in the void obligations, and each key has exactly one such record. Entering
 voiding creates the obligation in the same pure transition. One synced
 `{:void_confirmed, key}` record releases capacity and removes the obligation in
 one composite fold, shared by live application and replay. Restart preserves
 this coupling. Spec independently models the composite transition and its finite-history fold.
 
 Errors, absent lookup records, deadlines and exhausted retries do not release
-capacity. An indefinitely unavailable processor can retain capacity indefinitely;
-there is no write-off. A real adapter requires an integrator attestation of
-terminal confirmation and non-resurrection, including a terminal fence when void
-arrives before authorization. Startup validates the declaration, not its truth.
-The remote exposure guarantee is conditional on the declared behavior actually
-holding over the full delivery lifetime, even after deduplication record expiry.
+capacity. If the processor remains unavailable, capacity can stay reserved
+indefinitely. There is no timeout release or operator write-off. See
+[Troubleshooting](troubleshooting.md#a-hold-stays-voiding-or-an-adapter-is-rejected)
+for inspection and retry steps.
+
+A real adapter must attest to [permanent fencing](processors.md#terminal-attestation-and-retention), including voids received before authorization and delayed delivery after deduplication records expire. Startup validates the declaration, not its truth; the remote exposure guarantee depends on the processor honoring it.
 
 When you ask an agent to change a transition, use these event rules to justify the expected outputs before consulting `Spec.expected_step/2`. The [agentic walkthrough](agentic_verification.md) shows that review in practice.
