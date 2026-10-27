@@ -35,3 +35,9 @@ hold_ledger_review_web-*.tar
 npm-debug.log
 /assets/node_modules/
 
+
+# Local provider configuration
+.env
+.env.*
+
+/test/browser/node_modules/

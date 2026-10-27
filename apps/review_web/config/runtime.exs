@@ -44,3 +44,22 @@ config :hold_ledger_review_web,
        System.get_env("HOLD_LEDGER_REVIEW_ROOT") || Path.expand("../../..", __DIR__)
 
 config :hold_ledger_review_web, :proof_report, System.get_env("HOLD_LEDGER_REVIEW_REPORT")
+
+# Explicit opt-in; no credentials are loaded from browser events.
+case System.get_env("HOLD_LEDGER_REVIEW_EXPLAINER", "scripted") do
+  "scripted" ->
+    config :hold_ledger_review_web, :explainer, :scripted
+
+  "inference" ->
+    config :hold_ledger_review_web, :explainer, :inference
+    config :hold_ledger_review_web, :inference_model, System.get_env("HOLD_LEDGER_REVIEW_MODEL")
+
+  _ ->
+    raise "HOLD_LEDGER_REVIEW_EXPLAINER must be scripted or inference"
+end
+
+case System.get_env("HOLD_LEDGER_REVIEW_MODE", "practice") do
+  "practice" -> config :hold_ledger_review_web, :review_mode, :practice
+  "source_review" -> config :hold_ledger_review_web, :review_mode, :source_review
+  _ -> raise "HOLD_LEDGER_REVIEW_MODE must be practice or source_review"
+end

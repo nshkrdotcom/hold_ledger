@@ -4,9 +4,14 @@ defmodule HoldLedgerReview.Packet do
   def build(id, opts \\ []) do
     root = Keyword.get(opts, :root, Config.root())
 
-    with {:ok, c} <- Cases.fetch(id), {:ok, anchors} <- Anchor.build(root, c) do
+    with {:ok, c} <- Cases.fetch(id),
+         :ok <- if(Config.source_matches?(root), do: :ok, else: {:error, :compiled_source_drift}),
+         {:ok, anchors} <- Anchor.build(root, c) do
       source_sha256 =
         ProofEvidence.manifest(root)
+        |> Map.merge(
+          Map.new(app_sources(root), fn path -> {path, ProofEvidence.digest_file(root, path)} end)
+        )
         |> Map.merge(Map.new(anchors, fn {_, a} -> {a.path, a.sha256} end))
 
       proof =
@@ -36,7 +41,25 @@ defmodule HoldLedgerReview.Packet do
 
   def current?(p, root \\ Config.root()) do
     Enum.all?(p.source_sha256, fn {path, sha} -> ProofEvidence.digest_file(root, path) == sha end) and
-      Enum.all?(ProofEvidence.sources(root), &Map.has_key?(p.source_sha256, &1))
+      Enum.all?(
+        ProofEvidence.sources(root) ++ app_sources(root),
+        &Map.has_key?(p.source_sha256, &1)
+      ) and proof_current?(p, root)
+  end
+
+  defp app_sources(root),
+    do:
+      Enum.flat_map(
+        ["apps/review_web/lib/**/*.ex", "apps/review_web/priv/prompts/*.md"],
+        &Path.wildcard(Path.join(root, &1))
+      )
+      |> Enum.map(&Path.relative_to(&1, root))
+
+  defp proof_current?(%{proof: %{report: nil}}, _root), do: true
+
+  defp proof_current?(p, root) do
+    fresh = ProofEvidence.load(root, p.proof.detail, Enum.map(p.case.laws, &elem(&1, 0)))
+    fresh.status == p.proof.status and fresh[:report_sha256] == p.proof[:report_sha256]
   end
 
   def evidence_ids(p),

@@ -2,6 +2,8 @@ defmodule HoldLedgerReview.Anchor do
   @moduledoc "Curated source definitions with unique selectors and content-bound IDs."
   def descriptors(c) do
     base = [
+      {"spec.full", "lib/hold_ledger/spec.ex", "defmodule HoldLedger.Spec do", :file},
+      {"ledger.full", "lib/hold_ledger/ledger.ex", "defmodule HoldLedger.Ledger do", :file},
       {"policy", "guides/specification.md", "# Specification", :file},
       {"code", "lib/hold_ledger/ledger.ex",
        "  def " <> c.operation <> if(c.operation == "request", do: "({", else: "(\n"),

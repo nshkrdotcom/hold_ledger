@@ -90,7 +90,8 @@ defmodule HoldLedgerReview.ProofEvidence do
       r["checker_claim"] != true ->
         :incomplete
 
-      not Enum.all?(r["laws"], fn {_slug, law} -> checked?(root, law) end) ->
+      not Enum.all?(r["laws"], fn {_slug, law} -> checked?(root, law) end) or
+          (r["batch"] == true and r["correct_export"] != true) ->
         :incomplete
 
       r["release_complete"] == true and full_coverage?(root, r) ->
@@ -102,12 +103,17 @@ defmodule HoldLedgerReview.ProofEvidence do
       true ->
         :selected_checked
     end
+  rescue
+    _ -> :incomplete
   end
 
   def status(_, _, _), do: :incomplete
 
   defp checked?(root, law) do
-    law["passed"] == true and is_binary(law["source"]) and
+    law["passed"] == true and
+      (law["native_passed"] == true or
+         (law["one_law_test"] == true and law["correct_export"] == true)) and
+      is_binary(law["source"]) and
       law["source_sha256"] == digest_file(root, law["source"]) and is_list(law["exports"]) and
       law["exports"] != [] and
       Enum.all?(law["exports"], fn export ->

@@ -5,7 +5,7 @@ defmodule HoldLedgerReviewWeb.ShellTest do
   test "local shell and independent core", %{conn: conn} do
     assert {:ok, _, _} = live(conn, "/review")
     assert {:ok, view, _} = live(conn, "/review/void_pending")
-    assert has_element?(view, "#empty-state")
+    assert has_element?(view, "#prediction-form")
     assert Process.whereis(HoldLedger.Server) == nil
   end
 

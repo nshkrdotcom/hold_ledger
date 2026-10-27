@@ -19,6 +19,8 @@ defmodule HoldLedgerReviewWeb.Router do
 
     get "/", PageController, :home
     live "/review", IndexLive
+    get "/review/receipts/:id/export", ReceiptController, :export
+    live "/review/receipts/:id", ReceiptLive
     live "/review/:case_id", ReviewLive
   end
 

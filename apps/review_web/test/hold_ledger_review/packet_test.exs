@@ -168,6 +168,7 @@ defmodule HoldLedgerReview.PacketTest do
     source = "test/laws/po_b1_void_test.exs"
 
     law = %{
+      "native_passed" => true,
       "passed" => true,
       "exports" => [export],
       "source" => source,
@@ -218,5 +219,14 @@ defmodule HoldLedgerReview.PacketTest do
     assert :full_catalog_checked = ProofEvidence.status(root, full, ["po_b1_void"])
     File.write!(path, "tampered")
     assert :incomplete = ProofEvidence.status(root, r, ["po_b1_void"])
+  end
+
+  test "source override cannot attach different source to compiled facts" do
+    root = Path.join(System.tmp_dir!(), "review-compiled-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(Path.join(root, "lib/hold_ledger"))
+    on_exit(fn -> File.rm_rf!(root) end)
+    File.write!(Path.join(root, "lib/hold_ledger/ledger.ex"), "different source")
+    refute HoldLedgerReview.Config.source_matches?(root)
+    assert {:error, :compiled_source_drift} = Packet.build("void_pending", root: root)
   end
 end

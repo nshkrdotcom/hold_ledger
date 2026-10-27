@@ -41,6 +41,8 @@ defmodule HoldLedgerReview.MixProject do
   defp deps do
     [
       {:hold_ledger, path: "../.."},
+      {:inference, "~> 0.5.1"},
+      {:req_llm, "~> 1.29.0"},
       {:phoenix, "~> 1.8.16"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},

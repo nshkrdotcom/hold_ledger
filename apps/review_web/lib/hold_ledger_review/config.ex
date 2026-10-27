@@ -1,5 +1,27 @@
 defmodule HoldLedgerReview.Config do
   @moduledoc "Validated local checkout configuration."
+  @ledger_source HoldLedger.Ledger.module_info(:compile)[:source] |> to_string()
+  @spec_source HoldLedger.Spec.module_info(:compile)[:source] |> to_string()
+  @external_resource @ledger_source
+  @external_resource @spec_source
+  @compiled_hashes Map.new(
+                     [
+                       {"lib/hold_ledger/ledger.ex", @ledger_source},
+                       {"lib/hold_ledger/spec.ex", @spec_source}
+                     ],
+                     fn {relative, path} ->
+                       {relative, :crypto.hash(:sha256, File.read!(path))}
+                     end
+                   )
+  def source_matches?(root) do
+    Enum.all?(@compiled_hashes, fn {relative, hash} ->
+      case File.read(Path.join(root, relative)) do
+        {:ok, bytes} -> :crypto.hash(:sha256, bytes) == hash
+        _ -> false
+      end
+    end)
+  end
+
   def root, do: Application.fetch_env!(:hold_ledger_review_web, :ledger_root)
 
   def validate! do
@@ -11,6 +33,13 @@ defmodule HoldLedgerReview.Config do
            ) do
       raise ArgumentError, "Review Studio ledger_root must point to a Hold Ledger checkout"
     end
+
+    unless source_matches?(root),
+      do:
+        raise(
+          ArgumentError,
+          "Review Studio source differs from compiled Ledger/Spec; recompile the companion against the intended checkout"
+        )
 
     Application.put_env(:hold_ledger_review_web, :ledger_root, root)
     :ok

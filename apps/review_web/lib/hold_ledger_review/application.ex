@@ -11,6 +11,7 @@ defmodule HoldLedgerReview.Application do
 
     children = [
       {Task.Supervisor, name: HoldLedgerReview.Tasks},
+      HoldLedgerReview.Receipts,
       HoldLedgerReviewWeb.Telemetry,
       {DNSCluster,
        query: Application.get_env(:hold_ledger_review_web, :dns_cluster_query) || :ignore},

@@ -1,7 +1,4 @@
 defmodule HoldLedgerReviewWeb.PageController do
   use HoldLedgerReviewWeb, :controller
-
-  def home(conn, _params) do
-    render(conn, :home)
-  end
+  def home(conn, _params), do: redirect(conn, to: ~p"/review")
 end
