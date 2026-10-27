@@ -1,81 +1,59 @@
-# Review the meaning of a formal claim
+# Review the meaning of a formal claim — manual exercise
 
-You are deciding whether a claim rules out unacceptable behavior. You do not
-need to check Lean proof terms by hand. The original policy is
-[the specification](specification.md); concrete expectations are committed in
+You are deciding whether a proved claim actually rules out behavior people
+would reject. This exercise needs neither Phoenix nor Lean. The original policy
+is in [the specification](specification.md); committed expectations are in
 `test/human_policy_traces_test.exs`.
 
-## Try it without a server
+## A pending authorization void
 
-Before `{100, 2, 100, 1, [{1, 100, :authorized}]}`, event `{:void, 1}`.
-Predict: should the 100 cents and slot stay reserved, be released, or is more
-policy needed? Write a reason before opening the answer.
+Before state: `{100, 2, 100, 1, [{1, 100, :authorized}]}`. Event:
+`{:void, 1}`. Predict whether the hold should retain its capacity, release it,
+or need more policy. Record your reason before revealing the transition.
 
 <details>
-<summary>Inspect the transition and challenge</summary>
+<summary>Inspect the actual transition and challenge it</summary>
 
-The next state is `{100, 2, 100, 1, [{1, 100, :voiding}]}`, result `:voiding`,
-effects `[{:void, 1}]`. Cancellation is pending; it is not remote confirmation.
+The next state is `{100, 2, 100, 1, [{1, 100, :voiding}]}`, result
+`:voiding`, effects `[{:void, 1}]`. A remote void is pending, not confirmed.
 A subsequent `{:request, 2, 100}` returns `:insufficient_amount`.
 
-Try a hypothetical output with zero counters and a `:voided` entry, without
-effects. `Spec.valid?/1` and `Spec.effects_valid?/5` both accept it for this
-input; `Spec.exposed_entry?/3` rejects it. A second 100-cent request may now
-be admitted while the original remote hold might exist. This is a local
-counterfactual, not a verified remote execution.
+Try a hypothetical after-state with zero counters and a `:voided` entry,
+result `:voided`, and **no effect**. `Spec.valid?/1` and
+`Spec.effects_valid?/5` accept this particular projection, but
+`Spec.exposed_entry?/3` rejects lost exposure. The same second request could
+be admitted, even though the remote authorization might still exist. This
+is a local counterfactual, not a remote processor observation.
 
-Compare `po_b1_void` (validity), `po_b3` (effects) and `po_exposure_retain`
-(retention), including their actual preconditions and referenced shared Lean
-theorems. The full [agentic walkthrough](agentic_verification.md#3-try-to-break-the-contract)
-contains executable predicate evaluations.
+Compare original `test/laws/po_b1_void_test.exs` (validity),
+`po_b3_test.exs` (effects) and `po_exposure_retain_test.exs` (retention),
+including their exact `requires` and `expects` expressions. The
+[agentic walkthrough](agentic_verification.md#3-try-to-break-the-contract)
+contains executable predicate exercises.
 
 </details>
 
-## Use the optional workbench
+## Other counterexamples
 
-Follow [setup](getting-started.md#optional-human-review-interface), then open
-`http://localhost:4000/review/void_pending`. Predict, reveal, try wrong outputs,
-toggle hypothetical conclusions, follow the next request, and open original
-policy/code/law/Lean sources. The switchboard compares concrete predicates;
-it does not edit a theorem or run Lean.
+A timeout of a sent authorization cannot manufacture a terminal decline:
+capacity remains reserved while the outcome is uncertain. `po_b1_timeout`
+ensures after-state validity, not exposure retention by itself. In an
+exact-fit request, `po_a2` requires positive admission; an implementation that
+always rejects may still preserve valid states.
 
-Also inspect `timeout_unknown`: a timeout leaves capacity reserved, not declined.
-`po_b1_timeout` establishes validity, not a universal retention theorem. In
-`exact_fit`, compare positive eligible admission (`po_a2`) with a reducer that
-rejects equality or everything: validity alone would miss the defect.
+The source-backed evaluator in the optional
+[Phoenix companion](../apps/review_web/README.md) is engine-only following
+Milestone A. The former teaching-case UI, receipts and scripted/AI explanation
+routes were removed. The replacement human workbench is scheduled for
+Milestone B; configured AI integration for C. Do not expect `/review` to exist
+and do not claim to have saved a human decision through the current app.
 
-## Keep the evidence separate
+## Evidence and limits
 
-Policy comes from source. Case facts are computed from this checkout. Formal
-status comes only from a matching pre-existing report. Scripted or AI explanation
-is a reading aid. A human decision is a separate object.
-
-Reports are optional; absent means not supplied. Proof-only attempts are
- development evidence. Selected checked exports do not imply full catalog
-acceptance. Stale sources invalidate an old acceptance claim. The app never
-runs a proof command from the browser.
-
-Choose accept for named scope, reject, needs policy, or insufficient evidence.
-For acceptance/rejection, write your own rationale and select evidence IDs.
-The immutable receipt binds the decision to the packet and source hashes;
-its read-only page offers Markdown export. It is not a proof certificate or
-permission to deploy. Old receipts remain available after source changes.
-
-## Optional AI explanation
-
-The default uses ASM and Codex with `gpt-6.1-sol` at low effort. Configuration is
-documented in `apps/review_web/README.md`. Set
-`HOLD_LEDGER_REVIEW_EXPLAINER=scripted` for offline explanations. Questions and
-source excerpts go to the selected provider in inference mode. Explanations must cite IDs in the current packet,
-remain visibly labeled, and never supply computed facts or a decision. Open
-citations and mark misleading text; an existing citation does not prove that
-a sentence follows from it. A provider failure leaves the workbench usable.
-
-## Limits
-
-This demo helps humans review the meaning and limits of formal claims over a
-pure Elixir ledger. It does not verify Phoenix, GenServer, journal durability,
-remote exactly-once behavior or processor honesty. Curated cases and anchors
-are not a general parser or a completeness proof for requirements. The browser
-cannot edit sources or execute arbitrary Elixir or Lean. Local single-user
-practice is the supported deployment.
+Keep policy, pure execution, source-claim evaluation, checked Lean report and
+human judgment separate. Source/BEAM digests identify the current pointwise
+evaluator; they do not constitute a Lean proof. A stale or absent independent
+checker report is not proof acceptance. A candidate that passes some tested
+bindings does not establish that all obligations or external processor
+assumptions are satisfied. This exercise does not certify Phoenix, journaling,
+processor honesty or deployment safety.

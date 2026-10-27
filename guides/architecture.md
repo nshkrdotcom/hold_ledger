@@ -44,9 +44,12 @@ laws relate the translated ledger to specification predicates.
 ## Optional review companion
 
 `apps/review_web/` is a separate Mix/Phoenix project with a path dependency on
-this root package. It inspects pure Ledger and Spec calls. It has its own
-lockfile and lifecycle and does not participate in the journaled runtime or
-proof toolchain. See [interactive review](interactive_review.md).
+this root package. Its Milestone A source-derived evaluator compiles supported
+registered `test/laws` AST at startup and checks source/loaded-code drift before
+pointwise hypothetical evaluation. It has one strict typed codec, its own
+lockfile and lifecycle, and does not participate in the journaled runtime or
+proof toolchain. The replacement interactive UI and AI are later milestones;
+see [the no-server exercise](interactive_review.md).
 
 ## Runtime
 

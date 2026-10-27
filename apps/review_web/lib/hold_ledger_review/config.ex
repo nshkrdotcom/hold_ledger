@@ -62,14 +62,14 @@ defmodule HoldLedgerReview.Config do
              ["mix.exs", "lib/hold_ledger/ledger.ex", "guides/specification.md"],
              &File.regular?(Path.join(root, &1))
            ) do
-      raise ArgumentError, "Review Studio ledger_root must point to a Hold Ledger checkout"
+      raise ArgumentError, "Claim Workbench ledger_root must point to a Hold Ledger checkout"
     end
 
     unless source_matches?(root),
       do:
         raise(
           ArgumentError,
-          "Review Studio source differs from compiled Ledger/Spec; recompile the companion against the intended checkout"
+          "Claim Workbench source differs from compiled Ledger/Spec; recompile the companion against the intended checkout"
         )
 
     Application.put_env(:hold_ledger_review_web, :ledger_root, root)

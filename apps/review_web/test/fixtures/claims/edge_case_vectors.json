@@ -1,0 +1,214 @@
+{
+  "evidence_tier": "source_inspection_expectations_not_executed",
+  "purpose": "Turn binder provenance, source-drift, optional follow-on, and invalid-draft hazards into concrete milestone tests.",
+  "binder_cases": [
+    {
+      "law": "po_a2",
+      "operation": "request",
+      "fixture": "P04",
+      "expected_parameter_origins": {
+        "s": "before_state",
+        "key": "request_event.key",
+        "amount": "request_event.amount"
+      },
+      "expected_input_domain": "request_eligible on fresh key",
+      "entry_lookup_required": false
+    },
+    {
+      "law": "po_a4_conflict",
+      "operation": "request",
+      "before": {
+        "amount_limit": 100,
+        "hold_limit": 2,
+        "used_amount": 50,
+        "used_holds": 1,
+        "entries": [
+          {
+            "key": 1,
+            "amount": 50,
+            "status": "reserved"
+          }
+        ]
+      },
+      "event": {
+        "type": "request",
+        "key": 1,
+        "amount": 60
+      },
+      "expected_parameter_values": {
+        "key": 1,
+        "amount": 60,
+        "original": 50,
+        "status": "reserved"
+      },
+      "expected_parameter_origins": {
+        "s": "before_state",
+        "key": "request_event.key_and_entry_key",
+        "amount": "request_event.amount",
+        "original": "existing_entry.amount",
+        "status": "existing_entry.status"
+      },
+      "requires_relational_constraint": "request amount != existing original",
+      "expected_domain_from_source": true
+    },
+    {
+      "law": "po_a4_duplicate",
+      "operation": "request",
+      "before": {
+        "amount_limit": 100,
+        "hold_limit": 2,
+        "used_amount": 50,
+        "used_holds": 1,
+        "entries": [
+          {
+            "key": 1,
+            "amount": 50,
+            "status": "reserved"
+          }
+        ]
+      },
+      "event": {
+        "type": "request",
+        "key": 1,
+        "amount": 50
+      },
+      "expected_parameter_values": {
+        "key": 1,
+        "amount": 50,
+        "status": "reserved"
+      },
+      "expected_parameter_origins": {
+        "s": "before_state",
+        "key": "request_event.key_and_entry_key",
+        "amount": "request_event.amount_equal_to_existing_entry.amount",
+        "status": "existing_entry.status"
+      },
+      "requires_relational_constraint": "request amount == lookup amount",
+      "expected_domain_from_source": true
+    },
+    {
+      "law": "po_exposure_retain",
+      "operation": "step",
+      "fixture": "P07",
+      "expected_entry_bindings": [
+        {
+          "key": 1,
+          "amount": 50,
+          "status": "authorized"
+        },
+        {
+          "key": 2,
+          "amount": 100,
+          "status": "sent"
+        }
+      ],
+      "expected_parameter_origins": {
+        "state": "before_state",
+        "event": "witness_event",
+        "key": "existing_entry.key",
+        "amount": "existing_entry.amount",
+        "status": "existing_entry.status"
+      },
+      "expected_complete_for_valid_bounded_entry_list": true,
+      "key_can_differ_from_event_key": true
+    },
+    {
+      "law": "po_b2",
+      "operation": "step",
+      "fixture": "P06",
+      "expected_parameter_origins": {
+        "s": "before_state",
+        "event": "witness_event",
+        "key": "existing_unknown_entry.key",
+        "amount": "existing_unknown_entry.amount"
+      },
+      "expected_domain_on_pre_state_sent_entry": false,
+      "requires_relational_constraint": "lookup(key) status == unknown; event key need not equal bound key"
+    },
+    {
+      "law": "l3_accounting",
+      "operation": "set_status",
+      "expected_step_pointwise_adapter": false,
+      "expected_parameter_origins": {
+        "entries": "separate_list_argument",
+        "key": "entry_lookup.key",
+        "amount": "entry_lookup.amount",
+        "from": "entry_lookup.status",
+        "to": "target_status"
+      }
+    }
+  ],
+  "source_manifest": {
+    "config_compiled_source_paths": [
+      "lib/hold_ledger/ledger.ex",
+      "lib/hold_ledger/spec.ex"
+    ],
+    "claim_manifest_required_components": [
+      "test/laws/*.exs path inventory and bytes",
+      "verification/laws.json",
+      "verification/obligations.json",
+      "trusted extractor/compiler version and relevant definition source",
+      "compiled Ledger/Spec loaded identity"
+    ],
+    "test_change": "edit only test/laws/po_b1_void_test.exs in disposable checkout",
+    "expected_config_matches_after_law_only_edit": true,
+    "expected_generated_evaluator_fresh_after_law_only_edit": false,
+    "expected_probe_result": "cant_check:source_or_compiled_code_drift",
+    "inventory_mutations": [
+      "add test/laws file",
+      "remove test/laws file",
+      "edit registered catalog file"
+    ]
+  },
+  "follow_on_null_cases": [
+    {
+      "fixture": "P06",
+      "expected_follow_on_actual": null,
+      "expected_follow_on_candidate": null,
+      "ui_text": "No follow-on event selected for this probe."
+    },
+    {
+      "fixture": "P07",
+      "expected_follow_on_actual": null,
+      "expected_follow_on_candidate": null,
+      "ui_text": "No follow-on event selected for this probe."
+    }
+  ],
+  "draft_cases": [
+    {
+      "id": "invalid_negative_amount",
+      "raw_field": "witness[output][after][entries][0][amount]",
+      "raw_value": "-50",
+      "parse_valid": false,
+      "client_answer_buttons_disabled": true,
+      "server_answer_result": "invalid_draft",
+      "store_writes": 0,
+      "fallback_to_last_good_candidate": false
+    },
+    {
+      "id": "incomplete_number",
+      "raw_field": "witness[output][after][entries][0][amount]",
+      "raw_value": "",
+      "parse_valid": false,
+      "client_answer_buttons_disabled": true,
+      "server_answer_result": "invalid_draft",
+      "store_writes": 0,
+      "fallback_to_last_good_candidate": false
+    },
+    {
+      "id": "rapid_final_keystroke_then_submit",
+      "raw_field": "witness[output][after][used_amount]",
+      "raw_value": "0",
+      "parse_valid": true,
+      "server_must_evaluate_exact_submitted_witness": true,
+      "fallback_to_last_good_candidate": false
+    },
+    {
+      "id": "well_formed_spec_invalid_candidate",
+      "fixture": "P06",
+      "shape_valid": true,
+      "expected_spec_valid_after": false,
+      "answer_button_blocked_solely_due_to_spec_invalid": false
+    }
+  ]
+}

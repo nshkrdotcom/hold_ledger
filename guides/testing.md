@@ -16,6 +16,14 @@ uv run --locked python -m unittest discover -s tooling_tests -v
 The ordinary suite covers deterministic transitions, malformed inputs, a worked
 trace, independent spec comparisons, precondition witnesses and journal/runtime
 faults. Ledger and composite StreamData properties use 10,000 generated examples. The attempt interleaving property runs 1,000 histories of at most 100 events each. The coverage helper reports candidate eligibility and discards.
+The root `test/claim_source_parity_test.exs` verifies extraction parity to
+`HoldLedger.ProofCase.law_declarations/1` for all registered DSL laws. It runs
+in the root environment where Lynx test support is present, not in the
+Phoenix runtime. In the separate `apps/review_web` project run `mix test`
+and `mix precommit` to verify the Milestone A source compiler, event-to-formal
+provenance, P01–P08 matrix, drift checks and strict codec. A static expected
+matrix does not count as an executed test.
+
 Plain `mix test` excludes the expensive `:laws` tag by default; `mix test --only laws` explicitly selects proof attempts. These modules invoke Lean verification rather than cheap property tests. Formal groups have separate runs
 described in [Verification](verification.md). Multiple groups share one uncached
 verification request, while ordinary tests exercise the proof adapter’s

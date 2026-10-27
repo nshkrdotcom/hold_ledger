@@ -8,7 +8,7 @@ defmodule HoldLedgerReviewWeb.Layouts do
     ~H"""
     <a href="#workspace" class="skip-link">Skip to workspace</a>
     <header class="site-header">
-      <.link navigate={~p"/review"} class="brand">HOLD LEDGER <span>/ REVIEW STUDIO</span></.link><span class="mode">Local practice</span>
+      <span class="brand">HOLD LEDGER <span>/ CLAIM WORKBENCH</span></span><span class="mode">Local development</span>
     </header>
     <main id="workspace" class="workspace">{render_slot(@inner_block)}</main>
     <.flash_group flash={@flash} />

@@ -1,43 +1,5 @@
 defmodule HoldLedgerReview.Anchor do
-  @moduledoc "Curated source definitions with unique selectors and content-bound IDs."
-  def descriptors(c) do
-    base = [
-      {"spec.full", "lib/hold_ledger/spec.ex", "defmodule HoldLedger.Spec do", :file},
-      {"ledger.full", "lib/hold_ledger/ledger.ex", "defmodule HoldLedger.Ledger do", :file},
-      {"policy", "guides/specification.md", "# Specification", :file},
-      {"code", "lib/hold_ledger/ledger.ex",
-       "  def " <> c.operation <> if(c.operation == "request", do: "({", else: "(\n"),
-       :definition},
-      {"spec.valid", "lib/hold_ledger/spec.ex", "  def valid?({", :definition},
-      {"spec.effects", "lib/hold_ledger/spec.ex", "  def effects_valid?(", :definition},
-      {"spec.retention", "lib/hold_ledger/spec.ex", "  def exposed_entry?({", :definition},
-      {"spec.eligibility", "lib/hold_ledger/spec.ex", "  def request_eligible?(state",
-       :definition},
-      {"policy.traces", "test/human_policy_traces_test.exs", "defmodule ", :file}
-    ]
-
-    base ++
-      Enum.flat_map(c.laws, fn {slug, file, arity} ->
-        [
-          {"law." <> slug, "test/laws/" <> slug <> "_test.exs", "defmodule ", :file},
-          {"lean." <> slug, "test/support/lean/" <> file <> ".lean",
-           "theorem «" <> slug <> "/" <> to_string(arity) <> "»", :theorem}
-        ]
-      end)
-  end
-
-  def build(root, c) do
-    Enum.reduce_while(descriptors(c), {:ok, %{}}, fn {id, path, selector, kind}, {:ok, acc} ->
-      case resolve(root, path, selector, kind, Enum.map(descriptors(c), &elem(&1, 1))) do
-        {:ok, a} ->
-          {:cont, {:ok, Map.put(acc, c.id <> "." <> id, Map.put(a, :id, c.id <> "." <> id))}}
-
-        error ->
-          {:halt, error}
-      end
-    end)
-  end
-
+  @moduledoc "Safe source excerpts and content-bound IDs; no fixed case catalogs."
   def resolve(root, path, selector, kind, allowlist) do
     with true <- path in allowlist,
          {:ok, bytes} <- read_under(root, path),

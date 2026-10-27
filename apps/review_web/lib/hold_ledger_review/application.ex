@@ -8,17 +8,15 @@ defmodule HoldLedgerReview.Application do
   @impl true
   def start(_type, _args) do
     HoldLedgerReview.Config.validate!()
-    HoldLedgerReview.Config.configure_inference!()
+    # No model jobs are dispatched by the Milestone A source evaluator.
 
     children = [
       {Task.Supervisor, name: HoldLedgerReview.Tasks},
-      HoldLedgerReview.Receipts,
+      HoldLedgerReview.Claims,
       HoldLedgerReviewWeb.Telemetry,
       {DNSCluster,
        query: Application.get_env(:hold_ledger_review_web, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: HoldLedgerReview.PubSub},
-      # Start a worker by calling: HoldLedgerReview.Worker.start_link(arg)
-      # {HoldLedgerReview.Worker, arg},
       # Start to serve requests, typically the last entry
       HoldLedgerReviewWeb.Endpoint
     ]

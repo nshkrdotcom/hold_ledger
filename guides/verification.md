@@ -14,10 +14,10 @@ Lynx translates the compiled Elixir pure core into Lean and generates theorem st
 
 Run the full command only when you need full acceptance, and preserve its source hashes and reports. A failure, timeout, skipped group or `supported` catalog status is not proof acceptance. Read [Run checks](#run-checks) for exact commands and prerequisites.
 
-A [human review packet](interactive_review.md) reports selected/full checker
+A source-matching proof report examined alongside [manual review](interactive_review.md) reports selected/full checker
 evidence only when a matching completed report exists. Every source in its
 manifest must match. A missing report means not supplied; catalog `supported`
-is not a proof run. A review receipt records human judgment separately and
+is not a proof run. Human judgment must be recorded separately from formal status and
 cannot confer proof acceptance.
 
 ## Coverage and provenance

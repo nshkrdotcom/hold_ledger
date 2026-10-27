@@ -10,22 +10,8 @@ defmodule HoldLedgerReviewWeb.Router do
     plug :put_secure_browser_headers
   end
 
-  pipeline :api do
-    plug :accepts, ["json"]
-  end
-
   scope "/", HoldLedgerReviewWeb do
     pipe_through :browser
-
     get "/", PageController, :home
-    live "/review", IndexLive
-    get "/review/receipts/:id/export", ReceiptController, :export
-    live "/review/receipts/:id", ReceiptLive
-    live "/review/:case_id", ReviewLive
   end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", HoldLedgerReviewWeb do
-  #   pipe_through :api
-  # end
 end

@@ -9,7 +9,7 @@ defmodule HoldLedgerReview.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      name: "Hold Ledger Review Studio",
+      name: "Hold Ledger Claim Workbench",
       docs: [main: "readme", extras: ["README.md"]],
       dialyzer: [plt_add_apps: [:ex_unit]],
       deps: deps(),

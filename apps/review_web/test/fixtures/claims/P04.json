@@ -1,0 +1,30 @@
+{
+  "before": {
+    "amount_limit": 100,
+    "hold_limit": 1,
+    "used_amount": 0,
+    "used_holds": 0,
+    "entries": []
+  },
+  "event": {
+    "type": "request",
+    "key": 11,
+    "amount": 100
+  },
+  "output": {
+    "after": {
+      "amount_limit": 100,
+      "hold_limit": 1,
+      "used_amount": 0,
+      "used_holds": 0,
+      "entries": []
+    },
+    "result": "insufficient_amount",
+    "effects": []
+  },
+  "follow_on": {
+    "type": "request",
+    "key": 12,
+    "amount": 100
+  }
+}

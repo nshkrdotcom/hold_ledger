@@ -37,7 +37,7 @@ Write down the unacceptable behavior before reading the explanation. Then ask:
 5. What remains assumed? Pure proofs do not establish disk durability or
    remote processor honesty.
 
-Practice with [Review Studio or its manual exercise](interactive_review.md).
+Practice with the [manual review exercise](interactive_review.md). The replacement web workbench is not yet exposed.
 Record a separate human judgment: case/claim, reviewed source digest, policy
 anchor, witness, wrong alternative and predicate finding, proof status, limits,
 decision and reason. Acceptance/rejection needs a rationale and cited evidence;

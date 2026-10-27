@@ -9,9 +9,6 @@ import Config
 
 config :hold_ledger_review_web,
   ledger_root: Path.expand("../../..", __DIR__),
-  review_mode: :practice,
-  explainer: :inference,
-  explainer_timeout: 120_000,
   inference_client_options: [
     adapter: Inference.Adapters.ASM,
     admitted_kinds: [:agent_session],

@@ -97,7 +97,7 @@ Until a release is published, use a chosen repository commit rather than an unpi
 
 The application starts a task supervisor but does not open a ledger automatically. Start `HoldLedger.Server` explicitly or set `:server_options` as shown in [Runtime and recovery](runtime.md). Lynx, StreamData and ExDoc are test or documentation dependencies, not processor services.
 
-## Optional human review interface
+## Optional source claim evaluator (workbench UI pending)
 
 The ledger and Lean lessons work independently of Phoenix. For the local
 practice workbench, use the pinned BEAM tools and run:
@@ -110,9 +110,11 @@ mix assets.build
 mix phx.server
 ```
 
-Open `http://localhost:4000/review`. Scripted explanations need no API key.
-See [interactive review](interactive_review.md) for the no-server exercise and
-optional provider configuration.
+Open `http://localhost:4000/` to confirm app startup only. The old case and
+receipt routes were removed in Milestone A; the replacement interactive UI is
+Milestone B work and the configured AI work is Milestone C. For now, run the
+source evaluator and typed-codec tests in this separate Phoenix project, or
+use the [no-server review exercise](interactive_review.md).
 
 ## Local quality checks
 

@@ -142,12 +142,12 @@ An agent can carry out this workflow under agreed policy:
 
 [Agentic verification](guides/agentic_verification.md) has a worked exercise and prompts; [Human review](guides/human_review.md) explains what may be delegated and includes a decision practice set. The repository's `AGENTS.md` contains instructions for an agent working on this codebase.
 
-You can try that review process in [Review Studio](https://github.com/nshkrdotcom/hold_ledger/blob/main/apps/review_web/README.md),
-a local Phoenix app. Predict a ledger transition, compare deliberately wrong
-outputs, inspect the claim and its sources, and record your judgment. It's a spike
-for figuring out what helps a person catch an inadequate contract when an agent
-can produce a passing proof. It runs without an AI account; an optional model can
-explain the evidence and suggest questions. The
+The [source-backed claim evaluator](apps/review_web/README.md) is being built
+in the optional separate Phoenix companion. Milestone A replaces its old
+hand-coded evaluator and generic tuple codec, removes the former case/receipt
+routes, and adds tests for exact `test/laws` source expressions. **There is
+not yet a new interactive workbench**: Milestone B implements its human UI,
+and C implements the configured AI support. The
 [manual exercise](guides/interactive_review.md) works without the app.
 
 ## Documentation map

@@ -86,5 +86,5 @@ changes with justification and fresh evidence; a timeout never counts as success
 Before authoring a new law, cite the policy source and propose the actual
 `requires`/`expects`, effective domain and a wrong-output challenge. Stop for
 unapproved semantic changes. Report actual proof commands and evidence scope.
-Review Studio lives in `apps/review_web/`, a separate Mix project; preserve the
+The source claim companion lives in `apps/review_web/`, a separate Mix project; preserve the
 root package and proof paths. Never infer checked status from catalog support.

@@ -1,0 +1,175 @@
+{
+  "evidence_tier": "source_inspection_only_not_executed",
+  "description": "Canonical native event/effect tuple <-> JSON shape expectations. They are NOT results of Elixir runtime tests.",
+  "native_event_cases": [
+    {
+      "native": "{:request, 11, 100}",
+      "json": {
+        "type": "request",
+        "key": 11,
+        "amount": 100
+      }
+    },
+    {
+      "native": "{:dispatch, 11}",
+      "json": {
+        "type": "dispatch",
+        "key": 11,
+        "amount": null
+      }
+    },
+    {
+      "native": "{:timeout, 1}",
+      "json": {
+        "type": "timeout",
+        "key": 1,
+        "amount": null
+      }
+    },
+    {
+      "native": "{:void, 1}",
+      "json": {
+        "type": "void",
+        "key": 1,
+        "amount": null
+      }
+    }
+  ],
+  "native_effect_cases": [
+    {
+      "native": "{:authorize, 11, 100}",
+      "json": {
+        "type": "authorize",
+        "key": 11,
+        "amount": 100
+      }
+    },
+    {
+      "native": "{:void, 1}",
+      "json": {
+        "type": "void",
+        "key": 1,
+        "amount": null
+      }
+    }
+  ],
+  "rejected_event_cases": [
+    {
+      "why": "request requires positive amount",
+      "json": {
+        "type": "request",
+        "key": 11,
+        "amount": null
+      }
+    },
+    {
+      "why": "request requires positive amount",
+      "json": {
+        "type": "request",
+        "key": 11,
+        "amount": 0
+      }
+    },
+    {
+      "why": "dispatch must have null amount",
+      "json": {
+        "type": "dispatch",
+        "key": 11,
+        "amount": 10
+      }
+    },
+    {
+      "why": "timeout must have null amount",
+      "json": {
+        "type": "timeout",
+        "key": 1,
+        "amount": 11
+      }
+    },
+    {
+      "why": "void must have null amount",
+      "json": {
+        "type": "void",
+        "key": 1,
+        "amount": 2
+      }
+    },
+    {
+      "why": "unknown type",
+      "json": {
+        "type": "made_up",
+        "key": 1,
+        "amount": null
+      }
+    },
+    {
+      "why": "no extra fields",
+      "json": {
+        "type": "void",
+        "key": 1,
+        "amount": null,
+        "code": "unsafe"
+      }
+    }
+  ],
+  "rejected_effect_cases": [
+    {
+      "why": "authorize effect requires positive amount",
+      "json": {
+        "type": "authorize",
+        "key": 11,
+        "amount": null
+      }
+    },
+    {
+      "why": "authorize effect requires positive amount",
+      "json": {
+        "type": "authorize",
+        "key": 11,
+        "amount": 0
+      }
+    },
+    {
+      "why": "void effect must have null amount",
+      "json": {
+        "type": "void",
+        "key": 1,
+        "amount": 1
+      }
+    },
+    {
+      "why": "unrecognized effect",
+      "json": {
+        "type": "timeout",
+        "key": 1,
+        "amount": null
+      }
+    }
+  ],
+  "complete_output_example": {
+    "native_display": "{{100, 2, 100, 1, [{1, 100, :voiding}]}, :voiding, [{:void, 1}]}",
+    "json": {
+      "after": {
+        "amount_limit": 100,
+        "hold_limit": 2,
+        "used_amount": 100,
+        "used_holds": 1,
+        "entries": [
+          {
+            "key": 1,
+            "amount": 100,
+            "status": "voiding"
+          }
+        ]
+      },
+      "result": "voiding",
+      "effects": [
+        {
+          "type": "void",
+          "key": 1,
+          "amount": null
+        }
+      ]
+    }
+  }
+}

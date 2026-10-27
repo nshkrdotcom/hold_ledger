@@ -1,0 +1,59 @@
+{
+  "description": "Snapshot source-inspection expectations; unexecuted. Check via compiled source law evaluator in actual checkout.",
+  "evidence_tier": "source_inspection_only_not_run",
+  "scenarios": {
+    "P01": {
+      "po_b1_void": "allows_here",
+      "po_b3": "allows_here",
+      "po_exposure_retain": "catches",
+      "po_s": "allows_here"
+    },
+    "P02": {
+      "po_b1_void": "allows_here",
+      "po_b3": "catches",
+      "po_exposure_retain": "allows_here",
+      "po_s": "allows_here"
+    },
+    "P03": {
+      "po_b1_timeout": "allows_here",
+      "po_b3": "allows_here",
+      "po_exposure_retain": "catches",
+      "po_s": "allows_here",
+      "po_b2": "does_not_apply"
+    },
+    "P04": {
+      "po_a2": "catches",
+      "po_b3": "allows_here",
+      "po_s": "allows_here",
+      "po_exposure_retain": "does_not_apply"
+    },
+    "P05": {
+      "po_b1_void": "allows_here",
+      "po_b3": "catches",
+      "po_exposure_retain": "catches",
+      "po_s": "allows_here"
+    },
+    "P06": {
+      "po_b1_timeout": "catches",
+      "po_b3": "catches",
+      "po_exposure_retain": "allows_here",
+      "po_s": "catches"
+    },
+    "P07": {
+      "po_b1_timeout": "allows_here",
+      "po_exposure_retain": "catches",
+      "po_b3": "allows_here"
+    },
+    "P08": {
+      "po_b1_void": "allows_here",
+      "po_b3": "allows_here",
+      "po_exposure_retain": "does_not_apply"
+    }
+  },
+  "notes": {
+    "P05": "Static patch-shaped projection of M10, not the same as P01; no mutant execution asserted.",
+    "P06": "Static patch-shaped projection of M2, not the same as P03; invalid semantic after-state.",
+    "P07": "Key 1 retained exposure must be checked even when event targets key 2.",
+    "P08": "A reserved void may correctly release; retention precondition requires a post-dispatch status."
+  }
+}
