@@ -2,13 +2,13 @@
 
 You know how to test Elixir. What changes when you want to show that a behavior holds for **every** input in a stated domain, rather than the examples a test runner happens to try?
 
-We'll begin with a tiny capacity check, turn its behavior into a Lynx law, and read the Lean proof that establishes it. We'll plant an exact-fit bug, read the failure, and finish with one maintained ledger law. You need Elixir and testing experience, but no prior Lean or Lynx. By the end, you'll have run a law, explained a counterexample and traced a ledger claim to its shared proof.
+Start with a capacity check you could write in Elixir. You'll run a small Lynx law before tackling one with integer inputs, change `>` to `>=` to see what breaks, and write a second law yourself. The ledger example comes last. You need Elixir and testing experience, not Lean.
 
-The main skill is reading a claim and checking what its proof establishes. You will run and inspect supplied tactics; writing a new proof is an optional exercise. People and agents can both write tactics, but neither gets to change the requirement just to close a goal.
+You'll write proof tactics, not only read them. When a proof fails, don't weaken the law just to make Lean accept it.
 
 The explanation can be read on any machine. To run the commands, use the [toolchain setup](getting-started.md) and save tutorial files under a `tmp/` directory at the repository root (create it if needed). Git ignores `tmp/`. All example commands assume you're in the repository root.
 
-You can work through the course in three sittings: read and run the small law, plant and explain the exact-fit bug, then follow the maintained duplicate-request law. Each is a useful stopping point; proof setup and exercises can take longer than reading the explanations.
+You can stop after the first law, after the capacity exercise or after the maintained ledger proof.
 
 ## From a test to a claim about every input
 
@@ -59,7 +59,7 @@ Success produces no output and exits with status zero. Changing the statement to
 
 ## Learn to read the claim before its proof
 
-When an agent says it proved a theorem, inspect the statement first. A proof can be perfectly valid while its statement is too weak, applies to too few inputs, or assumes the result it was supposed to establish.
+Read the theorem statement before the tactics. The proof can be valid even if the statement leaves out the case you meant to cover or assumes the result you wanted.
 
 Lean often writes a universal claim by binding a variable: `theorem add_zero (x : Int) ...` means the theorem holds for **every** integer `x`. These notations will turn up again when you open the ledger's shared proofs:
 
@@ -106,13 +106,50 @@ Lean definitions and a theorem statement
 Lean checks the proof
 ```
 
-Lynx supplies the Lean version of `admit/2`; you supply the claim and proof. In a law declaration, `requires:` names the input domain and `expects:` names the required result. Read those two lines before looking at the `~LEAN` proof body. The next file puts the function, executable checks, law and proof together.
+Lynx supplies the Lean version of `admit/2`; you write the claim and proof. In a law declaration, `requires:` sets the input domain and `expects:` states the required result. Read those lines before the `~LEAN` proof body.
 
-Before copying it, try this prediction: would a proof of **only** `amount < remaining → :ok` be enough? No. It would exclude the exact-fit request, where the amount equals the remaining capacity. The boundary matters more than which tactic you use.
+## A first Lynx law
 
-## Run one complete Lynx proof
+Save the empty-list case from Lynx's recursive sum example as `tmp/first_law_test.exs`:
 
-The test and property both call `fits/2`, which Lynx creates from the law declaration. Read `requires:` and `expects:` first: they state the contract we just described. The `proof: ~LEAN` block supplies the proof in Lean syntax. A `laws` block groups laws into one ExUnit test; the repository also registers groups for selection by the proof runner. We’ll walk through its steps after checking the file.
+```elixir
+defmodule FirstLynxLawTest do
+  use ExUnit.Case
+  use Lynx.Case
+
+  def sum([]), do: 0
+  def sum([head | tail]), do: head + sum(tail)
+
+  test "empty sum" do
+    assert sum([]) == 0
+  end
+
+  laws "first law" do
+    law sum_empty,
+      expects: sum([]) == 0,
+      proof: ~LEAN"""
+      simp [«sum_empty:ensures/0», «sum/1», Erlang.erlang.«==/2»]
+      """
+  end
+end
+```
+
+Run the test, then check the law:
+
+```sh
+uv run --locked python scripts/local_run.py mix test tmp/first_law_test.exs --exclude laws
+LYNX_CACHE=0 LYNX_DEBUG=lean uv run --locked python scripts/local_run.py mix test tmp/first_law_test.exs --only laws
+```
+
+The test checks one call. So does the law: without variables, it makes no claim about other lists. You don't need `requires:` here. The `simp` tactic unfolds the generated `sum_empty:ensures/0` predicate, the empty-list case of `sum/1`, and Erlang equality. The recursive case never comes up.
+
+Replace the `simp [...]` line with `trace_state` and rerun the proof. Lean prints the open goal and reports that it hasn't been proved. Restore `simp [...]` when you've read it.
+
+## Prove the capacity contract
+
+Now return to `admit/2`. The law must cover exact fits as well as amounts below capacity; `amount < remaining` would miss equality. This proof has variables and a precondition, so it takes more than unfolding one call.
+
+The test and property call `fits/2`, which Lynx creates from the law declaration. `requires:` and `expects:` state the contract; `proof: ~LEAN` contains the Lean proof. A `laws` block runs as one ExUnit test. The repository registers its maintained law groups separately for the proof runner.
 
 Create `tmp/` if necessary. Save this entire file as `tmp/cap_test.exs`:
 
@@ -207,7 +244,7 @@ The same source can involve native Lean values such as `Int` and `List`, plus `L
 
 ## Read the goal before choosing a tactic
 
-At the start of the proof, Lynx supplies this context:
+With `LYNX_DEBUG=lean`, the generated theorem is in `tmp/CrashCourseTest/laws-capacity/Elixir/CrashCourseTest/laws.lean`. Its starting goal looks like this:
 
 ```text
 amount remaining : Lynx.Term
@@ -258,6 +295,8 @@ For example, `omega` alone fails on `(x : Int)`, goal `x * x ≥ 0`. Its diagnos
 
 If `simp_all` says it made no progress, none of its rules rewrote the current problem. If simplification instead expands too much code or takes too long, return to the last readable goal. Use `simp only` with selected definitions, or prove a helper fact (a **lemma**) first.
 
+When editing the proof, compare `tmp/cap_test.exs` with the generated `.lean` file and terminal output. Change one tactic, rerun with `LYNX_CACHE=0 LYNX_DEBUG=lean`, and check the new goal. A translation error stops before proof checking; an unsolved goal means the tactics didn't finish. Neither proves the claim false.
+
 ## Stuck or false?
 
 A proof attempt can fail because the claim is false or because the tactics have not established it. Use the tests to investigate:
@@ -301,7 +340,39 @@ This is the start of the diagnostic; the remaining lines handle exceptions and c
 
 Restore `>` and rerun both checks. This is mutation testing: checking whether deliberately planted faults are detected. If a mutation survives, inspect whether it preserves behavior, exposes missing coverage, or reflects an incomplete run.
 
-This completes the small-program lesson. Before continuing, explain why the exact-fit counterexample defeats the mutant. The next section applies the same steps to a maintained law; you can return to it in another sitting.
+The exact-fit failure is a counterexample to the mutant. Restore the original `>` comparison before writing your next law.
+
+## Write a law yourself
+
+Add a law for requests that exceed the remaining capacity. Put this declaration inside the existing `laws "capacity"` block in `tmp/cap_test.exs`:
+
+```elixir
+law over_capacity(amount, remaining),
+  requires: is_integer(amount) and is_integer(remaining) and remaining < amount,
+  expects: admit(amount, remaining) == :full,
+  proof: ~LEAN"""
+  trace_state
+  rfl
+  """
+```
+
+`trace_state` prints the starting goal; `rfl` is a placeholder that should fail. Keep `requires:` and `expects:` as written and replace the tactics. Use the `fits/2` proof as a guide. After splitting the inputs into integer cases, you'll have a hypothesis `b < a` instead of `a ≤ b`.
+
+Add a witness and a property to the same test module, outside `laws "capacity"`:
+
+```elixir
+test "over capacity" do
+  assert over_capacity(2, 1)
+end
+
+property "generated over-capacity pairs" do
+  check all(remaining <- integer(), gap <- positive_integer()) do
+    assert over_capacity(remaining + gap, remaining)
+  end
+end
+```
+
+Run the earlier test and proof commands for `tmp/cap_test.exs`. If you get stuck, print the next goal before looking at the [exercise 3 solution](#exercises-and-solutions). Finish this law before moving to the ledger.
 
 ## Apply the workflow to the ledger
 
@@ -424,11 +495,9 @@ No integer satisfies both hypotheses. The proof establishes nothing about any ac
 
 ## Exercises and solutions
 
-Return to `tmp/cap_test.exs` for the first three exercises. The fourth asks you to read the ledger contract.
-
 1. **Boundary witness.** Add an exact-fit test for an integer larger than `2 ** 64`. Does the toy claim allow negative integers too?
 2. **Mutation.** Make the comparison change above. Run both ordinary checks and the proof. Explain the smallest executable failure, then restore the function.
-3. **Optional: write another law.** Keep `fits/2` unchanged. Add `over_capacity/2` requiring integer inputs and `remaining < amount`, concluding `admit(amount, remaining) == :full`. Add a witness and generated property, then prove it.
+3. **Write the second law.** Complete the [over-capacity law](#write-a-law-yourself). Keep the statement unchanged, add the witness and property, and finish the Lean proof.
 4. **Read before changing.** Open `test/laws/po_a4_duplicate_test.exs`. Which assumptions describe the input, and which exact outputs does the conclusion require? Would requiring only a valid resulting state preserve the duplicate guarantee?
 
 <details>
@@ -473,7 +542,7 @@ Before reading a proof body, review these four things in order:
 3. **Independence:** does `Spec` make its own decisions, or merely repeat or call the implementation?
 4. **Translation boundary:** are the proof’s definitions generated from the code being reviewed? [Verification](verification.md#domains-and-limits) explains the compiler/translator assumptions and the pinned Lynx implementation’s review history.
 
-Continue with [Agentic verification](agentic_verification.md) to challenge contracts for a pending void. To inspect predicates, follow the admission proof and read recursive history models, use [Reading deeper proofs](reading_deeper_proofs.md).
+Continue with [Reading deeper proofs](reading_deeper_proofs.md) for shared lemmas, induction and history models. [Agentic verification](agentic_verification.md) moves to contract review and agent-written changes.
 
 > **Limits.** A checked proof establishes its statement about the translated functions under its hypotheses.
 >

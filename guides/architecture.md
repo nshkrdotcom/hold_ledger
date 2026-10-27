@@ -17,6 +17,20 @@ input event -> Server -> Journal.append_sync
                                       journaled processor-result event
 ```
 
+## From OTP to a proof
+
+If you know OTP, these parallels help when reading the [crash course](formal_verification_crash_course.md):
+
+| In an OTP application | In this repository |
+|---|---|
+| A `GenServer` handles a message and updates its state. | `Ledger.step/2` takes state and an event and returns the next state and effect descriptions, without I/O. |
+| StreamData runs a property on generated histories. | A Lean law proves its stated property for every input in the precondition, subject to the translation assumptions. |
+| A server replays a journal after restart. | History theorems cover abstract accepted transitions, not whether a disk write survived a crash. |
+| A task calls a processor. | Proofs cover described effects and modeled processor behavior, not the actual network call. |
+| A timeout leaves the external outcome uncertain. | The reducer keeps capacity reserved while a hold is `:unknown`. |
+
+A proof about `Ledger.step/2` does not show whether `Server` synced the journal before scheduling a task. That needs runtime tests and assumptions about storage and the processor.
+
 ## Pure state machine
 
 Start here when a question is about **what state transition is allowed**, not about disk writes or network calls. `HoldLedger.Ledger` provides initialization, single-event transitions and finite

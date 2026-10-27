@@ -6,17 +6,13 @@ There are three useful milestones: run the simulated ledger, check one law, and,
 
 ## Environment
 
-The **source-checkout environment** is Ubuntu **26.04 x86_64**, with Elixir **1.20.4** compiled against OTP 29, Erlang/OTP **29.1.2**, `uv` **0.12.6**, Git, and `bwrap` (Bubblewrap). Python **3.13.15** and the `zstandard` helper are managed by uv. Version pins live in `.tool-versions`, `.python-version`, `lean-toolchain`, `mix.lock`, `uv.lock` and `scripts/toolchains.json`.
+The supported checkout runs on Ubuntu **26.04 x86_64**, with Elixir **1.20.4** compiled against OTP 29, Erlang/OTP **29.1.2**, `uv` **0.12.6**, and Git. uv manages Python **3.13.15** and `zstandard`. The version pins are in `.tool-versions`, `.python-version`, `lean-toolchain`, `mix.lock`, `uv.lock` and `scripts/toolchains.json`.
 
-The onboarding command below checks `bwrap` as part of its default proof-tool profile, even if you plan to run only a focused proof. The full independent checker uses it to isolate proof checking.
-
-The installer verifies your **existing** Elixir and OTP installations; it does not install or replace them. It downloads checksum-pinned Elan, Lean and Lake into ignored `.local/`, without changing shell profiles, global tools or host security settings. Python supports that tooling; it is not part of the Elixir application's runtime.
-
-From the repository root, with the required Elixir/OTP already selected:
+To run the demo or tutorial proofs, select the pinned Elixir/OTP versions in your existing installation, then run from the repository root:
 
 ```sh
 uv sync --locked
-uv run --locked python scripts/onboard.py --provision
+uv run --locked python scripts/onboard.py --profile runtime --provision
 export ELAN_HOME="$PWD/.local/elan"
 export ELAN_TOOLCHAIN="$(cat lean-toolchain)"
 export PATH="$ELAN_HOME/bin:$PATH"
@@ -24,7 +20,17 @@ mix deps.get
 mix compile --warnings-as-errors
 ```
 
-The exports activate the local toolchain in this shell. A fresh `mix test` compiles the test-only Lynx dependency, which invokes Lake, so test compilation needs Lean/Lake even though ordinary tests exclude formal laws by default. The application itself needs only Elixir/OTP.
+The `runtime` profile checks Elixir, OTP and Git without checking for `bwrap`. `--provision` installs checksum-pinned Elan, Lean and Lake in ignored `.local/`. It does not install Elixir/OTP or change global tools or shell settings. The exports select the local Lean toolchain for this shell.
+
+Even ordinary `mix test` runs compile the test-only Lynx dependency through Lake, so they need Lean installed. The application itself needs only Elixir/OTP.
+
+For the full independent proof checker, install `bwrap` (Bubblewrap) separately and check the complete toolchain:
+
+```sh
+uv run --locked python scripts/onboard.py --profile proofs
+```
+
+You don't need `bwrap` for the demo or focused proofs. The onboarding command checks for it but does not install it.
 
 The guides also use this wrapper:
 
@@ -66,7 +72,7 @@ The state did not change on the duplicate request. Amounts are positive integer 
 
 ## Check your first law
 
-Once the toolchain is ready, check one maintained law rather than starting the full suite:
+Start with the [empty-list law](formal_verification_crash_course.md#a-first-lynx-law) if you haven't written a Lynx proof before. Then check the ledger's duplicate-request law:
 
 ```sh
 uv run --locked python scripts/run_laws.py --slug po_a4_duplicate --stage proofs \

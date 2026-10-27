@@ -11,26 +11,25 @@ A payment processor might authorize a hold and lose the reply. Your server sees 
 
 No: the authorization may still be live. That small uncertainty is the thread running through Hold Ledger, an Elixir example for learning formal verification with [Lynx](https://github.com/josevalim/lynx) and Lean 4. It has a pure ledger, an independently written specification, a journaled OTP runtime, tests, and machine-checked laws. No prior Lean knowledge is needed: the crash course teaches enough to read a proof while you work with a small Elixir program.
 
-The project is for developers who know Elixir and testing but are new to formal proofs. It also explores how to work with a coding agent on specifications and proofs **without letting a passing proof silently redefine what the program must do**. The agent can investigate, write code, propose contracts and attempt proofs. A person is needed when the requirements or accepted risks themselves must be decided.
+Because Lynx is new, the lessons show both sides of each example: the Elixir law and the Lean it generates. Later guides cover agent-assisted proof work and how to spot a proof of the wrong requirement.
 
 ## Choose where to start
 
-If you are new to formal verification, start with the crash course, then work through Agentic verification and Human review. Use Getting started when you want to run the examples. The other routes let you join at the task you already know you need.
+If you're new to Lean, start with the crash course. You'll run a small proof, break a capacity check, and write a law. Then read Reading deeper proofs for the shared lemmas and induction used by the ledger. The agent and review guides are a separate track.
 
 | You want to… | Start here | What you'll do |
 |---|---|---|
-| Understand Lean and Lynx from scratch | [Formal verification crash course](guides/formal_verification_crash_course.md) | Go from a familiar ExUnit test to a Lynx law, read Lean goals, plant a bug, then follow a real ledger law. You can read along without installing anything. |
-| Verify something with a coding agent | [Agentic verification](guides/agentic_verification.md) | Challenge contracts and review evidence using Elixir examples; no Lean tactics required. |
-| Review an agent-generated change | [Human review](guides/human_review.md) | Classify changes to code, proof bodies and their meaning; practice with seven deliberately tricky diffs. |
-| Run the example or check a proof | [Getting started](guides/getting-started.md) | Set up the pinned tools, run the ledger, then select a focused proof or full verification. |
+| Learn Lean through Elixir | [Formal verification crash course](guides/formal_verification_crash_course.md) | Run a small Lynx proof, inspect its Lean goal, catch an exact-fit bug and write a second law. You can read it without installing anything. |
+| Follow a maintained proof | [Reading deeper proofs](guides/reading_deeper_proofs.md) | Read predicates, shared lemmas, induction and finite histories. |
+| Run the code | [Getting started](guides/getting-started.md) | Set up the pinned tools and run the demo or a focused proof. |
+| Work with a coding agent | [Agentic verification](guides/agentic_verification.md) | Challenge a contract and check evidence without writing Lean tactics. |
+| Review agent-generated changes | [Human review](guides/human_review.md) | Decide whether a change fixes a proof or changes what is being proved. |
 
-For shared lemmas, induction and history models, continue from the crash course to [Reading deeper proofs](guides/reading_deeper_proofs.md).
-
-The [Specification assurance](guides/specification_assurance.md) guide explains why a correct proof may establish an inadequate requirement. [Verification](guides/verification.md) describes evidence and checker boundaries. The [assurance audit](guides/audit.md) is an advanced, system-wide review, not a prerequisite for the tutorial.
+[Specification assurance](guides/specification_assurance.md) deals with proofs of inadequate requirements. [Verification](guides/verification.md) explains what the checkers establish. The [assurance audit](guides/audit.md) covers the whole system and is not part of the first lesson.
 
 ## Try it on a supported machine
 
-The source-checkout environment is **Ubuntu 26.04 x86_64** with Erlang/OTP **29.1.2**, Elixir **1.20.4** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, Git, and `bwrap` (Bubblewrap). The onboarding script checks existing Elixir/OTP installations and `bwrap`; it does not install them.
+The supported checkout runs on **Ubuntu 26.04 x86_64**, with Erlang/OTP **29.1.2**, Elixir **1.20.4** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, and Git. The demo and focused proofs don't need `bwrap` (Bubblewrap). The full independent checker does. Onboarding checks your existing Elixir/OTP installation; it won't install those tools.
 
 The examples use the Lynx commit pinned in `mix.lock` and Lean **4.35.0** from `lean-toolchain`; [Verification](guides/verification.md#coverage-and-provenance) identifies the exact versions.
 
@@ -38,7 +37,7 @@ From the repository root, after selecting the required Elixir/OTP installation:
 
 ```sh
 uv sync --locked
-uv run --locked python scripts/onboard.py --provision
+uv run --locked python scripts/onboard.py --profile runtime --provision
 export ELAN_HOME="$PWD/.local/elan"
 export ELAN_TOOLCHAIN="$(cat lean-toolchain)"
 export PATH="$ELAN_HOME/bin:$PATH"
@@ -46,7 +45,7 @@ mix deps.get
 mix run scripts/demo.exs
 ```
 
-The demo uses a simulated processor and a fresh temporary journal; it does not move money. The installed Lean/Lake tools stay under ignored `.local/`. If setup stops on a prerequisite, see [Getting started](guides/getting-started.md) and [Troubleshooting](guides/troubleshooting.md) rather than bypassing the check.
+The demo uses a simulated processor and a fresh temporary journal; it does not move money. Lean and Lake stay in ignored `.local/`. See [Getting started](guides/getting-started.md) for the full-checker setup and [Troubleshooting](guides/troubleshooting.md) if setup fails.
 
 To see a **real ledger proof attempt**, start with the duplicate-request law (`po_a4_duplicate`):
 
@@ -149,9 +148,9 @@ Start with the learning path above. Use this table to find a lesson, a procedure
 
 | Guide | Use it for |
 |---|---|
-| [Getting started](guides/getting-started.md) | Prerequisites, local tools and first run |
-| [Formal verification crash course](guides/formal_verification_crash_course.md) | Run a law, read a proof failure, plant a bug and inspect a ledger claim |
+| [Formal verification crash course](guides/formal_verification_crash_course.md) | Run a first Lynx law, write another and read a ledger proof |
 | [Reading deeper proofs](guides/reading_deeper_proofs.md) | Inspect predicates, follow shared proofs and read recursive history models |
+| [Getting started](guides/getting-started.md) | Prerequisites, local tools and first run |
 | [Agentic verification](guides/agentic_verification.md) | A complete contract challenge and agent-assisted verification task |
 | [Human review](guides/human_review.md) | Change classification, escalation and seven review exercises |
 | [Specification assurance](guides/specification_assurance.md) | Vacuity, missing guarantees, contract comparison and research |
