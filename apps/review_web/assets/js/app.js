@@ -3,16 +3,6 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
-// The document owns source scrolling; mounting a proof never moves the page.
-const ProofSource = {
-  mounted() { this.stage = this.el.dataset.stage },
-  updated() {
-    if (this.stage === this.el.dataset.stage) return
-    this.stage = this.el.dataset.stage
-    this.el.querySelector(".active-proof-line")?.scrollIntoView({block: "start"})
-  },
-}
-
 const InlineTools = {
   mounted() {
     this.opener = document.activeElement
@@ -45,7 +35,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {ProofSource, InlineTools},
+  hooks: {InlineTools},
 })
 topbar.config({barColors: {0: "#635080"}, shadowColor: "rgba(37,35,48,.2)"})
 window.addEventListener("phx:page-loading-start", () => topbar.show(300))

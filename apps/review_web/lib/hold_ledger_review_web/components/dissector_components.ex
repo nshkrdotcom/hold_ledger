@@ -7,6 +7,11 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
   attr :basis, :string, default: "candidate"
   attr :helper, :map, default: nil
   attr :binding_index, :integer, default: 0
+  attr :links, :list, default: []
+  attr :selection, :any, default: nil
+  attr :active_links, :list, default: []
+  attr :unavailable, :list, default: []
+  attr :generation, :string, default: ""
 
   def dissector(assigns) do
     bindings = if assigns.case, do: assigns.case["explanation"]["bindings"], else: []
@@ -20,11 +25,22 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     ~H"""
     <section class="instrument" id="dissector">
       <header>
-        <span class="section-number">02</span><h2>Why it passes or fails</h2>
+        <span class="section-number">02</span><h2>Why this check has that result</h2>
       </header>
       <p :if={@reading["kind"] == "native_lean"}>
         Native Lean statement. No executable Elixir counterpart.
       </p>
+      <p class="scope-note" id="connection-scope">
+        Clause ↔ proof links are reviewed source-reading aids, not Lean goal states,
+        kernel dependencies or acceptance evidence.
+      </p>
+      <p :if={!@reading["reading_current"]} id="links-stale" class="scope-note connection-unavailable">
+        Source-bound reading notes are stale for the current law source. Clause/proof links are unavailable; ordinary checks remain accessible.
+      </p>
+      <p :if={@reading["reading_current"] && @reading["connections"] == []} id="links-unsupported" class="scope-note">
+        No reviewed proof correspondence is available for this claim. Its ordinary source and checks remain accessible.
+      </p>
+      <p :for={reason <- @unavailable} class="scope-note connection-unavailable">Reading unavailable: {reason}</p>
       <div :if={@case}>
         <p id="binding-count">
           {if length(@bindings) == 1,
@@ -83,6 +99,10 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
               node={binding["requires"]}
               phase="requires"
               binding={index}
+              links={@links}
+              selection={@selection}
+              active_links={@active_links}
+              generation={@generation}
             />
             <.clause_table
               :if={binding[@basis]}
@@ -90,6 +110,10 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
               node={binding[@basis]}
               phase={@basis}
               binding={index}
+              links={@links}
+              selection={@selection}
+              active_links={@active_links}
+              generation={@generation}
             />
             <p :if={!binding[@basis]} class="scope-note" id="outside-domain">
               This rule does not apply to this input.
@@ -135,12 +159,20 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
   attr :title, :string, required: true
   attr :phase, :string, required: true
   attr :binding, :integer, required: true
+  attr :links, :list, default: []
+  attr :selection, :any, default: nil
+  attr :active_links, :list, default: []
+  attr :generation, :string, default: ""
 
   def clause_table(assigns) do
     ~H"""
     <section class="clause-table">
       <h3>{@title} <.truth value={@node["value"]} /></h3>
-      <.logic node={@node} root={@node} phase={@phase} binding={@binding} />
+      <.logic
+        node={@node} root={@node} phase={@phase} binding={@binding} path={[]}
+        links={@links} selection={@selection} active_links={@active_links}
+        generation={@generation}
+      />
     </section>
     """
   end
@@ -150,86 +182,95 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
   attr :root, :map, required: true
   attr :phase, :string, required: true
   attr :binding, :integer, required: true
+  attr :path, :list, required: true
+  attr :links, :list, default: []
+  attr :selection, :any, default: nil
+  attr :active_links, :list, default: []
+  attr :generation, :string, default: ""
 
   def logic(assigns) do
     op = operator(assigns.node)
+    address = Enum.join(assigns.path, ".")
+
+    related =
+      Enum.filter(assigns.links, fn link ->
+        link["phase"] == assigns.phase and link["path"] == address and
+          link["binding"] == assigns.binding
+      end)
+
+    active =
+      Enum.any?(assigns.active_links, fn link ->
+        link["phase"] == assigns.phase and link["path"] == address and
+          link["binding"] == assigns.binding
+      end)
+
+    selected =
+      match?(%{type: :clause}, assigns.selection) and
+        assigns.selection.phase == assigns.phase and
+        assigns.selection.path == address and
+        assigns.selection.binding == assigns.binding
+
+    children = Enum.with_index(assigns.node["children"] || [])
 
     assigns =
       assign(assigns,
         op: op,
-        children: logical_children(assigns.node, op),
-        helpers: if(assigns.phase == "helper", do: helper_children(assigns.node), else: [])
+        address: address,
+        related: related,
+        active: active,
+        selected: selected,
+        children: children
       )
 
     ~H"""
-    <div class={["logic-node", @node["status"] == "not_evaluated" && "not-evaluated"]}>
-      <div :if={@op in [:and, :or, :not] && @node["status"] != "not_evaluated"} class="logic-group">
-        <div class="logic-group-heading">
-          <span class="logic-operator">{String.upcase(Atom.to_string(@op))}</span><.truth value={
-            @node["value"]
-          } />
-        </div>
-        <div class="logic-children">
-          <.logic
-            :for={child <- @children}
-            node={child}
-            root={@root}
-            phase={@phase}
-            binding={@binding}
-          />
-        </div>
-      </div>
-      <div
-        :if={
-          (@op not in [:and, :or, :not, :if, :case] && @node["helper"] == nil) ||
-            @node["status"] == "not_evaluated"
-        }
-        class="logic-leaf"
-      >
-        <code>{@node["expression"]}</code>
+    <div
+      class={[
+        "logic-node",
+        @op in [:and, :or, :not] && "logic-group",
+        @node["status"] == "not_evaluated" && "not-evaluated",
+        @active && "connected-clause",
+        @selected && "selected-clause"
+      ]}
+      id={if @phase != "helper", do: "clause-#{@binding}-#{@phase}-#{if @address == "", do: "root", else: String.replace(@address, ".", "-")}"}
+    >
+      <div class="logic-line logic-leaf">
+        <span :if={@op in [:and, :or, :not]} class="logic-operator">{String.upcase(Atom.to_string(@op))}</span>
+        <button
+          :if={@phase != "helper"}
+          class="clause-select"
+          phx-click="select_clause"
+          phx-value-phase={@phase}
+          phx-value-binding={@binding}
+          phx-value-path={@address}
+          phx-value-generation={@generation}
+          aria-pressed={to_string(@selected)}
+          title="Select this observed condition"
+        >{@node["expression"]}</button>
+        <code :if={@phase == "helper"}>{@node["expression"]}</code>
+        <span :if={@node["status"] == "not_evaluated"} class="unevaluated-value">Not evaluated</span>
+        <.truth :if={@node["status"] != "not_evaluated"} value={@node["value"]} />
         <strong :if={inline_values(@node, @op)} class="inline-values">{inline_values(@node, @op)}</strong>
-        <div :if={!inline_values(@node, @op) && operands(@node) != ""} class="inline-values">
-          {operands(@node)}
-        </div>
         <button
           :if={expandable?(@node) && @phase != "helper"}
           class="text-button"
           phx-click="helper"
           phx-value-phase={@phase}
           phx-value-binding={@binding}
-          phx-value-path={Enum.join(node_path(@root, @node) || [], ".")}
+          phx-value-path={@address}
         >Definition</button>
-        <span :if={@node["status"] != "not_evaluated"}><.truth value={@node["value"]} /></span><span :if={
-          @node["status"] == "not_evaluated"
-        }>Not evaluated</span>
+        <small :if={@related != []} class="connection-marker">Related proof passage ({length(@related)})</small>
+        <small :if={@selected && @related == []} class="scope-note">No reviewed proof passage for this condition</small>
       </div>
-      <div
-        :if={@helpers != [] && @node["status"] != "not_evaluated"}
-        class="helper-logic"
-      >
-        <.logic :for={child <- @helpers} node={child} root={@root} phase={@phase} binding={@binding} />
+      <div :if={@children != []} class="logic-children">
+        <.logic
+          :for={{child, index} <- @children}
+          node={child} root={@root} phase={@phase} binding={@binding} path={@path ++ [index]}
+          links={@links} selection={@selection} active_links={@active_links}
+          generation={@generation}
+        />
       </div>
     </div>
     """
-  end
-
-  defp helper_children(%{"helper" => helper, "children" => children}) when helper != nil,
-    do: children
-
-  defp helper_children(node) do
-    case Code.string_to_quoted(node["expression"]) do
-      {:ok, {op, _, _}} when op in [:if, :case] ->
-        node["children"]
-
-      {:ok, {{:., _, [_, name]}, _, _}} when name in [:request_eligible?, :exposed_entry?] ->
-        node["children"]
-
-      {:ok, {name, _, _}} when name in [:request_eligible?, :exposed_entry?] ->
-        node["children"]
-
-      _ ->
-        []
-    end
   end
 
   defp operator(%{"expression" => expression}) do
@@ -242,16 +283,6 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         nil
     end
   end
-
-  defp logical_children(node, op) when op in [:and, :or] do
-    Enum.flat_map(node["children"], fn child ->
-      if child["status"] != "not_evaluated" and operator(child) == op,
-        do: logical_children(child, op),
-        else: [child]
-    end)
-  end
-
-  defp logical_children(node, _), do: node["children"]
 
   defp inline_values(%{"children" => [left, right]}, op)
        when op in [:<=, :<, :>=, :>, :==, :===, :!=, :!==, :in] do
@@ -281,26 +312,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     """
   end
 
-  defp node_path(node, node), do: []
-
-  defp node_path(root, target) do
-    root["children"]
-    |> Enum.with_index()
-    |> Enum.find_value(fn {child, index} ->
-      case node_path(child, target) do
-        nil -> nil
-        path -> [index | path]
-      end
-    end)
-  end
-
   defp expandable?(node), do: Enum.any?(node["children"], &(&1["helper"] != nil))
-
-  defp operands(node) do
-    node["children"]
-    |> Enum.reject(&(&1["helper"] != nil))
-    |> Enum.map_join(" · ", &term(&1["value"]))
-  end
 
   def term(true), do: "true"
   def term(false), do: "false"

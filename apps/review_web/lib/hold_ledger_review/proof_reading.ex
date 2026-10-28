@@ -15,6 +15,7 @@ defmodule HoldLedgerReview.ProofReading do
   }
 
   alias HoldLedgerReview.Claims.Source
+  alias HoldLedgerReview.ProofReading.Links
 
   def catalog do
     with {:ok, laws} <- Claims.catalog(),
@@ -58,6 +59,16 @@ defmodule HoldLedgerReview.ProofReading do
          "inline_proof" => inline,
          "proof_steps" =>
            if(guide_current, do: proof_steps(hd(declarations), guide["steps"]), else: []),
+         "connections" =>
+           if(guide_current,
+             do:
+               Links.validate(
+                 guide["connections"] || [], context.bytes, context.digests,
+                 hd(declarations), proof_steps(hd(declarations), guide["steps"]),
+                 guide["reviewed_source_sha256"]
+               ),
+             else: []
+           ),
          "reading_current" => guide_current == true,
          "policy" =>
            policy(
@@ -239,7 +250,7 @@ defmodule HoldLedgerReview.ProofReading do
   defp proof_steps(declaration, steps) do
     Enum.map(steps, fn step ->
       case :binary.matches(declaration["text"], step["anchor"]) do
-        [{offset, _} | _] ->
+        [{offset, _}] ->
           line =
             declaration["line"] +
               length(String.split(binary_part(declaration["text"], 0, offset), "\n")) - 1
@@ -253,8 +264,8 @@ defmodule HoldLedgerReview.ProofReading do
 
           Map.merge(step, %{"line" => line, "code" => code, "path" => declaration["path"]})
 
-        [] ->
-          Map.merge(step, %{"line" => nil, "code" => "Anchor missing; reading unavailable"})
+        _ ->
+          Map.merge(step, %{"line" => nil, "code" => "Anchor missing or ambiguous; reading unavailable"})
       end
     end)
   end

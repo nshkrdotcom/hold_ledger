@@ -12,7 +12,7 @@ async function saved(page){const id=new URL(page.url()).pathname.split('/').at(-
 test('opens with the rule, proof and experiment instead of sign-off controls',async({page})=>{
  await open(page);await expect(page.locator('h1')).toHaveText('Accept requests that fit available capacity');
  await expect(page.locator('#policy-anchor')).toContainText('all remaining capacity');await expect(page.locator('#proof-script')).toBeVisible();
- await expect(page.locator('#decision-docket,#tool-drawer,[role=dialog],#review-document > details')).toHaveCount(0);
+ await expect(page.locator('#tool-drawer,[role=dialog],#review-document > details')).toHaveCount(0);await expect(page.locator('#disposition-options')).not.toHaveAttribute('open');
  await expect(page.locator('#review-document')).not.toContainText('no policy approval');await expect(page.locator('#review-document')).not.toContainText('Exact-fit admission');
  await expect(page.locator('#ledger-output h3')).toHaveText('Code returned');await expect(page.locator('#hypothetical-output h3')).toHaveText('What if it returned…');
 });
@@ -27,14 +27,14 @@ test('nearby amounts update coverage and output without saving a trace',async({p
 });
 
 test('review notes follow analysis and preserve its active input',async({page})=>{
- await open(page);await page.locator('#review-amount').fill('99');await inspect(page,'record');await page.locator('#request-repair').click();
+ await open(page);await page.locator('#review-amount').fill('99');await page.locator('#disposition-options summary').click();await page.locator('#request-repair').click();await inspect(page,'record');
  await expect(page.locator('#review-amount')).toHaveValue('99');await expect(page.locator('#review-history')).toContainText('99');
  await expect(page.locator('#proof-script')).toBeVisible();
 });
 
 test('processor assumption experiment is separate from saved history',async({page})=>{
  await open(page,'po_exposure_retain');const initial=await saved(page);await inspect(page,'premises');
- await page.locator('#fencing-toggle').click();await expect(page.locator('#premise-local')).toHaveText('0¢');await expect(page.locator('#premise-remote')).toHaveText('100¢');await expect(page.locator('#premise-covered')).toHaveText('No');
+ await page.locator('#fencing-toggle').click();await expect(page.locator('#premise-local')).toHaveText('0¢');await expect(page.locator('#premise-remote')).toHaveText('100¢');await expect(page.locator('#premise-covered')).toHaveText('Accounting does not balance');
  await page.locator('#fencing-toggle').click();await expect(page.locator('#premise-remote')).toHaveText('0¢');expect((await saved(page)).steps).toEqual(initial.steps);
 });
 
@@ -49,16 +49,16 @@ test('events without an amount retain the same input layout',async({page})=>{
 test('inline alternative edits and notes preserve live checks and the scratch input',async({page})=>{
  await open(page);await page.locator('#review-amount').fill('99');await page.locator('#edit-candidate').click();
  await page.getByRole('button',{name:'Reset to code result',exact:true}).click();await page.locator('#alternative-counter input').fill('0');
- await expect(page.locator('#validity-row td').last()).toHaveText('No');await expect(page.locator('#ledger-output')).toContainText('99¢ reserved');
+ await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');await expect(page.locator('#ledger-output')).toContainText('99¢ reserved');
  await expect(page.locator('body')).not.toHaveCSS('overflow','hidden');expect(await page.locator('#review-document').evaluate(el=>el.inert)).toBe(false);
- await page.locator('#close-tools').click();await inspect(page,'record');await page.locator('#note_text').fill('Keep the inconsistent accounting example.');await page.locator('#note-form button').click();
- await expect(page.locator('#review-amount')).toHaveValue('99');await expect(page.locator('#validity-row td').last()).toHaveText('No');await expect(page.locator('#hypothetical-output')).toContainText('0¢ reserved');
+ await page.locator('#close-tools').click();await page.locator('#add-observation').click();await page.locator('#note_text').fill('Keep the inconsistent accounting example.');await page.locator('#note-form button').click();
+ await expect(page.locator('#review-amount')).toHaveValue('99');await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');await expect(page.locator('#hypothetical-output')).toContainText('0¢ reserved');
 });
 
 test('run through an unsaved request, dispatch and timeout, then save once',async({page})=>{
  await open(page);const initial=await saved(page);await page.locator('#review-amount').fill('99');
  await run(page,'dispatch');await expect(page.locator('#ledger-output')).toContainText('Authorization pending');await run(page,'timeout');await expect(page.locator('#ledger-output')).toContainText('Awaiting confirmation');
- expect((await saved(page)).steps).toEqual(initial.steps);await inspect(page,'record');await page.locator('#note_text').fill('Review the unsaved authorization.');await page.locator('#note-form button').click();await expect(page.locator('#review-history')).toContainText('Review the unsaved authorization.');expect((await saved(page)).steps).toEqual(initial.steps);await page.locator('#append-preview').click();await expect(page.locator('#append-preview')).toBeDisabled();
+ expect((await saved(page)).steps).toEqual(initial.steps);await page.locator('#add-observation').click();await page.locator('#note_text').fill('Review the unsaved authorization.');await page.locator('#note-form button').click();await inspect(page,'record');await expect(page.locator('#review-history')).toContainText('Review the unsaved authorization.');expect((await saved(page)).steps).toEqual(initial.steps);await page.locator('#append-preview').click();await expect(page.locator('#append-preview')).toBeDisabled();
  const recorded=await saved(page);expect(recorded.steps.length).toBe(initial.steps.length+3);expect(recorded.steps.at(-1).before.used_amount).toBe(99);
  await page.locator('#timeline button').nth(1).click();await expect(page.locator('#ledger-output')).toContainText('100¢ reserved');
 });
@@ -74,13 +74,15 @@ test('a worked cancellation case is available when the current case has no eligi
 
 for(const [width,height] of [[1280,720],[1440,900],[390,844]])test(`correlated editing at ${width}×${height}`,async({page})=>{
  await page.setViewportSize({width,height});await open(page);
- const rule=await page.locator('#review-comparison').boundingBox(),proof=await page.locator('#proof-panel').boundingBox();
- if(width>950){expect(Math.abs(rule.y-proof.y)).toBeLessThan(30);expect(proof.x).toBeGreaterThan(rule.x)}
+ const rule=await page.locator('#review-comparison').boundingBox(),checks=await page.locator('#case-findings').boundingBox(),proof=await page.locator('#proof-panel').boundingBox(),caseBox=await page.locator('.case-stage').boundingBox();
+ expect(checks.y).toBeGreaterThan(rule.y);expect(proof.y).toBeGreaterThan(checks.y);
+ if(width>=1120){expect(Math.abs(caseBox.y-checks.y)).toBeLessThan(30);expect(checks.x).toBeGreaterThan(caseBox.x)}
+ else{expect(checks.y).toBeGreaterThan(caseBox.y)}
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.locator('#edit-candidate').click();await page.getByRole('button',{name:'Reset to code result',exact:true}).click();await page.locator('#alternative-counter input').fill('0');await expect(page.locator('#validity-row td').last()).toHaveText('No');
- if(width>950){await expect(page.locator('#validity-row')).toBeInViewport();await expect(page.locator('#alternative-counter input')).toBeInViewport()}
+ await page.locator('#edit-candidate').click();await page.getByRole('button',{name:'Reset to code result',exact:true}).click();await page.locator('#alternative-counter input').fill('0');await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');
+ await expect(page.locator('#validity-row')).toHaveCount(1)
  await expect(page.locator('[inert],.tool-backdrop,[role=dialog]')).toHaveCount(0);
- await page.screenshot({path:`../../../../tmp/review_workspace_0709/edit-${width}.png`,fullPage:true});
+ await page.screenshot({path:`../../../../tmp/review_workspace_0711/edit-${width}.png`,fullPage:true});
 });
 
 test('eight entries and their eight bindings remain inspectable without a giant proof dump',async({page})=>{

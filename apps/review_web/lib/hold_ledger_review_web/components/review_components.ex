@@ -43,6 +43,20 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           phx-value-sha={@policy_source["sha256"]}
         >Read requirement</button>
       </p>
+      <section id="selected-claim" class="selected-claim" aria-label="Selected source claim">
+        <h2>Selected formal claim</h2>
+        <dl :if={@reading["contract"]["status"] == "source_read"}>
+          <div><dt>Applies when</dt><dd><code>{@reading["contract"]["requires"]}</code></dd></div>
+          <div><dt>Requires of the result</dt><dd><code>{@reading["contract"]["expects"]}</code></dd></div>
+        </dl>
+        <p :if={@reading["contract"]["status"] == "native_statement_only"}>
+          Native Lean claim: {Enum.join(@reading["law"]["theorems"] || [], ", ")}.
+          No executable Elixir counterpart; read the declaration below.
+        </p>
+        <p :if={@reading["contract"]["status"] not in ~w(source_read native_statement_only)}>
+          Executable claim source unavailable. Read the registered source for its scope.
+        </p>
+      </section>
       <div :if={@show_sources} id="source-comparison" class="source-chooser">
         <p>Choose two trusted local versions to run the same case against each.</p><.form
           for={@compare_form}
@@ -155,12 +169,12 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         </div>
         <div :if={@package} id="pair-applicability">
           <dt>Does the rule cover this case?</dt><dd :for={row <- @rows}>
-            <strong>{row.side}</strong> {answer(row.requires)}
+            <strong>{row.side}</strong> {version_coverage(row.requires)}
           </dd>
         </div>
         <div :if={@package} id="pair-candidate">
           <dt>Would the rule accept this alternative?</dt><dd :for={row <- @rows}>
-            <strong>{row.side}</strong> {answer(row.candidate)}
+            <strong>{row.side}</strong> {version_alternative(row.candidate)}
           </dd>
         </div>
         <div :if={@package} id="pair-execution">
@@ -177,7 +191,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         class="boundary-callout"
         id="lost-guarantee"
       >
-        The changed rule no longer covers this request. The code still accepts it.
+        This illustrated stricter condition excludes the request. It is not a real proposal run.
       </p>
       <div class="action-row">
         <button :if={@package} id="replay-pair" phx-click="replay" disabled={!@case}>Run on both versions</button><button
@@ -263,7 +277,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         :for={evidence <- if(@package, do: @package["evidence"], else: [])}
         class="pair-evidence"
       >
-        <strong>{evidence["kind"]}</strong><p>{evidence["note"]}</p><a href={"/comparisons/#{@package["id"]}/repair/#{evidence["id"]}.json"}>Download local repair packet</a>
+        <strong>{evidence["kind"]}</strong><p>{evidence["note"]}</p>
       </article>
       <p
         :for={finding <- if(@package, do: @package["human_findings"], else: [])}
@@ -321,6 +335,8 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
   attr :reading, :map, required: true
   attr :stage, :integer, required: true
   attr :full, :boolean, default: false
+  attr :links, :list, default: []
+  attr :active_links, :list, default: []
 
   def proof_source(assigns) do
     selected = Enum.at(assigns.reading["proof_steps"], assigns.stage)
@@ -345,19 +361,25 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     ~H"""
     <section id="proof-source-workspace">
       <header class="section-heading">
-        <h2>Proof</h2><button phx-click="full_proof" id="full-proof">{if @full,
+        <h2>Lean source reading</h2><button phx-click="full_proof" id="full-proof">{if @full,
           do: "Show selected step",
           else: "Read full proof"}</button>
       </header>
-      <nav class="proof-source-stages">
+      <p class="scope-note">These are inspected source passages, not a live Lean debugger or a proof dependency graph.</p>
+      <p :if={@reading["proof_steps"] == []} class="scope-note" id="no-proof-steps">
+        No reviewed step-by-step reading for this claim. Its declaration remains available below.
+      </p>
+      <nav class="proof-source-stages" aria-label="Select a source reading step">
         <button
           :for={{step, index} <- Enum.with_index(@reading["proof_steps"])}
           phx-click="proof_stage"
           phx-value-index={index}
+          class={Enum.any?(@active_links, &(index in &1["steps"])) && "connected-proof-step"}
           aria-current={if index == @stage, do: "step", else: "false"}
+          disabled={is_nil(step["line"])}
         >{index + 1}. {step["title"]}</button>
       </nav>
-      <div class="numbered-proof" id="proof-script" phx-hook="ProofSource" data-stage={@stage}>
+      <div class="numbered-proof" id="proof-script">
         <div
           :for={{line, n} <- @lines}
           class={if @selected && n == @selected["line"], do: "active-proof-line", else: ""}
@@ -366,6 +388,13 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         </div>
       </div>
       <p :if={@selected} class="proof-reading">{@selected["reason"]}</p>
+      <ul :if={@active_links != []} id="selected-reading-links" class="reading-links">
+        <li :for={link <- @active_links}>
+          <strong>{link["relation"]}</strong>
+          <span>{link["phase"]} · observed binding {link["binding"] + 1} · structural path {if link["path"] == "", do: "root", else: link["path"]}</span>
+        </li>
+      </ul>
+      <p :if={@reading["connections"] == []} class="scope-note">No reviewed clause connection for this declaration.</p>
       <div id="lemma-links">
         <span :for={ref <- Enum.take(@reading["references"], 3)}><button
           class="text-button"
@@ -530,6 +559,14 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     </section>
     """
   end
+
+  defp version_coverage(true), do: "Applies"
+  defp version_coverage(false), do: "Does not apply"
+  defp version_coverage(_), do: "Unavailable or not run"
+
+  defp version_alternative(true), do: "Accepts alternative"
+  defp version_alternative(false), do: "Rejects alternative"
+  defp version_alternative(_), do: "Unavailable or not run"
 
   defp answer(true), do: "Yes"
   defp answer(false), do: "No"

@@ -7,7 +7,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Explore payment-hold rules by running concrete cases. Change a request, try a different result and follow the next event. The rule, its proof source and the checks explain what each experiment shows.
+Explore payment-hold rules by running concrete cases. Read the requirement and its selected formal claim first, then change a request or its alternative output. The two-lane workspace puts checks beside the case, above the related clause and Lean source readings. The page scrolls normally; the editor does not block other controls.
 
 The Phoenix app uses the original Ledger, independent Spec and claim evaluator. It sends no payments.
 
@@ -27,15 +27,15 @@ Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `10
 
 ## Try a case
 
-Choose a rule. Its requirement and changed condition appear beside the relevant proof source. The opening example compares `amount <= remaining` with `amount < remaining`: a request using all available capacity is covered by the first condition and excluded by the second.
+Choose a rule. The requirement and source expressions appear first. For exact-fit admission, an explicitly labeled **example** compares `amount <= remaining` with `amount < remaining`: a request using all available capacity is covered by the first and excluded by the second. This is not a recorded baseline/proposal replay.
 
 Enter an amount or choose **1¢ less / All available / 1¢ more**. The page shows what the code returns and whether the rule covers this input. The opening comparison is labeled **Example change**; attach two source versions to replace it with actual isolated runs.
 
-**Code returned** shows the executed result. **What if it returned…** is an alternative you can edit to challenge the rule. Click a status or **Edit alternative**, then change reserved money, remove an action or release a hold. The adjacent checks update while the editor remains open. The rest of the page stays usable.
+**Code returned** is the computed Ledger result. **What if it returned…** is an editable, *unexecuted* alternative. The adjacent difference list identifies changes to limits, reserved totals, slot counts, result, entry identities/amounts/statuses, effects and list order. Duplicate identities remain distinct occurrences; ambiguous matches are never guessed. Select a status or **Edit alternative**, change money or effects, and see differences and checks update without saving, recalculating counters, or invoking another evaluator.
 
 An alternative can have inconsistent counters. **Recalculate totals** corrects them only when requested. The full state and JSON editor provides the same bounded values: up to eight entries and integers up to 1,000,000.
 
-The checks distinguish accounting from the selected rule. A balanced account can still release a hold too early. The condition view shows the original observed operands; when a rule checks multiple sets of values, the selector changes which set you inspect without removing any from the result.
+**Checks for this case** explicitly separate whether the rule applies, whether it accepts the executed result, whether it accepts the alternative, and whether each account balances. False preconditions are **not applicable**, and missing, unsupported or failed observations are **unavailable**, not false. Acceptance of a hypothetical alternative is not by itself a policy violation. A balanced account can still release a hold too early. Multi-binding checks retain their aggregate result when you select one binding to inspect. An invalid edit removes the current successful alternative check instead of showing an old verdict.
 
 ## Follow what happens next
 
@@ -49,7 +49,9 @@ Select an earlier step to branch from there. **Reset** discards the experiment. 
 
 ## Read the proof and assumptions
 
-The proof shows actual source around the selected step. **Read full proof** expands the declaration. Referenced lemmas open their source alongside the rule; the selected case remains available. These source readings are not saved Lean hypotheses or tactic goal states.
+**Why this check has that result** shows the observed clauses for the selected binding, with explicit true/false/not-evaluated values. In admission, timeout validity and exposure retention, reviewed links let you select a clause and highlight related Lean reading passages, or select a proof-reading step to highlight its related clauses. These many-to-many readings are validated against exact reviewed source digests, structural AST clauses and unique Lean anchors; stale, absent or ambiguous links are unavailable, not guessed. Other claims and unsupported links remain visible and unlinked. Keyboard and touch use the same buttons.
+
+**Read full proof** expands the actual Lean declaration. Lemma references open source alongside the case. Neither linked passages nor the displayed proof lines represent Lean goal states, kernel dependencies, translation correctness or formal acceptance.
 
 **Assumptions** opens the processor model. Select a hold and compare a processor that remembers cancellation with one that later resurrects an authorization. The model does not establish how a real processor behaves. **Open coupled processor case**, in the event tools, separates local knowledge from remote authorization, delivery and terminal confirmation.
 
@@ -80,7 +82,9 @@ Read three results separately: an input excluded by a rule, an alternative outpu
 
 ## Keep review notes
 
-After exploring, open **Review notes** to save an observation or attach one to a computed comparison result. These are review records, not policy authorization or formal acceptance. Download a saved session to retain its history, challenges and notes. Source changes prevent stale computations and writes; revision checks prevent another tab from overwriting a newer record.
+**Add observation** is beside the active checks. Its compact inline form reuses the original revision-checked note command, without saving pending experiment events. An observation during unsaved exploration includes its experiment-context digest. Review disposition options are available nearby, while **Review notes** retains full saved history and challenges. Conflicted writes remain refused by the original CAS boundary.
+
+When a selected real comparison has matching evidence and the original packet validator accepts it, **Download local repair packet** (JSON or Markdown) is available beside the result. Without such evidence, the page explains why no packet is available; it does not fabricate evidence, auto-run a comparison or auto-save. Download a saved session from **Review notes** to retain its history. Source drift still prevents stale computations and exports. An observation or exported packet is not policy authorization or formal acceptance.
 
 A local export grants no permission to send source or review content to a model. This interface makes no provider calls.
 

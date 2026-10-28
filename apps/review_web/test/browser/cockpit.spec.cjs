@@ -30,27 +30,27 @@ test('early release: valid accounting is distinct from required retention',async
   await tab(page,'outputs');
   await expect(page.locator('#ledger-output')).toContainText(/100¢ reserved[\s\S]*Waiting for cancellation/);
   await expect(page.locator('#hypothetical-output')).toContainText(/0¢ reserved[\s\S]*Cancelled/);
-  await expect(page.locator('#validity-row td').nth(1)).toHaveText('Yes');
-  await expect(page.locator('#validity-row td').nth(2)).toHaveText('Yes');
-  await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('No');
+  await expect(page.locator('#validity-row td').nth(0)).toHaveText('Accounting balances');
+  await expect(page.locator('#validity-row td').nth(1)).toHaveText('Accounting balances');
+  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
   await tab(page,'clauses');
   await page.locator('#dissector button[phx-click=helper]').last().click();
   await expect(page.locator('#helper-definition')).toContainText('voided');
   await expect(page.locator('#helper-definition')).toContainText(':sent, :unknown, :authorized, :voiding');
   await page.reload();await tab(page,'outputs');await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  expect(new URL(page.url()).pathname).toBe(new URL(url).pathname);await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('No');
+  expect(new URL(page.url()).pathname).toBe(new URL(url).pathname);await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
   expect(errors).toEqual([]);
 });
 
 test('the same output passes validity; inspect its helper definition',async({page})=>{
   await open(page,'po_b1_void');await tab(page,'outputs');
-  await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('Yes');
+  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Accepts alternative');
   await tab(page,'clauses');
   await page.locator('#dissector').getByRole('button',{name:'Definition',exact:true}).first().click();
   await expect(page.locator('#helper-definition')).toContainText('Definition on these values');
   await page.locator('#helper-definition').getByRole('button',{name:'Close',exact:true}).click();
   await tab(page,'outputs');await page.locator('#edit-candidate').click();await page.locator('#inspect-retention').click();await page.locator('#close-tools').click();
-  await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('No');
+  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
 });
 
 test('99, 100 and 101 expose actual eligibility operands and outside-domain silence',async({page})=>{
@@ -100,7 +100,7 @@ test('structured candidate and JSON round trip keep inconsistent totals until re
   await open(page);await tab(page,'outputs');await page.locator('#edit-candidate').click();
   await page.locator('#advanced-editor').click();
   await page.locator('#output_used_amount').fill('50');
-  await expect(page.locator('#validity-row td').nth(2)).toHaveText('No');
+  await expect(page.locator('#validity-row td').nth(1)).toHaveText('Accounting does not balance');
   await expect(page.locator('#branch-candidate')).toBeDisabled();
   await page.locator('#recalculate').click();await expect(page.locator('#output_used_amount')).toHaveValue('0');
   const candidate=JSON.parse(await page.locator('#candidate-json').inputValue());
@@ -108,7 +108,7 @@ test('structured candidate and JSON round trip keep inconsistent totals until re
   await page.locator('#candidate-json').fill(JSON.stringify(candidate));
   await page.locator('#candidate-json-form button').click();
   await expect(page.locator('#output_used_amount')).toHaveValue('99');
-  await expect(page.locator('#validity-row td').nth(2)).toHaveText('No');
+  await expect(page.locator('#validity-row td').nth(1)).toHaveText('Accounting does not balance');
   await page.locator('#candidate-json').fill('{broken');await page.locator('#candidate-json-form button').click();
   await expect(page.locator('#invalid-candidate')).toBeVisible();await expect(page.locator('#contrast-matrix')).toHaveCount(0);
 });
@@ -151,6 +151,7 @@ test('two tabs preserve CAS conflict and reconnect source identity',async({page,
   await inspect(right);
   await expect(right.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await tab(page,'record');await tab(right,'record');
+  await page.locator('#add-observation').click();await right.locator('#add-observation').click();
   await page.locator('#note_text').fill('Check actual processor evidence.');await page.locator('#note-form button').click();
   await right.locator('#note_text').fill('Stale reviewer edit.');await right.locator('#note-form button').click();
   await expect(right.locator('[role=alert]')).toContainText('Another tab');

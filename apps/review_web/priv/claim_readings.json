@@ -31,7 +31,7 @@
         "reason": "The compatibility lemma establishes equality of the two separately implemented lookups."
       },
       {
-        "anchor": "all_goals simp_all [\u00abpo_a2:ensures/3\u00bb",
+        "anchor": "all_goals simp_all [«po_a2:ensures/3»",
         "title": "Required transition",
         "reason": "The proof unfolds the actual request, expected output and independent reference."
       },
@@ -41,7 +41,41 @@
         "reason": "The remaining arithmetic goals follow from the capacity inequalities already obtained."
       }
     ],
-    "omits": "This admission law does not establish processor behavior, journal durability or every later transition."
+    "omits": "This admission law does not establish processor behavior, journal durability or every later transition.",
+    "connections": [
+      {
+        "id": "capacity-amount",
+        "phase": "requires",
+        "expression": "amount <= amount_limit - used_amount",
+        "source_path": "lib/hold_ledger/spec.ex",
+        "steps": [
+          2,
+          5
+        ],
+        "relation": "The eligibility helper checks the inclusive remaining-amount bound; the proof unfolds eligibility and later uses arithmetic."
+      },
+      {
+        "id": "capacity-slots",
+        "phase": "requires",
+        "expression": "used_holds < hold_limit",
+        "source_path": "lib/hold_ledger/spec.ex",
+        "steps": [
+          2
+        ],
+        "relation": "The same eligibility unfolding includes the free-slot bound."
+      },
+      {
+        "id": "request-condition",
+        "phase": "requires",
+        "expression": "Spec.request_eligible?(s, key, amount)",
+        "source_path": "test/laws/po_a2_test.exs",
+        "steps": [
+          1,
+          2
+        ],
+        "relation": "The authored precondition invokes eligibility; this proof treats term representations and its assumptions."
+      }
+    ]
   },
   "po_exposure_retain": {
     "title": "Pending void retention",
@@ -80,7 +114,62 @@
         "reason": "The final lemma covers the remaining transition cases and requires the entry to remain exposed."
       }
     ],
-    "omits": "A locally consistent released state can still violate retention. Applicability to remote authorizations additionally depends on the coupled environment model."
+    "omits": "A locally consistent released state can still violate retention. Applicability to remote authorizations additionally depends on the coupled environment model.",
+    "connections": [
+      {
+        "id": "retain-valid",
+        "phase": "requires",
+        "expression": "Spec.valid?(state)",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "steps": [
+          0,
+          1
+        ],
+        "relation": "Valid state and lookup shape are used to reason about the stored entry."
+      },
+      {
+        "id": "retain-lookup",
+        "phase": "requires",
+        "expression": "Spec.lookup(elem(state, 4), key) === {:ok, {key, amount, status}}",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "steps": [
+          1
+        ],
+        "relation": "The authored equality specifies which entry is remembered; the Lean lookup-shape step handles it."
+      },
+      {
+        "id": "retain-protected",
+        "phase": "requires",
+        "expression": "status in [:sent, :unknown, :authorized, :voiding]",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "steps": [
+          2,
+          4
+        ],
+        "relation": "The protected status premise is used by the retention lemma."
+      },
+      {
+        "id": "retain-release",
+        "phase": "requires",
+        "expression": "not Spec.release_evidence?(event, key)",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "steps": [
+          3,
+          4
+        ],
+        "relation": "Excluding trusted terminal release events supplies the lemma’s event conditions."
+      },
+      {
+        "id": "retain-exposed",
+        "phase": "expects",
+        "expression": "Spec.exposed_entry?(elem(Ledger.step(state, event), 0), key, amount)",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "steps": [
+          4
+        ],
+        "relation": "The authored result requires exposure; the cited Lean step invokes the retention lemma."
+      }
+    ]
   },
   "po_b1_timeout": {
     "title": "Timeout validity",
@@ -109,7 +198,30 @@
         "reason": "The proof considers encoded keys and lookup outcomes for the timeout transition."
       }
     ],
-    "omits": "Validity alone does not require retention: a released entry with correctly reduced counters can be valid."
+    "omits": "Validity alone does not require retention: a released entry with correctly reduced counters can be valid.",
+    "connections": [
+      {
+        "id": "timeout-valid-before",
+        "phase": "requires",
+        "expression": "Spec.valid?(s)",
+        "source_path": "test/laws/po_b1_timeout_test.exs",
+        "steps": [
+          0
+        ],
+        "relation": "Starting validity supplies totals and state structure."
+      },
+      {
+        "id": "timeout-valid-after",
+        "phase": "expects",
+        "expression": "Spec.valid?(elem(Ledger.timeout(s, key), 0))",
+        "source_path": "test/laws/po_b1_timeout_test.exs",
+        "steps": [
+          1,
+          2
+        ],
+        "relation": "The postcondition requires validity following timeout; the helper addresses status changes and case splits."
+      }
+    ]
   },
   "po_b1_void": {
     "title": "Void validity",

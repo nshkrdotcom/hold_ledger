@@ -1,7 +1,7 @@
 defmodule HoldLedgerReviewWeb.ContrastComponents do
   @moduledoc false
   use HoldLedgerReviewWeb, :html
-  alias HoldLedgerReviewWeb.ReviewCopy
+  alias HoldLedgerReviewWeb.{OutputDifferences, ReviewCopy}
 
   attr :case, :map, default: nil
   attr :step, :map, default: nil
@@ -12,6 +12,13 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   attr :invalid, :boolean, default: false
 
   def contrast(assigns) do
+    differences =
+      if assigns.case,
+        do: OutputDifferences.between(assigns.case["actual"], assigns.case["candidate"]),
+        else: nil
+
+    assigns = assign(assigns, differences: differences)
+
     ~H"""
     <section class="instrument" id="contrast">
       <header>
@@ -34,6 +41,20 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             id="hypothetical-output"
           />
         </div>
+        <section :if={@differences} id="output-differences" class="output-differences" aria-live="polite">
+          <h3>Code result → editable alternative</h3>
+          <p :if={@differences.same?} id="same-output">Same as code result.</p>
+          <ol :if={!@differences.same?}>
+            <li :for={{difference, index} <- Enum.with_index(@differences.rows)} id={"difference-#{index}"}>
+              <strong>{difference.label}</strong>
+              <span>{difference.before} <span aria-label="changed to">→</span> {difference.after}{difference.delta}</span>
+            </li>
+          </ol>
+          <p :if={!@differences.same?} class="scope-note">
+            Repeated identities are shown as occurrences, not presumed to be the same entry.
+            This is an unsaved alternative, not observed execution or a source-version comparison.
+          </p>
+        </section>
         <p :if={@invalid} id="invalid-candidate" role="alert">
           Enter a whole number or valid output JSON to check this alternative.
         </p>
@@ -164,39 +185,42 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
 
   def verdict(assigns) do
     ~H"""
-    <section id="verdict" class="verdict-panel">
-      <h2>Does this result satisfy the rule?</h2>
+    <section id="verdict" class="verdict-panel" aria-label="Checks for this case">
+      <h2>Checks for this case</h2>
+      <p class="scope-note">Predicate outcomes describe the selected rule, not whether an alternative is desirable.</p>
       <table :if={@case} id="contrast-matrix">
-        <thead>
-          <tr>
-            <th>Check</th><th>Code</th><th>Alternative</th>
-          </tr>
-        </thead><tbody>
-          <tr id="validity-row">
-            <td>Accounting balances</td><td>
-              {if @case["actual_valid"], do: "Yes", else: "No"}
-            </td><td>{if @case["candidate_valid"], do: "Yes", else: "No"}</td>
+        <thead><tr><th>Question</th><th>Code result</th><th>Alternative (not executed)</th></tr></thead>
+        <tbody>
+          <tr id="applicability-row">
+            <th scope="row">Does the rule apply?</th>
+            <td colspan="2">{ReviewCopy.applicability(@case)}</td>
           </tr>
           <tr id="selected-law-row">
-            <td>Selected rule</td><td>{actual_result(@case)}</td><td class={candidate_class(@case)}>
-              {candidate_result(@case)}
-            </td>
+            <th scope="row">Does the output satisfy the rule?</th>
+            <td>{ReviewCopy.code_acceptance(@case)}</td>
+            <td>{ReviewCopy.candidate_acceptance(@case)}</td>
+          </tr>
+          <tr id="validity-row">
+            <th scope="row">Is accounting internally valid?</th>
+            <td>{ReviewCopy.accounting(@case["actual_valid"])}</td>
+            <td>{ReviewCopy.accounting(@case["candidate_valid"])}</td>
           </tr>
           <tr :if={@case["comparison_law"] != @slug && @case["comparison_status"] != "not_probed"}>
-            <td>
-              <button
-                class="text-button"
-                phx-click="inspect_law"
-                phx-value-slug={@case["comparison_law"]}
-              >{ReviewCopy.title(%{"slug" => @case["comparison_law"]})}</button>
-            </td><td>{if @case["comparison_actual"] == true, do: "Yes", else: "Unknown"}</td><td>
-              {status(@case["comparison_status"])}
-            </td>
+            <th scope="row">
+              <button class="text-button" phx-click="inspect_law" phx-value-slug={@case["comparison_law"]}>
+                {ReviewCopy.title(%{"slug" => @case["comparison_law"]})}
+              </button>
+            </th>
+            <td>{if @case["comparison_actual"] === true, do: "Accepts code result", else: "Unavailable"}</td>
+            <td>{ReviewCopy.candidate_acceptance(%{"law_status" => @case["comparison_status"]})}</td>
           </tr>
         </tbody>
       </table>
-      <p :if={!@case} class="scope-note">
-        Correct the alternative to see its checks.
+      <p :if={@case && ReviewCopy.candidate_acceptance(@case) == "Unavailable"} class="scope-note">
+        Alternative check unavailable: {@case["law_reason"]}.
+      </p>
+      <p :if={!@case} id="checks-unavailable" role="status">
+        Checks unavailable for the current input or alternative. Correct the editing error, or select an executable case.
       </p>
     </section>
     """
@@ -252,7 +276,14 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         aria-label={@title <> ": reserved money"}
       ></meter><p>
         {@output["after"]["used_holds"]} slots · {ReviewCopy.result(@output["result"])}
-      </p><ul>
+      </p>
+      <dl class="output-fields">
+        <div><dt>Amount limit</dt><dd>{@output["after"]["amount_limit"]}¢</dd></div>
+        <div><dt>Hold limit</dt><dd>{@output["after"]["hold_limit"]} slots</dd></div>
+        <div><dt>Used hold slots</dt><dd>{@output["after"]["used_holds"]}</dd></div>
+        <div><dt>Result</dt><dd>{@output["result"]}</dd></div>
+      </dl>
+      <ul>
         <li :for={{entry, index} <- Enum.with_index(@output["after"]["entries"])}>
           <span>{entry["key"]} · {entry["amount"]}¢</span>
           <button
@@ -278,23 +309,4 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   defp nested_form(params, index, field, name),
     do: to_form(params, as: "#{name}[#{field}][#{index}]")
 
-  defp status("allows_here"), do: "Yes"
-  defp status("catches"), do: "No"
-  defp status("doesnt_apply"), do: "Does not apply"
-  defp status(_), do: "Unknown"
-
-  defp actual_result(case_data) do
-    values = Enum.map(case_data["explanation"]["bindings"], &get_in(&1, ["actual", "value"]))
-
-    cond do
-      false in values -> "No"
-      true in values -> "Yes"
-      true -> "Does not apply"
-    end
-  end
-
-  defp candidate_result(case_data), do: status(case_data["law_status"])
-  defp candidate_class(%{"law_status" => "catches"}), do: "no"
-  defp candidate_class(%{"law_status" => "allows_here"}), do: "yes"
-  defp candidate_class(_), do: "muted"
 end

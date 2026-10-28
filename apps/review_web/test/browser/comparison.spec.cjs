@@ -22,6 +22,7 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
   await page.locator('#inspector-tools [phx-value-view=artifacts]').click();
   await expect(page.locator('#pair-execution')).toContainText('admitted');
   await page.locator('#inspector-tools [phx-value-view=record]').click();
+  await page.locator('#disposition-options summary').click();
   await page.locator('#decision-docket button[phx-value-action=design]').click();
   await page.locator('#inspector-tools [phx-value-view=record]').click();
   const repair=await page.getByRole('link',{name:'Download local repair packet'}).first().getAttribute('href');

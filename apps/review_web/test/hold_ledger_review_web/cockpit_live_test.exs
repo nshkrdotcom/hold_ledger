@@ -31,6 +31,10 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     end
 
     assert has_element?(view, "#example-provenance", "Example")
+    assert has_element?(view, "#selected-claim", "Requires of the result")
+    assert has_element?(view, "#output-differences")
+    assert has_element?(view, "#nearby-observation")
+    assert has_element?(view, "#repair-unavailable")
     assert has_element?(view, "#coverage-proposal", "No")
     assert has_element?(view, "#ledger-output", "Accepted")
 
@@ -51,11 +55,11 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   test "validity law permits the same candidate rejected by retention", %{conn: conn} do
     {view, doc} = open(conn, "po_b1_void")
     tab(view, "outputs")
-    assert has_element?(view, "#selected-law-row td:nth-child(3)", "Yes")
+    assert has_element?(view, "#selected-law-row td:last-child", "Accepts alternative")
     render_click(view, "edit_candidate", %{})
     view |> element("#inspect-retention") |> render_click()
     assert_patch(view, "/claims/po_exposure_retain/#{doc["id"]}")
-    assert has_element?(view, "#selected-law-row td:nth-child(3)", "No")
+    assert has_element?(view, "#selected-law-row td:last-child", "Rejects alternative")
     assert has_element?(view, "#hypothetical-output", "0¢ reserved")
   end
 
@@ -98,7 +102,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     tab(view, "outputs")
     element(view, "#edit-candidate") |> render_click()
     render_change(view, "candidate_change", %{"output" => params})
-    assert has_element?(view, "#validity-row td:nth-child(3)", "No")
+    assert has_element?(view, "#validity-row td:last-child", "Accounting does not balance")
     assert has_element?(view, "#branch-candidate[disabled]")
     render_click(view, "show_advanced", %{})
     element(view, "#recalculate") |> render_click()
@@ -119,6 +123,8 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     {:ok, right, _} = live(conn, "/claims/po_exposure_retain/#{doc["id"]}")
     tab(left, "record")
     tab(right, "record")
+    element(left, "#add-observation") |> render_click()
+    element(right, "#add-observation") |> render_click()
     form(left, "#note-form", note: %{text: "Check processor fencing."}) |> render_submit()
     form(right, "#note-form", note: %{text: "Stale judgment."}) |> render_submit()
     assert has_element?(right, "[role=alert]", "Another tab")
@@ -216,7 +222,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     render_async(view, 5_000)
     assert has_element?(view, "#hunt-status", "found")
     tab(view, "outputs")
-    assert has_element?(view, "#selected-law-row td:nth-child(3)", "No")
+    assert has_element?(view, "#selected-law-row td:last-child", "Rejects alternative")
     tab(view, "clauses")
     render_click(view, "edit_candidate", %{})
     render_click(view, "hunt", %{})
@@ -294,7 +300,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   test "mutation chips and status edits update verdict without repairing counters", %{conn: conn} do
     {view, doc} = open(conn)
     render_click(view, "mutate_candidate", %{"kind" => "zero_counters"})
-    assert has_element?(view, "#validity-row td:nth-child(3)", "Yes")
+    assert has_element?(view, "#validity-row td:last-child", "Accounting balances")
     render_click(view, "restore_candidate", %{})
     render_click(view, "cycle_status", %{"index" => "0"})
     {:ok, unchanged} = Trace.get(doc["id"])
@@ -356,7 +362,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     render_change(view, "preview_amount", %{"amount" => "99"})
     render_click(view, "restore_candidate", %{})
     render_click(view, "mutate_candidate", %{"kind" => "zero_counters"})
-    assert has_element?(view, "#validity-row td:last-child", "No")
+    assert has_element?(view, "#validity-row td:last-child", "Accounting does not balance")
 
     render_submit(view, "record_note", %{
       "note" => %{"text" => "Keep this invalid counter challenge."}
@@ -364,7 +370,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
 
     assert has_element?(view, "#review-amount[value='99']")
     assert has_element?(view, "#hypothetical-output", "0¢ reserved")
-    assert has_element?(view, "#validity-row td:last-child", "No")
+    assert has_element?(view, "#validity-row td:last-child", "Accounting does not balance")
     {:ok, saved} = Trace.get(doc["id"])
     assert saved["steps"] == doc["steps"]
     assert length(saved["notes"]) == 1
@@ -390,4 +396,70 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert length(saved["steps"]) == 3
     assert hd(saved["notes"])["text"] =~ "Unsaved experiment"
   end
+  test "output differences are live, do not persist a draft, and clear on restore", %{conn: conn} do
+    {view, original} = open(conn, "po_exposure_retain")
+    assert has_element?(view, "#output-differences")
+    assert has_element?(view, "#output-differences", "Reserved")
+    assert has_element?(view, "#output-differences", "100¢")
+
+    render_click(view, "restore_candidate", %{})
+    assert has_element?(view, "#same-output", "Same as code result")
+    render_click(view, "mutate_candidate", %{"kind" => "drop_effects"})
+    assert has_element?(view, "#output-differences", "Removed action")
+    {:ok, unchanged} = Trace.get(original["id"])
+    assert unchanged == original
+  end
+
+  test "proof stages and observed clause selections connect bidirectionally where reviewed", %{
+    conn: conn
+  } do
+    {view, doc} = open(conn, "po_a2")
+    assert has_element?(view, "#connection-scope", "source-reading aids")
+    render_click(view, "proof_stage", %{"index" => "2"})
+    assert has_element?(view, "#dissector .connected-clause")
+    assert has_element?(view, "#selected-reading-links")
+
+    view
+    |> element("#dissector .connected-clause button[phx-click=select_clause]")
+    |> render_click()
+
+    assert has_element?(view, "#dissector .selected-clause")
+    assert has_element?(view, "#selected-reading-links")
+    assert {:ok, ^doc} = Trace.get(doc["id"])
+  end
+
+  test "stale clause selection refuses its source generation without changing the trace", %{
+    conn: conn
+  } do
+    {view, doc} = open(conn, "po_a2")
+
+    render_click(view, "select_clause", %{
+      "generation" => "outdated",
+      "phase" => "requires",
+      "binding" => "0",
+      "path" => ""
+    })
+
+    assert has_element?(view, "[role=alert]", "stale or unavailable")
+    assert {:ok, ^doc} = Trace.get(doc["id"])
+  end
+
+  test "nearby observation uses original CAS and does not save pending scratch events", %{
+    conn: conn
+  } do
+    {view, original} = open(conn, "po_a2")
+    render_change(view, "preview_amount", %{"amount" => "99"})
+    element(view, "#add-observation") |> render_click()
+    assert has_element?(view, "#note-form")
+    assert has_element?(view, "#repair-unavailable")
+    view |> form("#note-form", note: %{text: "Check exact-fit boundary."}) |> render_submit()
+
+    assert has_element?(view, "#scratch-status")
+    assert has_element?(view, "#review-amount[value='99']")
+    {:ok, saved} = Trace.get(original["id"])
+    assert saved["steps"] == original["steps"]
+    assert hd(saved["notes"])["text"] =~ "Unsaved experiment"
+    assert has_element?(view, "#note-form") == false
+  end
+
 end
