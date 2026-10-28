@@ -4,9 +4,11 @@ defmodule HoldLedgerReviewWeb.WorkbenchLiveTest do
   alias HoldLedgerReview.{Adversarial, ReviewStore}
 
   test "single workbench is the entrypoint and all old routes stay removed", %{conn: conn} do
-    {:ok, _view, html} = live(conn, "/workbench")
+    {:ok, view, html} = live(conn, "/workbench")
     assert html =~ "Decide what the ledger"
     assert html =~ "new-review-choices"
+    assert has_element?(view, "#review-primer #primer-self-check")
+    assert has_element?(view, "#new-review-choices button[phx-value-seed=P08]", "Start here")
 
     for route <- ["/review", "/review/void_pending", "/review/receipts/fake"] do
       assert :error ==
@@ -223,6 +225,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLiveTest do
       assert has_element?(view, "#scenario-brief .scenario-facts dd", "¢")
       assert has_element?(view, "#computed-contrast details summary", "Show raw JSON")
       assert has_element?(view, "#reset-draft")
+      assert has_element?(view, "#scenario-briefing[open]", "What the written policy says")
+      assert has_element?(view, "#step-coaching details[open]", "Predict")
     end
   end
 end

@@ -253,3 +253,44 @@ td details summary { font-size: .7rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 .field-hint { color: var(--muted); margin: -.65rem 0 .4rem; font-size: .8rem !important; }
+
+/* Longer explanations use reading widths; the workbench remains the same tool. */
+.skip-scenarios { display: inline-block; margin: .5rem 0 1rem; font-size: .95rem; }
+.primer { border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); margin: 1rem 0 2rem; }
+.primer > summary { font-size: 1.1rem; padding: 1rem 0; }
+.primer > summary small { margin-left: 1rem; }
+.primer-body { max-width: 52rem; padding: 1rem 0 2rem; }
+.primer-body > section { margin: 2.5rem 0; }
+.primer-body h2 { margin: 0 0 1.2rem; font-size: 1.65rem; }
+.primer-body p, .primer-body li { font-size: 1rem; line-height: 1.65; }
+.primer-body ol, .primer-body ul { padding-left: 1.4rem; }
+.primer-body li { margin: .5rem 0; }
+.primer-body table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: .95rem; }
+.primer-body th:first-child, .primer-body th:last-child { width: auto; }
+.primer-body pre { max-height: none; }
+.primer-body .term { display: inline; }
+.primer-body .limits { padding: .5rem 1rem; border-left: 2px solid var(--accent); }
+.worked-example { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 1rem 0; }
+.worked-example > div { display: grid; grid-template-columns: 8rem 1fr; gap: 1rem; }
+.scenario-families { margin: 1.5rem 0 3rem; }
+.scenario-families section > h3 { font: .8rem/1.5 monospace; border-top: 1px solid var(--ink); padding-top: .7rem; margin: 1.7rem 0 .5rem; }
+.family-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-left: 1px solid var(--line); }
+.family-choices .seed-card { min-height: auto; }
+.scenario-lesson { margin-top: auto; font-size: .9rem; color: var(--muted); }
+.briefing { margin: 1.5rem 0; padding: 1rem 0; border-top: 1px solid var(--ink); }
+.briefing > summary { font-size: 1.2rem; }
+.briefing p, .briefing ul { max-width: 60rem; }
+.briefing ul { padding-left: 1.3rem; }
+.step-coaching { margin: 1rem 0 2rem; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
+.step-coaching details { border-top: 1px solid var(--line); }
+.step-coaching details[open] { grid-column: 1 / -1; border-top: 2px solid var(--accent); }
+.step-coaching p { max-width: 65rem; }
+.reading-aid, .answer-help { margin: 1rem 0; border-bottom: 1px solid var(--line); }
+.save-help { font-size: .85rem !important; color: var(--muted); }
+@media (max-width: 600px) {
+  .family-choices { grid-template-columns: 1fr; }
+  .step-coaching { grid-template-columns: 1fr; gap: .25rem; }
+  .worked-example > div { grid-template-columns: 1fr; gap: 0; }
+  .primer > summary small { display: block; margin: .4rem 0 0; }
+  .primer-body th, .primer-body td { padding: .5rem .25rem; font-size: .85rem; }
+}

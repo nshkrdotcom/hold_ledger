@@ -26,4 +26,18 @@ defmodule HoldLedgerReviewWeb.GlossaryTest do
       assert byte_size(label) > 0 && byte_size(short) > 0 && byte_size(long) > 0
     end
   end
+
+  test "every scenario has a source-policy briefing without revealing its rule results" do
+    for seed <- HoldLedgerReview.Adversarial.seeds() do
+      briefing = Glossary.briefing(seed)
+
+      for field <- ~w(why term1 idea1 term2 idea2 arrow policy weigh1 weigh2 teaches time) do
+        assert is_binary(briefing[field]) && byte_size(briefing[field]) > 0, seed <> ": " <> field
+      end
+
+      assert Glossary.entry(briefing["term1"])
+      assert Glossary.entry(briefing["term2"])
+      refute Regex.match?(~r/po_|allows_here|catches/i, Enum.join(Map.values(briefing), " "))
+    end
+  end
 end

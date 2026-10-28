@@ -4,6 +4,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
   alias HoldLedgerReview.{Adversarial, AI, AIJobs, Dossier, ReviewStore}
 
   alias HoldLedgerReviewWeb.{Explain, Glossary, ReviewProgress}
+  import HoldLedgerReviewWeb.EducationComponents
 
   @draft_fields ~w(before_json event_json output_json follow_on_json)
   @submit_fields @draft_fields ++
@@ -543,15 +544,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <p>
             Your job is to check whether the rules match the intended policy. A proof can establish a rule as written; it cannot choose the right rule. No Lean knowledge is needed, and this app does not run Lean.
           </p>
-          <ol class="how-it-works" aria-label="How this works">
-            <li><b>Choose a situation.</b> Read the starting state and event.</li>
-            <li><b>Compare two outcomes.</b> See the real result and a proposed alternative.</li>
-            <li><b>Judge the rules.</b> Predict first, then inspect what catches the alternative.</li>
-            <li><b>Conclude within scope.</b> Record your decision and what still needs evidence.</li>
-          </ol>
-          <p>
-            Work through one scenario at a time; you can pause and return to saved answers. Nothing leaves this machine unless you explicitly opt in for an AI request.
-          </p>
+          <.primer reviews={@reviews} />
           <nav class="help-links" aria-label="Getting started">
             <a
               href="https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md"
@@ -564,18 +557,39 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               rel="noreferrer"
             >Proofs, explained ↗</a>
           </nav>
-          <h2>Choose a starting situation</h2>
-          <div class="seed-grid" id="new-review-choices">
-            <button
-              :for={seed <- Adversarial.seeds()}
-              type="button"
-              class="seed-card"
-              phx-click="new_review"
-              phx-value-seed={seed}
-            >
-              <span class="eyebrow">{seed} <span :if={seed == "P01"}>/ Start here</span></span>
-              <strong>{Glossary.scenario_title(seed)}</strong><span>{Glossary.scenario_question(seed)}</span>
-            </button>
+          <h2>Eight situations to learn from</h2>
+          <p>
+            Four kinds of mistake, plus a correct cancellation. Follow the groups below as a suggested learning order; the times are planning estimates, not a limit. Each choice starts a separate saved review.
+          </p>
+          <div class="scenario-families" id="new-review-choices">
+            <section :for={
+              {family, seeds} <- [
+                {"A correct result — start here", ~w(P08)},
+                {"Refusing a request that fits", ~w(P04)},
+                {"Releasing money too early", ~w(P01 P05 P03 P06)},
+                {"Omitting required outside work", ~w(P02)},
+                {"Changing another hold", ~w(P07)}
+              ]
+            }>
+              <h3>{family}</h3>
+              <div class="family-choices">
+                <button
+                  :for={seed <- seeds}
+                  type="button"
+                  class="seed-card"
+                  phx-click="new_review"
+                  phx-value-seed={seed}
+                >
+                  <span class="eyebrow">{seed} <span :if={seed == "P08"}>/ Start here</span></span>
+                  <strong>{Glossary.scenario_title(seed)}</strong><span>{Glossary.scenario_question(
+                    seed
+                  )}</span>
+                  <span class="scenario-lesson">{Glossary.briefing(seed)["teaches"]}</span><small>{Glossary.briefing(
+                    seed
+                  )["time"]}</small>
+                </button>
+              </div>
+            </section>
           </div>
           <h2>Existing review files</h2>
           <p class="muted">
@@ -585,7 +599,15 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <ul id="existing-reviews" class="review-list">
             <li :for={r <- @reviews}>
               <.link navigate={"/workbench/#{r["id"]}"}>{Glossary.review_title(r)}</.link>
-              <span>{Glossary.label(r["status"])} · Updated {r["updated_at_utc"]}</span><small>{r[
+              <span>{Glossary.label(r["status"])} · Updated
+              <time datetime={r["updated_at_utc"]} title={r["updated_at_utc"]}>{case DateTime.from_iso8601(
+                                                                                       r[
+                                                                                         "updated_at_utc"
+                                                                                       ]
+                                                                                     ) do
+                {:ok, timestamp, _} -> Calendar.strftime(timestamp, "%b %-d, %Y at %H:%M UTC")
+                _ -> "Time unavailable"
+              end}</time></span><small>{r[
                 "id"
               ]}</small>
             </li>
@@ -611,7 +633,13 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           </div>
           <nav class="top-actions" aria-label="Workbench actions">
             <.link navigate="/workbench">Reviews</.link>
-            <button id="map-toggle" type="button" phx-click="toggle_map" aria-expanded={@map_open}>Design map</button>
+            <button
+              id="map-toggle"
+              title="Look up connections between policy, code, rules and proof-report evidence"
+              type="button"
+              phx-click="toggle_map"
+              aria-expanded={@map_open}
+            >Design map</button>
             <.link href={"/workbench/#{@review["id"]}/export.md"}>Export .md</.link>
             <.link href={"/workbench/#{@review["id"]}/export.json"}>Export .json</.link>
           </nav>
@@ -645,6 +673,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
             {label}
           </li>
         </ol>
+        <.briefing review={@review} />
+        <.coaching review={@review} revealed={@revealed} />
         <section id="scenario-brief" class="scenario-brief" aria-labelledby="scenario-heading">
           <h2 id="scenario-heading">The situation</h2>
           <p><strong>{Glossary.scenario_question(@review["seed_id"])}</strong></p>
@@ -679,7 +709,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
         >
           <h2>How the policy connects to code and rules</h2>
           <p class="muted">
-            Read this map from policy to code to rules. A source-backed connection comes from the source; an inferred connection is only a navigation suggestion. The list includes both Elixir rule declarations and Lean-only obligations. A listing does not mean a proof has run.
+            Use this map to look up how a policy row connects to code and rules; you can leave it closed on your first pass. A source-backed connection comes from the source; an inferred connection is only a navigation suggestion. The list includes both Elixir rule declarations and Lean-only obligations. A listing does not mean a proof has run.
           </p>
           <div class="map-columns">
             <div>
@@ -743,7 +773,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
             <p class="eyebrow">Reference</p>
             <h2 id="claim-heading">What the code and rules say</h2>
             <p>
-              Use the exact source to check a reading. The
+              This pane is a lookup area, not required reading before you judge the example. Open a source file when you want to check what a rule actually says. The
               <.term key="oracle">independent reference</.term>
               is a separate implementation of the policy.
             </p>
@@ -802,7 +832,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <section class="pane arena" aria-labelledby="probe-heading">
             <p class="eyebrow">Test</p>
             <h2 id="probe-heading">Test the scenario</h2><p>
-              Edit the example and see what the rules say.
+              Use the starting example first; you can ignore the editor on your first pass. Later, edit it to ask a different question and compare the calculated outcomes.
             </p>
             <div class="fixture-strip" aria-label="Synthetic initial examples">
               <button
@@ -978,6 +1008,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   id="pin-candidate"
                 >Save example only</button>
               </div>
+              <p class="save-help">
+                Save example only keeps this example without a judgment. Defer postpones the question; give a reason and keep it open for follow-up.
+              </p>
             </.form>
             <dl class="choice-legend">
               <div :for={choice <- ~w(acceptable unacceptable unsure deferred pin_only)}>
@@ -1055,6 +1088,14 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               <% end %>
             </section>
             <section id="catcher-matrix" class="matrix">
+              <details
+                class="reading-aid"
+                data-source="apps/review_web/lib/hold_ledger_review/adversarial.ex#law_row"
+              >
+                <summary>How to read a row</summary><p>
+                  Imagine a rule saying “A remembered identity keeps its amount.” If an alternative changes the amount for that identity and the rule applies, Catches means this check rejects that change. “Tested 2 combinations” would mean two eligible combinations of parameter values were examined, not two proof runs.
+                </p>
+              </details>
               <p :if={@draft_error} class="notice-alert">
                 Historical last-good rule checks only; correct the draft before using these results.
               </p><h3>What the rules say about this example</h3><button
@@ -1112,7 +1153,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <aside class="pane decision" aria-labelledby="decision-heading">
             <p class="eyebrow">Decision</p>
             <h2 id="decision-heading">Your judgment</h2>
-            <p>Answer one question at a time. Revisions keep the earlier answer in your history.</p>
+            <p>
+              Record what you think about the example and the policy, one question at a time. Start with the alternative-behavior question; the others help you decide what the evidence supports. Revisions keep earlier answers in your history.
+            </p>
             <%= if @current_card do %>
               <article id="active-question" class="active-question">
                 <p class="eyebrow">
@@ -1122,6 +1165,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   )}
                 </p>
                 <h3>{@current_card["question"]}</h3>
+                <.answer_help current_card={@current_card} />
                 <p>{Glossary.one_line(@current_card["kind"])}</p><p>
                   <b>Why it matters:</b> {if @current_card["critical"],
                     do: @current_card["critical_reason"],

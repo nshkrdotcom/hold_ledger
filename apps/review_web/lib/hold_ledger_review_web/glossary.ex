@@ -324,6 +324,20 @@ defmodule HoldLedgerReviewWeb.Glossary do
               "The request includes recorded revision history and the prior validated model question, if present. It does not change your answer."}
          })
 
+  @terms Map.merge(@terms, %{
+           "formal_verification" =>
+             {"Formal verification",
+              "Using a mathematical proof to establish a precisely stated program property.",
+              "A checked theorem covers its stated inputs and assumptions. Choosing the property and judging its adequacy remain separate tasks."},
+           "pure" =>
+             {"Pure calculation",
+              "A calculation that returns values without performing outside work or changing hidden state.",
+              "Ledger.step returns a next state, result and descriptions of effects. The runtime is responsible for I/O."},
+           "runtime" =>
+             {"Runtime",
+              "The processes that record inputs and attempt the requested outside work.",
+              "Its storage and processor assumptions need separate evidence from pure ledger proofs."}
+         })
   @laws %{
     "l1_find" => "Looking up a unique entry agrees with the independent reference.",
     "l2_identity" => "Changing a status keeps every recorded key and amount.",
@@ -441,6 +455,215 @@ defmodule HoldLedgerReviewWeb.Glossary do
        "Mark cancelled and release its amount and slot; no remote work is needed.",
        "The same local cancellation and capacity release."}
   }
+
+  @briefings %{
+    "P08" => %{
+      "why" =>
+        "This is the control example: the alternative matches the real local cancellation. Start here to separate an undispatched reservation from an issued authorization.",
+      "term1" => "reserved",
+      "idea1" => "No authorization has been dispatched for this reservation.",
+      "term2" => "voided",
+      "idea2" => "A cancelled local reservation no longer uses an amount or a slot.",
+      "arrow" => "reserved → local cancellation → voided",
+      "policy" =>
+        "Voiding a reserved hold releases its amount and slot immediately and requests no outside work. The key remains remembered.",
+      "weigh1" => "Was there an issued authorization whose outcome still needs confirmation?",
+      "weigh2" => "Do the real result and the alternative differ in any field?",
+      "teaches" => "Learn when immediate release is allowed.",
+      "time" => "Allow 3–5 minutes."
+    },
+    "P04" => %{
+      "why" =>
+        "This example imitates refusing a request even though it fits exactly. It asks whether keeping within limits is enough.",
+      "term1" => "capacity",
+      "idea1" => "Both the amount limit and the hold-count limit must have room.",
+      "term2" => "precondition",
+      "idea2" =>
+        "The admission rule applies to fresh positive requests that fit, including equality at the limit.",
+      "arrow" => "fresh request → reserved",
+      "policy" =>
+        "A fresh positive request with a free slot and enough amount capacity must be admitted. An exact amount fit qualifies.",
+      "weigh1" => "Is a request that fits exactly different from one that exceeds the limit?",
+      "weigh2" =>
+        "Would a ledger that refuses every request meet your intended service behavior?",
+      "teaches" => "Learn why a safety limit also needs an admission promise.",
+      "time" => "Allow 3–5 minutes."
+    },
+    "P01" => %{
+      "why" =>
+        "This alternative imitates releasing an approved hold as soon as cancellation is requested. It also omits the remote cancellation request.",
+      "term1" => "authorized",
+      "idea1" => "The processor has reported approval; the hold still uses capacity.",
+      "term2" => "voiding",
+      "idea2" => "Cancellation is pending, so asking to cancel is different from confirmation.",
+      "arrow" => "authorized → void → voiding → trusted confirmation → voided",
+      "policy" =>
+        "Voiding an authorized hold keeps its amount and slot, marks cancellation pending and requests a remote void. Trusted confirmation releases it later.",
+      "weigh1" =>
+        "What could a second request do if capacity were released while the remote authorization still existed?",
+      "weigh2" => "What outside work must still happen before the cancellation is complete?",
+      "teaches" => "Separate a cancellation request from confirmed release.",
+      "time" => "Allow 4–6 minutes."
+    },
+    "P05" => %{
+      "why" =>
+        "This alternative sends the cancellation request but releases capacity immediately. Compare it with the earlier cancellation example to isolate the retained-capacity question.",
+      "term1" => "effects",
+      "idea1" => "A returned void effect requests cancellation; it does not confirm it.",
+      "term2" => "voiding",
+      "idea2" => "Pending remote cancellation still counts against both limits.",
+      "arrow" => "authorized → voiding, with capacity held → confirmation → voided",
+      "policy" =>
+        "An authorized hold becomes voiding and keeps its amount and slot while remote confirmation is pending.",
+      "weigh1" => "What does emitting a request establish about the processor?",
+      "weigh2" => "Could the amount be used again before the old authorization is safely gone?",
+      "teaches" => "See why requesting outside work does not establish its completion.",
+      "time" => "Allow 4–6 minutes."
+    },
+    "P03" => %{
+      "why" =>
+        "This alternative treats a timeout as a decline. It asks what the absence of a reply tells you about the processor.",
+      "term1" => "sent",
+      "idea1" => "Authorization was dispatched, but the ledger has no outcome yet.",
+      "term2" => "unknown",
+      "idea2" => "An unresolved outcome continues to use capacity.",
+      "arrow" => "sent → timeout → unknown; retry returns unknown → sent with the same key",
+      "policy" =>
+        "Timeout changes a sent entry to unknown without releasing its amount or slot. It does not manufacture a processor decline.",
+      "weigh1" => "Could the processor have approved before the reply was lost?",
+      "weigh2" => "What evidence would distinguish a decline from silence?",
+      "teaches" => "Separate missing information from evidence of failure.",
+      "time" => "Allow 4–6 minutes."
+    },
+    "P06" => %{
+      "why" =>
+        "This alternative uses the unknown status but drops both reserved totals to zero. It tests whether the label and accounting agree.",
+      "term1" => "unknown",
+      "idea1" => "An unresolved authorization still counts as held.",
+      "term2" => "validity",
+      "idea2" => "The totals must equal the sum and count of the entries that are still held.",
+      "arrow" => "sent → timeout → unknown, with both totals retained",
+      "policy" =>
+        "Timeout retains the unknown entry’s amount and slot. The used totals must still account for holding entries.",
+      "weigh1" => "What should the amount and count report when the entry remains unknown?",
+      "weigh2" => "Could a new request be admitted using totals that no longer count this hold?",
+      "teaches" => "Compare status labels with the actual reserved totals.",
+      "time" => "Allow 4–6 minutes."
+    },
+    "P02" => %{
+      "why" =>
+        "This alternative keeps the money reserved but omits the request to cancel it remotely. It separates accounting from the work still owed.",
+      "term1" => "voiding",
+      "idea1" => "Remote cancellation remains unfinished.",
+      "term2" => "effects",
+      "idea2" => "The outcome must describe required outside work as well as its next state.",
+      "arrow" => "authorized → voiding, with a remote void request",
+      "policy" =>
+        "Voiding an authorized hold retains capacity and returns a request for remote cancellation.",
+      "weigh1" => "What would cause the processor to learn about the cancellation?",
+      "weigh2" => "Would correct counters alone be enough to describe the required transition?",
+      "teaches" => "Look for required outside work, not just the next state.",
+      "time" => "Allow 4–6 minutes."
+    },
+    "P07" => %{
+      "why" =>
+        "This alternative times out one hold while cancelling a different approved hold. The reduced counters are consistent with that unrelated cancellation.",
+      "term1" => "identity",
+      "idea1" =>
+        "Each event names a particular key; other holds still have their own obligations.",
+      "term2" => "unknown",
+      "idea2" => "The timed-out sent hold keeps its amount and slot.",
+      "arrow" => "hold 2: sent → unknown; hold 1 remains authorized",
+      "policy" =>
+        "Timeout changes the named sent entry to unknown. An unrelated approved hold remains held without its own release evidence.",
+      "weigh1" => "Which entry does the event name, and which entries change in the alternative?",
+      "weigh2" => "Could globally consistent totals hide an unauthorized change to another key?",
+      "teaches" => "Check other identities as well as the event’s target.",
+      "time" => "Allow 5–7 minutes."
+    }
+  }
+  @coaching %{
+    "understand" => %{
+      "title" => "Understand the scenario",
+      "do" =>
+        "Read the briefing and four situation boxes. Follow one key from the starting state through the event.",
+      "look" =>
+        "The amount, hold count, status and requested outside work that differ between the real result and alternative.",
+      "done" => "You can describe those differences without relying on the JSON."
+    },
+    "predict" => %{
+      "title" => "Predict",
+      "do" =>
+        "Choose your answer before clicking “I’ve made my prediction.” Use your own notes if you want to keep a private prediction.",
+      "look" =>
+        "Whether you would accept the alternative under the stated policy, before knowing which rules catch it.",
+      "done" =>
+        "You have a provisional judgment and a reason. The app records whether you revealed first, not your private notes."
+    },
+    "compare" => %{
+      "title" => "Compare with the laws",
+      "do" =>
+        "Reveal the rule results and read one row at a time: its plain rule, result and tested combinations of values.",
+      "look" =>
+        "Catches rejects the alternative here; Allows here accepts it at tested values; Doesn’t apply concerns a different case; Can’t check gives no answer. Tested N combinations says how many eligible parameter values were examined.",
+      "done" =>
+        "You can name the relevant catches and the checks that leave questions open. These are example results, not a proof run."
+    },
+    "judge" => %{
+      "title" => "Judge",
+      "do" =>
+        "Use Acceptable or Unacceptable for the alternative; Not sure if you cannot decide; Defer with a reason if more work is needed.",
+      "look" =>
+        "An explanation tied to this example and policy. Save example only keeps evidence without judging it.",
+      "done" =>
+        "Your saved answer and its explanation appear under Latest. Answer the reading and evidence questions too; you can revise while the review is open."
+    },
+    "conclude" => %{
+      "title" => "Conclude",
+      "do" =>
+        "Name the reviewed scope and your reason. Needs policy or evidence keeps uncertainty open; Needs design change records a mismatch; Meets intent in reviewed scope records agreement within that scope.",
+      "look" =>
+        "Unanswered questions, deferred work, computed conflicts and missing outside evidence. A positive conclusion requires all questions resolved and supporting evidence saved.",
+      "done" =>
+        "You explicitly confirm a conclusion, which locks the review. Export its Markdown or JSON record for the policy owner or agent."
+    }
+  }
+  @answer_help %{
+    "reading" => %{
+      "consider" =>
+        "Read the exact rule conditions and promised result. Check whether the plain reading includes the boundary you mean, such as an exact fit.",
+      "reason" =>
+        "“I read eligible as including equality at the amount limit; please keep that boundary explicit.”"
+    },
+    "escape" => %{
+      "consider" =>
+        "Compare the whole alternative with the starting state and event. Account for each key, both totals and any required outside work.",
+      "reason" =>
+        "“My concern is that a second request could use capacity while the first authorization still exists remotely.”"
+    },
+    "trace" => %{
+      "consider" =>
+        "Name the dimensions the examples examined and those they did not. One cancellation example does not address every possible history.",
+      "reason" =>
+        "“This example addresses local cancellation; I still need to examine a cancellation after dispatch.”"
+    },
+    "silence" => %{
+      "consider" =>
+        "Identify an input the rule excludes and why that case matters to the policy. An excluded input is not automatically a failed proof.",
+      "reason" =>
+        "“I want the policy owner to decide whether this excluded boundary belongs in the reviewed requirement.”"
+    },
+    "assumption" => %{
+      "consider" =>
+        "Ask who can provide evidence about storage and the actual processor. A model’s assumed promise is different from an observed deployment guarantee.",
+      "reason" =>
+        "“I need processor evidence that a cancelled identity cannot later be authorized by a delayed request.”"
+    }
+  }
+
+  def briefing(seed), do: Map.fetch!(@briefings, seed)
+  def coach(key), do: Map.fetch!(@coaching, key)
+  def answer_help(kind), do: Map.fetch!(@answer_help, kind)
 
   def entries, do: Enum.sort_by(@terms, fn {_key, {label, _, _}} -> String.downcase(label) end)
   def entry(key), do: Map.get(@terms, key)

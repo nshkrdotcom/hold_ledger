@@ -307,3 +307,19 @@ test('a first-time reviewer can use definitions, compare, reset and conclude', a
   await page.locator('#confirm-finish').click();
   await expect(page.locator('#review-summary')).toContainText('Human conclusion:');
 });
+
+test('the primer teaches the workflow and briefings keep rule results behind reveal', async ({page}) => {
+  await page.goto('/workbench');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  const primer = page.locator('#review-primer');
+  if (!(await primer.getAttribute('open') === '')) await primer.locator(':scope > summary').click();
+  await expect(page.locator('#primer-people')).toContainText('This app never runs Lean');
+  await expect(page.locator('#primer-self-check > details')).toHaveCount(5);
+  await expect(page.locator('#new-review-choices button')).toHaveCount(8);
+  await page.locator('a[href="#new-review-choices"]').click();
+  await page.locator('#new-review-choices button[phx-value-seed="P08"]').click();
+  await expect(page.locator('#scenario-briefing[open]')).toContainText('What the written policy says');
+  await expect(page.locator('#step-coaching details[open]')).toContainText('Predict');
+  await expect(page.locator('#catcher-matrix table')).toHaveCount(0);
+  await expect(page.locator('#candidate-form')).toBeVisible();
+});

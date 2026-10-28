@@ -8,11 +8,15 @@ defmodule HoldLedgerReviewWeb.Layouts do
     ~H"""
     <a href="#workspace" class="skip-link">Skip to workspace</a>
     <header class="site-header">
-      <span class="brand">HOLD LEDGER <span>/ CLAIM WORKBENCH</span></span><nav aria-label="Help">
+      <span class="brand">HOLD LEDGER <span>/ POLICY REVIEW</span></span><nav aria-label="Help">
         <a
           href="#glossary"
+          title="Plain-English dictionary for the words used here"
           phx-click={Phoenix.LiveView.JS.set_attribute({"open", ""}, to: "#glossary")}
-        >Glossary</a><span class="mode">Local development</span>
+        >Glossary</a><span
+          class="mode"
+          title="This review runs in your local checkout; optional AI requests need your consent"
+        >Local review</span>
       </nav>
     </header>
     <main id="workspace" class="workspace">{render_slot(@inner_block)}</main>
