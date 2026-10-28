@@ -32,6 +32,44 @@ defmodule HoldLedgerReviewWeb.CoreComponents do
 
   alias Phoenix.LiveView.JS
 
+  attr :key, :string, required: true
+  slot :inner_block
+
+  def term(assigns) do
+    assigns = assign(assigns, :definition, HoldLedgerReviewWeb.Glossary.one_line(assigns.key))
+
+    ~H"""
+    <span class="term" tabindex="0" aria-label={@definition}>
+      {if @inner_block == [],
+        do: HoldLedgerReviewWeb.Glossary.label(@key),
+        else: render_slot(@inner_block)}
+      <span class="term-popover" role="note">
+        {@definition}
+        <a
+          href={"#" <> HoldLedgerReviewWeb.Glossary.anchor(@key)}
+          phx-click={JS.set_attribute({"open", ""}, to: "#glossary")}
+        >More</a>
+      </span>
+    </span>
+    """
+  end
+
+  def glossary(assigns) do
+    ~H"""
+    <details id="glossary" class="glossary">
+      <summary>Glossary — words used in this workbench</summary>
+      <dl>
+        <div
+          :for={{key, {label, short, long}} <- HoldLedgerReviewWeb.Glossary.entries()}
+          id={HoldLedgerReviewWeb.Glossary.anchor(key)}
+        >
+          <dt>{label} <small>{key}</small></dt><dd>{short} {long}</dd>
+        </div>
+      </dl>
+    </details>
+    """
+  end
+
   @doc """
   Renders flash notices.
 

@@ -121,3 +121,23 @@ td small { display: block; color: var(--muted); max-width: 270px; overflow-wrap:
 .ai-job-list > li { border-top: 1px solid #8090a050; padding: .7rem 0; overflow-wrap: anywhere; }
 .ai-results pre { max-height: 12rem; overflow: auto; white-space: pre-wrap; font-size: .75rem; }
 .ai-results details summary { cursor: pointer; }
+
+/* Shared definitions remain available to keyboard, pointer and touch users. */
+.term { position: relative; border-bottom: 1px dotted currentColor; cursor: help; }
+.term-popover { display: none; position: absolute; z-index: 40; bottom: 100%; left: 0; width: min(19rem, 75vw); padding: .8rem; background: #fff; color: #151515; border: 1px solid #777; font-size: .9rem; font-weight: 400; text-transform: none; }
+.term:hover > .term-popover, .term:focus-within > .term-popover { display: block; }
+.term-popover a { display: block; padding-top: .4rem; }
+.glossary { margin: 2rem auto; max-width: 85rem; padding: 1rem; }
+.glossary dl { columns: 2 24rem; }
+.glossary dl > div { break-inside: avoid; padding: .75rem; }
+.glossary dt { font-weight: 700; }
+.glossary small, .review-list small, .seed-card small, .matrix td small, .map-columns small { display: block; overflow-wrap: anywhere; }
+.scenario-brief, .orientation { padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #bbb; }
+.scenario-facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+.scenario-facts dt, .choice-legend dt, .matrix-legend dt { font-weight: 650; }
+.choice-legend, .matrix-legend, .field-help { margin: 1rem 0; }
+.choice-legend > div, .matrix-legend > div { margin: .55rem 0; }
+.how-it-works, .step-strip { display: flex; gap: 1.5rem; padding: 1.5rem; }
+.how-it-works li, .step-strip li { flex: 1; }
+.help-links, .site-header nav { display: flex; gap: 1.5rem; }
+@media (max-width: 1099px) { .review-grid { display: flex; flex-direction: column; } .decision { order: 1; } .arena { order: 2; } .guarantee { order: 3; } .scenario-facts { grid-template-columns: 1fr 1fr; } .how-it-works, .step-strip { flex-direction: column; } }

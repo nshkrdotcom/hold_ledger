@@ -110,7 +110,7 @@ test('read, trace and a critical deferral stay human-owned and conclude only by 
   await page.locator('#card-answer-form button[value="sufficient_for_review"]').click();
   await page.locator('#card-escape').click();
   await page.locator('#escape-deferred').click();
-  await expect(page.getByText('Not saved: :defer_reason_required')).toBeVisible();
+  await expect(page.locator('#flash-group [role=alert]').filter({hasText:'Add a reason'})).toBeVisible();
   await expect(page.locator('#latest-answer')).toHaveCount(0);
   await page.locator('#escape-unacceptable').click();
   await expect(page.locator('#latest-answer')).toContainText('unacceptable');
@@ -134,7 +134,7 @@ test('P01/P05 effect flip, P03 domain, and all exact graph source bytes', async 
   await expect(page.locator('#catcher-matrix tr').filter({hasText:'po_b1_timeout'})).toContainText('Allows here');
   await expect(page.locator('#catcher-matrix tr').filter({hasText:'po_b2'})).toContainText("Doesn't apply");
   await page.locator('#map-toggle').click();
-  await expect(page.locator('#design-map button').filter({hasText:/^law\./})).toHaveCount(49);
+  await expect(page.locator('#design-map button[data-node-id]')).toHaveCount(49);
   const review = await record(page, 'all-sources');
   for (const source of review.graph_snapshot.excerpts) {
     const response = await page.request.get(`${new URL(page.url()).pathname}/source/${source.id}`);
@@ -219,7 +219,7 @@ test('five answer vocabularies, deferral and explicit confirmation preserve scop
   await page.locator('#finish_rationale').fill('Scope retains unresolved external questions');
   await page.locator('#review-outcome').selectOption('meets_intent_in_reviewed_scope');
   await page.locator('#confirm-finish').click();
-  await expect(page.getByText('Not concluded: :unresolved_critical_conflict')).toBeVisible();
+  await expect(page.locator('#flash-group [role=alert]').filter({hasText:'Resolve the critical questions'})).toBeVisible();
   saved = await record(page,'blocked-positive');
   expect(saved.review_conclusion).toBe(null);
   await page.locator('#review-outcome').selectOption('needs_policy_or_evidence');
@@ -255,7 +255,7 @@ test('a drifted saved source identity is visibly read-only and cannot accept ano
   const changed = {...saved, source:{...saved.source,evaluator_id:'0'.repeat(64)}};
   fs.writeFileSync(file,JSON.stringify(changed));
   await page.reload();
-  await expect(page.getByRole('alert').filter({hasText:'stale_read_only'})).toBeVisible();
+  await expect(page.getByRole('alert').filter({hasText:'code, rules or proof-report identity changed'})).toBeVisible();
   await expect(page.locator('#escape-unacceptable')).toBeDisabled();
   await expect(page.locator('#confirm-finish')).toBeDisabled();
   await expect(page.locator('#latest-answer')).toContainText('unacceptable');

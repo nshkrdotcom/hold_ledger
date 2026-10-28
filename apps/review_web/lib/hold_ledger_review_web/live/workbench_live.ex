@@ -3,6 +3,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
   use HoldLedgerReviewWeb, :live_view
   alias HoldLedgerReview.{Adversarial, AI, AIJobs, Dossier, ReviewStore}
 
+  alias HoldLedgerReviewWeb.Glossary
+
   @draft_fields ~w(before_json event_json output_json follow_on_json)
   @submit_fields @draft_fields ++
                    ~w(request_id expected_human_revision card_id packet_digest revealed_before_answer reason choice)
@@ -77,7 +79,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
         {:noreply, push_navigate(socket, to: "/workbench/#{review["id"]}")}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Cannot create review: #{inspect(reason)}")}
+        {:noreply, error_flash(socket, reason, "Cannot create review: #{inspect(reason)}")}
     end
   end
 
@@ -102,7 +104,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
         {:noreply, push_navigate(socket, to: "/workbench/#{review["id"]}")}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Cannot start scenario: #{inspect(reason)}")}
+        {:noreply, error_flash(socket, reason, "Cannot start scenario: #{inspect(reason)}")}
     end
   end
 
@@ -140,8 +142,11 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
       }
 
       case ReviewStore.answer_card(review["id"], command) do
-        {:ok, %{review: updated}} -> {:noreply, saved(socket, updated, "Human answer recorded")}
-        {:error, reason} -> {:noreply, put_flash(socket, :error, "Not saved: #{inspect(reason)}")}
+        {:ok, %{review: updated}} ->
+          {:noreply, saved(socket, updated, "Human answer recorded")}
+
+        {:error, reason} ->
+          {:noreply, error_flash(socket, reason, "Not saved: #{inspect(reason)}")}
       end
     else
       {:noreply, put_flash(socket, :error, "Invalid card answer")}
@@ -169,7 +174,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           {:noreply, saved(socket, updated, "Scoped human conclusion confirmed")}
 
         {:error, reason} ->
-          {:noreply, put_flash(socket, :error, "Not concluded: #{inspect(reason)}")}
+          {:noreply, error_flash(socket, reason, "Not concluded: #{inspect(reason)}")}
       end
     else
       {:noreply, put_flash(socket, :error, "Invalid confirmation")}
@@ -223,7 +228,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
          |> assign(:selected_card_id, id)}
 
       {:error, reason} ->
-        {:noreply, put_flash(socket, :error, "Question not accepted: #{inspect(reason)}")}
+        {:noreply, error_flash(socket, reason, "Question not accepted: #{inspect(reason)}")}
     end
   end
 
@@ -288,7 +293,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
   end
 
   defp ai_request_result(socket, {:error, reason}, _kind) do
-    {:noreply, put_flash(socket, :error, "AI unavailable/request refused: #{inspect(reason)}")}
+    {:noreply, error_flash(socket, reason, "AI unavailable/request refused: #{inspect(reason)}")}
   end
 
   defp valid_escape_submission?(review, card, input) do
@@ -338,7 +343,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
     do: {:noreply, saved(socket, updated, "Hypothetical and human command saved")}
 
   defp escape_result(socket, {:error, reason}),
-    do: {:noreply, put_flash(socket, :error, "Not saved: #{inspect(reason)}")}
+    do: {:noreply, error_flash(socket, reason, "Not saved: #{inspect(reason)}")}
 
   defp load_witness(socket, witness) do
     socket |> change_draft(Adversarial.form(witness)) |> assign(:request_id, request_id())
@@ -373,9 +378,27 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           assign(
             socket,
             :draft_error,
-            "Invalid bounded JSON: inspect before/event/output/follow-on fields (0..1,000,000, ≤8 entries/effects)"
+            draft_message(raw)
           )
       end
+    end
+  end
+
+  defp draft_message(raw) do
+    fields = [
+      {"before_json", "Starting state"},
+      {"event_json", "Event"},
+      {"output_json", "What-if outcome"},
+      {"follow_on_json", "Next event"}
+    ]
+
+    case Enum.find(fields, fn {key, _} -> match?({:error, _}, Jason.decode(raw[key] || "")) end) do
+      {_, label} ->
+        label <>
+          " is not valid JSON. Check commas and quotes; for example, the next-event field may be null."
+
+      nil ->
+        "The JSON shape or starting state is invalid. Compare it with the starting example and see What do these fields mean?"
     end
   end
 
@@ -411,6 +434,33 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
   defp source_for(review, source_id),
     do: Enum.find(review["graph_snapshot"]["excerpts"], &(&1["id"] == source_id))
 
+  defp error_flash(socket, reason, raw) do
+    socket |> put_flash(:error, Glossary.error(reason)) |> put_flash(:error_detail, raw)
+  end
+
+  defp implication(review, card) do
+    answer = last_answer(review, card["id"])
+    probe = Enum.find(review["pinned_probes"], &(&1["id"] == answer["probe_id"]))
+
+    case Dossier.implication(
+           card,
+           answer["choice"],
+           if(probe, do: probe["evaluation"], else: nil)
+         ) do
+      {:ok, text} -> text
+      _ -> "Inspect the saved answer and its evidence before concluding."
+    end
+  end
+
+  defp source_names(review, ids) do
+    Enum.map_join(ids, ", ", fn id ->
+      case source_for(review, id) do
+        nil -> id
+        source -> source["path"]
+      end
+    end)
+  end
+
   @impl true
   def render(assigns) do
     assigns =
@@ -427,51 +477,79 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
     <Layouts.app flash={@flash}>
       <%= if is_nil(@review) do %>
         <section class="workbench-intro">
-          <p class="eyebrow">SOURCE-ANCHORED REVIEW / LOCAL ONLY</p>
+          <p class="eyebrow">Payment policy / human review</p>
           <h1>Decide what the ledger <em>should</em> guarantee.</h1>
-          <p>
-            Choose a concrete policy situation. Explore the pure reducer, independent oracle, exact source claims and a hypothetical outcome. Your judgment—not a model—owns the conclusion.
+          <p class="intro-lead">
+            A payment hold reserves money while a processor decides what happens next. Hold Ledger tracks these reservations for one account, with limits on their total amount and count.
           </p>
+          <p>
+            Your job is to check whether the rules match the intended policy. A proof can establish a rule as written; it cannot choose the right rule. No Lean knowledge is needed, and this app does not run Lean.
+          </p>
+          <ol class="how-it-works" aria-label="How this works">
+            <li><b>Choose a situation.</b> Read the starting state and event.</li>
+            <li><b>Compare two outcomes.</b> See the real result and a proposed alternative.</li>
+            <li><b>Judge the rules.</b> Predict first, then inspect what catches the alternative.</li>
+            <li><b>Conclude within scope.</b> Record your decision and what still needs evidence.</li>
+          </ol>
+          <p>
+            Work through one scenario at a time; you can pause and return to saved answers. Nothing leaves this machine unless you explicitly opt in for an AI request.
+          </p>
+          <nav class="help-links" aria-label="Getting started">
+            <a
+              href="https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md"
+              target="_blank"
+              rel="noreferrer"
+            >Review walkthrough ↗</a>
+            <a
+              href="https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+              target="_blank"
+              rel="noreferrer"
+            >Proofs, explained ↗</a>
+          </nav>
+          <h2>Choose a starting situation</h2>
           <div class="seed-grid" id="new-review-choices">
             <button
-              :for={
-                {seed, title, detail} <- [
-                  {"P01", "Pending authorized void", "Is release without confirmation acceptable?"},
-                  {"P03", "Uncertain timeout", "Does unknown exposure keep capacity?"},
-                  {"P04", "Exact-fit request", "Must an eligible request be admitted?"}
-                ]
-              }
+              :for={seed <- Adversarial.seeds()}
               type="button"
               class="seed-card"
               phx-click="new_review"
               phx-value-seed={seed}
             >
-              <span class="eyebrow">{seed} · NEW REVIEW</span><strong>{title}</strong><span>{detail}</span>
+              <span class="eyebrow">{seed} <span :if={seed == "P01"}>/ Start here</span></span>
+              <strong>{Glossary.scenario_title(seed)}</strong><span>{Glossary.scenario_question(seed)}</span>
             </button>
           </div>
           <h2>Existing review files</h2>
           <p class="muted">
-            Answers, probes and revisions are durable on this checkout. Draft edits are not saved until pinned or answered.
+            Answers and saved examples stay in this checkout. Editor changes stay temporary until you save the example or answer its question.
           </p>
+          <p :if={@reviews == []}>No reviews yet — pick a scenario above.</p>
           <ul id="existing-reviews" class="review-list">
             <li :for={r <- @reviews}>
-              <.link navigate={"/workbench/#{r["id"]}"}>{r["id"]}</.link>
-              <span>{r["status"]} · {r["updated_at_utc"]}</span>
+              <.link navigate={"/workbench/#{r["id"]}"}>{Glossary.review_title(r)}</.link>
+              <span>{Glossary.label(r["status"])} · Updated {r["updated_at_utc"]}</span><small>{r[
+                "id"
+              ]}</small>
             </li>
           </ul>
         </section>
       <% else %>
         <div class="workbench-top" id="workbench-top">
           <div>
-            <p class="eyebrow">
-              POINTWISE INVESTIGATION · {String.upcase(@review["seed_id"])} / DOCUMENT {@review[
-                "document_revision"
-              ]} · HUMAN {@review["human_revision"]}
-            </p>
-            <h1>Hold Ledger <span class="text-subtle">/ decision workbench</span></h1>
-            <p class="muted">
-              Pure reducer and source claims, not remote execution or formal checker proof.
-            </p>
+            <p class="eyebrow">Review / {@review["seed_id"]}</p>
+            <h1>{Glossary.scenario_title(@review["seed_id"])}</h1>
+            <details>
+              <summary>Review details</summary><p>
+                Document revision {@review["document_revision"]} · Human revision {@review[
+                  "human_revision"
+                ]}
+              </p><code>{@review["id"]}</code>
+            </details>
+            <details>
+              <summary>Limits of this evidence</summary><p>
+                Pure reducer and source claims, not remote execution or formal checker proof. Local calculations describe requested work; they do not perform a payment.
+              </p>
+            </details>
           </div>
           <nav class="top-actions" aria-label="Workbench actions">
             <.link navigate="/workbench">Reviews</.link>
@@ -481,21 +559,60 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           </nav>
         </div>
         <p :if={@review["status"] != "in_progress"} class="notice-alert" role="alert">
-          {@review["status"]}: saved history is read-only. Start a new review on the current checkout for new evaluations.
+          This review is read-only. {Glossary.one_line(@review["status"])} Start a new review to keep evaluating.
         </p>
+        <details class="orientation" open={@review["answers"] == [] && @review["pinned_probes"] == []}>
+          <summary>Your job here</summary>
+          <p>
+            Check whether the rules protect the behavior you intend. Compare the real result with the alternative, decide whether the alternative is acceptable, then inspect which rules address it. You are checking whether the rules are right, not whether the proofs compile.
+          </p>
+          <ol class="step-strip">
+            <li>Understand the scenario</li><li>Predict</li><li>Compare with the laws</li><li>
+              Judge
+            </li><li>Conclude</li>
+          </ol>
+        </details>
+        <section id="scenario-brief" class="scenario-brief" aria-labelledby="scenario-heading">
+          <h2 id="scenario-heading">The situation</h2>
+          <p>{elem(Glossary.scenario(@review["seed_id"]), 2)}</p>
+          <p><strong>{Glossary.scenario_question(@review["seed_id"])}</strong></p>
+          <dl class="scenario-facts">
+            <div>
+              <dt>Starting state</dt><dd>{elem(Glossary.scenario(@review["seed_id"]), 3)}</dd>
+            </div>
+            <div>
+              <dt>What happens</dt><dd>{elem(Glossary.scenario(@review["seed_id"]), 4)}</dd>
+            </div>
+            <div>
+              <dt>What the real ledger does</dt><dd>
+                {elem(Glossary.scenario(@review["seed_id"]), 5)}
+              </dd>
+            </div>
+            <div>
+              <dt>The proposed alternative</dt><dd>
+                {elem(Glossary.scenario(@review["seed_id"]), 6)}
+              </dd>
+            </div>
+          </dl>
+          <p>
+            The
+            <.term key="what_if">what-if</.term>
+            is an alternative behavior for you to judge. It is calculated locally; no remote payment operation is performed.
+          </p>
+        </section>
         <section
           :if={@map_open}
           id="design-map"
           class="map-panel"
           aria-label="Complete design and proof map"
         >
-          <h2>Design → reducer/oracle → claims → Lean → outside-world premises</h2>
+          <h2>How the policy connects to code and rules</h2>
           <p class="muted">
             A dashed/inferred edge is a navigation suggestion, not a proved entailment. All registered DSL and native Lean obligations are listed; only relevant supported DSL rows enter the active matrix.
           </p>
           <div class="map-columns">
             <div>
-              <h3>Policy rows and boundaries</h3>
+              <h3>Policy rows</h3>
               <ul>
                 <li
                   :for={node <- @review["graph_snapshot"]["nodes"]}
@@ -505,12 +622,12 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                     type="button"
                     phx-click="source_select"
                     phx-value-id={hd(node["source_ids"])}
-                  >{node["id"]}</button> {node["title"]}
+                  ><strong>{node["title"]}</strong><small>{node["id"]}</small></button>
                 </li>
               </ul>
             </div>
             <div>
-              <h3>Law catalog (DSL + native)</h3>
+              <h3>Rules the ledger is proved against</h3>
               <ul>
                 <li
                   :for={node <- @review["graph_snapshot"]["nodes"]}
@@ -520,36 +637,60 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                     type="button"
                     phx-click="source_select"
                     phx-value-id={hd(node["source_ids"])}
-                  >{node["id"]}</button>
-                  <span :if={node["kind"] == "lean"} class="neutral-tag">Not a pointwise DSL probe</span>
+                    data-node-id={node["id"]}
+                  ><strong>{Glossary.law_description(
+                    node["id"]
+                    |> String.replace_prefix("law.", "")
+                    |> String.replace_prefix("lean.", "")
+                  )}</strong><small>{node[
+                    "id"
+                  ]}</small></button>
+                  <span
+                    :if={node["kind"] == "lean"}
+                    class="neutral-tag"
+                    title={Glossary.one_line("native_lean")}
+                  >Not a pointwise DSL probe</span>
                   <small>{node["title"]}</small>
                 </li>
               </ul>
             </div>
           </div>
-          <h3>Source-backed and inferred edges</h3>
-          <ol id="graph-edges" class="edge-list">
-            <li :for={e <- @review["graph_snapshot"]["edges"]}>
-              <span>{e["from_id"]} → {e["to_id"]}</span> <b>{e["provenance"]}</b>
-              <small>{e["kind"]} · {e["reason"]}</small>
-            </li>
-          </ol>
+          <details>
+            <summary>Technical connections: source-backed and inferred</summary><p>
+              Source-backed means a direct source reference; inferred means a navigation suggestion, not a proved implication.
+            </p>
+            <ol id="graph-edges" class="edge-list">
+              <li :for={e <- @review["graph_snapshot"]["edges"]}>
+                <span>{e["from_id"]} → {e["to_id"]}</span> <b>{e["provenance"]}</b>
+                <small>{e["kind"]} · {e["reason"]}</small>
+              </li>
+            </ol>
+          </details>
         </section>
         <div class="review-grid">
           <aside class="pane guarantee" aria-labelledby="claim-heading">
-            <p class="eyebrow">01 / GUARANTEE & BOUNDARY</p>
-            <h2 id="claim-heading">Source, not paraphrase</h2>
+            <p class="eyebrow">Reference</p>
+            <h2 id="claim-heading">What the code and rules say</h2>
             <p>
-              <b>Loaded evaluator:</b>
-              <code>{String.slice(@review["source"]["evaluator_id"], 0, 16)}…</code>
+              Use the exact source to check a reading. The
+              <.term key="oracle">independent reference</.term>
+              is a separate implementation of the policy.
             </p>
-            <p>
-              <b>Formal checker:</b>
-              <span class="neutral-tag">{@review["source"]["proof_report_snapshot"]["status"]}</span>
-            </p>
-            <p class="muted">
-              The checker status is independent of the hypothetical matrix and human intent. Remote fencing and journal truthfulness are premises, not proofs.
-            </p>
+            <details>
+              <summary>Technical status</summary>
+              <p>
+                <.term key="formal_checker">Independent proof report</.term>: {Glossary.one_line(
+                  @review["source"]["proof_report_snapshot"]["status"]
+                )}
+              </p>
+              <p>
+                <.term key="sha256">Loaded evaluator fingerprint</.term>:
+                <code>{@review["source"]["evaluator_id"]}</code>
+              </p>
+              <p>
+                Proof status is separate from example checks and human intent. Processor fencing and storage durability remain outside-world assumptions.
+              </p>
+            </details>
             <button
               type="button"
               id="source-toggle"
@@ -562,7 +703,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               </p>
               <ul>
                 <li :for={s <- @review["graph_snapshot"]["excerpts"]}>
-                  <button type="button" phx-click="source_select" phx-value-id={s["id"]}>{s["path"]}</button>
+                  <button type="button" phx-click="source_select" phx-value-id={s["id"]}><strong>{Glossary.source_title(
+                    s["path"]
+                  )}</strong><small>{s["path"]}</small></button>
                   <.link href={"/workbench/#{@review["id"]}/source/#{s["id"]}"} target="_blank">Full source</.link>
                 </li>
               </ul>
@@ -576,16 +719,20 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               <p>SHA-256 <code>{source_for(@review, @selected_source)["sha256"]}</code></p>
               <pre>{source_for(@review, @selected_source)["text"]}</pre>
             </div>
-            <h3>Three deliberate evidence boundaries</h3>
-            <ul class="boundary-list">
-              <li>Source AST determines Elixir pointwise law meaning.</li>
-              <li>Independent Lean checker reports determine formal status, when supplied.</li>
-              <li>Human + processor evidence determines adequacy and external premises.</li>
-            </ul>
+            <h3>What is checked by what</h3>
+            <dl class="evidence-boundaries">
+              <dt>What the rule means</dt><dd>The exact source expressions.</dd><dt>
+                Whether the proof was checked
+              </dt><dd>A separate Lean checker report, when attached.</dd><dt>
+                Whether this is enough in practice
+              </dt><dd>Your judgment and processor or storage evidence.</dd>
+            </dl>
           </aside>
           <section class="pane arena" aria-labelledby="probe-heading">
-            <p class="eyebrow">02 / ADVERSARIAL ARENA</p>
-            <h2 id="probe-heading">What happens if…?</h2>
+            <p class="eyebrow">Test</p>
+            <h2 id="probe-heading">Test the scenario</h2><p>
+              Edit the example and see what the rules say.
+            </p>
             <div class="fixture-strip" aria-label="Synthetic initial examples">
               <button
                 :for={seed <- Adversarial.seeds()}
@@ -593,11 +740,46 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 phx-click="choose_seed"
                 phx-value-seed={seed}
                 id={"load-#{seed}"}
-              >{seed}</button>
+              >{Glossary.scenario_title(seed)} <small>{seed}</small></button>
             </div>
             <p class="muted">
-              Start a fresh source-bound dossier with a preset (the current review remains unchanged). Presets are synthetic, never observed mutant outputs. Direct edits are provisional until pinned or judged.
+              Switching scenario starts a new review; your current one is kept. These are invented examples, not observed failures. Edits are temporary until you save the example or answer its question.
             </p>
+            <details class="field-help">
+              <summary>What do these fields mean?</summary>
+              <p>
+                All amounts are integer cents. A key is a remembered request identity and cannot be reused for a new hold.
+              </p>
+              <dl>
+                <dt>Starting state</dt><dd>
+                  <code>amount_limit</code>
+                  and <code>hold_limit</code>
+                  are the two limits; <code>used_amount</code>
+                  and <code>used_holds</code>
+                  are the totals in use. Each entry has a key, amount and status.
+                </dd><dt>Event</dt><dd>A type and, when needed, a key, amount or result.</dd><dt>
+                  Outcome
+                </dt><dd>
+                  <code>after</code>
+                  is the next state; <code>result</code>
+                  says what happened locally; <code>effects</code>
+                  lists requests for outside work.
+                </dd><dt>Next event</dt><dd>
+                  Optional event calculated from both outcomes. Use <code>null</code> to skip it.
+                </dd>
+              </dl>
+              <p>
+                <.term
+                  :for={status <- ~w(reserved sent unknown authorized voiding declined voided)}
+                  key={status}
+                />
+              </p>
+              <details>
+                <summary>Editor limits</summary><p>
+                  Typed JSON with integer values from 0 to 1,000,000 and at most eight entries or effects. Use the starting example as a template.
+                </p>
+              </details>
+            </details>
             <.form
               for={@draft_form}
               id="candidate-form"
@@ -608,28 +790,28 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 <.input
                   field={@draft_form[:before_json]}
                   type="textarea"
-                  label="Before state (typed JSON)"
+                  label="Starting state (typed JSON)"
                   rows="7"
                   phx-debounce="100"
                 />
                 <.input
                   field={@draft_form[:event_json]}
                   type="textarea"
-                  label="Event (request amount / key)"
+                  label="The event (typed JSON)"
                   rows="3"
                   phx-debounce="100"
                 />
                 <.input
                   field={@draft_form[:output_json]}
                   type="textarea"
-                  label="What-if full output (after / result / effects)"
+                  label="What-if outcome to judge (typed JSON)"
                   rows="10"
                   phx-debounce="100"
                 />
                 <.input
                   field={@draft_form[:follow_on_json]}
                   type="textarea"
-                  label="Follow-on event (or null)"
+                  label="Next event after that — optional (typed JSON)"
                   rows="3"
                   phx-debounce="100"
                 />
@@ -647,7 +829,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               />
               <input type="hidden" name="draft[card_id]" value={@selected_card_id} />
               <input type="hidden" name="draft[revealed_before_answer]" value={to_string(@revealed)} />
-              <label for="escape-reason">Reason (optional; required for deferral)</label>
+              <label for="escape-reason">Why? A reason helps the next reviewer. To defer, explain what is missing.</label>
               <textarea id="escape-reason" name="draft[reason]" maxlength="600" rows="2"></textarea>
               <p :if={@draft_error} id="draft-error" role="alert" class="notice-alert">
                 {@draft_error} · The matrix below, if shown, belongs to the last good input and is historical—not this invalid draft.
@@ -658,7 +840,11 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 role="status"
                 class="neutral-tag"
               >
-                Bounded witness valid · after-state Spec.valid?: {@details.candidate_after_valid?} · actual equals oracle: {@details.actual_equals_oracle?}
+                Your edited example is well-formed. Does the alternative end in a valid ledger state? {if @details.candidate_after_valid?,
+                  do: "Yes.",
+                  else: "No."} Does the real ledger match the reference? {if @details.actual_equals_oracle?,
+                  do: "Yes.",
+                  else: "No."}
               </p>
               <div
                 :if={@current_card && @current_card["kind"] == "escape"}
@@ -686,7 +872,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   value="unsure"
                   disabled={@draft_error != nil}
                   id="escape-unsure"
-                >Unsure</button>
+                >Not sure</button>
                 <button
                   type="submit"
                   name="draft[choice]"
@@ -700,24 +886,29 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   value="pin_only"
                   disabled={@draft_error != nil}
                   id="pin-candidate"
-                >Pin only</button>
+                >Save example only</button>
               </div>
             </.form>
+            <dl class="choice-legend">
+              <div :for={choice <- ~w(acceptable unacceptable unsure deferred pin_only)}>
+                <dt>{Glossary.label(choice)}</dt><dd>{Glossary.one_line(choice)}</dd>
+              </div>
+            </dl>
             <div :if={@evaluation} id="computed-contrast" class="comparison">
               <p :if={@draft_error} class="muted">
                 <b>Historical last-good evaluation only</b> · not the draft currently shown
               </p>
               <div>
-                <b>Actual reducer</b><pre>{Jason.encode!(@evaluation["actual"], pretty: true)}</pre>
+                <b>What the real ledger does (reducer)</b><pre>{Jason.encode!(@evaluation["actual"], pretty: true)}</pre>
               </div>
               <div>
-                <b>Independent Spec oracle</b><pre>{Jason.encode!(@evaluation["oracle"], pretty: true)}</pre>
+                <b>What the independent reference says (Spec/oracle)</b><pre>{Jason.encode!(@evaluation["oracle"], pretty: true)}</pre>
               </div>
               <div>
-                <b>Hypothetical (not executed)</b><pre>{if @draft_error, do: "Invalid draft; hypothetical unavailable", else: @draft["output_json"]}</pre>
+                <b>The what-if you are judging (locally calculated)</b><pre>{if @draft_error, do: "Invalid draft; hypothetical unavailable", else: @draft["output_json"]}</pre>
               </div>
               <div :if={@details && !@draft_error} id="diff-panel">
-                <b>Changed output dimensions</b>
+                <b>These outcomes differ in:</b>
                 <ul>
                   <li :for={diff <- @details.changed_fields}>{diff["field"]}: reducer ≠ what-if</li>
                 </ul>
@@ -728,7 +919,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               </div>
             </div>
             <section id="follow-on-area" aria-label="Second-Event Consequence">
-              <h3>Second-Event Consequence</h3>
+              <h3>What happens next?</h3><p>
+                We calculate one more event from each outcome to see the knock-on effect, such as whether a new request can be admitted.
+              </p>
               <%= if @evaluation && @evaluation["follow_on_actual"] == nil && @evaluation["follow_on_candidate"] == nil && (@details == nil || @details.follow_reason == :no_follow_on_event) do %>
                 <p id="no-follow-on" class="muted">No follow-on event selected for this probe.</p>
               <% else %>
@@ -748,7 +941,13 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               <% end %>
             </section>
             <section id="catcher-matrix" class="matrix">
-              <h3>Active supported DSL pointwise checks</h3>
+              <h3>What the rules say about this example</h3><button type="button" phx-click="reveal">I’ve made my prediction — show what the rules say</button><p>
+                Recording whether you looked first helps keep your judgment honest.
+              </p><dl class="matrix-legend">
+                <div :for={key <- ~w(catches allows_here does_not_apply cant_check)}>
+                  <dt>{status_label(key)}</dt><dd>{Glossary.one_line(key)}</dd>
+                </div>
+              </dl>
               <p class="muted">
                 Catches · Allows here · Doesn't apply · Can't check. Every result is for named bindings only; the rest of the full catalog is unexamined.
               </p>
@@ -760,12 +959,20 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 </thead>
                 <tbody>
                   <tr :for={row <- if(@evaluation, do: @evaluation["law_rows"], else: [])}>
-                    <td>{row["slug"]}</td><td>
-                      <span class={"status status-#{row["label"]}"}>{status_label(row["label"])}</span><small>{row[
-                        "reason"
-                      ]}</small>
+                    <td>
+                      <strong>{Glossary.law_description(row["slug"])}</strong><small>{row["slug"]}</small>
                     </td><td>
-                      {row["bindings_tested"]} · complete: {row["exhaustive_for_source_domain"]}
+                      <span class={"status status-#{row["label"]}"}>{status_label(row["label"])}</span><details>
+                        <summary>Why this result?</summary><code>{row["reason"]}</code>
+                      </details>
+                    </td><td>
+                      Tested {row["bindings_tested"]} combinations of values · {if row[
+                                                                                     "exhaustive_for_source_domain"
+                                                                                   ],
+                                                                                   do:
+                                                                                     "covers all of them",
+                                                                                   else:
+                                                                                     "only some of them"}
                     </td>
                   </tr>
                 </tbody>
@@ -775,7 +982,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 type="button"
                 phx-click="toggle_matrix"
                 aria-expanded={@matrix_open}
-              >All matrix diagnostics</button>
+              >Raw technical output (also reveals analysis)</button>
               <pre :if={@matrix_open && @details} id="matrix-diagnostics">{inspect(@details.checks, pretty: true, limit: 500)}</pre>
               <p class="muted">
                 Formal native Lean obligations are <b>not a pointwise DSL probe</b>; open the design map for the full remainder and independent checker state.
@@ -785,9 +992,69 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <aside class="pane decision" aria-labelledby="decision-heading">
             <p class="eyebrow">03 / HUMAN DECISION</p>
             <h2 id="decision-heading">Your judgment</h2>
-            <p class="muted">
-              One focused question at a time. Every answer is attributed to a human, with supersession and a pinned witness when required.
-            </p>
+            <p>Answer one question at a time. Revisions keep the earlier answer in your history.</p>
+            <%= if @current_card do %>
+              <article id="active-question" class="active-question">
+                <p class="eyebrow">
+                  {Glossary.label(@current_card["kind"])} · {if(@current_card["critical"],
+                    do: "critical: #{@current_card["critical_reason"]}",
+                    else: "scoped review"
+                  )}
+                </p>
+                <h3>{@current_card["question"]}</h3>
+                <p>{Glossary.one_line(@current_card["kind"])}</p><p>
+                  <b>Why it matters:</b> {if @current_card["critical"],
+                    do: @current_card["critical_reason"],
+                    else: "Your answer defines what this review can conclude."}
+                </p><p>
+                  Look at the scenario, computed comparison and exact source in the reference pane.
+                </p><details>
+                  <summary>Question reference</summary><code>{@current_card["target_node_id"]}</code>
+                </details>
+                <button id="reveal-analysis" type="button" phx-click="reveal">I’ve made my prediction — show what the rules say</button>
+                <p :if={@revealed} class="neutral-tag">Analysis was revealed before this answer.</p>
+                <div
+                  :if={last_answer(@review, @current_card["id"])}
+                  id="latest-answer"
+                  data-choice={last_answer(@review, @current_card["id"])["choice"]}
+                >
+                  <b>Latest: {Glossary.label(last_answer(@review, @current_card["id"])["choice"])}</b>
+                  <p>{implication(@review, @current_card)}</p><small>{last_answer(
+                    @review,
+                    @current_card["id"]
+                  )["choice"]} · You may revise; history remains.</small>
+                </div>
+                <%= if @current_card["kind"] == "escape" do %>
+                  <p>
+                    Use the buttons under the example in Test the scenario. Your answer saves the complete example and its computed results together.
+                  </p>
+                <% else %>
+                  <.form for={@answer_form} id="card-answer-form" phx-submit="answer_card">
+                    <label for="card-reason">Reason / source correction</label>
+                    <.input
+                      field={@answer_form[:reason]}
+                      id="card-reason"
+                      type="textarea"
+                      rows="3"
+                      maxlength="600"
+                    />
+                    <div class="answer-actions">
+                      <button
+                        :for={choice <- Dossier.choices(@current_card["kind"])}
+                        type="submit"
+                        name="judgment[choice]"
+                        value={choice}
+                      >{Glossary.label(choice)}</button>
+                    </div>
+                    <dl class="choice-legend">
+                      <div :for={choice <- Dossier.choices(@current_card["kind"])}>
+                        <dt>{Glossary.label(choice)}</dt><dd>{Glossary.one_line(choice)}</dd>
+                      </div>
+                    </dl>
+                  </.form>
+                <% end %>
+              </article>
+            <% end %>
             <nav id="question-nav" aria-label="Review questions" class="card-nav">
               <button
                 :for={card <- cards(@review)}
@@ -802,19 +1069,75 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 phx-click="select_card"
                 phx-value-id={card["id"]}
               >
-                <span>{card["kind"]} {if(card["mandatory"], do: "· required", else: "")}</span>
+                <strong>{Glossary.label(card["kind"])}</strong><span>{if(card["mandatory"],
+                  do: "Required",
+                  else: "Optional"
+                )} <small>{card["kind"]}</small></span>
                 <small>{if(last_answer(@review, card["id"]),
-                  do: last_answer(@review, card["id"])["choice"],
-                  else: "open"
+                  do: "Answered: " <> Glossary.label(last_answer(@review, card["id"])["choice"]),
+                  else: "Not answered"
                 )}</small>
               </button>
             </nav>
-            <section
+            <section id="review-summary" class="review-summary">
+              <h3>Conclude this review</h3><p>
+                Confirming locks this review and includes your scoped conclusion in the export. You can export an unfinished review too.
+              </p><dl class="choice-legend">
+                <div :for={
+                  outcome <-
+                    ~w(needs_policy_or_evidence needs_design_change meets_intent_in_reviewed_scope)
+                }>
+                  <dt>{Glossary.label(outcome)}</dt><dd>{Glossary.one_line(outcome)}</dd>
+                </div>
+              </dl><ul class="required-checklist">
+                <li :for={card <- cards(@review)} :if={card["mandatory"]}>
+                  Required: {Glossary.label(card["kind"])} — {if last_answer(@review, card["id"]),
+                    do: Glossary.label(last_answer(@review, card["id"])["choice"]),
+                    else: "Not answered"}
+                </li>
+              </ul>
+              <p>
+                Review can be exported unfinished. Mandatory/critical questions must be answered or explicitly deferred before concluding. Material deferrals cannot support a positive outcome.
+              </p>
+              <.form for={@finish_form} id="finish-form" phx-submit="finish_review">
+                <.input
+                  field={@finish_form[:scope]}
+                  type="textarea"
+                  label="What this conclusion covers (policy references below)"
+                  rows="2"
+                  value={Enum.join(@review["target_policy_nodes"], ", ")}
+                />
+                <.input
+                  field={@finish_form[:rationale]}
+                  type="textarea"
+                  label="Human rationale (required)"
+                  rows="2"
+                />
+                <label for="review-outcome">Choose one explicit outcome</label>
+                <select id="review-outcome" name="finish[outcome]">
+                  <option value="needs_policy_or_evidence">Needs policy or evidence</option>
+                  <option value="needs_design_change">Needs design change</option>
+                  <option value="meets_intent_in_reviewed_scope">
+                    Meets intent in reviewed scope
+                  </option>
+                </select>
+                <button
+                  type="submit"
+                  disabled={@review["status"] != "in_progress"}
+                  id="confirm-finish"
+                >Confirm human conclusion</button>
+              </.form>
+              <p :if={@review["review_conclusion"]}>
+                <b>Human conclusion:</b> {Glossary.label(@review["review_conclusion"]["outcome"])}
+                <small>{@review["review_conclusion"]["outcome"]}</small>
+              </p>
+            </section>
+            <details
               id="ai-collaboration"
               class="ai-panel"
               aria-label="Optional configured model assistance"
             >
-              <h3>AI discovery and challenge · optional</h3>
+              <summary>Optional: ask an AI to suggest questions or counter-examples</summary>
               <p class="muted">
                 Source-only discovery precedes answers; challenge sends the displayed draft;
                 follow-up sends the selected card's recorded human answer and computed evidence.
@@ -870,7 +1193,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               <ol id="ai-job-history" class="ai-job-list">
                 <li :for={job <- @review["ai_jobs"]} id={"ai-job-#{job["job_id"]}"}>
                   <strong>{job["request_kind"]}</strong>
-                  · {job["status"]}
+                  · <.term key={job["status"]} />
                   <span :if={job["error_class"]}>· {job["error_class"]}</span>
                   <%= if job["status"] == "complete" && is_map(job["validated_output"]) do %>
                     <div :if={job["request_kind"] == "deck"} class="ai-results">
@@ -888,13 +1211,13 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                       <h4>Model hypotheses and readings · unapproved proposals</h4>
                       <p :for={item <- job["validated_output"]["deck"]["intent_hypotheses"]}>
                         <b>{item["statement"]}</b> — {item["distinguishing_question"]}
-                        <small>Source IDs: {Enum.join(item["source_ids"], ", ")}</small>
+                        <small>Sources: {source_names(@review, item["source_ids"])}</small>
                       </p>
                       <p :for={reading <- job["validated_output"]["deck"]["readings"]}>
                         <b>{reading["claim_slug"]}</b>: {reading["summary"]}
-                        <small>Not asserted: {reading["not_claimed"]}. Sources: {Enum.join(
-                          reading["source_ids"],
-                          ", "
+                        <small>Not asserted: {reading["not_claimed"]}. Sources: {source_names(
+                          @review,
+                          reading["source_ids"]
                         )}</small>
                       </p>
                       <div
@@ -902,7 +1225,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                         class="muted"
                       >
                         Open: {unknown["question"]} · Needed: {unknown["missing_evidence"]}.
-                        Sources: {Enum.join(unknown["source_ids"], ", ")}
+                        Sources: {source_names(@review, unknown["source_ids"])}
                       </div>
                       <p class="muted">
                         Duplicate suggestions withheld: {job["validated_output"]["deduplicated_count"]}.
@@ -912,9 +1235,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                       <h4>Typed AI hypothetical · not pinned</h4>
                       <p>{job["validated_output"]["challenge"]["selection_reason"]}</p>
                       <p class="muted">
-                        Source IDs: {Enum.join(
-                          job["validated_output"]["challenge"]["source_ids"],
-                          ", "
+                        Sources: {source_names(
+                          @review,
+                          job["validated_output"]["challenge"]["source_ids"]
                         )}
                       </p>
                       <p>Computed result is pointwise, not a proof verdict.</p>
@@ -932,9 +1255,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                       <p>{job["validated_output"]["followup"]["explanation"]}</p>
                       <p class="muted">{job["validated_output"]["followup"]["uncertainty"]}</p>
                       <p class="muted">
-                        Source IDs: {Enum.join(
-                          job["validated_output"]["followup"]["source_ids"],
-                          ", "
+                        Sources: {source_names(
+                          @review,
+                          job["validated_output"]["followup"]["source_ids"]
                         )}
                       </p>
                     </div>
@@ -945,9 +1268,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 <h4>Suggestions (AI) · accept deliberately</h4>
                 <ul id="ai-suggestions" class="ai-job-list">
                   <li :for={card <- @review["suggested_ai_cards"]} id={"suggest-#{card["id"]}"}>
-                    <b>{card["kind"]}</b>
+                    <b>{Glossary.label(card["kind"])}</b>
                     · {card["question"]}
-                    <p class="muted">Source: {Enum.join(card["source_ids"], ", ")}</p>
+                    <p class="muted">Source: {source_names(@review, card["source_ids"])}</p>
                     <button
                       type="button"
                       phx-click="accept_ai_card"
@@ -957,85 +1280,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   </li>
                 </ul>
               <% end %>
-            </section>
-            <%= if @current_card do %>
-              <article id="active-question" class="active-question">
-                <p class="eyebrow">
-                  {@current_card["kind"]} · {if(@current_card["critical"],
-                    do: "critical: #{@current_card["critical_reason"]}",
-                    else: "scoped review"
-                  )}
-                </p>
-                <h3>{@current_card["question"]}</h3>
-                <p>Source node: {@current_card["target_node_id"]}</p>
-                <button id="reveal-analysis" type="button" phx-click="reveal">Reveal analysis first</button>
-                <p :if={@revealed} class="neutral-tag">Analysis was revealed before this answer.</p>
-                <p :if={last_answer(@review, @current_card["id"])} id="latest-answer">
-                  <b>Latest:</b> {last_answer(@review, @current_card["id"])["choice"]} (you may revise; history remains)
-                </p>
-                <%= if @current_card["kind"] == "escape" do %>
-                  <p>
-                    Answer using the current whole witness form in the arena. A changed output and its computed law result will be committed together in one write.
-                  </p>
-                <% else %>
-                  <.form for={@answer_form} id="card-answer-form" phx-submit="answer_card">
-                    <label for="card-reason">Reason / source correction</label>
-                    <.input
-                      field={@answer_form[:reason]}
-                      id="card-reason"
-                      type="textarea"
-                      rows="3"
-                      maxlength="600"
-                    />
-                    <div class="answer-actions">
-                      <button
-                        :for={choice <- Dossier.choices(@current_card["kind"])}
-                        type="submit"
-                        name="judgment[choice]"
-                        value={choice}
-                      >{choice}</button>
-                    </div>
-                  </.form>
-                <% end %>
-              </article>
-            <% end %>
-            <section id="review-summary" class="review-summary">
-              <h3>Scoped review conclusion</h3>
-              <p>
-                Review can be exported unfinished. Mandatory/critical questions must be answered or explicitly deferred before concluding. Material deferrals cannot support a positive outcome.
-              </p>
-              <.form for={@finish_form} id="finish-form" phx-submit="finish_review">
-                <.input
-                  field={@finish_form[:scope]}
-                  type="textarea"
-                  label="Named policy scope"
-                  rows="2"
-                  value={Enum.join(@review["target_policy_nodes"], ", ")}
-                />
-                <.input
-                  field={@finish_form[:rationale]}
-                  type="textarea"
-                  label="Human rationale (required)"
-                  rows="2"
-                />
-                <label for="review-outcome">Choose one explicit outcome</label>
-                <select id="review-outcome" name="finish[outcome]">
-                  <option value="needs_policy_or_evidence">Needs policy or evidence</option>
-                  <option value="needs_design_change">Needs design change</option>
-                  <option value="meets_intent_in_reviewed_scope">
-                    Meets intent in reviewed scope
-                  </option>
-                </select>
-                <button
-                  type="submit"
-                  disabled={@review["status"] != "in_progress"}
-                  id="confirm-finish"
-                >Confirm human conclusion</button>
-              </.form>
-              <p :if={@review["review_conclusion"]}>
-                <b>Human conclusion:</b> {@review["review_conclusion"]["outcome"]}
-              </p>
-            </section>
+            </details>
           </aside>
         </div>
       <% end %>
