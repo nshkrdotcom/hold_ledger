@@ -6,8 +6,17 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
   attr :reading, :map, required: true
   attr :basis, :string, default: "candidate"
   attr :helper, :map, default: nil
+  attr :binding_index, :integer, default: 0
 
   def dissector(assigns) do
+    bindings = if assigns.case, do: assigns.case["explanation"]["bindings"], else: []
+
+    assigns =
+      assign(assigns,
+        bindings: bindings,
+        binding_index: min(assigns.binding_index, max(length(bindings) - 1, 0))
+      )
+
     ~H"""
     <section class="instrument" id="dissector">
       <header>
@@ -17,6 +26,30 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         Native Lean statement. No executable Elixir counterpart.
       </p>
       <div :if={@case}>
+        <p id="binding-count">
+          {length(@bindings)} source-derived bindings · all remain part of this case result
+        </p>
+        <.form
+          :if={length(@bindings) > 1}
+          for={to_form(%{"index" => @binding_index})}
+          id="binding-choice"
+          phx-change="select_binding"
+        >
+          <.input
+            name="index"
+            value={@binding_index}
+            type="select"
+            label="Inspect binding"
+            options={
+              Enum.map(Enum.with_index(@bindings), fn {binding, index} ->
+                {"#{index + 1}: " <>
+                   Enum.map_join(binding["values"], ", ", fn {name, value} ->
+                     name <> "=" <> term(value)
+                   end), index}
+              end)
+            }
+          />
+        </.form>
         <div class="segmented" aria-label="Output being inspected">
           <button
             phx-click="basis"
@@ -30,7 +63,8 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
           >Hypothetical output</button>
         </div>
         <article
-          :for={{binding, index} <- Enum.with_index(@case["explanation"]["bindings"])}
+          :for={{binding, index} <- Enum.with_index(@bindings)}
+          :if={index == @binding_index}
           class="binding"
           id={"binding-#{index}"}
         >
@@ -101,50 +135,19 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
   attr :binding, :integer, required: true
 
   def clause_table(assigns) do
-    assigns = assign(assigns, :clauses, frontier(assigns.node))
-
     ~H"""
     <section class="clause-table">
       <h3>{@title} <.truth value={@node["value"]} /></h3>
-      <.logic node={@node} />
-      <div class="operand-detail">
-        <table>
-          <thead>
-            <tr>
-              <th>Source expression</th><th>Values</th><th>Result</th>
-            </tr>
-          </thead><tbody>
-            <tr
-              :for={{node, index} <- Enum.with_index(@clauses)}
-              data-expression={node["expression"]}
-              data-result={inspect(node["value"])}
-            >
-              <td>
-                <code>{short(node["expression"])}</code><button
-                  :if={expandable?(node) && @phase != "helper"}
-                  class="text-button"
-                  phx-click="helper"
-                  phx-value-phase={@phase}
-                  phx-value-binding={@binding}
-                  phx-value-index={index}
-                >Definition</button>
-              </td>
-              <td class="operand-values">{operands(node)}</td>
-              <td>
-                <span :if={node["status"] == "not_evaluated"} class="muted">not evaluated</span><.truth
-                  :if={node["status"] != "not_evaluated"}
-                  value={node["value"]}
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <.logic node={@node} root={@node} phase={@phase} binding={@binding} />
     </section>
     """
   end
 
   attr :node, :map, required: true
+
+  attr :root, :map, required: true
+  attr :phase, :string, required: true
+  attr :binding, :integer, required: true
 
   def logic(assigns) do
     op = operator(assigns.node)
@@ -164,7 +167,15 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             @node["value"]
           } />
         </div>
-        <div class="logic-children"><.logic :for={child <- @children} node={child} /></div>
+        <div class="logic-children">
+          <.logic
+            :for={child <- @children}
+            node={child}
+            root={@root}
+            phase={@phase}
+            binding={@binding}
+          />
+        </div>
       </div>
       <div
         :if={
@@ -173,8 +184,19 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         }
         class="logic-leaf"
       >
-        <code>{String.replace(@node["expression"], "HoldLedger.", "")}</code>
+        <code>{@node["expression"]}</code>
         <strong :if={inline_values(@node, @op)} class="inline-values">{inline_values(@node, @op)}</strong>
+        <div :if={!inline_values(@node, @op) && operands(@node) != ""} class="inline-values">
+          {operands(@node)}
+        </div>
+        <button
+          :if={expandable?(@node) && @phase != "helper"}
+          class="text-button"
+          phx-click="helper"
+          phx-value-phase={@phase}
+          phx-value-binding={@binding}
+          phx-value-path={Enum.join(node_path(@root, @node) || [], ".")}
+        >Definition</button>
         <span :if={@node["status"] != "not_evaluated"}><.truth value={@node["value"]} /></span><span :if={
           @node["status"] == "not_evaluated"
         }>Not evaluated</span>
@@ -183,7 +205,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         :if={@helpers != [] && @node["status"] != "not_evaluated"}
         class="helper-logic"
       >
-        <.logic :for={child <- @helpers} node={child} />
+        <.logic :for={child <- @helpers} node={child} root={@root} phase={@phase} binding={@binding} />
       </div>
     </div>
     """
@@ -257,33 +279,17 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     """
   end
 
-  def frontier(nil), do: []
+  defp node_path(node, node), do: []
 
-  def frontier(%{"helper" => helper, "children" => children}) when helper != nil,
-    do: Enum.flat_map(children, &frontier/1)
-
-  def frontier(%{"expression" => expression, "children" => [child]} = node) do
-    if String.contains?(expression, "request_eligible?") or
-         String.contains?(expression, "exposed_entry?"), do: frontier(child), else: [node]
-  end
-
-  def frontier(%{"expression" => expression, "children" => children} = node) do
-    cond do
-      node["status"] == "not_evaluated" ->
-        [node]
-
-      node["helper"] != nil ->
-        Enum.flat_map(children, &frontier/1)
-
-      String.starts_with?(expression, "if ") or String.starts_with?(expression, "case ") ->
-        Enum.flat_map(children, &frontier/1)
-
-      String.contains?(expression, " and ") or String.contains?(expression, " or ") ->
-        Enum.flat_map(children, &frontier/1)
-
-      true ->
-        [node]
-    end
+  defp node_path(root, target) do
+    root["children"]
+    |> Enum.with_index()
+    |> Enum.find_value(fn {child, index} ->
+      case node_path(child, target) do
+        nil -> nil
+        path -> [index | path]
+      end
+    end)
   end
 
   defp expandable?(node), do: Enum.any?(node["children"], &(&1["helper"] != nil))
@@ -293,8 +299,6 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     |> Enum.reject(&(&1["helper"] != nil))
     |> Enum.map_join(" · ", &term(&1["value"]))
   end
-
-  defp short(text), do: String.replace(text, "HoldLedger.", "")
 
   def term(true), do: "true"
   def term(false), do: "false"

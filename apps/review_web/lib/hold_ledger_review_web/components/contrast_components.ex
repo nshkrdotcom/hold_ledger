@@ -23,13 +23,13 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         </p>
         <div class="output-pair">
           <.output
-            title="Ledger"
+            title="Executed checkout"
             output={if @case, do: @case["actual"], else: @step["output"]}
             id="ledger-output"
           />
           <.output
             :if={@case}
-            title="Hypothetical"
+            title="Drafted outcome · not executed"
             output={@case["candidate"]}
             id="hypothetical-output"
           />
@@ -37,34 +37,62 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         <p :if={@invalid} id="invalid-candidate" role="alert">
           Invalid candidate. No candidate verdict is shown.
         </p>
-        <div class="mutation-chips" id="candidate-mutations">
-          <button phx-click="mutate_candidate" phx-value-kind="drop_effects">Drop effects</button>
-          <button phx-click="mutate_candidate" phx-value-kind="zero_counters">Zero counters</button>
-          <button phx-click="mutate_candidate" phx-value-kind="change_identity">Change first identity</button>
-          <button phx-click="candidate_recalculate" id="recalculate-inline">Recalculate totals</button>
-        </div>
-        <div class="action-row">
-          <button phx-click="early_release" id="early-release">Premature release</button><button phx-click="restore_candidate">Use Ledger output</button><button
-            phx-click="edit_candidate"
-            id="edit-candidate"
-          >Structured / JSON editor</button><button
-            phx-click="inspect_law"
-            phx-value-slug="po_exposure_retain"
-            id="inspect-retention"
-          >Inspect retention</button>
-        </div>
-        <div class="action-row">
-          <button
-            phx-click="branch_candidate"
-            id="branch-candidate"
-            disabled={!@case || !@case["candidate_valid"]}
-          >Continue hypothetical branch</button>
-        </div>
+        <button id="edit-candidate" phx-click="edit_candidate">Change drafted output…</button>
         <p class="scope-note">
-          Reference: {@step["oracle"]["result"]}. Hypothetical output ≠ observed behavior.
+          Reference: {@step["oracle"]["result"]}. Drafted outcomes are evaluated against the current checkout claim. They are not proposed-source executions.
         </p>
       </div>
       <p :if={@step && !@step["output"]}>Coupled model step. Remote records are shown below.</p>
+    </section>
+    """
+  end
+
+  attr :case, :map, default: nil
+  attr :step, :map, default: nil
+  attr :preview, :any, default: nil
+
+  def draft_tools(assigns) do
+    ~H"""
+    <section id="draft-tools">
+      <h3>Try a change · no history write</h3>
+      <div class="mutation-chips" id="candidate-mutations">
+        <button phx-click="mutate_candidate" phx-value-kind="drop_effects">Drop effects</button>
+        <button phx-click="mutate_candidate" phx-value-kind="zero_counters">Zero counters</button>
+        <button phx-click="mutate_candidate" phx-value-kind="change_identity">Change first identity</button>
+        <button phx-click="candidate_recalculate" id="recalculate-inline">Recalculate totals</button>
+      </div>
+      <div class="action-row">
+        <button phx-click="early_release" id="early-release">Premature release</button><button phx-click="restore_candidate">Use Ledger output</button><button
+          phx-click="show_advanced"
+          id="advanced-editor"
+        >Full state / JSON editor</button><button
+          phx-click="inspect_law"
+          phx-value-slug="po_exposure_retain"
+          id="inspect-retention"
+        >Inspect retention</button>
+      </div>
+      <div class="action-row">
+        <button
+          phx-click="branch_candidate"
+          id="branch-candidate"
+          disabled={!@case || !@case["candidate_valid"] || @preview != nil}
+        >Record hypothetical branch</button>
+      </div>
+      <p :if={@preview} class="scope-note">
+        Save the active input before recording a hypothetical branch.
+      </p>
+    </section>
+    """
+  end
+
+  attr :case, :map, default: nil
+  attr :editor, :string, default: nil
+  attr :candidate_form, :any, default: nil
+  attr :initial_form, :any, default: nil
+
+  def editors(assigns) do
+    ~H"""
+    <section id="structured-editors">
       <div :if={@editor == "candidate" && @candidate_form} id="candidate-editor">
         <.form
           for={@candidate_form}
@@ -143,11 +171,11 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   def verdict(assigns) do
     ~H"""
     <section id="verdict" class="verdict-panel">
-      <h2>Does this output satisfy the law?</h2>
+      <h2>Draft check · current checkout</h2>
       <table :if={@case} id="contrast-matrix">
         <thead>
           <tr>
-            <th>Check</th><th>Ledger</th><th>Hypothetical</th>
+            <th>Check</th><th>Executed checkout</th><th>Draft · not run</th>
           </tr>
         </thead><tbody>
           <tr id="validity-row">

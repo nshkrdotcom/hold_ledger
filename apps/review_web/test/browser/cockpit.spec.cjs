@@ -13,13 +13,14 @@ async function tab(page,name) {
 async function inspect(page) { await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/); }
 async function event(page,type,key='2',amount='100') {
   await inspect(page);
-  if((await page.locator('#event-builder').getAttribute('open'))===null)await page.locator('#event-builder > summary').click();
+  await page.locator('#record-event').click();
   const revision=await page.locator('#trace-revision').innerText();
   await page.locator('#event_type').selectOption(type);
   if(type!=='restart') await page.locator('#event_key').fill(key);
   if(type==='request') await page.locator('#event_amount').fill(amount);
   await page.locator('#apply-event').click();
   await expect(page.locator('#trace-revision')).not.toHaveText(revision);
+  await page.locator('#close-tools').click();
 }
 
 test('early release: valid accounting is distinct from required retention',async({page})=>{
@@ -46,7 +47,7 @@ test('the same output passes validity; inspect its helper definition',async({pag
   await page.locator('#dissector').getByRole('button',{name:'Definition',exact:true}).first().click();
   await expect(page.locator('#helper-definition')).toContainText('Definition on these values');
   await page.locator('#helper-definition').getByRole('button',{name:'Close',exact:true}).click();
-  await tab(page,'outputs');await page.locator('#inspect-retention').click();
+  await tab(page,'outputs');await page.locator('#edit-candidate').click();await page.locator('#inspect-retention').click();await page.locator('#close-tools').click();
   await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('false');
 });
 
@@ -56,8 +57,8 @@ test('99, 100 and 101 expose actual eligibility operands and outside-domain sile
     await page.locator('#timeline button').first().click();
     await event(page,'request','11',amount);
     await tab(page,'clauses');
-    const clause=page.locator('#dissector tr').filter({hasText:'amount <= amount_limit - used_amount'});
-    await expect(clause).toContainText(amount+' · 100');
+    const clause=page.locator('#dissector .logic-leaf').filter({hasText:'amount <= amount_limit - used_amount'});
+    await expect(clause).toContainText(amount+' ≤ 100');
     await expect(clause).toContainText(amount==='101'?'false':'true');
     await tab(page,'outputs');
     if(amount==='101') {
@@ -73,7 +74,9 @@ test('full actual proof source stays beside selected source stage',async({page})
   await expect(page.locator('#proof-source-workspace')).toContainText('po_exposure_retain');
   await page.locator('#proof-source-workspace .proof-source-stages button').last().click();
   await expect(page.locator('.active-proof-line').first()).toBeVisible();
-  await expect.poll(()=>page.locator('#proof-script').evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
+  await expect(page.locator('.active-proof-line').first()).toBeInViewport();
+  expect(await page.locator('#proof-script > div').count()).toBeGreaterThan(40);
+  expect(await page.locator('#proof-script').evaluate(el=>el.scrollHeight<=el.clientHeight+1)).toBe(true);
   const link=page.locator('#lemma-links a').first();
   const response=await page.request.get(await link.getAttribute('href'));expect(response.status()).toBe(200);
   const stale=await page.request.get((await link.getAttribute('href')).replace(/[a-f0-9]{64}$/,'0'.repeat(64)));expect(stale.status()).toBe(404);
@@ -81,7 +84,7 @@ test('full actual proof source stays beside selected source stage',async({page})
 });
 
 test('hypothetical early release changes the next request; actual branch is retained',async({page})=>{
-  await open(page);await tab(page,'outputs');await page.locator('#edit-candidate').click();await page.locator('#branch-candidate').click();
+  await open(page);await tab(page,'outputs');await page.locator('#edit-candidate').click();await page.locator('#branch-candidate').click();await page.locator('#close-tools').click();
   await expect(page.locator('#hypothetical-lineage')).toBeVisible();
   await event(page,'request');await expect(page.locator('#ledger-output')).toContainText('admitted');
   await expect(page.locator('#hypothetical-lineage')).toBeVisible();
@@ -92,6 +95,7 @@ test('hypothetical early release changes the next request; actual branch is reta
 
 test('structured candidate and JSON round trip keep inconsistent totals until recalculation',async({page})=>{
   await open(page);await tab(page,'outputs');await page.locator('#edit-candidate').click();
+  await page.locator('#advanced-editor').click();
   await page.locator('#output_used_amount').fill('50');
   await expect(page.locator('#validity-row td').nth(2)).toHaveText('false');
   await expect(page.locator('#branch-candidate')).toBeDisabled();
@@ -125,7 +129,7 @@ test('timeline supports keyboard selection and preserves branches',async({page})
 });
 
 test('coupled model separates remote delivery, observation and terminal fencing',async({page})=>{
-  await open(page);await page.locator('#coupled-model').click();
+  await open(page);await page.locator('#record-event').click();await page.locator('#coupled-model').click();
   await expect(page).toHaveURL(/po_exposure_model/);
   await inspect(page);
   await expect(page.locator('#remote-state')).toBeVisible();
@@ -147,10 +151,10 @@ test('two tabs preserve CAS conflict and reconnect source identity',async({page,
   await page.locator('#note_text').fill('Check actual processor evidence.');await page.locator('#note-form button').click();
   await right.locator('#note_text').fill('Stale reviewer edit.');await right.locator('#note-form button').click();
   await expect(right.locator('[role=alert]')).toContainText('Another tab');
-  await right.reload();await tab(right,'record');await expect(right.locator('#session-record')).toContainText('Check actual processor evidence.');
+  await right.reload();await tab(right,'record');await expect(right.locator('#review-history')).toContainText('Check actual processor evidence.');
   await right.evaluate(()=>window.liveSocket.disconnect());await right.evaluate(()=>window.liveSocket.connect());
   await expect(right.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  await expect(right.locator('#session-record')).toContainText('Check actual processor evidence.');
+  await expect(right.locator('#review-history')).toContainText('Check actual processor evidence.');
 });
 
 test('mobile stays within viewport and requests no provider',async({page})=>{

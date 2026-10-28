@@ -2,7 +2,7 @@ defmodule HoldLedgerReviewWeb.ShellTest do
   use HoldLedgerReviewWeb.ConnCase
 
   test "claim engine starts without opening a ledger server", %{conn: conn} do
-    assert response(get(conn, ~p"/"), 200) =~ "What does this change allow?"
+    assert response(get(conn, ~p"/"), 200) =~ "Review guarantee"
     assert Process.whereis(HoldLedgerReview.Claims)
     assert Process.whereis(HoldLedger.Server) == nil
   end

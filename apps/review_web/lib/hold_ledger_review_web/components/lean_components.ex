@@ -5,6 +5,8 @@ defmodule HoldLedgerReviewWeb.LeanComponents do
 
   attr :reading, :map, required: true
 
+  attr :show_status, :boolean, default: true
+
   def assumptions(assigns) do
     ~H"""
     <section class="instrument" id="assumptions">
@@ -18,7 +20,7 @@ defmodule HoldLedgerReviewWeb.LeanComponents do
         "policy"
       ]["line"]} ↗</a>
       <p :if={@reading["omits"]} class="omission" id="omission">{@reading["omits"]}</p>
-      <dl class="evidence-status">
+      <dl :if={@show_status} class="evidence-status">
         <dt>Focused Lean elaboration</dt><dd id="focused-status">{@reading["focused"]["status"]}</dd><dt>
           Required full gate
         </dt><dd id="formal-status">{@reading["formal"]["status"]}</dd><dt>

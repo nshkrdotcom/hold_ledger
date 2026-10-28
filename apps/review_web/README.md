@@ -7,7 +7,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Explore a law while keeping its concrete case and proof context visible. The workspace places the contract and operands on the left, the active transition and candidate output in the center, and the verdict and evidence inspector on the right. A compact timeline records branches above them.
+Review a guarantee through a concrete ledger case. The page shows the requirement and changed condition first, then the input, executed output and a drafted alternative. Source coverage and candidate checks appear beside the case. Proof source, clause observations and external assumptions follow below.
 
 The default admission example changes `amount <= remaining` to `amount < remaining`. At exact fit, the illustrated proposal stops covering the input while the checkout still admits it. Attach two trusted local snapshots to replace that illustration with an actual source comparison and isolated replay.
 
@@ -27,43 +27,38 @@ uv run --locked python scripts/local_run.py --cwd apps/review_web mix phx.server
 
 Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `100` means one dollar.
 
-## Explore one connected case
+## Explore a case
 
-The three columns remain together on desktop and stack on narrow screens:
+Choose a law in the top bar. Read its policy source and changed condition, then adjust the active input with **Below / Exact fit / Above** or an amount. The outputs and clause observations update without changing saved history. **Save case** records that input; **Discard** restores the selected recorded case.
 
-| Instrument | What it does |
+The findings distinguish two comparisons:
+
+| Comparison | Question |
 |---|---|
-| Contract and clauses | Shows the changed condition, original claim expressions, bound values and AND / OR / NOT structure. Helper inspection stays within the workspace. |
-| Active transition | Shows the starting account, event controls and actual versus hypothetical output. Boundary controls change the active case. |
-| Verdict and evidence | Keeps state validity and the selected law beside the candidate. The inspector opens proof source, premises or notes without replacing the case. |
+| Source coverage | Does each source version's claim cover this input? What did its isolated execution return? |
+| Executed checkout / drafted outcome | Does this checkout's claim permit the deliberately drafted output? |
 
-Use **Below / Exact fit / Above** or enter an amount. A **transient branch** appears on the timeline, and the account, outputs, clause evaluation and replay use that same input. This writes no history. **Append this case to trace** keeps it; **Discard** restores the recorded case. Selecting a recorded event leaves the transient branch.
+The default source comparison is a labeled illustration. Attach a trusted local source pair for actual isolated executions. A precondition excluding an input does not tell you that the implementation rejects it. A contract accepting a drafted output does not tell you that the implementation produces it.
 
-Precondition applicability, candidate permission and actual execution answer different questions. A failed precondition does not mean that the implementation rejects the input. For real two-source replay, **Choose local source pair** selects registered trusted snapshots. The replay action explains this prerequisite inline.
+**Change drafted output…** opens the secondary tools. Remove an effect, zero counters, change an identity, or use the complete state / JSON editor. The drawer header reports the current candidate check. Counters stay as entered until **Recalculate totals**. **Try six output variations** records its seed, case count and elapsed time; it is a bounded experiment, not a general solver. Escape closes the drawer and returns focus to its opener.
 
-Mutation chips change the candidate immediately: remove effects, zero counters, change the first identity or propose premature release. Click a candidate status to cycle its bounded statuses. The adjacent verdict updates on change. Counters stay as entered until **Recalculate totals**; changing an entry never silently repairs its accounting. **Structured / JSON editor** provides complete typed editing when a chip is insufficient.
+## Record and step through history
 
-**Try six output variations** checks a seeded, bounded set of candidates against the original selected claim. Its candidate and verdict update in place; cases, seed, elapsed time and cancellation remain visible. This is neither general fuzzing nor proof of safety when no variation is rejected.
+Select a saved event on the timeline to inspect its starting account and resulting state. **Record event…** opens a custom event form. Recording is refused while an unsaved scratch case is active: save or discard it first. The action never silently saves a prefix. Selecting an earlier saved state and recording from it creates a branch; the other branch remains selectable.
 
-Quick lifecycle buttons append the next event from the displayed actual output. If an input is transient, appending first preserves that input as a recorded branch. **Continue hypothetical branch** instead preserves the candidate and its descendants as hypothetical. The custom event builder remains available for other keys, amounts, declines, restarts and coupled-model events.
+**Record hypothetical branch**, in the draft tools, continues from a deliberately drafted output. That branch and its descendants stay labeled hypothetical. For example, continue from premature release and request another 100 cents, then compare the admission with the actual pending-void branch where capacity remains reserved. This does not claim the actual implementation releases early.
 
-The **Premises** inspector selects an authorized or voiding entry from the active result. Its fencing experiment uses that key and amount, then contrasts terminal confirmation with a deliberately resurrected remote authorization. It does not test a real bank or change the session. When the active result has no suitable entry, a button opens a separate pending-void worked case.
+**Edit starting state** edits limits, counters and remembered entries in a separate session. Structured and JSON editing share the original bounded codec: at most eight entries and integers up to 1,000,000. Inconsistent candidate totals are allowed as a challenge; continuing from a candidate requires a valid state.
 
-The **Proof** inspector displays actual source and exact source anchors. Registered lemma and generated-artifact buttons open matching source inline; raw source downloads remain available. Captured Lean hypotheses and goal states are explicitly unavailable. Source readings and individual executions do not establish universal formal acceptance.
+## Inspect clauses and assumptions
 
-All 49 catalog obligations remain readable. Native Lean obligations retain their explicit lack of an executable Elixir counterpart. Example concerns are stored as scoped local notes; actual evidence dispositions use the original revision-checked review store. Neither authorizes policy, blocks a PR nor grants formal acceptance.
+**Clause evidence** shows exact claim expressions and observed operand values. Select a binding when a law ranges over several entries; every binding remains part of the overall case result. A helper's **Definition** opens its evaluated body. No expression is re-evaluated by the presentation layer.
 
-## Step, adjust and branch
-
-The state machine shows reserved capacity, remembered identities and statuses. Select an earlier event on the timeline, then append an event to branch from that state. Other branches remain selectable. **Adjust starting state** changes limits, counters and entries in a new session.
-
-**Edit hypothetical output** changes the returned state, result and requested effects. Counters stay as entered until you choose **Recalculate totals**. Inconsistent outputs can challenge a law; continuing from one requires a valid state. The optional JSON editor uses the same bounded codec as structured controls: at most eight entries and integers up to 1,000,000.
-
-Continue from the early-release candidate, then request another 100 cents. Compare that admission with the original pending-void branch, where the capacity remains reserved. The hypothetical branch and its descendants stay labeled. This experiment does not claim that the actual implementation releases early.
-
-**Coupled processor model** opens the original Exposure model. Step local request and dispatch, remote authorization, timeout, observation, void delivery and confirmation. Local knowledge and modeled remote records update separately. Terminal fencing in that model depends on processor behavior; it is not established for a real processor by running the model.
+The terminal-fencing experiment selects an eligible entry and compares confirmation with a deliberately resurrected modeled authorization. It changes no trace and tests no real bank. **Coupled processor model** opens the original Exposure model, separating local knowledge from modeled remote records across dispatch, timeout, observation and confirmation.
 
 ## Follow the proof
+
+**Proof source and dependencies** and **External assumptions** open independently. Reading a lemma or registered artifact adds its source below the proof rather than replacing it. Proof stages navigate actual source anchors; captured Lean hypotheses and goal states remain unavailable.
 
 Select a proof stage to read its actual source and follow a referenced lemma to its declaration. These are source readings, not recorded Lean tactic states or kernel dependency footprints. Pointwise clauses explain this case; the theorem states what is universally claimed.
 
@@ -88,13 +83,15 @@ python3 apps/review_web/scripts/stage_part3_snapshot.py \
   --destination /absolute/path/to/hold_ledger/tmp/review_studio/snapshots
 ```
 
-Provision compatible pinned dependencies offline into each snapshot’s ignored `tmp/part3_build` directories before replay. Use **Choose source pair** to select the registered snapshots. The exact identities accompany the comparison. Each version executes in a separate BEAM process through the original source-derived evaluator. Dirty changes and deletions are identified by content, not branch name.
+Provision compatible pinned dependencies offline into each snapshot’s ignored `tmp/part3_build` directories before replay. Use **Choose local source pair** to select the registered snapshots. The exact identities accompany the comparison. Each version executes in a separate BEAM process through the original source-derived evaluator. Dirty changes and deletions are identified by content, not branch name.
 
 The comparison distinguishes an excluded input, an unwanted output permitted by a contract, and an observed implementation difference. A failed search establishes none of their universal negations. Separate processes prevent module-version mixing; they do not make hostile code safe. Browser actions neither install dependencies nor accept executable uploads.
 
 ## Keep a review record
 
-Save a challenge to retain its input, candidate, selected law and source identity. Record a concern separately. Download the session to retain branches, challenges and notes. Concurrent edits use revision checks; stale tabs cannot overwrite newer records. Source drift prevents further execution or writes. Old session formats and former `/workbench`, `/changes` and `/explore` routes are not served.
+The top bar records scoped concerns against the selected stored comparison witness. With no pair, it records an explicitly labeled example concern. Full evidence and notes remain under **Review history and notes**. These actions do not authorize policy, merge a PR or grant formal acceptance. All 49 catalog obligations remain readable; native Lean obligations explicitly lack an executable Elixir counterpart.
+
+Save a challenge to retain its input, candidate, selected law and source identity. Record a concern separately. Download the session to retain branches, challenges and notes. Concurrent edits use revision checks; stale tabs cannot overwrite newer records. Source drift prevents further execution or writes.
 
 Notes do not authorize policy changes or establish formal acceptance. Exporting any local content grants no permission to send it to a provider.
 

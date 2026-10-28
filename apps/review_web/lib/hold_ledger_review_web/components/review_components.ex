@@ -160,41 +160,45 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
 
     ~H"""
     <section class="boundary-pane" id="boundary-fork">
-      <h3>Same input, separate questions</h3>
+      <h3>
+        {cond do
+          @package -> "Source comparison · isolated A/B replay"
+          @example -> "Source coverage · illustrated change"
+          true -> "No source comparison attached"
+        end}
+      </h3>
       <p :if={@case} class="boundary-input">
         <strong>{term(@case["event"])}</strong><span>Before: {@case["before"]["used_amount"]}¢ reserved / {@case[
           "before"
         ]["amount_limit"]}¢ limit</span>
       </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Question</th><th>Baseline</th><th>Proposal</th>
-          </tr>
-        </thead><tbody>
-          <tr :if={!@package && @example} id="coverage-row">
-            <th>Precondition applies?</th><td>{answer(@example.baseline)}</td><td class={
-              if @example.baseline && !@example.proposal, do: "no", else: ""
-            }>
-              {answer(@example.proposal)}
-            </td>
-          </tr>
-          <tr :if={@package} id="pair-applicability">
-            <th>Any binding applies?</th><td :for={row <- @rows}>{answer(row.requires)}</td>
-          </tr>
-          <tr :if={@package} id="pair-candidate">
-            <th>Candidate promise?</th><td :for={row <- @rows}>{answer(row.candidate)}</td>
-          </tr>
-          <tr :if={@package} id="pair-execution">
-            <th>Actual source result</th><td :for={row <- @rows}>
-              {row.actual || "Not available"}
-            </td>
-          </tr>
-          <tr :if={@package}>
-            <th>Replay status</th><td :for={row <- @rows}>{row.status}</td>
-          </tr>
-        </tbody>
-      </table>
+      <dl id="source-coverage" class="coverage-list">
+        <div :if={!@package && @example} id="coverage-row">
+          <dt>Example baseline covers this input</dt><dd id="coverage-baseline">
+            {answer(@example.baseline)}
+          </dd><dt>Illustrated proposed claim covers it</dt><dd id="coverage-proposal">
+            {answer(@example.proposal)}
+          </dd>
+        </div>
+        <div :if={@package} id="pair-applicability">
+          <dt>Input covered?</dt><dd :for={row <- @rows}>
+            <strong>{row.side}</strong> {answer(row.requires)}
+          </dd>
+        </div>
+        <div :if={@package} id="pair-candidate">
+          <dt>Same drafted output permitted?</dt><dd :for={row <- @rows}>
+            <strong>{row.side}</strong> {answer(row.candidate)}
+          </dd>
+        </div>
+        <div :if={@package} id="pair-execution">
+          <dt>Actual isolated execution</dt><dd :for={row <- @rows}>
+            <strong>{row.side}</strong> {row.actual || "Not run for this input"}
+          </dd>
+        </div>
+        <div :if={@package}>
+          <dt>Replay status</dt><dd :for={row <- @rows}><strong>{row.side}</strong> {row.status}</dd>
+        </div>
+      </dl>
       <p
         :if={@example && !@package && @example.baseline && !@example.proposal}
         class="boundary-callout"
@@ -209,10 +213,16 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         Excluded input ≠ rejected execution. Hypothetical output ≠ observed behavior.
       </p>
       <p :if={!@package} class="pair-help">
-        For actual two-source replay, <button class="text-button" phx-click="show_sources">choose a locally staged pair</button>. The labeled example works without one.
+        For actual two-source replay, <button class="text-button" phx-click="show_sources">choose a locally staged pair</button>.<span :if={
+          @example
+        }> The labeled example works without one.</span>
       </p>
       <div class="action-row">
-        <button id="replay-pair" phx-click="replay" disabled={!@package || !@case}>Replay scratch input on both sources</button><button phx-click="edit_candidate">Edit hypothetical output</button>
+        <button :if={@package} id="replay-pair" phx-click="replay" disabled={!@case}>Replay active input on both sources</button><button
+          :if={!@package}
+          id="choose-replay-sources"
+          phx-click="show_sources"
+        >Choose sources for replay…</button>
       </div>
       <p :if={@preview} class="scratch-label" id="scratch-status">
         Scratch input · not appended to the recorded trace
@@ -233,47 +243,77 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
 
   attr :package, :map, default: nil
   attr :doc, :map, required: true
+  attr :selected_evidence, :any, default: nil
 
   def disposition(assigns) do
+    evidence = if assigns.package, do: assigns.package["evidence"], else: []
+
+    selected =
+      Enum.find(evidence, &(&1["id"] == assigns.selected_evidence)) || List.first(evidence)
+
+    assigns = assign(assigns, evidence: evidence, selected: selected)
+
     ~H"""
-    <section class="review-surface decision-docket" id="decision-docket">
-      <header>
-        <h2>Review disposition</h2><span class="scope-note">{if @package,
-          do: "Stored evidence · revision #{@package["human_revision"]}",
-          else: "Example review · local note only"}</span>
-      </header>
-      <p :if={!@package}>Does this proposed condition still express the required behavior?</p>
+    <section id="decision-docket" class="decision-docket" aria-label="Review disposition">
+      <span class="scope-note">{if @package,
+        do: "Stored witness · review #{@package["human_revision"]}",
+        else: "Local concern · no policy approval"}</span>
+      <.form
+        :if={length(@evidence) > 1}
+        for={to_form(%{"id" => @selected["id"]})}
+        id="evidence-choice"
+        phx-change="select_evidence"
+      >
+        <.input
+          name="id"
+          value={@selected["id"]}
+          type="select"
+          label="Stored finding to review"
+          options={
+            Enum.map(@evidence, &{&1["kind"] <> " · " <> String.slice(&1["id"], 0, 12), &1["id"]})
+          }
+        />
+      </.form>
+      <span :if={@selected} class="witness-scope">{@selected["kind"]} · {String.slice(
+        @selected["id"],
+        0,
+        12
+      )}</span>
+      <div :if={!@package || @selected} class="decision-actions">
+        <button
+          :for={
+            {action, label} <- [
+              {"design", "Request repair"},
+              {"policy", "Needs policy decision"},
+              {"considered", "Considered in scope"}
+            ]
+          }
+          id={if action == "design", do: "request-repair"}
+          phx-click="review_decision"
+          phx-value-action={action}
+          phx-value-evidence={if @selected, do: @selected["id"]}
+        >{label}</button>
+      </div>
+      <span :if={@package && !@selected} class="scope-note">No stored comparison finding yet.</span>
+    </section>
+    """
+  end
+
+  attr :package, :map, default: nil
+  attr :doc, :map, required: true
+
+  def review_history(assigns) do
+    ~H"""
+    <section id="review-history">
+      <h3>Review scope and history</h3><p class="scope-note">
+        These actions record concerns. They do not merge a PR, authorize policy or grant formal acceptance.
+      </p>
       <article
         :for={evidence <- if(@package, do: @package["evidence"], else: [])}
         class="pair-evidence"
       >
-        <strong>{evidence["kind"]}</strong><p>{evidence["note"]}</p><a href={"/comparisons/#{@package["id"]}/repair/#{evidence["id"]}.json"}>Download local repair packet</a><div class="decision-actions">
-          <button
-            :for={
-              {action, label} <- [
-                {"design", "Request repair"},
-                {"policy", "Needs policy / evidence decision"},
-                {"considered", "Considered in scope"}
-              ]
-            }
-            phx-click="review_decision"
-            phx-value-action={action}
-            phx-value-evidence={evidence["id"]}
-          >{label}</button>
-        </div>
+        <strong>{evidence["kind"]}</strong><p>{evidence["note"]}</p><a href={"/comparisons/#{@package["id"]}/repair/#{evidence["id"]}.json"}>Download local repair packet</a>
       </article>
-      <div :if={!@package} class="decision-actions">
-        <button id="request-repair" phx-click="review_decision" phx-value-action="design">Request repair</button><button
-          phx-click="review_decision"
-          phx-value-action="policy"
-        >Needs policy / evidence decision</button><button
-          phx-click="review_decision"
-          phx-value-action="considered"
-        >Considered in scope</button>
-      </div>
-      <p class="scope-note">
-        Records a scoped reviewer action. Does not merge/block a PR, authorize policy or grant formal acceptance.
-      </p>
       <p
         :for={finding <- if(@package, do: @package["human_findings"], else: [])}
         class="disposition-history"
@@ -323,7 +363,6 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           disabled={!@request}
         >Exact fit</button><button phx-click="boundary" phx-value-offset="1" disabled={!@request}>Above</button>
       </div>
-      <button phx-click="apply_preview" disabled={!@preview} id="append-preview">Append this case to trace</button>
     </div>
     """
   end

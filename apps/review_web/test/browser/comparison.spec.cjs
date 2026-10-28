@@ -20,7 +20,8 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
   await page.locator('#inspector-tools [phx-value-view=proof]').click();await page.locator('#pair-proof').click();await expect(page.locator('#pair-proof-artifacts')).toContainText('missing');
   await page.locator('#inspector-tools [phx-value-view=proof]').click();
   await expect(page.locator('#pair-execution')).toContainText('admitted');
-  await page.locator('.pair-evidence button').first().click();
+  await page.locator('#decision-docket button[phx-value-action=design]').click();
+  await page.locator('#inspector-tools [phx-value-view=record]').click();
   const repair=await page.getByRole('link',{name:'Download local repair packet'}).first().getAttribute('href');
   const exported=await page.request.get(repair);expect(exported.status()).toBe(200);expect((await exported.json()).content_sha256).toMatch(/^[a-f0-9]{64}$/);
 });
@@ -28,5 +29,6 @@ test('source selection uses registered identities and replay is unavailable with
   await page.goto('/');await expect(page).toHaveURL(/\/claims\/po_a2\/trace-/);
   await page.locator('#choose-sources').click();
   await expect(page.locator('#compare_baseline')).toHaveJSProperty('tagName','SELECT');
-  await expect(page.locator('#replay-pair')).toBeDisabled();
+  await expect(page.locator('#replay-pair')).toHaveCount(0);
+  await expect(page.locator('#choose-replay-sources')).toBeEnabled();
 });

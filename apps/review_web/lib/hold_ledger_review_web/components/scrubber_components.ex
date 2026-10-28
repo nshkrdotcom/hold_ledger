@@ -125,41 +125,12 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
   attr :builder_open, :boolean, required: true
 
   def event_controls(assigns) do
-    {:ok, state} = Trace.state_at(assigns.doc, "start")
-
-    state =
-      if assigns.step && assigns.doc["mode"] == "ledger",
-        do: assigns.step["output"]["after"],
-        else: state
-
-    entries = state["entries"] || []
-    key = if assigns.step, do: assigns.step["event"]["key"] || 1, else: 1
-    fresh = min(1_000_000, Enum.max(Enum.map(entries, & &1["key"]), fn -> 0 end) + 1)
-    assigns = assign(assigns, key: key, fresh: fresh)
-
     ~H"""
     <section id="next-actions">
-      <h3>Append next event{if @preview, do: " after keeping this transient branch"}</h3>
-      <div :if={@doc["mode"] == "ledger"} class="quick-events">
-        <button
-          id="quick-request"
-          phx-click="quick_event"
-          phx-value-type="request"
-          phx-value-key={@fresh}
-        >Request 100¢ · key {@fresh}</button>
-        <button
-          :for={type <- ~w(dispatch timeout retry void void_confirmed)}
-          phx-click="quick_event"
-          phx-value-type={type}
-          phx-value-key={@key}
-        >{String.replace(type, "_", " ")} · {@key}</button>
-        <button phx-click="quick_event" phx-value-type="processor_result" phx-value-key={@key}>approve · {@key}</button>
-      </div>
-      <p class="scope-note">
-        Continues the actual output. To continue the candidate instead, choose Continue hypothetical branch.
-      </p>
-      <details id="event-builder" open={@builder_open}>
-        <summary phx-click="toggle_event_builder">Custom event</summary>
+      <p :if={@preview} class="scratch-label">
+        An unsaved input is active. Save or discard it before recording a different event.
+      </p><button :if={@preview} phx-click="apply_preview" class="record-action">Save current case</button>
+      <div id="event-builder">
         <.form
           for={@event_form}
           id="next-event"
@@ -170,7 +141,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           <.input
             field={@event_form[:type]}
             type="select"
-            label="Append event after selected step"
+            label="Event to record after the selected saved step"
             options={event_options(@doc["mode"])}
           />
           <.input
@@ -196,9 +167,9 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             label="Outcome"
             options={~w(approved declined)}
           />
-          <button class="primary" id="apply-event" disabled={!Trace.current?(@doc)}>Append event</button>
+          <button class="primary" id="apply-event" disabled={!Trace.current?(@doc) || @preview != nil}>Record event</button>
         </.form>
-      </details>
+      </div>
       <button id="coupled-model" phx-click="coupled" class="text-button">Open coupled processor case</button>
     </section>
     """

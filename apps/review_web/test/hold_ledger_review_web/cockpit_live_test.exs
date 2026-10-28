@@ -10,6 +10,8 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   end
 
   defp event(view, type, key \\ "2", amount \\ "100") do
+    render_click(view, "open_tools", %{"tool" => "events"})
+
     form(view, "#next-event", event: %{type: type, key: key, amount: amount})
     |> render_submit()
   end
@@ -27,7 +29,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     end
 
     assert has_element?(view, "#example-provenance", "Example")
-    assert has_element?(view, "#coverage-row td:last-child", "No")
+    assert has_element?(view, "#coverage-proposal", "No")
     assert has_element?(view, "#ledger-output", "admitted")
 
     refute has_element?(
@@ -47,8 +49,9 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     {view, doc} = open(conn, "po_b1_void")
     tab(view, "outputs")
     assert has_element?(view, "#selected-law-row td:nth-child(3)", "true")
+    render_click(view, "edit_candidate", %{})
     view |> element("#inspect-retention") |> render_click()
-    assert_patch(view, "/claims/po_exposure_retain/#{doc["id"]}?inspect=proof")
+    assert_patch(view, "/claims/po_exposure_retain/#{doc["id"]}")
     assert has_element?(view, "#selected-law-row td:nth-child(3)", "false")
     assert has_element?(view, "#hypothetical-output", "0¢ reserved")
   end
@@ -93,6 +96,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     render_change(view, "candidate_change", %{"output" => params})
     assert has_element?(view, "#validity-row td:nth-child(3)", "false")
     assert has_element?(view, "#branch-candidate[disabled]")
+    render_click(view, "show_advanced", %{})
     element(view, "#recalculate") |> render_click()
     assert has_element?(view, "#output_used_amount[value='100']")
     render_click(view, "save_challenge", %{})
@@ -202,21 +206,26 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   test "actual bounded search result is rechecked and cancellation stays explicit", %{conn: conn} do
     {view, _} = open(conn)
     tab(view, "clauses")
+    render_click(view, "edit_candidate", %{})
     render_click(view, "hunt", %{})
-    render_async(view)
+    render_async(view, 5_000)
     assert has_element?(view, "#hunt-status", "found")
     tab(view, "outputs")
     assert has_element?(view, "#selected-law-row td:nth-child(3)", "false")
     tab(view, "clauses")
+    render_click(view, "edit_candidate", %{})
     render_click(view, "hunt", %{})
     render_click(view, "cancel_hunt", %{})
-    render_async(view)
+    render_async(view, 5_000)
     assert has_element?(view, "#hunt-status", "cancelled")
   end
 
   test "non-request input keeps disabled amount controls in place", %{conn: conn} do
     {view, _} = open(conn)
+    assert has_element?(view, "#boundary-fork h3", "No source comparison attached")
+    refute has_element?(view, "#boundary-fork", "The labeled example works")
     assert has_element?(view, "#review-amount[disabled]")
+    render_click(view, "open_tools", %{"tool" => "events"})
     assert has_element?(view, "#event_amount")
   end
 
@@ -228,17 +237,57 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert {:ok, ^doc} = Trace.get(doc["id"])
   end
 
-  test "transient input, mutation and quick follow-on share one actual context", %{conn: conn} do
+  test "scratch input cannot be silently saved by recording an event or branch", %{conn: conn} do
     {view, doc} = open(conn, "po_a2")
     render_change(view, "preview_amount", %{"amount" => "99"})
-    assert has_element?(view, "#transient-branch", "99")
     assert has_element?(view, "#ledger-output", "99¢")
-    render_click(view, "quick_event", %{"type" => "dispatch", "key" => "11"})
+    render_click(view, "apply_event", %{"event" => %{"type" => "dispatch", "key" => "11"}})
+    assert has_element?(view, "[role=alert]", "Save or discard")
+    render_click(view, "branch_candidate", %{})
+    assert {:ok, ^doc} = Trace.get(doc["id"])
+    render_click(view, "apply_preview", %{})
+    event(view, "dispatch", "11")
     {:ok, saved} = Trace.get(doc["id"])
     assert length(saved["steps"]) == 3
     assert Enum.at(saved["steps"], 1)["event"]["amount"] == 99
     assert List.last(saved["steps"])["before"]["used_amount"] == 99
     assert has_element?(view, "#ledger-output", "sent")
+  end
+
+  test "proof and premises remain independently open with additive registered source", %{
+    conn: conn
+  } do
+    {view, _} = open(conn)
+    tab(view, "premises")
+    assert has_element?(view, "#proof-panel[open]")
+    assert has_element?(view, "#premises-panel[open]")
+    {:ok, reading} = ProofReading.document("po_exposure_retain")
+    render_click(view, "lemma", %{"name" => hd(reading["references"])["name"]})
+    assert has_element?(view, "#proof-script")
+    assert has_element?(view, "#inline-source")
+    assert has_element?(view, "#premises-panel[open]")
+  end
+
+  test "top disposition stays bounded for many stored witnesses (projection only)" do
+    evidence = for n <- 1..20, do: %{"id" => Integer.to_string(n), "kind" => "lost_domain_input"}
+    package = %{"id" => "projection_fixture", "evidence" => evidence, "human_revision" => 0}
+
+    html =
+      render_component(&HoldLedgerReviewWeb.ReviewComponents.disposition/1,
+        package: package,
+        doc: %{"notes" => []},
+        selected_evidence: "20"
+      )
+
+    tree = LazyHTML.from_fragment(html)
+    assert Enum.count(LazyHTML.query(tree, "#evidence-choice option")) == 20
+    assert Enum.count(LazyHTML.query(tree, "button")) == 3
+
+    assert LazyHTML.attribute(LazyHTML.query(tree, "button"), "phx-value-evidence") == [
+             "20",
+             "20",
+             "20"
+           ]
   end
 
   test "mutation chips and status edits update verdict without repairing counters", %{conn: conn} do
@@ -269,9 +318,9 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
 
   test "custom event builder stays open while fields change", %{conn: conn} do
     {view, _} = open(conn, "po_a2")
-    render_click(view, "toggle_event_builder", %{})
+    render_click(view, "open_tools", %{"tool" => "events"})
     render_change(view, "event_change", %{"event" => %{"type" => "dispatch"}})
-    assert has_element?(view, "#event-builder[open]")
+    assert has_element?(view, "#tool-drawer #event-builder")
     assert has_element?(view, "#event_amount[disabled]")
   end
 
@@ -288,5 +337,35 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     })
 
     refute has_element?(view, "#inline-source")
+  end
+
+  test "malformed presentation selectors cannot crash or change the case", %{conn: conn} do
+    {view, doc} = open(conn)
+    render_click(view, "helper", %{"phase" => "requires", "binding" => nil, "path" => ""})
+    render_click(view, "select_binding", %{"index" => nil})
+    render_click(view, "helper", %{"phase" => "requires", "binding" => "0", "path" => "999"})
+    assert has_element?(view, "#ledger-output", "100¢")
+    assert {:ok, ^doc} = Trace.get(doc["id"])
+  end
+
+  test "saving a note preserves the scratch input and intentionally inconsistent draft", %{
+    conn: conn
+  } do
+    {view, doc} = open(conn, "po_a2")
+    render_change(view, "preview_amount", %{"amount" => "99"})
+    render_click(view, "restore_candidate", %{})
+    render_click(view, "mutate_candidate", %{"kind" => "zero_counters"})
+    assert has_element?(view, "#validity-row td:last-child", "false")
+
+    render_submit(view, "record_note", %{
+      "note" => %{"text" => "Keep this invalid counter challenge."}
+    })
+
+    assert has_element?(view, "#review-amount[value='99']")
+    assert has_element?(view, "#hypothetical-output", "0¢ reserved")
+    assert has_element?(view, "#validity-row td:last-child", "false")
+    {:ok, saved} = Trace.get(doc["id"])
+    assert saved["steps"] == doc["steps"]
+    assert length(saved["notes"]) == 1
   end
 end
