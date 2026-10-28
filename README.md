@@ -25,6 +25,8 @@ If you're new to Lean, start with the crash course. You'll run a small proof, br
 | Work with a coding agent | [Agentic verification](guides/agentic_verification.md) | Challenge a contract and check evidence without writing Lean tactics. |
 | Review agent-generated changes | [Human review](guides/human_review.md) | Decide whether a change fixes a proof or changes what is being proved. |
 
+For practice without installing tools, choose a [review exercise](guides/interactive_review.md): judge a payment outcome, spot a changed guarantee, or read a proof report. These are optional exercises for the agent and review track.
+
 [Specification assurance](guides/specification_assurance.md) deals with proofs of inadequate requirements. [Verification](guides/verification.md) explains what the checkers establish. The [assurance audit](guides/audit.md) covers the whole system and is not part of the first lesson.
 
 ## Try it on a supported machine
@@ -164,7 +166,7 @@ Start with the learning path above. Use this table to find a lesson, a procedure
 | [Getting started](guides/getting-started.md) | Prerequisites, local tools and first run |
 | [Agentic verification](guides/agentic_verification.md) | Contract challenges, agent prompts and review exercises |
 | [Human review](guides/human_review.md) | Change classification, escalation and seven review exercises |
-| [Interactive review](guides/interactive_review.md) | Practice reviewing a claim manually or in the optional Phoenix app |
+| [Review exercises](guides/interactive_review.md) | Judge payment outcomes, compare changed guarantees and interpret evidence without installing tools |
 | [Specification assurance](guides/specification_assurance.md) | Vacuity, missing guarantees, contract comparison and research |
 | [Architecture](guides/architecture.md) | How the pure core, reference model, runtime and proofs fit together |
 | [Specification](guides/specification.md) | The exact ledger state and event contract |

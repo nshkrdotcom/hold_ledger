@@ -1,68 +1,43 @@
-# Review the meaning of a formal claim — manual exercise
+# Practice reviewing a formal claim
 
-You are deciding whether a proved claim actually rules out behavior people
-would reject. This exercise needs neither Phoenix nor Lean. The original policy
-is in [the specification](specification.md); committed expectations are in
-`test/human_policy_traces_test.exs`.
+Can a proved claim still permit behavior you would reject? These exercises
+let you try that question without installing Phoenix or Lean. Choose the
+part you want to practise; you do not need to read all three.
+
+| You want to practise… | Exercise |
+|---|---|
+| Deciding whether an outcome meets the payment policy | [Eight payment-hold cases](payment_hold_review_exercises.md), starting with a correct local cancellation |
+| Spotting a promise lost in a proposed edit | [Reviewing changed guarantees](reviewing_changed_guarantees.md), comparing excluded inputs, permitted outputs and actual executions |
+| Deciding what a passing or incomplete check establishes | [Reading review evidence](reading_review_evidence.md), using sample reports and missing evidence |
+
+Read each question and form your answer before opening the explanation.
+Use [the specification](specification.md) to justify the required behavior.
+If you want the concepts first, read [Specification assurance](specification_assurance.md).
 
 ## A pending authorization void
 
-Before state: `{100, 2, 100, 1, [{1, 100, :authorized}]}`. Event:
-`{:void, 1}`. Predict whether the hold should retain its capacity, release it,
-or need more policy. Record your reason before revealing the transition.
+For a worked review, start at [P01](payment_hold_review_exercises.md#5-cancel-an-approved-hold-p01).
+An authorized hold receives a local cancellation request. Compare the required
+transition with an invented result that frees capacity immediately, then
+predict which predicates accept it. Repair one part and check what remains wrong.
 
-<details>
-<summary>Inspect the actual transition and challenge it</summary>
+The [executable contract challenge](agentic_verification.md#3-try-to-break-the-contract)
+checks the same predicates in Elixir. Continue with that walkthrough if you
+want to work through a change with a coding agent. For classifying a real
+diff and reporting its evidence, use [Human review](human_review.md).
 
-The next state is `{100, 2, 100, 1, [{1, 100, :voiding}]}`, result
-`:voiding`, effects `[{:void, 1}]`. A remote void is pending, not confirmed.
-A subsequent `{:request, 2, 100}` returns `:insufficient_amount`.
+## Use the optional workbench
 
-Try a hypothetical after-state with zero counters and a `:voided` entry,
-result `:voided`, and **no effect**. `Spec.valid?/1` and
-`Spec.effects_valid?/5` accept this particular projection, but
-`Spec.exposed_entry?/3` rejects lost exposure. The same second request could
-be admitted, even though the remote authorization might still exist. This
-is a local counterfactual, not a remote processor observation.
-
-Compare original `test/laws/po_b1_void_test.exs` (validity),
-`po_b3_test.exs` (effects) and `po_exposure_retain_test.exs` (retention),
-including their exact `requires` and `expects` expressions. The
-[agentic walkthrough](agentic_verification.md#3-try-to-break-the-contract)
-contains executable predicate exercises.
-
-</details>
-
-## Other counterexamples
-
-A timeout of a sent authorization cannot manufacture a terminal decline:
-capacity remains reserved while the outcome is uncertain. `po_b1_timeout`
-ensures after-state validity, not exposure retention by itself. In an
-exact-fit request, `po_a2` requires positive admission; an implementation that
-always rejects may still preserve valid states.
-
-The optional [Phoenix workbench](../apps/review_web/README.md) implements
-this human reasoning loop at `/workbench`: start a P01–P08 review, read the
-original source and linked map, edit the complete bounded before/event/
-hypothetical-output/follow-on witness, inspect the source-derived pointwise
-matrix, answer the critical Escape question, and export the saved review.
-Selecting a different seed opens a separate review to preserve card scope.
-Only deliberate pin and human answer submits are persisted; intermediate
-drafts are not. The app uses a *single* A-derived evaluator and strict codec.
-Optional configured-model discovery, typed challenge proposals and follow-ups
-require a fresh opt-in for each send of selected source, draft or reviewer
-content. Without opt-in, the deterministic workflow makes no AI call. No remote
-payment operation is performed. Computed predictions and contradictions precede
-model paraphrases; proposals need deliberate acceptance, and a proposed witness
-loads as an unsaved draft. The former teaching-case UI, receipts and `/review`
-paths remain removed.
+The [Phoenix workbench](../apps/review_web/README.md) lets you edit the examples,
+inspect source, compare claim results and save your judgment. Its P01–P08
+labels match the payment exercises. It calculates individual examples and
+can display a separately supplied proof report. Read that report to find
+which proofs were checked.
+A proposed alternative is an invented output, not an observed processor result.
 
 ## Evidence and limits
 
-Keep policy, pure execution, source-claim evaluation, checked Lean report and
-human judgment separate. Source/BEAM digests identify the current pointwise
-evaluator; they do not constitute a Lean proof. A stale or absent independent
-checker report is not proof acceptance. A candidate that passes some tested
-bindings does not establish that all obligations or external processor
-assumptions are satisfied. This exercise does not certify Phoenix, journaling,
-processor honesty or deployment safety.
+A review conclusion records your judgment for the cases and sources you
+examined. A concrete check evaluates those cases; formal acceptance requires
+the matching evidence defined in [Verification](verification.md). Processor
+truthfulness and storage durability still need evidence outside the pure model.
