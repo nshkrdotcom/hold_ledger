@@ -7,9 +7,11 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Inspect a law by changing a concrete case, testing an unwanted output, and following the statement into its Lean proof. The page opens on a pending void: the real Ledger retains 100 cents; a hypothetical early release retains zero. Both states have consistent accounting. The retention law rejects the early release.
+Move a request across a capacity boundary, follow the clause that changes, and play through the assumptions behind a proof. The visual laboratory connects account diagrams, executable conditions, an illustrated proof player and a local/remote exposure sandbox.
 
-This separate Phoenix application executes the repository’s local models. It sends no payments and exposes no provider controls.
+The default case compares a pending void with a deliberate early release. Both outputs have consistent accounting; the retention law rejects the early release. The account and clause views use actual local execution. Proof-storyboard frames and assumption failures are labeled illustrations, with original source and checking evidence available in the inspector.
+
+This separate Phoenix application sends no payments and exposes no provider controls.
 
 ## Run locally
 
@@ -25,20 +27,24 @@ uv run --locked python scripts/local_run.py --cwd apps/review_web mix phx.server
 
 Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `100` means one dollar.
 
-## Read the case and the claim together
+## Explore the visual laboratory
 
-| Panel | What you can inspect |
+| Instrument | Interaction |
 |---|---|
-| Concrete contrast | Ledger’s output beside an editable hypothetical output; validity and the selected law evaluated separately |
-| Contract deconstructor | Actual `requires` and `expects`, bound variables, operands, true/false clauses and supported helper definitions |
-| Lean theorem & proof | Actual theorem signatures, inline law proofs, source-anchored reading steps and referenced lemmas |
-| Scope & assumptions | Governing policy, omissions, available checking evidence and links to deployment premises |
+| Account diagram | Compare before/after capacity, occupied slots and remembered hold identities. Switch between the actual and hypothetical output. |
+| Expression tree | Follow source-derived checks and concrete operands. Hover, focus or pin a clause to highlight its capacity, identity or status in the account. |
+| Proof player | Step or play through given facts, a goal and the source tactic. These frames reconstruct a proof reading; they are not captured Lean Infoview states. |
+| Assumption sandbox | Disable fencing or durability and scrub the local/remote sequence. Uncovered remote exposure appears separately from local capacity. |
 
-Choose `po_b1_void` to see why validity alone allows the early release. Choose `po_exposure_retain` to inspect the missing guarantee. A valid state has consistent counters and well-formed entries; that alone does not establish whether releasing a particular hold was permitted.
+Choose `po_a2` and use the amount dial or **Below / Exact fit / Above**. The real evaluator updates its eligibility operands immediately. At 101 against 100, the precondition fails and no postcondition promise is evaluated. **Add to trace** preserves a preview as a new branch; moving the dial alone writes nothing.
 
-The law selector includes all 49 catalog obligations. Some laws have native Lean statements without an executable Elixir counterpart. Some proofs appear inline in the law file rather than as a same-named shared theorem. The page shows those differences; missing generated signatures remain missing. Reviewed explanations are available for admission, timeout validity, void validity and exposure retention. Other claims retain their actual source material.
+In the fault sandbox, disable **Terminal fencing**, then jump to delayed delivery. Local capacity remains zero while the hypothetical processor resurrects 100 cents of remote exposure. Restore fencing to compare with the original Exposure model. Disabling **Durable local record** illustrates an orphaned remote authorization after local recovery loses its identity. These experiments neither mutate the actual session nor change governing models or policy.
 
-For `po_a2`, request 99, 100 and 101 cents against a 100-cent limit. The deconstructor exposes the actual `amount <= amount_limit - used_amount` operands. At 101 the precondition is false: that law promises nothing for that input. The implementation’s rejection is shown separately. No browser control rewrites governing source or policy.
+**Find a rejected output** tries a small seeded set of hypothetical output variations against the selected real claim, off the LiveView request path. Its result includes cases tested, elapsed time and seed. A result is rechecked before display; cancellation and context changes cannot promote a late result. This is bounded single-source candidate discovery, not general fuzzing, two-version divergence, a universal proof or a promise that every run finds a problem.
+
+The main account/clause path is executable. The proof player is a source-guided illustration. The fault sandbox uses the original model for the conforming prefix and explicit counterfactual state projections for assumption failures. Formal acceptance still comes only from the original report validator.
+
+Open **Inspect source, edit state & review evidence** for full contracts, every tested binding, helper definitions, actual Lean declarations, generated sources and formal status. All 49 catalog obligations are readable; native Lean obligations retain their explicit lack of an executable Elixir counterpart. The admission, timeout-validity and retention readings have illustrated proof sequences. Other obligations keep their actual source without invented storyboards.
 
 ## Step, adjust and branch
 

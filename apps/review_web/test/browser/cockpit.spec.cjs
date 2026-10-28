@@ -3,10 +3,17 @@ async function open(page,slug='po_exposure_retain') {
   await page.goto('/claims/'+slug);
   await expect(page).toHaveURL(new RegExp('/claims/'+slug+'/trace-'));
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await page.locator('#technical-inspector > summary').click();
   await expect(page.locator('#timeline')).toBeVisible();
   return page.url();
 }
+async function inspect(page) {
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  if(await page.locator('#technical-inspector').getAttribute('open')===null) await page.locator('#technical-inspector > summary').click();
+  await expect(page.locator('#technical-inspector')).toHaveAttribute('open');
+}
 async function event(page,type,key='2',amount='100') {
+  await inspect(page);
   const revision=await page.locator('#trace-revision').innerText();
   await page.locator('#event_type').selectOption(type);
   if(type!=='restart') await page.locator('#event_key').fill(key);
@@ -116,6 +123,8 @@ test('scrubber supports keyboard navigation and preserves branches',async({page}
 
 test('coupled model separates remote delivery, observation and terminal fencing',async({page})=>{
   await open(page);await page.locator('#coupled-model').click();
+  await expect(page).toHaveURL(/po_exposure_model/);
+  await inspect(page);
   await expect(page.locator('#remote-state')).toBeVisible();
   for(const type of ['request','dispatch','authorize','timeout']) await event(page,type,'11');
   await expect(page.locator('#entries')).toContainText('unknown');await expect(page.locator('#remote-state')).toContainText('approved');
@@ -129,6 +138,7 @@ test('coupled model separates remote delivery, observation and terminal fencing'
 
 test('two tabs preserve CAS conflict and reconnect source identity',async({page,context})=>{
   const url=await open(page);const right=await context.newPage();await right.goto(url);
+  await inspect(right);
   await expect(right.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await page.locator('#note_text').fill('Check actual processor evidence.');await page.locator('#note-form button').click();
   await right.locator('#note_text').fill('Stale reviewer edit.');await right.locator('#note-form button').click();

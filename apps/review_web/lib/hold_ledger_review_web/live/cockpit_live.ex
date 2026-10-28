@@ -1,5 +1,6 @@
 defmodule HoldLedgerReviewWeb.CockpitLive do
   use HoldLedgerReviewWeb, :live_view
+  import HoldLedgerReviewWeb.LabComponents
   import HoldLedgerReviewWeb.ContrastComponents
   import HoldLedgerReviewWeb.DissectorComponents
   import HoldLedgerReviewWeb.LeanComponents
@@ -13,7 +14,8 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     Part3Store,
     ProofReading,
     TermCodec,
-    Trace
+    Trace,
+    VisualLab
   }
 
   @impl true
@@ -32,6 +34,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
        candidate: nil,
        invalid: false,
        basis: "candidate",
+       binding_index: 0,
        helper: nil,
        stage: 0,
        reference: nil,
@@ -39,6 +42,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
        candidate_form: nil,
        initial_form: nil,
        json_form: nil,
+       preview: nil,
+       inspector: false,
+       fencing: true,
+       durable: true,
+       environment_position: 0,
+       hunt: %{status: "idle"},
        package: nil,
        package_proof: nil,
        delta: %{},
@@ -105,6 +114,98 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def handle_event("inspect_law", %{"slug" => slug}, socket),
     do: {:noreply, push_patch(socket, to: ~p"/claims/#{slug}/#{socket.assigns.doc["id"]}")}
 
+  def handle_event("open_inspector", _, socket), do: {:noreply, assign(socket, inspector: true)}
+
+  def handle_event("toggle_inspector", _, socket),
+    do: {:noreply, assign(socket, inspector: not socket.assigns.inspector)}
+
+  def handle_event("toggle_assumption", %{"name" => name}, socket)
+      when name in ~w(fencing durable) do
+    key = if name == "fencing", do: :fencing, else: :durable
+    {:noreply, socket |> assign(key, not socket.assigns[key]) |> assign(:environment_position, 0)}
+  end
+
+  def handle_event("environment_scrub", %{"position" => position}, socket) do
+    case Integer.parse(position) do
+      {n, ""} when n in 0..8 -> {:noreply, assign(socket, environment_position: n)}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("environment_end", _, socket),
+    do: {:noreply, assign(socket, environment_position: 8)}
+
+  def handle_event("preview_amount", %{"amount" => amount}, socket),
+    do: preview_amount(socket, amount)
+
+  def handle_event("boundary", %{"offset" => offset}, socket) when offset in ~w(-1 0 1) do
+    case socket.assigns.case_data do
+      %{"before" => before} ->
+        preview_amount(
+          socket,
+          to_string(
+            max(1, before["amount_limit"] - before["used_amount"] + String.to_integer(offset))
+          )
+        )
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("apply_preview", _, socket) do
+    case socket.assigns.preview do
+      nil ->
+        {:noreply, socket}
+
+      step ->
+        mutate(
+          socket,
+          %{"kind" => "append", "parent" => step["parent"], "event" => step["event"]},
+          true
+        )
+    end
+  end
+
+  def handle_event("hunt", _, socket) do
+    case selected(socket.assigns) do
+      %{"output" => output} = step when is_map(output) ->
+        context = hunt_context(socket)
+        slug = socket.assigns.slug
+
+        {:noreply,
+         socket
+         |> assign(hunt: %{status: "running"})
+         |> start_async(:hunt, fn -> {context, VisualLab.hunt(slug, step, 71, 12)} end)}
+
+      _ ->
+        {:noreply, assign(socket, hunt: %{status: "unavailable"})}
+    end
+  end
+
+  def handle_event("cancel_hunt", _, socket),
+    do: {:noreply, socket |> cancel_async(:hunt) |> assign(hunt: %{status: "cancelled"})}
+
+  def handle_event("select_binding", %{"index" => index}, socket) do
+    with {n, ""} when n >= 0 <- Integer.parse(index),
+         data when is_map(data) <- socket.assigns.case_data,
+         binding when is_map(binding) <- Enum.at(data["explanation"]["bindings"], n) do
+      {:noreply, assign(socket, binding_index: n)}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("binding_key", %{"key" => key}, socket) do
+    data = socket.assigns.case_data
+    rows = if data, do: data["explanation"]["bindings"], else: []
+
+    case Enum.find_index(rows, &(to_string(&1["values"]["key"]) == key)) do
+      nil -> {:noreply, socket}
+      index -> {:noreply, assign(socket, binding_index: index)}
+    end
+  end
+
   def handle_event("basis", %{"value" => value}, socket) when value in ~w(actual candidate),
     do: {:noreply, assign(socket, basis: value, helper: nil)}
 
@@ -169,7 +270,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   def handle_event("edit_candidate", _, socket),
-    do: {:noreply, assign(socket, editor: "candidate")}
+    do: {:noreply, assign(socket, editor: "candidate", inspector: true)}
 
   def handle_event("candidate_change", %{"output" => params}, socket),
     do: candidate_input(socket, params)
@@ -246,6 +347,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def handle_event("candidate_clear_effects", _, socket),
     do: candidate_input(socket, Map.put(socket.assigns.candidate_form.params, "effects", %{}))
 
+  def handle_event("branch_candidate", _, %{assigns: %{preview: preview}} = socket)
+      when is_map(preview),
+      do: {:noreply, error(socket, "Add the preview to the trace first.")}
+
   def handle_event("branch_candidate", _, socket) do
     case socket.assigns.case_data do
       %{"candidate_valid" => true, "candidate" => output} ->
@@ -259,6 +364,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         {:noreply, error(socket, "The hypothetical state must be valid before continuing.")}
     end
   end
+
+  def handle_event("save_challenge", _, %{assigns: %{preview: preview}} = socket)
+      when is_map(preview),
+      do: {:noreply, error(socket, "Add the preview to the trace first.")}
 
   def handle_event("save_challenge", _, socket) do
     if socket.assigns.case_data do
@@ -280,7 +389,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def handle_event("edit_initial", _, socket) do
     {:ok, json} = Trace.state_at(socket.assigns.doc, socket.assigns.cursor)
     params = Map.update!(json, "entries", &Contrast.indexed/1)
-    {:noreply, assign(socket, initial_form: to_form(params, as: :initial), editor: "initial")}
+
+    {:noreply,
+     assign(socket,
+       initial_form: to_form(params, as: :initial),
+       editor: "initial",
+       inspector: true
+     )}
   end
 
   def handle_event("initial_change", %{"initial" => params}, socket),
@@ -453,6 +568,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     end
   end
 
+  def handle_event("replay", _, %{assigns: %{preview: preview}} = socket) when is_map(preview),
+    do: {:noreply, error(socket, "Add the preview to the trace first.")}
+
   def handle_event("replay", _, socket) do
     with package when is_map(package) <- socket.assigns.package,
          case_data when is_map(case_data) <- socket.assigns.case_data,
@@ -477,6 +595,46 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def handle_event(_, _, socket), do: {:noreply, error(socket, "Unknown action.")}
 
   @impl true
+  def handle_async(:hunt, {:ok, _}, %{assigns: %{hunt: %{status: "cancelled"}}} = socket),
+    do: {:noreply, socket}
+
+  def handle_async(:hunt, {:ok, {context, result}}, socket) do
+    if socket.assigns.hunt.status == "running" and context == hunt_context(socket) and
+         Trace.current?(socket.assigns.doc) do
+      socket =
+        if result.status == "found",
+          do: socket |> refresh_case(result.output) |> assign(basis: "candidate"),
+          else: socket
+
+      {:noreply, assign(socket, hunt: result)}
+    else
+      {:noreply, assign(socket, hunt: %{status: "stale"})}
+    end
+  end
+
+  def handle_async(:hunt, {:exit, _}, socket) do
+    status = if socket.assigns.hunt.status == "cancelled", do: "cancelled", else: "failed"
+    {:noreply, assign(socket, hunt: %{status: status})}
+  end
+
+  defp hunt_context(socket),
+    do:
+      {socket.assigns.doc["id"], socket.assigns.doc["revision"], socket.assigns.cursor,
+       socket.assigns.slug, socket.assigns.preview}
+
+  defp preview_amount(socket, amount) do
+    with {n, ""} when n in 1..1_000_000 <- Integer.parse(amount),
+         step when is_map(step) <- selected(socket.assigns),
+         %{"type" => "request"} = event <- step["event"],
+         {:ok, receipt} <- Trace.execute("ledger", step["before"], Map.put(event, "amount", n)) do
+      preview = Map.merge(step, receipt) |> Map.put("id", "preview")
+      {:noreply, socket |> assign(preview: preview, hunt: %{status: "idle"}) |> refresh_case(nil)}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_info({:part3_updated, _}, socket), do: {:noreply, load_package(socket)}
 
   defp candidate_input(socket, params) do
@@ -498,14 +656,15 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   defp refresh_case(socket, candidate) do
     case Contrast.case_for(
-           socket.assigns.doc,
-           socket.assigns.cursor,
+           evaluation_doc(socket.assigns),
+           if(socket.assigns.preview, do: "preview", else: socket.assigns.cursor),
            socket.assigns.slug,
            candidate
          ) do
       {:ok, data} ->
         assign(socket,
           case_data: data,
+          binding_index: 0,
           candidate: data["candidate"],
           candidate_form: to_form(Contrast.output_form(data["candidate"]), as: :output),
           invalid: false,
@@ -525,7 +684,11 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   defp select_step(socket, id) do
     if id == "start" or Trace.step(socket.assigns.doc, id),
-      do: {:noreply, socket |> assign(cursor: id, editor: nil) |> refresh_case(nil)},
+      do:
+        {:noreply,
+         socket
+         |> assign(cursor: id, editor: nil, preview: nil, hunt: %{status: "idle"})
+         |> refresh_case(nil)},
       else: {:noreply, socket}
   end
 
@@ -537,7 +700,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         cursor = if move?, do: command_cursor(updated, action), else: socket.assigns.cursor
 
         {:noreply,
-         socket |> assign(doc: updated, cursor: cursor) |> refresh_case(nil) |> load_package()}
+         socket
+         |> assign(doc: updated, cursor: cursor, preview: nil, hunt: %{status: "idle"})
+         |> refresh_case(nil)
+         |> load_package()}
 
       {:error, :revision_conflict} ->
         {:noreply, error(socket, "Another tab changed this session. Reload before saving.")}
@@ -576,6 +742,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     end
   end
 
+  defp evaluation_doc(%{preview: nil} = assigns), do: assigns.doc
+  defp evaluation_doc(assigns), do: Map.update!(assigns.doc, "steps", &(&1 ++ [assigns.preview]))
+
+  defp selected(%{preview: preview}) when is_map(preview), do: preview
   defp selected(assigns), do: if(assigns.doc, do: Trace.step(assigns.doc, assigns.cursor))
   defp last_id(doc), do: if(doc["steps"] == [], do: "start", else: List.last(doc["steps"])["id"])
   defp trace_path(doc, cursor), do: Trace.path(doc, leaf(doc, cursor))
@@ -681,119 +851,138 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       <p :if={@doc && !Trace.current?(@doc)} role="alert" id="stale-session">
         Session source changed. Its results cannot be used as current evidence.
       </p>
-      <div :if={@reading} class="instrument-grid">
-        <.contrast
-          case={@case_data}
-          step={selected(assigns)}
-          slug={@slug}
-          editor={@editor}
-          candidate_form={@candidate_form}
-          initial_form={@initial_form}
-          invalid={@invalid}
-        />
-        <.dissector case={@case_data} reading={@reading} basis={@basis} helper={@helper} />
-        <.bridge reading={@reading} stage={@stage} reference={@reference} />
-        <.assumptions reading={@reading} />
-      </div>
-      <.scrubber
-        :if={@doc}
+      <.laboratory
+        :if={@doc && @reading}
         doc={@doc}
         cursor={@cursor}
-        event_form={@event_form}
-        path={trace_path(@doc, @cursor)}
+        case={@case_data}
+        reading={@reading}
+        basis={@basis}
+        binding_index={@binding_index}
+        stage={@stage}
+        fencing={@fencing}
+        durable={@durable}
+        environment_position={@environment_position}
+        hunt={@hunt}
       />
-      <section :if={@doc} class="surface" id="session-record">
-        <div class="action-row">
-          <a href={~p"/sessions/#{@doc["id"]}/export"}>Download session</a>
-          <button phx-click="save_challenge" disabled={!@case_data}>Save challenge</button>
-          <span>{length(@doc["challenges"])} saved challenges</span>
+      <details id="technical-inspector" class="technical-inspector" open={@inspector}>
+        <summary phx-click="toggle_inspector">
+          Inspect source, edit state & review evidence <span>Advanced controls</span>
+        </summary>
+        <div :if={@reading} class="instrument-grid">
+          <.contrast
+            case={@case_data}
+            step={selected(assigns)}
+            slug={@slug}
+            editor={@editor}
+            candidate_form={@candidate_form}
+            initial_form={@initial_form}
+            invalid={@invalid}
+          />
+          <.dissector case={@case_data} reading={@reading} basis={@basis} helper={@helper} />
+          <.bridge reading={@reading} stage={@stage} reference={@reference} />
+          <.assumptions reading={@reading} />
         </div>
-        <.form for={@note_form} id="note-form" phx-submit="record_note">
-          <.input field={@note_form[:text]} type="textarea" label="Review note" />
-          <button>Record concern</button>
-        </.form>
-        <p :for={note <- @doc["notes"]}>{note["text"]}</p>
-      </section>
-      <details :if={@doc} class="surface" id="source-comparison" open={@package != nil}>
-        <summary>Compare two locally staged source versions</summary>
-        <.form for={@compare_form} id="compare-form" phx-submit="compare" class="form-row">
-          <.input field={@compare_form[:baseline]} label="Baseline snapshot SHA-256" />
-          <.input field={@compare_form[:proposal]} label="Proposal snapshot SHA-256" />
-          <button>Attach source pair</button>
-        </.form>
-        <div :if={@package}>
-          <p>Baseline {@package["baseline"]["snapshot_id"]}</p>
-          <p>Proposal {@package["proposal"]["snapshot_id"]}</p>
-          <button id="replay-pair" phx-click="replay" disabled={!@case_data}>Replay selected input and hypothetical output</button>
-          <article :for={attempt <- @package["replay_attempts"]} class="attempt">
-            <span>{attempt["status"]}</span>
-            <button
-              :if={attempt["status"] in ~w(queued running)}
-              phx-click="cancel"
-              phx-value-id={attempt["id"]}
-            >Cancel</button>
-          </article>
-          <article :for={evidence <- @package["evidence"]} class="pair-evidence">
-            <h3>{evidence["kind"]}</h3><p>{evidence["note"]}</p>
-            <table>
-              <thead>
-                <tr>
-                  <th>Value</th><th>Baseline</th><th>Proposal</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr :for={key <- ~w(requires post_candidate post_actual)}>
-                  <th>{key}</th><td>{evidence_value(evidence["baseline_result"], key)}</td><td>
-                    {evidence_value(evidence["proposal_result"], key)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <a href={"/comparisons/#{@package["id"]}/repair/#{evidence["id"]}.json"}>Download local repair packet</a>
-          </article>
-          <article :for={change <- @package["source_changes"]} class="pair-source">
-            <h3>{change["path"]}</h3>
-            <a
-              :for={side <- ~w(baseline proposal)}
-              href={"/comparisons/#{@package["id"]}/source/#{side}/#{change["id"]}"}
-              target="_blank"
-              rel="noopener"
-            >Read {side} source ↗</a>
-          </article>
-          <button id="pair-proof" phx-click="pair_proof">Inspect pair proof artifacts</button>
-          <div :if={@package_proof} id="pair-proof-artifacts">
-            <section :for={version <- @package_proof["versions"]}>
-              <h3>{version["side"]}</h3><p>{version["formal_acceptance"]}</p>
-              <p>{version["report_status"]} · {version["catalog_count"]} catalog obligations</p>
-              <article :for={law <- Enum.filter(version["sources"], &(&1["slug"] == @slug))}>
-                <p>{law["slug"]}: {law["artifact_scope"]}</p>
-                <p>
-                  Translation: {if law["translated_statement"], do: "supplied", else: "missing"} · Dependencies: {if law[
-                                                                                                                       "proof_dependencies"
-                                                                                                                     ],
-                                                                                                                     do:
-                                                                                                                       "supplied",
-                                                                                                                     else:
-                                                                                                                       "missing"}
-                </p>
-                <pre :if={law["translated_statement"]}>{Jason.encode!(law["translated_statement"], pretty: true)}</pre>
-                <pre :if={law["proof_dependencies"]}>{Jason.encode!(law["proof_dependencies"], pretty: true)}</pre>
-                <pre :if={law["exports"] != []}>{Jason.encode!(law["exports"], pretty: true)}</pre>
-              </article>
-              <ul>
-                <li :for={item <- version["artifacts"]}>
-                  <a
-                    :if={item["status"] == "present"}
-                    href={"/comparisons/#{@package["id"]}/artifact/#{version["side"]}/#{item["sha256"]}"}
-                    target="_blank"
-                    rel="noopener"
-                  >{item["kind"]} · {item["path"]} ↗</a>
-                  <span :if={item["status"] != "present"}>{item["path"]}: {item["status"]}</span>
-                </li>
-              </ul>
-            </section>
+        <.scrubber
+          :if={@doc}
+          doc={@doc}
+          cursor={@cursor}
+          event_form={@event_form}
+          path={trace_path(@doc, @cursor)}
+        />
+        <section :if={@doc} class="surface" id="session-record">
+          <div class="action-row">
+            <a href={~p"/sessions/#{@doc["id"]}/export"}>Download session</a>
+            <button phx-click="save_challenge" disabled={!@case_data}>Save challenge</button>
+            <span>{length(@doc["challenges"])} saved challenges</span>
           </div>
-        </div>
+          <.form for={@note_form} id="note-form" phx-submit="record_note">
+            <.input field={@note_form[:text]} type="textarea" label="Review note" />
+            <button>Record concern</button>
+          </.form>
+          <p :for={note <- @doc["notes"]}>{note["text"]}</p>
+        </section>
+        <details :if={@doc} class="surface" id="source-comparison" open={@package != nil}>
+          <summary>Compare two locally staged source versions</summary>
+          <.form for={@compare_form} id="compare-form" phx-submit="compare" class="form-row">
+            <.input field={@compare_form[:baseline]} label="Baseline snapshot SHA-256" />
+            <.input field={@compare_form[:proposal]} label="Proposal snapshot SHA-256" />
+            <button>Attach source pair</button>
+          </.form>
+          <div :if={@package}>
+            <p>Baseline {@package["baseline"]["snapshot_id"]}</p>
+            <p>Proposal {@package["proposal"]["snapshot_id"]}</p>
+            <button id="replay-pair" phx-click="replay" disabled={!@case_data}>Replay selected input and hypothetical output</button>
+            <article :for={attempt <- @package["replay_attempts"]} class="attempt">
+              <span>{attempt["status"]}</span>
+              <button
+                :if={attempt["status"] in ~w(queued running)}
+                phx-click="cancel"
+                phx-value-id={attempt["id"]}
+              >Cancel</button>
+            </article>
+            <article :for={evidence <- @package["evidence"]} class="pair-evidence">
+              <h3>{evidence["kind"]}</h3><p>{evidence["note"]}</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Value</th><th>Baseline</th><th>Proposal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr :for={key <- ~w(requires post_candidate post_actual)}>
+                    <th>{key}</th><td>{evidence_value(evidence["baseline_result"], key)}</td><td>
+                      {evidence_value(evidence["proposal_result"], key)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <a href={"/comparisons/#{@package["id"]}/repair/#{evidence["id"]}.json"}>Download local repair packet</a>
+            </article>
+            <article :for={change <- @package["source_changes"]} class="pair-source">
+              <h3>{change["path"]}</h3>
+              <a
+                :for={side <- ~w(baseline proposal)}
+                href={"/comparisons/#{@package["id"]}/source/#{side}/#{change["id"]}"}
+                target="_blank"
+                rel="noopener"
+              >Read {side} source ↗</a>
+            </article>
+            <button id="pair-proof" phx-click="pair_proof">Inspect pair proof artifacts</button>
+            <div :if={@package_proof} id="pair-proof-artifacts">
+              <section :for={version <- @package_proof["versions"]}>
+                <h3>{version["side"]}</h3><p>{version["formal_acceptance"]}</p>
+                <p>{version["report_status"]} · {version["catalog_count"]} catalog obligations</p>
+                <article :for={law <- Enum.filter(version["sources"], &(&1["slug"] == @slug))}>
+                  <p>{law["slug"]}: {law["artifact_scope"]}</p>
+                  <p>
+                    Translation: {if law["translated_statement"], do: "supplied", else: "missing"} · Dependencies: {if law[
+                                                                                                                         "proof_dependencies"
+                                                                                                                       ],
+                                                                                                                       do:
+                                                                                                                         "supplied",
+                                                                                                                       else:
+                                                                                                                         "missing"}
+                  </p>
+                  <pre :if={law["translated_statement"]}>{Jason.encode!(law["translated_statement"], pretty: true)}</pre>
+                  <pre :if={law["proof_dependencies"]}>{Jason.encode!(law["proof_dependencies"], pretty: true)}</pre>
+                  <pre :if={law["exports"] != []}>{Jason.encode!(law["exports"], pretty: true)}</pre>
+                </article>
+                <ul>
+                  <li :for={item <- version["artifacts"]}>
+                    <a
+                      :if={item["status"] == "present"}
+                      href={"/comparisons/#{@package["id"]}/artifact/#{version["side"]}/#{item["sha256"]}"}
+                      target="_blank"
+                      rel="noopener"
+                    >{item["kind"]} · {item["path"]} ↗</a>
+                    <span :if={item["status"] != "present"}>{item["path"]}: {item["status"]}</span>
+                  </li>
+                </ul>
+              </section>
+            </div>
+          </div>
+        </details>
       </details>
     </Layouts.app>
     """

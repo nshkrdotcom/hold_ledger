@@ -4,6 +4,7 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
   test.skip(!/^[a-f0-9]{64}$/.test(baseline||'')||!/^[a-f0-9]{64}$/.test(proposal||''),'NOT RUN: real staged compatible IDs required');
   await page.goto('/claims/po_a2');await expect(page).toHaveURL(/\/claims\/po_a2\/trace-/);
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await page.locator('#technical-inspector > summary').click();
   await page.locator('#source-comparison summary').click();
   await page.locator('#compare_baseline').fill(baseline);await page.locator('#compare_proposal').fill(proposal);await page.locator('#compare-form button').click();
   await expect(page.locator('#replay-pair')).toBeVisible();await page.locator('#replay-pair').click();
@@ -17,6 +18,7 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
 });
 test('unknown source snapshots are refused',async({page})=>{
   await page.goto('/');await expect(page).toHaveURL(/\/claims\/po_exposure_retain\/trace-/);
+  await page.locator('#technical-inspector > summary').click();
   await page.locator('#source-comparison summary').click();await page.locator('#compare_baseline').fill('0'.repeat(64));await page.locator('#compare_proposal').fill('1'.repeat(64));
   await page.locator('#compare-form button').click();await expect(page.locator('[role=alert]')).toContainText('Compatible locally staged snapshots required');await expect(page.locator('#replay-pair')).toHaveCount(0);
 });

@@ -138,4 +138,63 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
         do: assert(reading["contract"]["status"] == "native_statement_only")
     end
   end
+
+  test "live amount preview changes actual clauses without writing until added", %{conn: conn} do
+    {view, doc} = open(conn, "po_a2")
+    render_change(view, "preview_amount", %{"amount" => "101"})
+    assert has_element?(view, "#visual-domain-silence")
+    assert has_element?(view, "#visual-amount[value='101']")
+    {:ok, before} = Trace.get(doc["id"])
+    assert before["revision"] == doc["revision"]
+    render_click(view, "apply_preview", %{})
+    {:ok, after_doc} = Trace.get(doc["id"])
+    assert length(after_doc["steps"]) == 2
+    assert List.last(after_doc["steps"])["event"]["amount"] == 101
+  end
+
+  test "fault toggles never alter the real session and can be restored", %{conn: conn} do
+    {view, doc} = open(conn)
+    render_click(view, "toggle_assumption", %{"name" => "fencing"})
+    render_click(view, "environment_end", %{})
+    assert has_element?(view, "#sandbox-local", "0¢")
+    assert has_element?(view, "#sandbox-remote", "100¢")
+    assert has_element?(view, "#sandbox-coverage", "Uncovered")
+    assert has_element?(view, "#sandbox-provenance", "counterfactual")
+    {:ok, unchanged} = Trace.get(doc["id"])
+    assert unchanged == doc
+    render_click(view, "toggle_assumption", %{"name" => "fencing"})
+    render_click(view, "environment_end", %{})
+    assert has_element?(view, "#sandbox-remote", "0¢")
+    assert has_element?(view, "#sandbox-coverage", "Covered")
+  end
+
+  test "actual bounded search result is rechecked and cancellation stays explicit", %{conn: conn} do
+    {view, _} = open(conn)
+    render_click(view, "hunt", %{})
+    render_async(view)
+    assert has_element?(view, "#hunt-status", "found")
+    assert has_element?(view, "#selected-law-row td:nth-child(3)", "false")
+    render_click(view, "hunt", %{})
+    render_click(view, "cancel_hunt", %{})
+    render_async(view)
+    assert has_element?(view, "#hunt-status", "cancelled")
+  end
+
+  test "each remembered identity selects its own source-derived binding", %{conn: conn} do
+    {:ok, seed} = HoldLedgerReview.Adversarial.seed("P07")
+    {:ok, doc} = Trace.create_from(seed["before"])
+
+    {:ok, doc} =
+      Trace.command(doc["id"], 0, Trace.token(), %{
+        "kind" => "append",
+        "parent" => "start",
+        "event" => seed["event"]
+      })
+
+    {:ok, view, _} = live(conn, "/claims/po_exposure_retain/#{doc["id"]}")
+    assert has_element?(view, ".binding-picker button[phx-value-index='1']")
+    element(view, "#visual-before button[phx-value-key='2']") |> render_click()
+    assert has_element?(view, ".binding-picker button[aria-pressed='true']", "Entry #2")
+    assert has_element?(view, "#expression-inspector", "found 2")
+  end
 end

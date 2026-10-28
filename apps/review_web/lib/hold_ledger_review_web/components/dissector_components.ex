@@ -26,8 +26,16 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
       </p>
       <div :if={@case}>
         <div class="segmented" aria-label="Output being inspected">
-          <button phx-click="basis" phx-value-value="actual" aria-pressed={@basis == "actual"}>Ledger output</button>
-          <button phx-click="basis" phx-value-value="candidate" aria-pressed={@basis == "candidate"}>Hypothetical output</button>
+          <button
+            phx-click="basis"
+            phx-value-value="actual"
+            aria-pressed={to_string(@basis == "actual")}
+          >Ledger output</button>
+          <button
+            phx-click="basis"
+            phx-value-value="candidate"
+            aria-pressed={to_string(@basis == "candidate")}
+          >Hypothetical output</button>
         </div>
         <article
           :for={{binding, index} <- Enum.with_index(@case["explanation"]["bindings"])}
