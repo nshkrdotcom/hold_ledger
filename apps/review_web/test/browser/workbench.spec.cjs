@@ -219,7 +219,7 @@ test('five answer vocabularies, deferral and explicit confirmation preserve scop
   await page.locator('#finish_rationale').fill('Scope retains unresolved external questions');
   await page.locator('#review-outcome').selectOption('meets_intent_in_reviewed_scope');
   await page.locator('#confirm-finish').click();
-  await expect(page.locator('#flash-group [role=alert]').filter({hasText:'Resolve the critical questions'})).toBeVisible();
+  await expect(page.locator('#flash-group [role=alert]').filter({hasText:'Resolve open questions and computed conflicts'})).toBeVisible();
   saved = await record(page,'blocked-positive');
   expect(saved.review_conclusion).toBe(null);
   await page.locator('#review-outcome').selectOption('needs_policy_or_evidence');

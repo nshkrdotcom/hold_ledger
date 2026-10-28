@@ -412,6 +412,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
 
   defp saved(socket, doc, message) do
     socket
+    |> clear_flash()
     |> assign(:review, doc)
     |> assign(:request_id, request_id())
     |> put_flash(:info, message)
@@ -460,24 +461,20 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
     end
   end
 
-  defp source_names(review, ids) do
-    Enum.map_join(ids, ", ", fn id ->
-      case source_for(review, id) do
-        nil ->
-          case Enum.find(review["graph_snapshot"]["nodes"], &(&1["id"] == id)) do
-            nil ->
-              "Source reference unavailable (see technical record)"
+  defp source_names(review, ids), do: Enum.map_join(ids, ", ", &source_name(review, &1))
 
-            node ->
-              Enum.map_join(node["source_ids"], ", ", fn source_id ->
-                source_for(review, source_id)["path"]
-              end)
-          end
+  defp source_name(review, id) do
+    case source_for(review, id) do
+      nil -> node_source_names(review, id)
+      source -> source["path"]
+    end
+  end
 
-        source ->
-          source["path"]
-      end
-    end)
+  defp node_source_names(review, id) do
+    case Enum.find(review["graph_snapshot"]["nodes"], &(&1["id"] == id)) do
+      nil -> "Source reference unavailable (see technical record)"
+      node -> source_names(review, node["source_ids"])
+    end
   end
 
   defp current_witness(%{draft_error: nil, draft: draft, review: review})
@@ -682,7 +679,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
         >
           <h2>How the policy connects to code and rules</h2>
           <p class="muted">
-            A dashed/inferred edge is a navigation suggestion, not a proved entailment. All registered DSL and native Lean obligations are listed; only relevant supported DSL rows enter the active matrix.
+            Read this map from policy to code to rules. A source-backed connection comes from the source; an inferred connection is only a navigation suggestion. The list includes both Elixir rule declarations and Lean-only obligations. A listing does not mean a proof has run.
           </p>
           <div class="map-columns">
             <div>
@@ -828,7 +825,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
             <details class="field-help">
               <summary>What do these fields mean?</summary>
               <p>
-                All amounts are integer cents. A key is a remembered request identity and cannot be reused for a new hold.
+                <.term key="json">Typed JSON</.term>
+                is structured text with named fields. All amounts are integer cents. A key is a remembered request identity and cannot be reused for a new hold.
               </p>
               <dl>
                 <dt>Starting state</dt><dd>
@@ -874,6 +872,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   rows="7"
                   phx-debounce="100"
                 />
+                <p class="field-hint">
+                  Limits, totals already reserved, and the remembered hold entries.
+                </p>
                 <.input
                   field={@draft_form[:event_json]}
                   type="textarea"
@@ -881,6 +882,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   rows="3"
                   phx-debounce="100"
                 />
+                <p class="field-hint">
+                  The input to calculate: request, dispatch, timeout or cancellation (void).
+                </p>
                 <.input
                   field={@draft_form[:output_json]}
                   type="textarea"
@@ -888,6 +892,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   rows="10"
                   phx-debounce="100"
                 />
+                <p class="field-hint">
+                  The complete alternative: next state, local result and requested outside work.
+                </p>
                 <.input
                   field={@draft_form[:follow_on_json]}
                   type="textarea"
@@ -895,6 +902,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   rows="3"
                   phx-debounce="100"
                 />
+                <p class="field-hint">
+                  Calculate a consequence from each outcome, or leave null to skip.
+                </p>
               </div>
               <input type="hidden" name="draft[request_id]" value={@request_id} />
               <input
@@ -1022,6 +1032,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               </div>
             </div>
             <section id="follow-on-area" aria-label="Second-Event Consequence">
+              <p :if={@draft_error} class="notice-alert">
+                Historical last-good calculation only; this is not the current invalid draft.
+              </p>
               <h3>What happens next?</h3><p>
                 We calculate one more event from each outcome to see the knock-on effect, such as whether a new request can be admitted.
               </p>
@@ -1042,7 +1055,12 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               <% end %>
             </section>
             <section id="catcher-matrix" class="matrix">
-              <h3>What the rules say about this example</h3><button type="button" phx-click="reveal">I’ve made my prediction — show what the rules say</button><p>
+              <p :if={@draft_error} class="notice-alert">
+                Historical last-good rule checks only; correct the draft before using these results.
+              </p><h3>What the rules say about this example</h3><button
+                type="button"
+                phx-click="reveal"
+              >I’ve made my prediction — show what the rules say</button><p>
                 Recording whether you looked first helps keep your judgment honest.
               </p><dl class="matrix-legend">
                 <div :for={key <- ~w(catches allows_here does_not_apply cant_check)}>
@@ -1050,12 +1068,12 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 </div>
               </dl>
               <p class="muted">
-                Catches · Allows here · Doesn't apply · Can't check. Every result is for named bindings only; the rest of the full catalog is unexamined.
+                Every result applies only to this example and the combinations of values tested below. The remaining catalog has not been examined here.
               </p>
               <table :if={@revealed || @matrix_open}>
                 <thead>
                   <tr>
-                    <th>Original law</th><th>Candidate here</th><th>Bindings</th>
+                    <th>Rule</th><th>Alternative here</th><th>Values tested</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1086,12 +1104,13 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               >Raw technical output (also reveals analysis)</button>
               <pre :if={@matrix_open && @details} id="matrix-diagnostics">{inspect(@details.checks, pretty: true, limit: 500)}</pre>
               <p class="muted">
-                Formal native Lean obligations are <b>not a pointwise DSL probe</b>; open the design map for the full remainder and independent checker state.
+                <.term key="native_lean">Lean-only obligations</.term>
+                have no single-example check here. Their technical label is <small>not a pointwise DSL probe</small>. Open the design map for the rest of the catalog; proof-report status is shown separately.
               </p>
             </section>
           </section>
           <aside class="pane decision" aria-labelledby="decision-heading">
-            <p class="eyebrow">03 / HUMAN DECISION</p>
+            <p class="eyebrow">Decision</p>
             <h2 id="decision-heading">Your judgment</h2>
             <p>Answer one question at a time. Revisions keep the earlier answer in your history.</p>
             <%= if @current_card do %>
@@ -1242,12 +1261,18 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               aria-label="Optional configured model assistance"
             >
               <summary>Optional: ask an AI to suggest questions or counter-examples</summary>
-              <p class="muted">
-                Source-only discovery precedes answers; challenge sends the displayed draft;
-                follow-up sends the selected card's recorded human answer and computed evidence.
-                The configured external inference provider receives data only on your explicit opt-in.
-                Model suggestions never certify a proof or change your answer.
-              </p>
+              <dl class="choice-legend">
+                <div :for={kind <- ~w(deck challenge followup)}>
+                  <dt>{Glossary.label(kind)}</dt><dd>{Glossary.one_line(kind)}</dd>
+                </div>
+              </dl><details>
+                <summary>Limits and data sent to AI</summary><p class="muted">
+                  Source-only discovery precedes answers; challenge sends the displayed draft;
+                  follow-up sends the selected card's recorded human answer and computed evidence.
+                  The configured external inference provider receives data only on your explicit opt-in.
+                  Model suggestions never certify a proof or change your answer.
+                </p>
+              </details>
               <p :if={!@ai_capability} class="notice-alert" id="ai-unavailable">
                 AI unavailable: configured provider or JSON Schema capability is not ready.
                 All deterministic checks and human decisions remain available.
@@ -1296,7 +1321,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               </p>
               <ol id="ai-job-history" class="ai-job-list">
                 <li :for={job <- @review["ai_jobs"]} id={"ai-job-#{job["job_id"]}"}>
-                  <strong>{job["request_kind"]}</strong>
+                  <strong>{Glossary.label(job["request_kind"])}</strong>
                   · <.term key={job["status"]} />
                   <span :if={job["error_class"]}>· {job["error_class"]}</span>
                   <%= if job["status"] == "complete" && is_map(job["validated_output"]) do %>
@@ -1304,9 +1329,15 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                       <h4>Computed predictions (shown before AI paraphrases)</h4>
                       <ul :for={check <- job["validated_output"]["reading_checks"]}>
                         <li :for={p <- check["predictions"]}>
-                          <b>{check["claim_slug"]} / {p["probe_id"]}</b>: {p["verification"]}; predicted {p[
-                            "predicted_status"
-                          ]}, computed {p["actual_status"] || "unsupported"}
+                          <b>{Glossary.law_description(check["claim_slug"])}</b>
+                          <p>
+                            {Glossary.label(p["verification"])}: predicted {Glossary.label(
+                              p["predicted_status"]
+                            )}, computed {if p["actual_status"],
+                              do: Glossary.label(p["actual_status"]),
+                              else: "cannot be checked"}.
+                          </p>
+                          <small>{check["claim_slug"]} / {p["probe_id"]} / {p["verification"]}</small>
                           <details>
                             <summary>Computed witness</summary><pre>{Jason.encode!(p["computed_example"], pretty: true)}</pre>
                           </details>
@@ -1318,7 +1349,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                         <small>Sources: {source_names(@review, item["source_ids"])}</small>
                       </p>
                       <p :for={reading <- job["validated_output"]["deck"]["readings"]}>
-                        <b>{reading["claim_slug"]}</b>: {reading["summary"]}
+                        <b>{Glossary.law_description(reading["claim_slug"])}</b><small>{reading["claim_slug"]}</small>: {reading[
+                          "summary"
+                        ]}
                         <small>Not asserted: {reading["not_claimed"]}. Sources: {source_names(
                           @review,
                           reading["source_ids"]

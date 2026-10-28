@@ -191,7 +191,10 @@ defmodule HoldLedgerReviewWeb.WorkbenchLiveTest do
     {:ok, doc, witness} = ReviewStore.create("P01")
     {:ok, view, _} = live(conn, "/workbench/#{doc["id"]}")
     assert has_element?(view, "#scenario-brief", "Requests remote cancellation")
+    view |> form("#candidate-form") |> render_submit(%{"draft" => %{"choice" => "deferred"}})
+    assert has_element?(view, "#flash-group [role=alert]", "Add a reason")
     view |> form("#candidate-form") |> render_submit(%{"draft" => %{"choice" => "unacceptable"}})
+    refute has_element?(view, "#flash-group [role=alert]")
     {:ok, saved} = ReviewStore.get(doc["id"])
     card = Enum.find(saved["core_cards"], &(&1["kind"] == "escape"))
 

@@ -288,6 +288,42 @@ defmodule HoldLedgerReviewWeb.Glossary do
       {"Lean-only obligation", "A formal declaration outside this tool’s single-example checker.",
        "Its catalog entry does not itself show that a proof run succeeded."}
   }
+  @terms Map.merge(@terms, %{
+           "json" =>
+             {"Typed JSON", "Text describing a state, event or outcome with named fields.",
+              "The editor accepts the exact shapes shown in its starting example. Numbers are integer cents or counts, quoted words are fixed labels, and null means no next event."},
+           "event" =>
+             {"Event", "An input that asks the ledger to calculate its next transition.",
+              "The example editor supports request, dispatch, timeout and void. The wider ledger also handles processor reports, confirmations and recovery events."},
+           "result" =>
+             {"Local result", "The ledger's label for the outcome of this input.",
+              "Results describe the local calculation. Effects separately describe requests for work outside the ledger."},
+           "validity" =>
+             {"Valid ledger state",
+              "A state satisfying the reference model's structural and accounting constraints.",
+              "Validity alone can permit an unwanted transition. Admission, required effects and retained exposure are separate requirements."},
+           "terminal" =>
+             {"Terminal hold",
+              "A declined or cancelled identity that cannot become active again.",
+              "Its remembered key and amount remain in the ledger after capacity is released."},
+           "processor" =>
+             {"Payment processor",
+              "The outside service that approves authorizations and confirms cancellations.",
+              "Its truthful reports, identity deduplication and permanent terminal fencing are outside-world assumptions."},
+           "deck" =>
+             {"Discover questions",
+              "Ask the AI to read selected source and suggest questions or competing interpretations.",
+              "Locally computed synthetic checks verify any model predictions. Suggestions require explicit human acceptance."},
+           "challenge" =>
+             {"Propose an alternative",
+              "Ask the AI for a complete typed example to test locally.",
+              "A validated proposal can be loaded as a temporary draft. Loading it does not save it or answer its question."},
+           "followup" =>
+             {"Challenge my answer",
+              "Ask the AI about the selected question's latest saved answer and evidence.",
+              "The request includes recorded revision history and the prior validated model question, if present. It does not change your answer."}
+         })
+
   @laws %{
     "l1_find" => "Looking up a unique entry agrees with the independent reference.",
     "l2_identity" => "Changing a status keeps every recorded key and amount.",
@@ -466,13 +502,33 @@ defmodule HoldLedgerReviewWeb.Glossary do
 
   def error(:unresolved_critical_conflict),
     do:
-      "Resolve the critical questions or choose a conclusion that keeps the missing policy or evidence open."
+      "Resolve open questions and computed conflicts, and save supporting evidence before a positive conclusion. Otherwise choose Needs policy or evidence."
 
   def error(:unanswered_mandatory_or_critical),
     do: "Answer or explicitly defer the required questions before concluding."
 
   def error(:mandatory_questions_open),
     do: "Answer or explicitly defer the required questions before concluding."
+
+  def error(:review_closed),
+    do: "This review has been concluded and is read only. Start a new review to keep evaluating."
+
+  def error(:correction_required),
+    do: "Explain what the reading gets wrong before saving this disagreement."
+
+  def error(:supporting_evidence_required),
+    do: "Save an example as supporting evidence before confirming this conclusion."
+
+  def error(:invalid_answer),
+    do:
+      "Use an offered answer and a reason of at most 600 characters. Your previous answer remains saved."
+
+  def error(:invalid_conclusion),
+    do: "Choose an offered outcome and give a scope and rationale before confirming."
+
+  def error(:write_failed),
+    do:
+      "The local review file could not be saved. Check the file permissions and available space, then try again."
 
   def error(:read_only), do: "This review is read only. Start a new review to keep evaluating."
   def error(:invalid_choice), do: "Choose one of the answers offered for this question."
