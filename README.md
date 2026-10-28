@@ -142,16 +142,16 @@ An agent can carry out this workflow under agreed policy:
 
 [Agentic verification](guides/agentic_verification.md) has a worked exercise and prompts; [Human review](guides/human_review.md) explains what may be delegated and includes a decision practice set. The repository's `AGENTS.md` contains instructions for an agent working on this codebase.
 
-The optional [Phoenix claim workbench](apps/review_web/README.md) now has
-one deterministic, human-owned LiveView at `/` and `/workbench`. It reads
-actual policy and original law source, offers P01–P08 bounded what-if cases,
-runs the source-derived pointwise checker with the single strict tuple codec,
-and stores source-identified human reviews with JSON/Markdown exports. It
-does **not** execute mutations in the app, call a model, certify a formal
-proof or attest an external processor. Milestone B implementation is authored
-but its Elixir/Phoenix/browser acceptance is **not yet executed**; the local
-second half owns QC. Former `/review` and receipt routes remain removed. The
-[manual exercise](guides/interactive_review.md) also works without the app.
+The optional [Phoenix claim workbench](apps/review_web/README.md) provides
+one source-anchored human review at `/` and `/workbench`. It reads policy and
+original law source, computes bounded what-if cases with one source-derived
+evaluator and strict codec, and persists human reviews with JSON/Markdown
+exports. Optional configured-model discovery, typed challenge proposals and
+answer-aware follow-ups require a fresh opt-in for each request. Computed
+pointwise evidence remains separate from model interpretations, independent
+formal checking and the human conclusion. The app does not execute mutations
+or remote payment operations. The [manual exercise](guides/interactive_review.md)
+also works without the app.
 
 ## Documentation map
 

@@ -29,22 +29,32 @@ defmodule HoldLedgerReview.AIJobs do
       }
 
       with {:ok, %{review: started}} <- ReviewStore.start_job(id, command, server) do
-        # No LiveView process is linked to this task. Persistence is single-writer.
-        case Task.Supervisor.start_child(supervisor, fn ->
-               result = AI.run(packet, true, opts)
-               completion = completion(command, result)
-               ReviewStore.complete_job(id, completion, server)
-             end) do
-          {:ok, _pid} -> {:ok, started, job_id}
-          {:error, _reason} ->
-            ReviewStore.complete_job(id, completion(command, {:error, :task_start_failed}), server)
-            {:error, :task_start_failed}
-        end
+        dispatch(supervisor, server, id, command, packet, opts, started)
       end
     else
       false -> {:error, :consent_or_revision_required}
       error -> error
     end
+  end
+
+  defp dispatch(supervisor, server, id, command, packet, opts, started) do
+    case Task.Supervisor.start_child(supervisor, fn ->
+           result = AI.run(packet, true, opts)
+           deliver_completion(id, completion(command, result), server)
+         end) do
+      {:ok, _pid} ->
+        {:ok, started, command["job_id"]}
+
+      {:error, _reason} ->
+        ReviewStore.complete_job(id, completion(command, {:error, :task_start_failed}), server)
+        {:error, :task_start_failed}
+    end
+  end
+
+  defp deliver_completion(id, completion, server) do
+    ReviewStore.complete_job(id, completion, server)
+  catch
+    :exit, {:noproc, _call} -> {:error, :store_unavailable}
   end
 
   defp completion(command, result) do

@@ -49,9 +49,13 @@ matrix, answer the critical Escape question, and export the saved review.
 Selecting a different seed opens a separate review to preserve card scope.
 Only deliberate pin and human answer submits are persisted; intermediate
 drafts are not. The app uses a *single* A-derived evaluator and strict codec.
-No AI call or remote
-processor call is made; the former teaching-case UI, receipts and `/review`
-paths are removed. C handles configured AI, not this B app.
+Optional configured-model discovery, typed challenge proposals and follow-ups
+require a fresh opt-in for each send of selected source, draft or reviewer
+content. Without opt-in, the deterministic workflow makes no AI call. No remote
+payment operation is performed. Computed predictions and contradictions precede
+model paraphrases; proposals need deliberate acceptance, and a proposed witness
+loads as an unsaved draft. The former teaching-case UI, receipts and `/review`
+paths remain removed.
 
 ## Evidence and limits
 

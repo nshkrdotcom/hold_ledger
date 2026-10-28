@@ -59,6 +59,12 @@ def preview(item: dict, cases: list[dict]) -> dict:
             "source_link_matched": sourced, "case": where, "text_excerpt": text}
 
 
+def challenge_identity(witness: dict) -> str:
+    # Removing an optional follow-on does not create a new transition challenge.
+    return json.dumps({key: witness[key] for key in ("before", "event", "output")},
+                      sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
 def summarize(path: Path, adjudication: Path | None) -> dict:
     run = json.loads(path.read_text())
     if run.get("evidence_kind") != "configured_model_live_evaluation":
@@ -82,6 +88,9 @@ def summarize(path: Path, adjudication: Path | None) -> dict:
     redundant = 0
     total_latency = 0
     validated_novel = 0
+    known_challenges = {challenge_identity(json.loads(fixture.read_text()))
+                        for fixture in (RUBRIC.parents[1] / "scenarios").glob("P*.json")}
+    seen_challenges = set(known_challenges)
     false_status_candidates = []
     for case in cases:
         discovery = case.get("discovery", {})
@@ -98,7 +107,12 @@ def summarize(path: Path, adjudication: Path | None) -> dict:
                     false_status_candidates.append({"case": case["case"], "text": text[:350]})
         challenge = case.get("challenge", {})
         if challenge.get("status") == "configured_model_response_validated" and challenge.get("novel_witness"):
-            validated_novel += 1
+            witness = challenge.get("output", {}).get("challenge", {}).get("witness")
+            if isinstance(witness, dict):
+                identity = challenge_identity(witness)
+                if identity not in seen_challenges:
+                    validated_novel += 1
+                    seen_challenges.add(identity)
         total_latency += challenge.get("output", {}).get("provenance", {}).get("latency_ms", 0)
 
     chosen = [candidate_overrides.get(x["id"], {}).get("label", x["provisional"]) for x in previews]

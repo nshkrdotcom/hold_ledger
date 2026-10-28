@@ -1,7 +1,7 @@
 defmodule HoldLedgerReviewWeb.WorkbenchLive do
   @moduledoc "Source-owned, human-CAS review with optional opted-in AI proposals."
   use HoldLedgerReviewWeb, :live_view
-  alias HoldLedgerReview.{AI, AIJobs, Adversarial, Dossier, ReviewStore}
+  alias HoldLedgerReview.{Adversarial, AI, AIJobs, Dossier, ReviewStore}
 
   @draft_fields ~w(before_json event_json output_json follow_on_json)
   @submit_fields @draft_fields ++
@@ -35,7 +35,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
   def handle_params(%{"id" => id}, _url, socket) do
     case ReviewStore.get(id) do
       {:ok, review} ->
-        if connected?(socket), do: Phoenix.PubSub.subscribe(HoldLedgerReview.PubSub, "review:" <> id)
+        if connected?(socket),
+          do: Phoenix.PubSub.subscribe(HoldLedgerReview.PubSub, "review:" <> id)
 
         seed =
           case List.last(review["pinned_probes"]) do
@@ -198,48 +199,10 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
     card = active_card(socket)
 
     if review && card && socket.assigns.ai_consent && review["status"] == "in_progress" do
-      witness =
-        if kind == "challenge" do
-          with {:ok, decoded} <- Adversarial.from_form(socket.assigns.draft),
-               {:ok, encoded} <- Adversarial.encode(decoded) do
-            encoded
-          else
-            _ -> nil
-          end
-        else
-          nil
-        end
-
-      if kind == "challenge" and is_nil(witness) do
-        {:noreply, put_flash(socket, :error, "Correct the draft before sending a challenge request")}
-      else
-        result =
-          AIJobs.request(
-            review["id"],
-            kind,
-            card["id"],
-            witness,
-            review["human_revision"],
-            true
-          )
-
-        case result do
-          {:ok, updated, _job_id} ->
-            {:noreply,
-             socket
-             |> assign(:review, updated)
-             |> assign(:ai_consent, false)
-             |> put_flash(:info, "AI #{kind} request queued; no finding is assumed")}
-
-          {:error, reason} ->
-            {:noreply,
-             socket
-             |> assign(:ai_consent, false)
-             |> put_flash(:error, "AI unavailable/request refused: #{inspect(reason)}")}
-        end
-      end
+      request_ai(socket, review, card, kind)
     else
-      {:noreply, put_flash(socket, :error, "Explicit AI consent and a current review are required")}
+      {:noreply,
+       put_flash(socket, :error, "Explicit AI consent and a current review are required")}
     end
   end
 
@@ -290,6 +253,42 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
     else
       {:noreply, socket}
     end
+  end
+
+  defp request_ai(socket, review, card, kind) do
+    witness = challenge_witness(socket, kind)
+
+    if kind == "challenge" and is_nil(witness) do
+      {:noreply,
+       put_flash(socket, :error, "Correct the draft before sending a challenge request")}
+    else
+      result =
+        AIJobs.request(review["id"], kind, card["id"], witness, review["human_revision"], true)
+
+      ai_request_result(assign(socket, :ai_consent, false), result, kind)
+    end
+  end
+
+  defp challenge_witness(socket, "challenge") do
+    with {:ok, decoded} <- Adversarial.from_form(socket.assigns.draft),
+         {:ok, encoded} <- Adversarial.encode(decoded) do
+      encoded
+    else
+      _ -> nil
+    end
+  end
+
+  defp challenge_witness(_socket, _kind), do: nil
+
+  defp ai_request_result(socket, {:ok, updated, _job_id}, kind) do
+    {:noreply,
+     socket
+     |> assign(:review, updated)
+     |> put_flash(:info, "AI #{kind} request queued; no finding is assumed")}
+  end
+
+  defp ai_request_result(socket, {:error, reason}, _kind) do
+    {:noreply, put_flash(socket, :error, "AI unavailable/request refused: #{inspect(reason)}")}
   end
 
   defp valid_escape_submission?(review, card, input) do
@@ -792,7 +791,12 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
             <nav id="question-nav" aria-label="Review questions" class="card-nav">
               <button
                 :for={card <- cards(@review)}
-                id={if(card["origin"] == "deterministic", do: "card-#{card["kind"]}", else: "card-#{card["id"]}")}
+                id={
+                  if(card["origin"] == "deterministic",
+                    do: "card-#{card["kind"]}",
+                    else: "card-#{card["id"]}"
+                  )
+                }
                 type="button"
                 class={if(card["id"] == @selected_card_id, do: "selected", else: "")}
                 phx-click="select_card"
@@ -805,7 +809,11 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 )}</small>
               </button>
             </nav>
-            <section id="ai-collaboration" class="ai-panel" aria-label="Optional configured model assistance">
+            <section
+              id="ai-collaboration"
+              class="ai-panel"
+              aria-label="Optional configured model assistance"
+            >
               <h3>AI discovery and challenge · optional</h3>
               <p class="muted">
                 Source-only discovery precedes answers; challenge sends the displayed draft;
@@ -840,29 +848,41 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   type="button"
                   phx-click="ai_request"
                   phx-value-kind="challenge"
-                  disabled={!@ai_consent || !@ai_capability || @draft_error != nil || @review["status"] != "in_progress"}
+                  disabled={
+                    !@ai_consent || !@ai_capability || @draft_error != nil ||
+                      @review["status"] != "in_progress"
+                  }
                 >Propose what-if</button>
                 <button
                   id="ai-followup"
                   type="button"
                   phx-click="ai_request"
                   phx-value-kind="followup"
-                  disabled={!@ai_consent || !@ai_capability || @review["status"] != "in_progress" || is_nil(last_answer(@review, @selected_card_id))}
+                  disabled={
+                    !@ai_consent || !@ai_capability || @review["status"] != "in_progress" ||
+                      is_nil(last_answer(@review, @selected_card_id))
+                  }
                 >Challenge my answer</button>
               </div>
-              <p class="muted">Failed or interrupted jobs need an explicit new request. There is no automatic retry.</p>
+              <p class="muted">
+                Failed or interrupted jobs need an explicit new request. There is no automatic retry.
+              </p>
               <ol id="ai-job-history" class="ai-job-list">
                 <li :for={job <- @review["ai_jobs"]} id={"ai-job-#{job["job_id"]}"}>
-                  <strong>{job["request_kind"]}</strong> · {job["status"]}
+                  <strong>{job["request_kind"]}</strong>
+                  · {job["status"]}
                   <span :if={job["error_class"]}>· {job["error_class"]}</span>
                   <%= if job["status"] == "complete" && is_map(job["validated_output"]) do %>
                     <div :if={job["request_kind"] == "deck"} class="ai-results">
                       <h4>Computed predictions (shown before AI paraphrases)</h4>
                       <ul :for={check <- job["validated_output"]["reading_checks"]}>
                         <li :for={p <- check["predictions"]}>
-                          <b>{check["claim_slug"]} / {p["probe_id"]}</b>:
-                          {p["verification"]}; predicted {p["predicted_status"]}, computed {p["actual_status"] || "unsupported"}
-                          <details><summary>Computed witness</summary><pre>{Jason.encode!(p["computed_example"], pretty: true)}</pre></details>
+                          <b>{check["claim_slug"]} / {p["probe_id"]}</b>: {p["verification"]}; predicted {p[
+                            "predicted_status"
+                          ]}, computed {p["actual_status"] || "unsupported"}
+                          <details>
+                            <summary>Computed witness</summary><pre>{Jason.encode!(p["computed_example"], pretty: true)}</pre>
+                          </details>
                         </li>
                       </ul>
                       <h4>Model hypotheses and readings · unapproved proposals</h4>
@@ -872,18 +892,31 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                       </p>
                       <p :for={reading <- job["validated_output"]["deck"]["readings"]}>
                         <b>{reading["claim_slug"]}</b>: {reading["summary"]}
-                        <small>Not asserted: {reading["not_claimed"]}. Sources: {Enum.join(reading["source_ids"], ", ")}</small>
+                        <small>Not asserted: {reading["not_claimed"]}. Sources: {Enum.join(
+                          reading["source_ids"],
+                          ", "
+                        )}</small>
                       </p>
-                      <div :for={unknown <- job["validated_output"]["deck"]["uncertainties"]} class="muted">
+                      <div
+                        :for={unknown <- job["validated_output"]["deck"]["uncertainties"]}
+                        class="muted"
+                      >
                         Open: {unknown["question"]} · Needed: {unknown["missing_evidence"]}.
                         Sources: {Enum.join(unknown["source_ids"], ", ")}
                       </div>
-                      <p class="muted">Duplicate suggestions withheld: {job["validated_output"]["deduplicated_count"]}.</p>
+                      <p class="muted">
+                        Duplicate suggestions withheld: {job["validated_output"]["deduplicated_count"]}.
+                      </p>
                     </div>
                     <div :if={job["request_kind"] == "challenge"} class="ai-results">
                       <h4>Typed AI hypothetical · not pinned</h4>
                       <p>{job["validated_output"]["challenge"]["selection_reason"]}</p>
-                      <p class="muted">Source IDs: {Enum.join(job["validated_output"]["challenge"]["source_ids"], ", ")}</p>
+                      <p class="muted">
+                        Source IDs: {Enum.join(
+                          job["validated_output"]["challenge"]["source_ids"],
+                          ", "
+                        )}
+                      </p>
                       <p>Computed result is pointwise, not a proof verdict.</p>
                       <pre>{Jason.encode!(job["validated_output"]["evaluation"]["law_rows"], pretty: true)}</pre>
                       <button
@@ -898,7 +931,12 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                       <p>{job["validated_output"]["followup"]["question"]}</p>
                       <p>{job["validated_output"]["followup"]["explanation"]}</p>
                       <p class="muted">{job["validated_output"]["followup"]["uncertainty"]}</p>
-                      <p class="muted">Source IDs: {Enum.join(job["validated_output"]["followup"]["source_ids"], ", ")}</p>
+                      <p class="muted">
+                        Source IDs: {Enum.join(
+                          job["validated_output"]["followup"]["source_ids"],
+                          ", "
+                        )}
+                      </p>
                     </div>
                   <% end %>
                 </li>
@@ -907,7 +945,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 <h4>Suggestions (AI) · accept deliberately</h4>
                 <ul id="ai-suggestions" class="ai-job-list">
                   <li :for={card <- @review["suggested_ai_cards"]} id={"suggest-#{card["id"]}"}>
-                    <b>{card["kind"]}</b> · {card["question"]}
+                    <b>{card["kind"]}</b>
+                    · {card["question"]}
                     <p class="muted">Source: {Enum.join(card["source_ids"], ", ")}</p>
                     <button
                       type="button"

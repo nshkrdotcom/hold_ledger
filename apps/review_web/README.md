@@ -125,6 +125,13 @@ fail closed. Failures never block human review or source-based what-if checking.
 - `AI` is the configured provider boundary, `AIPacket` creates bounded
   source-linked packets, and `AIProtocol` validates exact schemas plus packet
   IDs/citations, independent pointwise predictions and typed challenge witnesses.
+  Canonical contracts remain byte-identical to the docset. The configured
+  provider receives a strict wire schema using disjoint `anyOf` event branches
+  and locally enforced array uniqueness; every response still passes the full
+  canonical schema and semantic checks. Permitted card targets are explicit.
+  Source excerpts prioritize policy, complete reducer/oracle and law text before
+  large proof files, within the same 64 KiB source budget. Source, prompt and
+  report freshness are checked again immediately before dispatch.
   Discovery sends *source-only* graph snippets and unlabeled synthetic probes;
   the hidden rubric, fixture case names, expected matrix, mutant labels and
   human answers are not included. Verified noncontiguous source excerpts are
@@ -162,10 +169,21 @@ content to that provider:
 uv run --locked python scripts/local_run.py --cwd apps/review_web mix run scripts/benchmark_discovery.exs -- --allow-external-source-data
 ```
 
+Run the benchmark and browser exercise sequentially: each Mix runtime owns a
+single writer, and startup recovery interrupts pending jobs in its configured
+review directory. Concurrent runtimes sharing that directory are unsupported.
+
 Without that flag the benchmark **refuses without sending**. It runs source-only
 discovery and one typed challenge on each of three policy situations, writing a
 real-provider result to ignored `tmp/review_studio/benchmarks/` only if the
-invocation runs. Errors remain errors, not substituted controlled fixtures.
+invocation runs. Errors remain errors, not substituted controlled fixtures. Bounded original
+provider responses (including rejected proposals) remain in the ignored report
+for review. Challenge novelty excludes all supplied synthetic witnesses;
+source-node citations resolve to exact files alongside excerpt citations.
+The scorer counts distinct before/event/output challenges, excluding supplied
+examples and changes limited to optional follow-on events. Challenge requests
+show the same opaque, unlabeled synthetic examples so the model can seek a
+new transition boundary without receiving computed labels or the rubric.
 The model never receives `priv/benchmark/rubric.json` or the scorer.
 
 Run the separate private offline scorer against the **actual generated path**:

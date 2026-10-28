@@ -9,14 +9,13 @@ defmodule HoldLedgerReview.ReviewStore do
 
   alias HoldLedgerReview.{
     Adversarial,
-    Anchor,
+    AIProtocol,
     Canonical,
     Claims,
     Config,
     DesignGraph,
     Dossier,
-    ProofEvidence,
-    AIProtocol
+    ProofEvidence
   }
 
   @id_pattern ~r/\A[A-Za-z0-9_-]{16,80}\z/
@@ -200,16 +199,24 @@ defmodule HoldLedgerReview.ReviewStore do
   end
 
   def handle_call(:list, _from, state) do
-    docs =
+    documents =
       for path <- Path.wildcard(Path.join(state.dir, "*.json")),
-          id = Path.basename(path, ".json"),
-          {:ok, doc} <- [read(state, id)],
-          do: %{
-            "id" => id,
-            "status" => if(current?(doc), do: doc["status"], else: "stale_read_only"),
-            "updated_at_utc" => doc["updated_at_utc"],
-            "target_policy_nodes" => doc["target_policy_nodes"]
-          }
+          {:ok, doc} <- [read(state, Path.basename(path, ".json"))],
+          do: doc
+
+    # One fresh snapshot per list operation, never a cross-request cache.
+    # Hundreds of reviews normally share the same source files and report.
+    context = current_context(documents)
+
+    docs =
+      Enum.map(documents, fn doc ->
+        %{
+          "id" => doc["id"],
+          "status" => if(current?(doc, context), do: doc["status"], else: "stale_read_only"),
+          "updated_at_utc" => doc["updated_at_utc"],
+          "target_policy_nodes" => doc["target_policy_nodes"]
+        }
+      end)
 
     {:reply, {:ok, Enum.sort_by(docs, & &1["updated_at_utc"], :desc)}, state}
   end
@@ -391,7 +398,10 @@ defmodule HoldLedgerReview.ReviewStore do
       updated =
         doc
         |> Map.update!("ai_jobs", &(&1 ++ [job]))
-        |> update_in(["source", "prompt_digests"], &Map.put(&1, command["request_kind"], command["prompt_hash"]))
+        |> update_in(
+          ["source", "prompt_digests"],
+          &Map.put(&1, command["request_kind"], command["prompt_hash"])
+        )
 
       {:ok, updated, nil, nil}
     else
@@ -780,33 +790,43 @@ defmodule HoldLedgerReview.ReviewStore do
     |> Map.put("updated_at_utc", now())
   end
 
-  defp current?(doc) do
+  defp current?(doc), do: current?(doc, current_context([doc]))
+
+  defp current?(doc, {:ok, context}) do
+    source = doc["source"]
+
+    source["compiled_source_digest"] == context.generation.source.sha256 and
+      source["evaluator_id"] == context.generation.evaluator_id and
+      proof_matches?(source["proof_report_snapshot"], context.proof) and
+      Enum.all?(source["source_manifest"], fn {path, digest} ->
+        context.digests[path] == digest
+      end)
+  end
+
+  defp current?(_doc, _unavailable), do: false
+
+  defp current_context(documents) do
     with :ok <- Claims.freshness(),
-         %{status: :ready} = generation <- Claims.snapshot(),
-         true <- doc["source"]["compiled_source_digest"] == generation.source.sha256,
-         true <- doc["source"]["evaluator_id"] == generation.evaluator_id,
-         true <- proof_current?(doc, generation),
-         true <-
-           Enum.all?(doc["source"]["source_manifest"], fn {path, digest} ->
-             match?({:ok, _}, Anchor.read_under(Config.root(), path)) and
-               ProofEvidence.digest_file(Config.root(), path) == digest
-           end) do
-      true
+         %{status: :ready} = generation <- Claims.snapshot() do
+      paths =
+        documents |> Enum.flat_map(&Map.keys(&1["source"]["source_manifest"])) |> Enum.uniq()
+
+      digests = Map.new(paths, &{&1, ProofEvidence.digest_file(Config.root(), &1)})
+
+      proof =
+        ProofEvidence.load(
+          Config.root(),
+          Application.get_env(:hold_ledger_review_web, :proof_report),
+          Enum.map(generation.source.catalog, & &1["slug"])
+        )
+
+      {:ok, %{generation: generation, digests: digests, proof: proof}}
     else
-      _ -> false
+      _ -> {:error, :stale_source}
     end
   end
 
-  defp proof_current?(doc, generation) do
-    saved = doc["source"]["proof_report_snapshot"]
-
-    current =
-      ProofEvidence.load(
-        Config.root(),
-        Application.get_env(:hold_ledger_review_web, :proof_report),
-        Enum.map(generation.source.catalog, & &1["slug"])
-      )
-
+  defp proof_matches?(saved, current) do
     is_map(saved) and saved["status"] == Atom.to_string(current.status) and
       saved["detail"] == String.slice(current.detail, 0, 300) and
       saved["report_sha256"] == Map.get(current, :report_sha256)
@@ -858,7 +878,8 @@ defmodule HoldLedgerReview.ReviewStore do
 
   defp notify(id) do
     if Process.whereis(HoldLedgerReview.PubSub),
-      do: Phoenix.PubSub.broadcast(HoldLedgerReview.PubSub, "review:" <> id, {:review_updated, id})
+      do:
+        Phoenix.PubSub.broadcast(HoldLedgerReview.PubSub, "review:" <> id, {:review_updated, id})
   end
 
   def atomic_write(path, bytes) do

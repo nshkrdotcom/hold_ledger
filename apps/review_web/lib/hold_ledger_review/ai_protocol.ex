@@ -16,26 +16,74 @@ defmodule HoldLedgerReview.AIProtocol do
     |> Jason.decode!()
   end
 
+  @doc """
+  Wire representation for the configured provider's strict-schema subset.
+  Canonical schemas stay unchanged and validate every response locally.
+  Event/effect oneOf branches have disjoint type constants, so anyOf preserves
+  their meaning. Unique array members remain enforced by structure?/2.
+  """
+  def provider_schema(kind, context \\ nil) do
+    schema = kind |> schema() |> wire_schema()
+    constrain_targets(schema, kind, context)
+  end
+
+  defp constrain_targets(schema, _kind, nil), do: schema
+
+  defp constrain_targets(schema, "deck", context) do
+    schema
+    |> put_in(["properties", "target_node_id", "enum"], [context.target_node_id])
+    |> put_in(
+      ["properties", "card_suggestions", "items", "properties", "target_node_id", "enum"],
+      context.policy_nodes
+    )
+  end
+
+  defp constrain_targets(schema, "challenge", context),
+    do: put_in(schema, ["properties", "target_card_id", "enum"], [context.card_id])
+
+  defp constrain_targets(schema, "followup", context),
+    do: put_in(schema, ["properties", "card_id", "enum"], [context.card_id])
+
+  defp wire_schema(value) when is_map(value) do
+    value
+    |> Map.delete("uniqueItems")
+    |> Map.new(fn
+      {"oneOf", branches} -> {"anyOf", wire_schema(branches)}
+      {key, item} -> {key, wire_schema(item)}
+    end)
+  end
+
+  defp wire_schema(value) when is_list(value), do: Enum.map(value, &wire_schema/1)
+  defp wire_schema(value), do: value
+
   def prompt(kind) when kind in @kinds do
     Application.app_dir(:hold_ledger_review_web, "priv/prompts/#{kind}.md") |> File.read!()
   end
 
   @doc "Check JSON Schema's closed subset used by the shipped contracts, including nested oneOf."
   def structure?(value, schema) when is_map(schema) do
-    one_of = Map.get(schema, "oneOf")
-
-    if is_list(one_of) do
-      Enum.count(one_of, &structure?(value, &1)) == 1
-    else
-      type?(value, Map.get(schema, "type")) and
-        (not Map.has_key?(schema, "const") or value == schema["const"]) and
-        (not Map.has_key?(schema, "enum") or value in schema["enum"]) and
-        string_rules?(value, schema) and number_rules?(value, schema) and
-        object_rules?(value, schema) and array_rules?(value, schema)
-    end
+    alternatives?(value, Map.get(schema, "oneOf"), :one) and
+      alternatives?(value, Map.get(schema, "anyOf"), :any) and
+      scalar_rules?(value, schema) and string_rules?(value, schema) and
+      number_rules?(value, schema) and object_rules?(value, schema) and
+      array_rules?(value, schema)
   end
 
   def structure?(_, _), do: false
+
+  defp alternatives?(_value, nil, _mode), do: true
+
+  defp alternatives?(value, schemas, :one),
+    do: Enum.count(schemas, &structure?(value, &1)) == 1
+
+  defp alternatives?(value, schemas, :any),
+    do: Enum.any?(schemas, &structure?(value, &1))
+
+  defp scalar_rules?(value, schema) do
+    type?(value, Map.get(schema, "type")) and
+      (not Map.has_key?(schema, "const") or value == schema["const"]) and
+      (not Map.has_key?(schema, "enum") or value in schema["enum"])
+  end
 
   defp type?(_value, nil), do: true
   defp type?(v, types) when is_list(types), do: Enum.any?(types, &type?(v, &1))
@@ -125,26 +173,17 @@ defmodule HoldLedgerReview.AIProtocol do
   def persistable?(_, _, _), do: false
 
   defp persistable_kind?(doc, "deck", output) do
-    with true <- exact_map?(output, ~w(deck reading_checks suggested_cards deduplicated_count provenance)),
+    with true <-
+           exact_map?(
+             output,
+             ~w(deck reading_checks suggested_cards deduplicated_count provenance)
+           ),
          true <- structure?(output["deck"], schema("deck")),
          true <- is_integer(output["deduplicated_count"]) and output["deduplicated_count"] >= 0 do
-      Enum.any?(doc["core_cards"] ++ doc["accepted_ai_cards"], fn card ->
-        case HoldLedgerReview.AIPacket.build(doc, "deck", card["id"]) do
-          {:ok, packet} ->
-            packet.input_digest == output["provenance"]["input_sha256"] and
-              case validate("deck", output["deck"], packet.context) do
-                {:ok, checked} ->
-                  Map.take(checked, ~w(reading_checks suggested_cards deduplicated_count)) ==
-                    Map.take(output, ~w(reading_checks suggested_cards deduplicated_count))
-
-                _ ->
-                  false
-              end
-
-          _ ->
-            false
-        end
-      end)
+      Enum.any?(
+        doc["core_cards"] ++ doc["accepted_ai_cards"],
+        &matching_deck?(doc, &1, output)
+      )
     else
       _ -> false
     end
@@ -154,8 +193,11 @@ defmodule HoldLedgerReview.AIProtocol do
     with true <- exact_map?(output, ~w(challenge evaluation provenance)),
          true <- structure?(output["challenge"], schema("challenge")),
          true <- valid_references?(doc, output["challenge"]["source_ids"]),
-         true <- Enum.any?(doc["core_cards"] ++ doc["accepted_ai_cards"],
-           &(&1["id"] == output["challenge"]["target_card_id"])),
+         true <-
+           Enum.any?(
+             doc["core_cards"] ++ doc["accepted_ai_cards"],
+             &(&1["id"] == output["challenge"]["target_card_id"])
+           ),
          {:ok, decoded} <- Adversarial.decode(output["challenge"]["witness"]),
          {:ok, encoded} <- Adversarial.encode(decoded),
          true <- encoded == output["challenge"]["witness"],
@@ -175,8 +217,19 @@ defmodule HoldLedgerReview.AIProtocol do
 
   defp persistable_kind?(_, _, _), do: false
 
+  defp matching_deck?(doc, card, output) do
+    with {:ok, packet} <- HoldLedgerReview.AIPacket.build(doc, "deck", card["id"]),
+         true <- packet.input_digest == output["provenance"]["input_sha256"],
+         {:ok, checked} <- validate("deck", output["deck"], packet.context) do
+      Map.take(checked, ~w(reading_checks suggested_cards deduplicated_count)) ==
+        Map.take(output, ~w(reading_checks suggested_cards deduplicated_count))
+    else
+      _ -> false
+    end
+  end
+
   defp exact_map?(map, keys),
-    do: is_map(map) and Enum.sort(Map.keys(map)) == Enum.sort(keys)
+    do: Enum.sort(Map.keys(map)) == Enum.sort(keys)
 
   defp valid_references?(doc, ids) do
     known =
@@ -193,19 +246,8 @@ defmodule HoldLedgerReview.AIProtocol do
       output["target_node_id"] == ctx.target_node_id and
         Enum.all?(output["intent_hypotheses"], citations) and
         Enum.all?(output["uncertainties"], citations) and
-        Enum.all?(output["readings"], fn reading ->
-          citations.(reading) and reading["claim_slug"] in ctx.claim_slugs and
-            Enum.all?(reading["predictions"], fn p ->
-              Map.has_key?(ctx.probes, p["probe_id"]) and
-                p["predicted_status"] in @statuses
-            end) and
-            length(Enum.uniq_by(reading["predictions"], & &1["probe_id"])) ==
-              length(reading["predictions"])
-        end) and
-        Enum.all?(output["card_suggestions"], fn c ->
-          citations.(c) and c["target_node_id"] in ctx.policy_nodes and
-            Enum.all?(c["probe_ids"], &Map.has_key?(ctx.probes, &1))
-        end) and
+        Enum.all?(output["readings"], &valid_reading?(&1, ctx)) and
+        Enum.all?(output["card_suggestions"], &valid_card?(&1, ctx)) and
         Enum.uniq_by(output["card_suggestions"], & &1["proposal_id"]) ==
           output["card_suggestions"]
 
@@ -246,6 +288,23 @@ defmodule HoldLedgerReview.AIProtocol do
     else
       {:error, :invalid_followup}
     end
+  end
+
+  defp valid_reading?(reading, ctx) do
+    citations?(reading["source_ids"], ctx) and reading["claim_slug"] in ctx.claim_slugs and
+      Enum.all?(reading["predictions"], &valid_prediction?(&1, ctx)) and
+      length(Enum.uniq_by(reading["predictions"], & &1["probe_id"])) ==
+        length(reading["predictions"])
+  end
+
+  defp valid_prediction?(prediction, ctx),
+    do:
+      Map.has_key?(ctx.probes, prediction["probe_id"]) and
+        prediction["predicted_status"] in @statuses
+
+  defp valid_card?(card, ctx) do
+    citations?(card["source_ids"], ctx) and card["target_node_id"] in ctx.policy_nodes and
+      Enum.all?(card["probe_ids"], &Map.has_key?(ctx.probes, &1))
   end
 
   defp citations?(ids, ctx) when is_list(ids),
@@ -327,8 +386,11 @@ defmodule HoldLedgerReview.AIProtocol do
   end
 
   defp normalize(text) when is_binary(text) do
-    text |> String.downcase() |> String.replace(~r/[^[:alnum:]\s]/u, " ") |>
-      String.split() |> Enum.join(" ")
+    text
+    |> String.downcase()
+    |> String.replace(~r/[^[:alnum:]\s]/u, " ")
+    |> String.split()
+    |> Enum.join(" ")
   end
 
   defp near_duplicate?(left, right) do

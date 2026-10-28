@@ -30,28 +30,23 @@ defmodule HoldLedgerReview.AI do
 
   @doc "Fail closed if JSON-Schema capability is unsupported or unknown."
   def available?(opts \\ []) do
-    try do
-      client = Keyword.get_lazy(opts, :client, &client/0)
-      supported =
-        case Keyword.get(opts, :capability_check) do
-          nil ->
-            capabilities = Inference.capabilities(client)
-            Inference.Capability.supported?(capabilities, :response_format_json_schema)
+    client = Keyword.get_lazy(opts, :client, &client/0)
 
-          check when is_function(check, 1) ->
-            check.(client)
-        end
+    supported =
+      case Keyword.get(opts, :capability_check) do
+        nil ->
+          capabilities = Inference.capabilities(client)
+          Inference.Capability.supported?(capabilities, :response_format_json_schema)
 
-      if supported == true do
-        {:ok, client}
-      else
-        {:error, :ai_unavailable}
+        check when is_function(check, 1) ->
+          check.(client)
       end
-    rescue
-      _ -> {:error, :ai_unavailable}
-    catch
-      _, _ -> {:error, :ai_unavailable}
-    end
+
+    if supported == true, do: {:ok, client}, else: {:error, :ai_unavailable}
+  rescue
+    _ -> {:error, :ai_unavailable}
+  catch
+    _, _ -> {:error, :ai_unavailable}
   end
 
   def prepare(review, kind, card_id \\ nil, witness \\ nil),
@@ -62,7 +57,8 @@ defmodule HoldLedgerReview.AI do
     if consent != true do
       {:error, :consent_required}
     else
-      with {:ok, client} <- available?(opts),
+      with :ok <- AIPacket.freshness(packet),
+           {:ok, client} <- available?(opts),
            {:ok, request} <-
              Inference.Request.from_messages(
                [
@@ -71,36 +67,40 @@ defmodule HoldLedgerReview.AI do
                ],
                response_format:
                  {:json_schema,
-                  %{name: "hold_ledger_#{packet.kind}", schema: AIProtocol.schema(packet.kind), strict: true}}
+                  %{
+                    name: "hold_ledger_#{packet.kind}",
+                    schema: AIProtocol.provider_schema(packet.kind, packet.context),
+                    strict: true
+                  }}
              ) do
-        started = System.monotonic_time(:millisecond)
-
-        case complete(client, request, opts) do
-          {:ok, response} ->
-            with {:ok, object} <- parse_response(response, packet.kind),
-                 {:ok, checked} <- AIProtocol.validate(packet.kind, object, packet.context) do
-              {:ok,
-               Map.put(checked, "provenance", %{
-                 "origin" => "model_proposed",
-                 "latency_ms" => max(System.monotonic_time(:millisecond) - started, 0),
-                 "prompt_sha256" => packet.prompt_hash,
-                 "input_sha256" => packet.input_digest
-               })}
-            end
-
-          {:error, error} ->
-            {:error, classify(error)}
-        end
+        run_request(client, request, packet, opts)
       else
         {:error, :ai_unavailable} -> {:error, :ai_unavailable}
         {:error, error} -> {:error, classify(error)}
-        _ -> {:error, :invalid_model_request}
       end
     end
   rescue
     _ -> {:error, :model_exception}
   catch
     _, _ -> {:error, :model_exception}
+  end
+
+  defp run_request(client, request, packet, opts) do
+    started = System.monotonic_time(:millisecond)
+
+    with {:ok, response} <- complete(client, request, opts),
+         {:ok, object} <- parse_response(response, packet.kind),
+         {:ok, checked} <- AIProtocol.validate(packet.kind, object, packet.context) do
+      {:ok,
+       Map.put(checked, "provenance", %{
+         "origin" => "model_proposed",
+         "latency_ms" => max(System.monotonic_time(:millisecond) - started, 0),
+         "prompt_sha256" => packet.prompt_hash,
+         "input_sha256" => packet.input_digest
+       })}
+    else
+      {:error, error} -> {:error, classify(error)}
+    end
   end
 
   defp complete(client, request, opts) do
@@ -122,7 +122,8 @@ defmodule HoldLedgerReview.AI do
       else
         text = Inference.Response.text(response)
         limit = if(kind == "deck", do: 32_768, else: 16_384)
-        if is_binary(text) and byte_size(text) <= limit,
+
+        if byte_size(text) <= limit,
           do: Jason.decode(text),
           else: {:error, :invalid_model_output}
       end

@@ -48,6 +48,24 @@ class HiddenScoringTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "actual configured-model"):
                 summarize(path, None)
 
+    def test_challenge_novelty_excludes_follow_on_only_changes_and_duplicates(self) -> None:
+        fixture = Path(__file__).parents[1] / "priv/scenarios/P02.json"
+        witness = json.loads(fixture.read_text())
+        witness["follow_on"] = None
+        def case(value):
+            return {"case": "controlled-only", "discovery": {"status": "failed"},
+                    "challenge": {"status": "configured_model_response_validated", "novel_witness": True,
+                                  "output": {"challenge": {"witness": value}}}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "controlled.json"
+            report = {"evidence_kind": "configured_model_live_evaluation", "cases": [case(witness)]}
+            path.write_text(json.dumps(report))
+            self.assertEqual(summarize(path, None)["validated_novel_challenges"], 0)
+            witness["before"]["amount_limit"] = 101
+            report["cases"] = [case(witness), case(witness)]
+            path.write_text(json.dumps(report))
+            self.assertEqual(summarize(path, None)["validated_novel_challenges"], 1)
+
     def test_all_model_discovery_fields_are_scored(self) -> None:
         synthetic = {"discovery": {"output": {"deck": {
             "intent_hypotheses": [{"statement": "A", "source_ids": ["a"]}],

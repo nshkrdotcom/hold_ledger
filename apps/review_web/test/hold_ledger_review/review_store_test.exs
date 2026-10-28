@@ -30,6 +30,26 @@ defmodule HoldLedgerReview.ReviewStoreTest do
     }
   end
 
+  test "a populated review list stays responsive and retains per-document freshness", %{
+    store: store,
+    dir: dir
+  } do
+    {:ok, original, _} = ReviewStore.create("P01", store)
+
+    for _ <- 1..255 do
+      id = token()
+      copy = Map.put(original, "id", id)
+      File.write!(Path.join(dir, id <> ".json"), Jason.encode!(copy))
+    end
+
+    stale = put_in(original, ["source", "evaluator_id"], String.duplicate("0", 64))
+    File.write!(Path.join(dir, original["id"] <> ".json"), Jason.encode!(stale))
+    assert {:ok, rows} = ReviewStore.list(store)
+    assert length(rows) == 256
+    assert Enum.count(rows, &(&1["status"] == "in_progress")) == 255
+    assert Enum.find(rows, &(&1["id"] == original["id"]))["status"] == "stale_read_only"
+  end
+
   test "atomic Escape answer binds the exact full witness, idempotency, CAS and no orphans", %{
     store: store,
     dir: dir
