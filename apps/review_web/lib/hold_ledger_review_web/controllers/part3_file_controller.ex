@@ -25,6 +25,8 @@ defmodule HoldLedgerReviewWeb.Part3FileController do
     end
   end
 
+  def change(conn, _), do: send_resp(conn, 404, "Unknown source side or identity")
+
   # Registered law slug selects the file; the client never supplies its path.
   def law(conn, %{"id" => id, "side" => side, "slug" => slug})
       when side in ~w(baseline proposal) do
@@ -43,10 +45,15 @@ defmodule HoldLedgerReviewWeb.Part3FileController do
       end
 
     case sid_or_error do
-      {:ok, bytes} -> conn |> put_resp_content_type("text/plain", "utf-8") |> send_resp(200, bytes)
-      _ -> send_resp(conn, 404, "Registered source missing, oversized or stale")
+      {:ok, bytes} ->
+        conn |> put_resp_content_type("text/plain", "utf-8") |> send_resp(200, bytes)
+
+      _ ->
+        send_resp(conn, 404, "Registered source missing, oversized or stale")
     end
   end
+
+  def law(conn, _), do: send_resp(conn, 404, "Unknown registered law or side")
 
   def artifact(conn, %{"id" => id, "side" => side, "sha256" => sha})
       when side in ~w(baseline proposal) do
@@ -63,4 +70,6 @@ defmodule HoldLedgerReviewWeb.Part3FileController do
       _ -> send_resp(conn, 404, "Artifact missing, oversized or stale")
     end
   end
+
+  def artifact(conn, _), do: send_resp(conn, 404, "Unknown artifact or side")
 end

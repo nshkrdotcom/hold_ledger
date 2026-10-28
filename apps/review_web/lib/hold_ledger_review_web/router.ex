@@ -15,7 +15,7 @@ defmodule HoldLedgerReviewWeb.Router do
     live "/", WorkbenchLive, :index
     live "/changes", Part3Live, :index
     live "/changes/:id", Part3Live, :show
-    get "/changes/:id/repair/:evidence_id.:format", Part3RepairController, :export
+    get "/changes/:id/repair/:file", Part3RepairController, :export
     get "/changes/:id/source/:side/:change_id", Part3FileController, :change
     get "/changes/:id/law/:side/:slug/source", Part3FileController, :law
     get "/changes/:id/artifact/:side/:sha256", Part3FileController, :artifact

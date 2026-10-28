@@ -4,6 +4,16 @@ defmodule HoldLedgerReviewWeb.Part3RepairController do
 
   # Explicit local GET/download only. No revision write, provider dispatch or
   # implicit consent is performed by exporting this fixed-scope data packet.
+  def export(conn, %{"id" => id, "file" => file}) do
+    case Regex.run(~r/\A(e-[0-9a-f]{32})\.(json|md)\z/, file) do
+      [_, evidence_id, format] ->
+        export(conn, %{"id" => id, "evidence_id" => evidence_id, "format" => format})
+
+      _ ->
+        send_resp(conn, 404, "Unknown local repair format or evidence identity")
+    end
+  end
+
   def export(conn, %{"id" => id, "evidence_id" => evidence_id, "format" => format})
       when format in ~w(json md) do
     with {:ok, package, :ok} <- Part3Store.get(id),
@@ -22,4 +32,6 @@ defmodule HoldLedgerReviewWeb.Part3RepairController do
       _ -> send_resp(conn, 409, "Current-source repair export refused; no permission to send")
     end
   end
+
+  def export(conn, _), do: send_resp(conn, 404, "Unknown local repair format")
 end

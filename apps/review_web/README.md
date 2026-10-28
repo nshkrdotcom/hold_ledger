@@ -15,7 +15,7 @@ This app replaces the old Review Studio evaluator, tuple codec, fixed teaching c
 
 ## Run it locally
 
-Use the repository's pinned toolchain: **Elixir 1.20.4** and **Erlang/OTP 29.1.2**. Set up the root checkout as described in [Getting started](../../guides/getting-started.md), then run the Phoenix app from the repository root:
+Use the repository's pinned toolchain: **Elixir 1.20.4** and **Erlang/OTP 29.1.2**. Set up the root checkout as described in [Getting started](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/getting-started.md), then run the Phoenix app from the repository root:
 
 ```sh
 cd apps/review_web
@@ -73,7 +73,7 @@ A pointwise check tells you whether one candidate output satisfies a source clai
 
 Formal status requires an independently checked report for the same source. That report establishes the stated theorem, not the policy behind it. The original `test/laws` definitions and the independent `HoldLedger.Spec` remain the reference points for this workbench.
 
-For a manual exercise that questions the contract without starting the web app, read [Interactive review](../../guides/interactive_review.md). For the boundaries of the root proof pipeline, see [Verification](../../guides/verification.md).
+For a manual exercise that questions the contract without starting the web app, read [Interactive review](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md). For the boundaries of the root proof pipeline, see [Verification](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md).
 
 ## Ask a model for another question (optional)
 

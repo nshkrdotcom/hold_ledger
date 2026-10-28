@@ -14,16 +14,7 @@ defmodule HoldLedgerReview.Part3Docket do
     Enum.map(package["evidence"], fn evidence ->
       changes =
         evidence["source_ids"]
-        |> Enum.flat_map(fn
-          "law." <> slug ->
-            case Map.get(laws, slug) do
-              nil -> []
-              path -> Enum.filter(package["source_changes"], &(&1["path"] == path))
-            end
-
-          _ ->
-            []
-        end)
+        |> Enum.flat_map(&matched_changes(&1, laws, package["source_changes"]))
         |> Enum.uniq_by(& &1["id"])
 
       receipts = %{
@@ -53,6 +44,15 @@ defmodule HoldLedgerReview.Part3Docket do
     end)
   end
 
+  defp matched_changes("law." <> slug, laws, changes) do
+    case Map.get(laws, slug) do
+      nil -> []
+      path -> Enum.filter(changes, &(&1["path"] == path))
+    end
+  end
+
+  defp matched_changes(_, _, _), do: []
+
   @doc "Build an explicit human-command candidate from stored evidence, never client prose."
   def decision(package, evidence_id, action, request_id, revision, presentation, revealed)
       when action in @actions do
@@ -66,7 +66,8 @@ defmodule HoldLedgerReview.Part3Docket do
         "expected_human_revision" => revision,
         "lens" => lens(evidence["kind"]),
         "status" => status,
-        "scope" => "Single #{evidence["kind"]} witness #{evidence_id}; no general relation asserted",
+        "scope" =>
+          "Single #{evidence["kind"]} witness #{evidence_id}; no general relation asserted",
         "rationale" =>
           "#{reason} Evidence #{evidence_id}: #{evidence["kind"]}; #{evidence["note"]}",
         "evidence_ids" => [evidence_id],
@@ -87,10 +88,14 @@ defmodule HoldLedgerReview.Part3Docket do
     do: {"unresolved", "Reviewer selected needs design change; no fix has been verified."}
 
   defp action_reason("policy"),
-    do: {"unresolved", "Reviewer selected needs policy/evidence decision; no policy change is authorized."}
+    do:
+      {"unresolved",
+       "Reviewer selected needs policy/evidence decision; no policy change is authorized."}
 
   defp action_reason("considered"),
-    do: {"addressed", "Reviewer marked pointwise evidence considered in this scope; not defect resolution or formal acceptance."}
+    do:
+      {"addressed",
+       "Reviewer marked pointwise evidence considered in this scope; not defect resolution or formal acceptance."}
 
   defp lens("lost_domain_input"), do: "excluded_inputs"
   defp lens(_), do: "alternative_behavior"

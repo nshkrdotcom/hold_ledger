@@ -230,3 +230,32 @@ test('evidence docket action is attributed, export is local and conclusion is se
   expect(revised.content.human.findings).toHaveLength(1);
   expect(revised.content.human.conclusion).toBeNull();
 });
+
+test('docket decisions retain human CAS across two tabs and preserve an unsent draft', async ({page, context, request}) => {
+  test.skip(!hasSnapshots, 'Requires newly staged trusted replay identities');
+  test.setTimeout(190000);
+  const url = await create(page);
+  const second = await context.newPage();
+  await second.goto(url);
+  await connected(second);
+  await second.locator('#part3-finding-scope').fill('Unsent second-tab scope');
+  await page.locator('#run-isolated-replay').click();
+  const card = page.locator('#part3-evidence-list article').first();
+  const other = second.locator('#part3-evidence-list article').first();
+  await expect(card).toBeVisible({timeout: 150000});
+  await expect(other).toBeVisible();
+  await card.locator('button[phx-value-choice="policy"]').click();
+  await expect(page.locator('#part3-decision')).toContainText('needs policy/evidence decision');
+  await other.locator('button[phx-value-choice="design"]').click();
+  await expect(second.locator('[role="alert"]').filter({hasText: 'human_revision_conflict_or_closed'})).toContainText('Not saved');
+  await expect(second.locator('#part3-finding-scope')).toHaveValue('Unsent second-tab scope');
+  const link = await card.locator('a[href$=".json"]').getAttribute('href');
+  const response = await request.get(new URL(link, url).toString());
+  expect(response.status()).toBe(200);
+  const packet = await response.json();
+  expect(packet.content.package.human_revision).toBe(1);
+  expect(packet.content.human.findings).toHaveLength(1);
+  expect(packet.content.human.conclusion).toBeNull();
+  await expect(second.locator('#part3-ai-jobs li')).toHaveCount(0);
+  await second.close();
+});

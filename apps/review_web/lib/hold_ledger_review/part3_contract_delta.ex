@@ -86,8 +86,9 @@ defmodule HoldLedgerReview.Part3ContractDelta do
          {:ok, right} <- declaration(b, path),
          {:ok, left} <- Compiler.prepare(left),
          {:ok, right} <- Compiler.prepare(right),
-         true <- left.slug == right.slug and left.arity == right.arity and
-                   left.formals == right.formals do
+         true <-
+           left.slug == right.slug and left.arity == right.arity and
+             left.formals == right.formals do
       %{
         "analysis" => "supported_structural_ast",
         "parser_id" => Source.version(),
@@ -197,7 +198,11 @@ defmodule HoldLedgerReview.Part3ContractDelta do
     }
   end
 
-  defp declaration_spans(%{"kind" => "claim", "claim" => %{"analysis" => "supported_structural_ast"}} = change, a, b) do
+  defp declaration_spans(
+         %{"kind" => "claim", "claim" => %{"analysis" => "supported_structural_ast"}} = change,
+         a,
+         b
+       ) do
     Enum.map([{"baseline", a}, {"proposal", b}], fn {side, snapshot} ->
       span =
         case declaration(snapshot, change["path"]) do

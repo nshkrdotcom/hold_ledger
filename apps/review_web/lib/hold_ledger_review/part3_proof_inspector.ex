@@ -48,7 +48,8 @@ defmodule HoldLedgerReview.Part3ProofInspector do
          "sources" => rows,
          "artifacts" => artifacts,
          "report_reference" => report_ref,
-         "report_status" => if(report, do: "report_present:" <> status, else: "not_run_or_missing"),
+         "report_status" =>
+           if(report, do: "report_present:" <> status, else: "not_run_or_missing"),
          "formal_acceptance" => status
        }}
     else
@@ -61,20 +62,24 @@ defmodule HoldLedgerReview.Part3ProofInspector do
 
     source =
       case Anchor.read_under(Part3Snapshots.root(snapshot["snapshot_id"]), path) do
-        {:ok, bytes} ->
+        {:ok, bytes} when is_binary(bytes) ->
           %{
             "path" => path,
             "sha256" => snapshot["manifest"][path],
             "excerpt" => preview(bytes),
             "excerpt_bounded" => byte_size(bytes) > @max_excerpt,
-            "status" => "source_hash_matched"
+            "status" =>
+              if(Anchor.sha(bytes) == snapshot["manifest"][path],
+                do: "source_hash_matched",
+                else: "stale"
+              )
           }
 
         _ ->
           %{"path" => path, "status" => "unavailable"}
       end
 
-    record = if report, do: get_in(report, ["laws", law["slug"]]), else: nil
+    record = report_record(report, law["slug"])
     linked = Enum.filter(artifacts, &(&1["slug"] in [law["slug"], "*"]))
     statements = Enum.filter(linked, &(&1["kind"] in ~w(translated_statement lean_source)))
     dependencies = Enum.filter(linked, &(&1["kind"] == "proof_dependencies"))
@@ -100,9 +105,13 @@ defmodule HoldLedgerReview.Part3ProofInspector do
     }
   end
 
+  defp report_record(%{"laws" => laws}, slug) when is_map(laws), do: Map.get(laws, slug)
+  defp report_record(_, _), do: nil
+
   defp export_summaries(%{"exports" => exports}, report, acceptance)
        when is_list(exports) do
     Enum.map(exports, fn export ->
+      export = if is_map(export), do: export, else: %{}
       scope = export_scope(export, report)
       checks = export["checker_acceptance"]
 
@@ -140,18 +149,22 @@ defmodule HoldLedgerReview.Part3ProofInspector do
   defp export_scope(export, report) do
     count =
       if is_map(report) and is_map(report["laws"]) do
-        Enum.count(report["laws"], fn {_, law} ->
-          Enum.any?(law["exports"] || [], fn other ->
-            is_map(other) and other["path"] == export["path"] and
-              other["export_sha256"] == export["export_sha256"]
-          end)
-        end)
+        Enum.count(report["laws"], fn {_, law} -> shares_export?(law, export) end)
       else
         0
       end
 
     if count > 1, do: "shared_suite_export", else: "export_scoped_not_theorem_scoped"
   end
+
+  defp shares_export?(%{"exports" => exports}, export) when is_list(exports) do
+    Enum.any?(exports, fn other ->
+      is_map(other) and other["path"] == export["path"] and
+        other["export_sha256"] == export["export_sha256"]
+    end)
+  end
+
+  defp shares_export?(_, _), do: false
 
   defp field(record, key) when is_map(record), do: Map.get(record, key)
   defp field(_, _), do: nil
@@ -179,7 +192,7 @@ defmodule HoldLedgerReview.Part3ProofInspector do
          {:ok, decoded} <- Jason.decode(bytes) do
       {decoded, hd(rows)["acceptance_status"], Map.take(item, ~w(path sha256 bytes))}
     else
-      _ -> nil
+      _ -> {nil, "stale_or_missing_report", Map.take(item, ~w(path sha256 bytes))}
     end
   end
 
@@ -187,7 +200,7 @@ defmodule HoldLedgerReview.Part3ProofInspector do
     package["verification_attempts"]
     |> Enum.filter(&(&1["snapshot_id"] == sid))
     |> Enum.flat_map(fn attempt ->
-      (attempt["artifacts"] || []) ++ (get_in(attempt, ["result", "artifacts"]) || [])
+      (get_in(attempt, ["result", "artifacts"]) || []) ++ (attempt["artifacts"] || [])
     end)
     |> Enum.uniq_by(&{&1["path"], &1["sha256"]})
     |> Enum.map(&inspect_artifact(&1, sid))

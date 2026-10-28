@@ -8,8 +8,8 @@ defmodule HoldLedgerReviewWeb.Part3Live do
     Part3AIJobs,
     Part3BoundarySearch,
     Part3ContractDelta,
-    Part3Docket,
     Part3Diagnostics,
+    Part3Docket,
     Part3Editor,
     Part3ProofInspector,
     Part3Runner,
@@ -430,6 +430,40 @@ defmodule HoldLedgerReviewWeb.Part3Live do
     end
   end
 
+  # These buttons never write directly. The existing store checks source,
+  # evidence/change references, strict command shape and human CAS.
+  def handle_event("evidence_decision", %{"id" => id, "choice" => choice}, socket) do
+    p = socket.assigns.package
+
+    if socket.assigns.freshness == :ok and is_nil(p["conclusion"]) and
+         (socket.assigns.mode != "learning" or socket.assigns.revealed) do
+      with {:ok, cmd} <-
+             Part3Docket.decision(
+               p,
+               id,
+               choice,
+               token(),
+               socket.assigns.draft_human_revision,
+               socket.assigns.mode,
+               socket.assigns.revealed
+             ),
+           {:ok, updated} <- Part3Store.finding(p["id"], cmd) do
+        {:noreply,
+         socket
+         |> assign_package(updated)
+         |> assign(:draft_human_revision, updated["human_revision"])
+         |> put_flash(
+           :info,
+           "Human evidence-linked finding recorded; conclusion and formal gate unchanged"
+         )}
+      else
+        {:error, reason} -> {:noreply, conflict(socket, reason)}
+      end
+    else
+      {:noreply, put_flash(socket, :error, "Evidence action read-only or not revealed")}
+    end
+  end
+
   @impl true
   def handle_info({:part3_updated, id}, socket) do
     if socket.assigns.package && socket.assigns.package["id"] == id do
@@ -456,37 +490,6 @@ defmodule HoldLedgerReviewWeb.Part3Live do
     case Part3ContractDelta.presentation(package) do
       {:ok, rows} -> rows
       _ -> %{}
-    end
-  end
-
-  # These buttons never write directly. The existing store checks source,
-  # evidence/change references, strict command shape and human CAS.
-  def handle_event("evidence_decision", %{"id" => id, "choice" => choice}, socket) do
-    p = socket.assigns.package
-
-    if socket.assigns.freshness == :ok and is_nil(p["conclusion"]) and
-         (socket.assigns.mode != "learning" or socket.assigns.revealed) do
-      with {:ok, cmd} <-
-             Part3Docket.decision(
-               p,
-               id,
-               choice,
-               token(),
-               socket.assigns.draft_human_revision,
-               socket.assigns.mode,
-               socket.assigns.revealed
-             ),
-           {:ok, updated} <- Part3Store.finding(p["id"], cmd) do
-        {:noreply,
-         socket
-         |> assign_package(updated)
-         |> assign(:draft_human_revision, updated["human_revision"])
-         |> put_flash(:info, "Human evidence-linked finding recorded; conclusion and formal gate unchanged")}
-      else
-        {:error, reason} -> {:noreply, conflict(socket, reason)}
-      end
-    else
-      {:noreply, put_flash(socket, :error, "Evidence action read-only or not revealed")}
     end
   end
 
@@ -811,35 +814,64 @@ defmodule HoldLedgerReviewWeb.Part3Live do
                     A syntactic edit alone cannot establish a narrowed domain or weaker promise.
                   </p>
                   <p :if={change["claim"]["analysis"] != "supported_structural_ast"} class="muted">
-                    {change["claim"]["reason"] || "Helper, Lean or other unclassified source edit; inspect full source."}
+                    {change["claim"]["reason"] ||
+                      "Helper, Lean or other unclassified source edit; inspect full source."}
                   </p>
-                  <div :for={expr <- get_in(@source_view, [change["id"], "expressions"]) || []} class="part3-expression">
+                  <div
+                    :for={expr <- get_in(@source_view, [change["id"], "expressions"]) || []}
+                    class="part3-expression"
+                  >
                     <h3>Normalized {expr["label"]} · {expr["status"]}</h3>
                     <div class="part3-sources">
-                      <div><b>Baseline normalized AST</b><pre><%= for chunk <- expr["baseline"] do %><del :if={chunk["kind"] == "del"}>{chunk["text"]}</del><span :if={chunk["kind"] == "eq"}>{chunk["text"]}</span><% end %></pre></div>
-                      <div><b>Proposal normalized AST</b><pre><%= for chunk <- expr["proposal"] do %><ins :if={chunk["kind"] == "ins"}>{chunk["text"]}</ins><span :if={chunk["kind"] == "eq"}>{chunk["text"]}</span><% end %></pre></div>
+                      <div>
+                        <b>Baseline normalized AST</b><pre><%= for chunk <- expr["baseline"] do %><del :if={chunk["kind"] == "del"}>{chunk["text"]}</del><span :if={chunk["kind"] == "eq"}>{chunk["text"]}</span><% end %></pre>
+                      </div>
+                      <div>
+                        <b>Proposal normalized AST</b><pre><%= for chunk <- expr["proposal"] do %><ins :if={chunk["kind"] == "ins"}>{chunk["text"]}</ins><span :if={chunk["kind"] == "eq"}>{chunk["text"]}</span><% end %></pre>
+                      </div>
                     </div>
                   </div>
                   <div class="part3-sources">
                     <div>
                       <h3>Baseline · exact source context</h3>
-                      <p class="muted">From line {get_in(@source_view, [change["id"], "baseline", "start_line"]) || "unavailable"}, bounded context.</p>
+                      <p class="muted">
+                        From line {get_in(@source_view, [change["id"], "baseline", "start_line"]) ||
+                          "unavailable"}, bounded context.
+                      </p>
                       <pre>{get_in(@source_view, [change["id"], "baseline", "text"]) || "Source unavailable or stale"}</pre>
-                      <.link :if={@freshness == :ok && change["baseline_sha256"]} href={"/changes/#{@package["id"]}/source/baseline/#{change["id"]}"}>Open complete verified baseline file</.link>
+                      <.link
+                        :if={@freshness == :ok && change["baseline_sha256"]}
+                        href={"/changes/#{@package["id"]}/source/baseline/#{change["id"]}"}
+                      >Open complete verified baseline file</.link>
                     </div>
                     <div>
                       <h3>Proposal · exact source context</h3>
-                      <p class="muted">From line {get_in(@source_view, [change["id"], "proposal", "start_line"]) || "unavailable"}, bounded context.</p>
+                      <p class="muted">
+                        From line {get_in(@source_view, [change["id"], "proposal", "start_line"]) ||
+                          "unavailable"}, bounded context.
+                      </p>
                       <pre>{get_in(@source_view, [change["id"], "proposal", "text"]) || "Source unavailable or stale"}</pre>
-                      <.link :if={@freshness == :ok && change["proposal_sha256"]} href={"/changes/#{@package["id"]}/source/proposal/#{change["id"]}"}>Open complete verified proposal file</.link>
+                      <.link
+                        :if={@freshness == :ok && change["proposal_sha256"]}
+                        href={"/changes/#{@package["id"]}/source/proposal/#{change["id"]}"}
+                      >Open complete verified proposal file</.link>
                     </div>
                   </div>
-                  <p :for={span <- get_in(@source_view, [change["id"], "declarations"]) || []} class="muted">
-                    {span["side"]} parser declaration span: {span["start_line"] || "unavailable"}–{span["end_line"] || "unavailable"}
-                    ({span["kind"]}). Normalized expressions are not source-byte reproductions.
+                  <p
+                    :for={span <- get_in(@source_view, [change["id"], "declarations"]) || []}
+                    class="muted"
+                  >
+                    {span["side"]} parser declaration span: {span["start_line"] || "unavailable"}–{span[
+                      "end_line"
+                    ] || "unavailable"} ({span["kind"]}). Normalized expressions are not source-byte reproductions.
                   </p>
-                  <small>Exact file digests: {change["baseline_sha256"] || "absent"} / {change["proposal_sha256"] || "absent"}.
-                    Semantic relation: {change["semantic_relation"]}; {get_in(@source_view, [change["id"], "status"]) || "unavailable_or_stale_source"}.</small>
+                  <small>Exact file digests: {change["baseline_sha256"] || "absent"} / {change[
+                    "proposal_sha256"
+                  ] || "absent"}.
+                  Semantic relation: {change["semantic_relation"]}; {get_in(@source_view, [
+                    change["id"],
+                    "status"
+                  ]) || "unavailable_or_stale_source"}.</small>
                 </details>
               </li>
             </ol>
@@ -898,7 +930,11 @@ defmodule HoldLedgerReviewWeb.Part3Live do
                   </p>
                 <% end %>
                 <div id="part3-evidence-list" class="part3-docket">
-                  <article :for={card <- @docket} id={"evidence-" <> card["id"]} class="part3-evidence-card">
+                  <article
+                    :for={card <- @docket}
+                    id={"evidence-" <> card["id"]}
+                    class="part3-evidence-card"
+                  >
                     <h3>{String.replace(card["kind"], "_", " ")} · identified pointwise evidence</h3>
                     <p>{card["evidence"]["note"]} Not a general theorem or policy decision.</p>
                     <small>{card["id"]} · {card["evidence"]["method"]} · baseline/proposal source IDs fixed by package.</small>
@@ -911,41 +947,74 @@ defmodule HoldLedgerReviewWeb.Part3Live do
                     </details>
                     <div class="part3-sides">
                       <div>
-                        <b>Baseline computed claim predicates</b>
+                        <b>Baseline comparison evidence</b>
                         <pre>{if card["evidence"]["baseline_result"], do: Jason.encode!(card["evidence"]["baseline_result"], pretty: true), else: "Not supplied"}</pre>
                         <b>Baseline actual Ledger output</b>
                         <pre>{if card["receipts"]["baseline"]["actual"], do: Jason.encode!(card["receipts"]["baseline"]["actual"], pretty: true), else: "No admitted matching replay"}</pre>
                       </div>
                       <div>
-                        <b>Proposal computed claim predicates</b>
+                        <b>Proposal comparison evidence</b>
                         <pre>{if card["evidence"]["proposal_result"], do: Jason.encode!(card["evidence"]["proposal_result"], pretty: true), else: "Not supplied"}</pre>
                         <b>Proposal actual Ledger output</b>
                         <pre>{if card["receipts"]["proposal"]["actual"], do: Jason.encode!(card["receipts"]["proposal"]["actual"], pretty: true), else: "No admitted matching replay"}</pre>
                       </div>
                     </div>
-                    <p class="muted">Directly matched changed declarations (not causal proof): {card["correspondence"]}.</p>
+                    <p class="muted">
+                      Directly matched changed declarations (not causal proof): {card[
+                        "correspondence"
+                      ]}.
+                    </p>
                     <ul>
                       <li :for={change <- card["changes"]}>
                         <a href={"#change-" <> change["id"]}>{change["path"]}</a> · {change["id"]}
                       </li>
                     </ul>
-                    <p>Latest human disposition: {if card["latest"], do: card["latest"]["status"], else: "unresolved / no recorded finding"}.</p>
+                    <p>
+                      Latest human disposition: {if card["latest"],
+                        do: card["latest"]["status"],
+                        else: "unresolved / no recorded finding"}.
+                    </p>
                     <details :if={card["history"] != []}>
-                      <summary>Immutable human finding history · {length(card["history"])} records</summary>
-                      <ol><li :for={f <- card["history"]}>Revision {f["human_revision"]}, {f["status"]}:
-                        {f["rationale"]}</li></ol>
+                      <summary>
+                        Immutable human finding history · {length(card["history"])} records
+                      </summary>
+                      <ol>
+                        <li :for={f <- card["history"]}>
+                          Revision {f["human_revision"]}, {f["status"]}: {f["rationale"]}
+                        </li>
+                      </ol>
                     </details>
                     <div class="part3-actions">
-                      <button type="button" phx-click="evidence_decision" phx-value-id={card["id"]} phx-value-choice="design" disabled={!@editable}>Record needs design change</button>
-                      <button type="button" phx-click="evidence_decision" phx-value-id={card["id"]} phx-value-choice="policy" disabled={!@editable}>Needs policy/evidence decision</button>
-                      <button type="button" phx-click="evidence_decision" phx-value-id={card["id"]} phx-value-choice="considered" disabled={!@editable}>Mark considered in scope (not fixed)</button>
+                      <button
+                        type="button"
+                        phx-click="evidence_decision"
+                        phx-value-id={card["id"]}
+                        phx-value-choice="design"
+                        disabled={!@editable}
+                      >Record needs design change</button>
+                      <button
+                        type="button"
+                        phx-click="evidence_decision"
+                        phx-value-id={card["id"]}
+                        phx-value-choice="policy"
+                        disabled={!@editable}
+                      >Needs policy/evidence decision</button>
+                      <button
+                        type="button"
+                        phx-click="evidence_decision"
+                        phx-value-id={card["id"]}
+                        phx-value-choice="considered"
+                        disabled={!@editable}
+                      >Mark considered in scope (not fixed)</button>
                     </div>
-                    <div class="part3-actions" :if={@freshness == :ok}>
+                    <div :if={@freshness == :ok} class="part3-actions">
                       <.link href={"/changes/#{@package["id"]}/repair/#{card["id"]}.md"}>Download local repair packet (Markdown)</.link>
                       <.link href={"/changes/#{@package["id"]}/repair/#{card["id"]}.json"}>Strict JSON</.link>
                     </div>
                   </article>
-                  <p :if={@docket == []}>No admitted distinction yet. Run the isolated pair; an absence of findings is not evidence of equivalence.</p>
+                  <p :if={@docket == []}>
+                    No admitted distinction yet. Run the isolated pair; an absence of findings is not evidence of equivalence.
+                  </p>
                 </div>
               <% end %>
               <div class="part3-actions">
@@ -1264,53 +1333,112 @@ defmodule HoldLedgerReviewWeb.Part3Live do
                     These are recorded, source-bound reports, not newly run checkers.
                   </p>
                   <details :for={version <- inspected["versions"]} class="part3-proof-version">
-                    <summary>{String.capitalize(version["side"])} · {version["catalog_count"]} obligations · report {version["report_status"]} · original-gate status {version["formal_acceptance"]}</summary>
+                    <summary>
+                      {String.capitalize(version["side"])} · {version["catalog_count"]} obligations · report {version[
+                        "report_status"
+                      ]} · original-gate status {version["formal_acceptance"]}
+                    </summary>
                     <p>Snapshot identity: <code>{version["snapshot_id"]}</code></p>
                     <p :if={version["report_reference"]} class="muted">
-                      Recorded report: {version["report_reference"]["path"]} / SHA-256 {version["report_reference"]["sha256"]}.
+                      Recorded report: {version["report_reference"]["path"]} / SHA-256 {version[
+                        "report_reference"
+                      ]["sha256"]}.
                       Producer assertions alone do not certify acceptance.
                     </p>
-                    <p :if={!version["report_reference"]} class="muted">No matching, validated report supplied for this version; all independent checker outcomes: NOT RUN / unavailable.</p>
+                    <p :if={!version["report_reference"]} class="muted">
+                      No matching, validated report supplied for this version; all independent checker outcomes: NOT RUN / unavailable.
+                    </p>
                     <details :for={item <- version["sources"]} class="part3-proof-law">
                       <summary>{item["slug"]} · {item["purpose"]} · {item["artifact_scope"]}</summary>
-                      <p>Registered {version["side"]} source: {item["source"]["path"]} / {item["source"]["sha256"] || "unavailable"} · {item["source"]["status"]}.</p>
-                      <.link :if={@freshness == :ok && item["source"]["status"] == "source_hash_matched"} href={"/changes/#{@package["id"]}/law/#{version["side"]}/#{item["slug"]}/source"}>Open complete registered claim or Lean file</.link>
+                      <p>
+                        Registered {version["side"]} source: {item["source"]["path"]} / {item[
+                          "source"
+                        ]["sha256"] || "unavailable"} · {item["source"]["status"]}.
+                      </p>
+                      <.link
+                        :if={@freshness == :ok && item["source"]["status"] == "source_hash_matched"}
+                        href={"/changes/#{@package["id"]}/law/#{version["side"]}/#{item["slug"]}/source"}
+                      >Open complete registered claim or Lean file</.link>
                       <pre>{item["source"]["excerpt"] || "Source is unavailable"}</pre>
-                      <p :if={item["source"]["excerpt_bounded"]} class="muted">Bounded preview only; use the complete-file link above.</p>
+                      <p :if={item["source"]["excerpt_bounded"]} class="muted">
+                        Bounded preview only; use the complete-file link above.
+                      </p>
                       <h4>Translated statement (producer-provided)</h4>
                       <pre>{if item["translated_statement"], do: inspect(item["translated_statement"]), else: "Not supplied (do not infer from the source claim)"}</pre>
                       <h4>Lean declaration / theorem artifacts</h4>
-                      <p :if={item["lean_declarations"] == []}>No declaration-level text supplied for this obligation.</p>
-                      <p :for={a <- item["lean_declarations"]}>{a["kind"]} · {a["path"]} · {a["status"]}</p>
+                      <p :if={item["lean_declarations"] == []}>
+                        No declaration-level text supplied for this obligation.
+                      </p>
+                      <p :for={a <- item["lean_declarations"]}>
+                        {a["kind"]} · {a["path"]} · {a["status"]}
+                      </p>
                       <h4>Proof dependencies</h4>
                       <pre>{if item["proof_dependencies"], do: inspect(item["proof_dependencies"]), else: "Not supplied at theorem level"}</pre>
-                      <p :for={a <- item["dependency_artifacts"]}>Dependency artifact {a["path"]} · {a["status"]}</p>
+                      <p :for={a <- item["dependency_artifacts"]}>
+                        Dependency artifact {a["path"]} · {a["status"]}
+                      </p>
                       <h4>Original producer export, axioms and six checker records</h4>
-                      <p :if={item["exports"] == []}>No checker/export records supplied for this law. Status: NOT RUN / unavailable.</p>
+                      <p :if={item["exports"] == []}>
+                        No checker/export records supplied for this law. Status: NOT RUN / unavailable.
+                      </p>
                       <div :for={export <- item["exports"]} class="part3-proof-export">
-                        <p>Export scope: <b>{export["scope"]}</b> (axioms {export["axiom_scope"]}); path {export["path"]}; hash {export["sha256"] || "not supplied"}.</p>
-                        <p>Original gate: <b>{export["original_gate_status"]}</b>; producer reported pass: {inspect(export["producer_passed"])}.</p>
-                        <p>Recorded axiom list (not a theorem-specific audit): {inspect(export["recorded_axioms"] || "not supplied")}.
-                          Allowed policy: propext, Quot.sound, Classical.choice. No lexical scan is an acceptance gate.</p>
-                        <ul><li :for={checker <- export["checkers"]}>{checker["name"]}: {checker["recorded_status"]}</li></ul>
+                        <p>
+                          Export scope: <b>{export["scope"]}</b>
+                          (axioms {export["axiom_scope"]}); path {export["path"]}; hash {export[
+                            "sha256"
+                          ] || "not supplied"}.
+                        </p>
+                        <p>
+                          Original gate: <b>{export["original_gate_status"]}</b>; producer reported pass: {inspect(
+                            export["producer_passed"]
+                          )}.
+                        </p>
+                        <p>
+                          Recorded axiom list (not a theorem-specific audit): {inspect(
+                            export["recorded_axioms"] || "not supplied"
+                          )}.
+                          Allowed policy: propext, Quot.sound, Classical.choice. No lexical scan is an acceptance gate.
+                        </p>
+                        <ul>
+                          <li :for={checker <- export["checkers"]}>
+                            {checker["name"]}: {checker["recorded_status"]}
+                          </li>
+                        </ul>
                       </div>
                       <h4>Other attached artifacts (bounded previews)</h4>
                       <details :for={artifact <- item["artifacts"]}>
-                        <summary>{artifact["kind"] || "report"} · {artifact["path"]} · {artifact["status"]}</summary>
-                        <p>SHA-256 {artifact["sha256"]} · {artifact["bytes"]} bytes · presence is not acceptance.</p>
+                        <summary>
+                          {artifact["kind"] || "report"} · {artifact["path"]} · {artifact["status"]}
+                        </summary>
+                        <p>
+                          SHA-256 {artifact["sha256"]} · {artifact["bytes"]} bytes · presence is not acceptance.
+                        </p>
                         <pre>{artifact["excerpt"] || "Artifact missing or stale"}</pre>
-                        <.link :if={@freshness == :ok && artifact["status"] == "present"} href={"/changes/#{@package["id"]}/artifact/#{version["side"]}/#{artifact["sha256"]}"}>Open complete locally verified artifact</.link>
+                        <.link
+                          :if={@freshness == :ok && artifact["status"] == "present"}
+                          href={"/changes/#{@package["id"]}/artifact/#{version["side"]}/#{artifact["sha256"]}"}
+                        >Open complete locally verified artifact</.link>
                       </details>
                     </details>
                     <details :if={version["artifacts"] != []}>
-                      <summary>All {version["side"]} artifacts, including report-level records</summary>
-                      <ul><li :for={a <- version["artifacts"]}>{a["path"]} · {a["status"]} · {a["sha256"]}
-                        <.link :if={@freshness == :ok && a["status"] == "present"} href={"/changes/#{@package["id"]}/artifact/#{version["side"]}/#{a["sha256"]}"}>Full verified file</.link>
-                      </li></ul>
+                      <summary>
+                        All {version["side"]} artifacts, including report-level records
+                      </summary>
+                      <ul>
+                        <li :for={a <- version["artifacts"]}>
+                          {a["path"]} · {a["status"]} · {a["sha256"]}
+                          <.link
+                            :if={@freshness == :ok && a["status"] == "present"}
+                            href={"/changes/#{@package["id"]}/artifact/#{version["side"]}/#{a["sha256"]}"}
+                          >Full verified file</.link>
+                        </li>
+                      </ul>
                     </details>
                   </details>
                 <% {:error, reason} -> %>
-                  <p role="alert">Proof inspection unavailable: {inspect(reason)}. No new acceptance inferred.</p>
+                  <p role="alert">
+                    Proof inspection unavailable: {inspect(reason)}. No new acceptance inferred.
+                  </p>
                 <% _ -> %>
                   <p>
                     Open the inspector to read original registered source and any matching artifacts separately for baseline and proposal. Missing translation, exports or dependencies stay missing.

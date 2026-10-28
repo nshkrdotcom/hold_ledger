@@ -13,10 +13,10 @@ defmodule HoldLedgerReview.Part3Test do
     Part3ContractDelta,
     Part3Diagnostics,
     Part3Docket,
-    Part3ProofInspector,
-    Part3RepairPacket,
     Part3Editor,
     Part3Package,
+    Part3ProofInspector,
+    Part3RepairPacket,
     Part3Result,
     Part3Snapshots,
     Part3Store,
@@ -125,6 +125,9 @@ defmodule HoldLedgerReview.Part3Test do
       case kind do
         "lost_domain_input" ->
           put_in(a, ["claims", "po_a2", "bindings"], [%{binding | "requires" => false}])
+
+        "observed_behavioral_difference" ->
+          put_in(a, ["evaluation", "actual", "result"], "insufficient_amount")
 
         "permitted_alternative_output" ->
           put_in(a, ["claims", "po_a2", "bindings"], [
@@ -442,7 +445,15 @@ defmodule HoldLedgerReview.Part3Test do
     assert {:ok, ^first} = Part3Store.ingest_artifacts(ctx.package["id"], relative, ctx.store)
     assert {:ok, inspected} = HoldLedgerReview.Part3ProofInspector.inspect(first)
     assert inspected["formal_acceptance"] == "not_run"
-    assert [%{"status" => "present"}] = inspected["artifacts"]
+    assert length(inspected["artifacts"]) == 2
+    assert Enum.all?(inspected["artifacts"], &(&1["status"] == "present"))
+    translation = Enum.find(inspected["artifacts"], &(&1["path"] == artifact_path))
+    assert translation["kind"] == "translated_statement"
+    assert translation["slug"] == "po_a2"
+
+    assert Enum.find(inspected["sources"], &(&1["slug"] == "po_a2"))["lean_declarations"] == [
+             translation
+           ]
 
     assert Enum.find(inspected["sources"], &(&1["slug"] == "po_a2"))["translated_statement"] ==
              nil
@@ -472,9 +483,19 @@ defmodule HoldLedgerReview.Part3Test do
     assert length(second["verification_attempts"]) == 2
     assert {:ok, inspected} = HoldLedgerReview.Part3ProofInspector.inspect(second)
     assert inspected["formal_acceptance"] == "incomplete"
+    # A newer recorded report whose bytes drift must not expose an older
+    # report as if it were the latest accepted formal evidence.
+    File.write!(Path.join(root, report_path), raw <> "\n")
+    assert {:ok, drifted} = Part3ProofInspector.inspect(second)
+    assert drifted["formal_acceptance"] == "stale_or_missing_report"
+    assert drifted["sources"] |> Enum.all?(&(&1["exports"] == []))
+    File.write!(Path.join(root, report_path), raw)
     File.rm!(Path.join(root, artifact_path))
     assert {:ok, missing} = HoldLedgerReview.Part3ProofInspector.inspect(second)
-    assert [%{"status" => "missing"}] = missing["artifacts"]
+    assert Enum.find(missing["artifacts"], &(&1["path"] == artifact_path))["status"] == "missing"
+    assert Enum.find(missing["artifacts"], &(&1["path"] == report_path))["status"] == "present"
+    index_versions = Enum.filter(missing["artifacts"], &(&1["path"] == relative))
+    assert Enum.sort(Enum.map(index_versions, & &1["status"])) == ["present", "stale"]
 
     assert {:error, :artifact_intake_refused} =
              Part3Store.ingest_artifacts(ctx.package["id"], relative, ctx.store)
@@ -681,6 +702,7 @@ defmodule HoldLedgerReview.Part3Test do
   test "source-verified normalized differences retain exact declaration span and changed helpers",
        ctx do
     source = Config.root()
+
     {paths, 0} =
       System.cmd("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
         cd: source
@@ -691,8 +713,11 @@ defmodule HoldLedgerReview.Part3Test do
     law_path = "test/laws/po_a2_test.exs"
     original = File.read!(Path.join(source, law_path))
     needle = "requires: Spec.request_eligible?(s, key, amount),"
+
     baseline_bytes =
-      String.replace(original, needle,
+      String.replace(
+        original,
+        needle,
         "requires: Spec.request_eligible?(s, key, amount) and amount <= elem(s, 0) - elem(s, 2),"
       )
 
@@ -700,6 +725,7 @@ defmodule HoldLedgerReview.Part3Test do
     assert baseline_bytes != proposal_bytes
     a = capture(files, commit, %{law_path => baseline_bytes})
     b = capture(files, commit, %{law_path => proposal_bytes})
+
     on_exit(fn ->
       File.rm_rf!(Part3Snapshots.root(a))
       File.rm_rf!(Part3Snapshots.root(b))
@@ -717,7 +743,15 @@ defmodule HoldLedgerReview.Part3Test do
     [requires, _expects] = detail["expressions"]
     assert requires["status"] == "normalized_changed"
     assert Enum.any?(requires["baseline"], &(&1["kind"] == "del"))
-    assert Enum.any?(requires["proposal"], &(&1["kind"] == "ins"))
+    # <= -> < removes '='; it need not insert any character on the proposal.
+    assert Enum.find(requires["baseline"], &(&1["kind"] == "del"))["text"] == "="
+
+    assert Enum.map_join(requires["baseline"], & &1["text"]) ==
+             change["claim"]["baseline"]["requires"]
+
+    assert Enum.map_join(requires["proposal"], & &1["text"]) ==
+             change["claim"]["proposal"]["requires"]
+
     assert requires["baseline"] != requires["proposal"]
     assert detail["baseline"]["start_line"] >= 1
     assert detail["proposal"]["start_line"] >= 1
@@ -728,7 +762,8 @@ defmodule HoldLedgerReview.Part3Test do
     assert Enum.any?(helper_edits, &(&1["kind"] == "called_definition_or_behavior"))
   end
 
-  test "evidence docket links only registered declarations and prepares strict human commands", ctx do
+  test "evidence docket links only registered declarations and prepares strict human commands",
+       ctx do
     {:ok, witness} = Adversarial.seed("P04")
     p = evidence_package(ctx.package, witness, "lost_domain_input")
     assert Part3Package.valid?(p, p["id"])
@@ -748,16 +783,19 @@ defmodule HoldLedgerReview.Part3Test do
     assert cmd["change_ids"] == []
     assert cmd["expected_human_revision"] == 0
     assert cmd["rationale"] =~ "Reviewer selected"
+
     assert {:ok, policy} =
              Part3Docket.decision(p, card["id"], "policy", fresh_id(), 0, "expert", true)
 
     assert policy["status"] == "unresolved"
     assert policy["rationale"] =~ "no policy change is authorized"
+
     assert {:ok, considered} =
              Part3Docket.decision(p, card["id"], "considered", fresh_id(), 0, "expert", true)
 
     assert considered["status"] == "addressed"
     assert considered["rationale"] =~ "not defect resolution"
+
     assert {:error, :unknown_or_unmatched_evidence} =
              Part3Docket.decision(p, fresh_id(), "design", fresh_id(), 0, "expert", true)
 
@@ -773,8 +811,9 @@ defmodule HoldLedgerReview.Part3Test do
   test "repair packets distinguish contract-only exclusion, candidate and actual output", ctx do
     {:ok, witness} = Adversarial.seed("P04")
 
-    for kind <- ~w(lost_domain_input permitted_alternative_output) do
+    for kind <- ~w(lost_domain_input permitted_alternative_output observed_behavioral_difference) do
       p = evidence_package(ctx.package, witness, kind)
+
       p =
         Map.put(p, "replay_attempts", [
           synthetic_receipt(p, witness, "baseline"),
@@ -787,9 +826,16 @@ defmodule HoldLedgerReview.Part3Test do
       assert packet["content_sha256"] == Canonical.digest(packet["content"])
       distinction = packet["content"]["distinction"]
       assert distinction["kind"] == kind
+
+      if kind == "observed_behavioral_difference" do
+        assert distinction["baseline_claim_observations"] == nil
+        assert distinction["proposal_claim_observations"] == nil
+      end
+
       assert distinction["baseline_actual_output"]["result"] == "admitted"
       assert distinction["proposal_actual_output"]["result"] == "admitted"
       assert distinction["baseline_replay"]["status"] == "admitted_succeeded_replay"
+
       assert distinction["candidate_output_not_observed"] ==
                if(kind == "permitted_alternative_output", do: witness["output"], else: nil)
 
@@ -801,15 +847,20 @@ defmodule HoldLedgerReview.Part3Test do
       assert {:ok, next} = Part3RepairPacket.build(p, e["id"], "2026-10-28T00:00:00Z")
       assert next["content_sha256"] == packet["content_sha256"]
       refute next["generated_at_utc"] == packet["generated_at_utc"]
+
       assert {:error, :stale_invalid_or_unknown_repair_source} =
                Part3RepairPacket.build(p, fresh_id())
 
       assert {:error, :stale_invalid_or_unknown_repair_source} =
-               Part3RepairPacket.build(%{p | "context_digest" => String.duplicate("a", 64)}, e["id"])
+               Part3RepairPacket.build(
+                 %{p | "context_digest" => String.duplicate("a", 64)},
+                 e["id"]
+               )
     end
   end
 
-  test "original proof data stays independently scoped per snapshot, with missing still missing", ctx do
+  test "original proof data stays independently scoped per snapshot, with missing still missing",
+       ctx do
     assert {:ok, inspection} = Part3ProofInspector.inspect(ctx.package)
     assert Enum.map(inspection["versions"], & &1["side"]) == ~w(baseline proposal)
     assert Enum.all?(inspection["versions"], &(&1["formal_acceptance"] == "not_run"))
@@ -822,5 +873,37 @@ defmodule HoldLedgerReview.Part3Test do
     assert po["proof_dependencies"] == nil
     assert po["exports"] == []
     assert po["lean_declarations"] == []
+  end
+
+  test "identified source and export routes refuse unknown paths and formats", ctx do
+    {:ok, p} = Part3Store.create(ctx.baseline, ctx.proposal)
+    [change] = p["source_changes"]
+    prefix = "/changes/" <> p["id"]
+    conn = get(Phoenix.ConnTest.build_conn(), prefix <> "/source/proposal/" <> change["id"])
+    assert conn.status == 200
+
+    assert conn.resp_body ==
+             File.read!(Path.join(Part3Snapshots.root(ctx.proposal), change["path"]))
+
+    assert Plug.Conn.get_resp_header(conn, "content-type") == ["text/plain; charset=utf-8"]
+
+    for path <- [
+          "/source/other/" <> change["id"],
+          "/source/baseline/unknown",
+          "/law/other/po_a2/source",
+          "/law/baseline/unknown/source",
+          "/artifact/other/" <> String.duplicate("0", 64),
+          "/repair/unknown.json",
+          "/repair/e-" <> String.duplicate("0", 32) <> ".html"
+        ] do
+      assert get(Phoenix.ConnTest.build_conn(), prefix <> path).status == 404
+    end
+
+    assert get(
+             Phoenix.ConnTest.build_conn(),
+             prefix <> "/repair/e-" <> String.duplicate("0", 32) <> ".json"
+           ).status == 409
+
+    assert {:ok, ^p, :ok} = Part3Store.get(p["id"])
   end
 end
