@@ -6,6 +6,8 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   import HoldLedgerReviewWeb.LeanComponents
   import HoldLedgerReviewWeb.ScrubberComponents
 
+  alias HoldLedgerReviewWeb.{Experiment, ReviewCopy}
+
   alias HoldLedgerReview.{
     Contrast,
     Part3ContractDelta,
@@ -29,10 +31,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
        page_title: "Hold Ledger · Contract review",
        tools: nil,
        advanced: false,
-       proof_open: true,
-       premises_open: false,
-       record_open: false,
-       clauses_open: true,
+       secondary: nil,
+       proof_full: false,
+       experiment: nil,
        binding_index: 0,
        selected_evidence: nil,
        inspected: nil,
@@ -72,6 +73,14 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   @impl true
+  def handle_params(
+        %{"pane" => pane, "id" => id, "slug" => slug},
+        _,
+        %{assigns: %{doc: %{"id" => current}, slug: current_slug}} = socket
+      )
+      when id == current and slug == current_slug and pane in ~w(premises record artifacts),
+      do: {:noreply, assign(socket, secondary: pane)}
+
   def handle_params(params, _, socket) do
     slug = params["slug"] || "po_a2"
 
@@ -80,6 +89,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         socket =
           assign(socket,
             slug: slug,
+            secondary: if(params["pane"] in ~w(premises record artifacts), do: params["pane"]),
             inspected: nil,
             premise_key: nil,
             reading: reading,
@@ -118,7 +128,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
         socket =
           socket
-          |> assign(doc: doc, cursor: cursor, candidate: candidate)
+          |> assign(
+            doc: doc,
+            cursor: cursor,
+            candidate: candidate,
+            experiment: if(same, do: socket.assigns.experiment),
+            preview: if(same, do: socket.assigns.preview)
+          )
           |> refresh_case(candidate)
           |> load_package()
 
@@ -143,17 +159,40 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
          to: ~p"/claims/#{slug}/#{socket.assigns.doc["id"]}"
        )}
 
-  def handle_event("inspect", %{"view" => view}, socket) when view in ~w(proof premises record) do
-    key = panel_key(view)
-
-    {:noreply,
-     socket |> assign(key, true) |> push_event("focus_evidence", %{id: view <> "-panel"})}
+  def handle_event("inspect", %{"view" => view}, socket)
+      when view in ~w(proof clauses premises record artifacts) do
+    if view in ~w(proof clauses) do
+      {:noreply, push_event(socket, "focus_evidence", %{id: view <> "-panel"})}
+    else
+      {:noreply,
+       socket
+       |> assign(secondary: view)
+       |> push_patch(
+         to: ~p"/claims/#{socket.assigns.slug}/#{socket.assigns.doc["id"]}?pane=#{view}"
+       )
+       |> push_event("focus_evidence", %{id: view <> "-panel"})}
+    end
   end
 
-  def handle_event("toggle_panel", %{"panel" => panel}, socket)
-      when panel in ~w(proof premises record clauses) do
-    key = panel_key(panel)
-    {:noreply, assign(socket, key, !socket.assigns[key])}
+  def handle_event("full_proof", _, socket),
+    do: {:noreply, assign(socket, proof_full: !socket.assigns.proof_full)}
+
+  def handle_event("reset_experiment", _, socket) do
+    {:noreply,
+     socket
+     |> assign(experiment: nil, preview: nil, cursor: last_id(socket.assigns.doc))
+     |> refresh_case(nil)}
+  end
+
+  def handle_event("alternative_total", %{"amount" => amount}, socket) do
+    if socket.assigns.candidate_form do
+      candidate_input(
+        socket,
+        Map.put(socket.assigns.candidate_form.params, "used_amount", amount)
+      )
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("open_tools", %{"tool" => tool}, socket) when tool in ~w(draft events) do
@@ -308,16 +347,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   def handle_event("apply_preview", _, socket) do
-    case socket.assigns.preview do
-      nil ->
-        {:noreply, socket}
-
-      step ->
-        mutate(
-          socket,
-          %{"kind" => "append", "parent" => step["parent"], "event" => step["event"]},
-          true
-        )
+    case prepare_experiment(socket) do
+      {:ok, exp} -> save_experiment(socket, exp)
+      {:error, reason} -> {:noreply, error(socket, "Cannot save this experiment: #{reason}.")}
     end
   end
 
@@ -487,32 +519,23 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def handle_event("candidate_clear_effects", _, socket),
     do: candidate_input(socket, Map.put(socket.assigns.candidate_form.params, "effects", %{}))
 
-  def handle_event("branch_candidate", _, %{assigns: %{preview: preview}} = socket)
-      when is_map(preview),
-      do:
-        {:noreply,
-         error(
-           socket,
-           "Save or discard the active scratch case before recording a hypothetical branch."
-         )}
-
   def handle_event("branch_candidate", _, socket) do
     case socket.assigns.case_data do
       %{"candidate_valid" => true, "candidate" => output} ->
-        mutate(
-          socket,
-          %{"kind" => "candidate", "parent" => socket.assigns.cursor, "output" => output},
-          true
-        )
+        run_experiment(socket, fn exp ->
+          %{"kind" => "candidate", "parent" => exp.cursor, "output" => output}
+        end)
 
       _ ->
-        {:noreply, error(socket, "The hypothetical state must be valid before continuing.")}
+        {:noreply,
+         error(socket, "Correct the alternative's accounting before continuing from it.")}
     end
   end
 
   def handle_event("save_challenge", _, %{assigns: %{preview: preview}} = socket)
       when is_map(preview),
-      do: {:noreply, error(socket, "Add the preview to the trace first.")}
+      do:
+        {:noreply, error(socket, "Save the experiment first to attach this case to your review.")}
 
   def handle_event("save_challenge", _, socket) do
     if socket.assigns.case_data do
@@ -609,25 +632,17 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
          event_form: to_form(Map.merge(socket.assigns.event_form.params, params), as: :event)
        )}
 
-  def handle_event("apply_event", _, %{assigns: %{preview: preview}} = socket)
-      when is_map(preview),
-      do:
-        {:noreply,
-         error(socket, "Save or discard the active scratch case before recording another event.")}
-
   def handle_event("apply_event", %{"event" => params}, socket) do
     case event_json(socket.assigns.doc["mode"], params) do
       {:ok, json} ->
         socket = assign(socket, event_form: to_form(params, as: :event))
 
-        mutate(
-          socket,
-          %{"kind" => "append", "parent" => socket.assigns.cursor, "event" => json},
-          true
-        )
+        run_experiment(socket, fn exp ->
+          %{"kind" => "append", "parent" => exp.cursor, "event" => json}
+        end)
 
       _ ->
-        {:noreply, error(socket, "Invalid event fields.")}
+        {:noreply, error(socket, "Enter a valid event, identity and amount.")}
     end
   end
 
@@ -641,18 +656,8 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     end
   end
 
-  def handle_event("record_note", %{"note" => params}, socket),
-    do:
-      mutate(
-        socket,
-        %{
-          "kind" => "note",
-          "step" => socket.assigns.cursor,
-          "text" => params["text"],
-          "disposition" => "concern"
-        },
-        false
-      )
+  def handle_event("record_note", %{"note" => %{"text" => text}}, socket) when is_binary(text),
+    do: mutate(socket, note_action(socket.assigns, text), false)
 
   def handle_event("compare", %{"compare" => params}, socket) do
     case Part3Store.create(params["baseline"], params["proposal"]) do
@@ -673,7 +678,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       {:ok, proof} ->
         {:noreply,
          socket
-         |> assign(package_proof: proof)
+         |> assign(package_proof: proof, secondary: "artifacts")
          |> put_flash(
            :info,
            "Pair artifacts loaded: #{length(proof["versions"])} source versions."
@@ -730,11 +735,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     {:noreply, assign(socket, hunt: %{status: status})}
   end
 
-  defp panel_key("proof"), do: :proof_open
-  defp panel_key("premises"), do: :premises_open
-  defp panel_key("record"), do: :record_open
-  defp panel_key("clauses"), do: :clauses_open
-
   defp observed_node(root, path) when is_binary(path) and byte_size(path) <= 300 do
     parts = if path == "", do: [], else: String.split(path, ".")
 
@@ -750,6 +750,25 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   defp observed_node(_, _), do: :error
 
+  defp note_action(assigns, text) do
+    anchor = if Trace.step(assigns.doc, assigns.cursor), do: assigns.cursor, else: "start"
+
+    text =
+      if assigns.preview || assigns.experiment, do: experiment_note(assigns, text), else: text
+
+    %{"kind" => "note", "step" => anchor, "text" => text, "disposition" => "concern"}
+  end
+
+  defp experiment_note(assigns, text) do
+    digest =
+      HoldLedgerReview.Canonical.digest(%{
+        "step" => selected(assigns),
+        "alternative" => assigns.candidate
+      })
+
+    text <> "\nUnsaved experiment: " <> digest <> ". Save the experiment to retain its steps."
+  end
+
   defp record_example_decision(socket, action) when action in ~w(design policy considered) do
     label =
       %{
@@ -764,16 +783,11 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         else: "no executable case"
 
     text =
-      "Example review: #{label}. Law #{socket.assigns.slug}; input #{input}. Scoped local concern; no policy authorization or formal acceptance."
+      "Example review: #{label}. Law #{socket.assigns.slug}; input #{input}. "
 
     doc = socket.assigns.doc
 
-    command = %{
-      "kind" => "note",
-      "step" => socket.assigns.cursor,
-      "text" => text,
-      "disposition" => "concern"
-    }
+    command = note_action(socket.assigns, text)
 
     case Trace.command(doc["id"], doc["revision"], Trace.token(), command) do
       {:ok, updated} ->
@@ -802,7 +816,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   defp hunt_context(socket),
     do:
       {socket.assigns.doc["id"], socket.assigns.doc["revision"], socket.assigns.cursor,
-       socket.assigns.slug, socket.assigns.preview}
+       socket.assigns.slug, socket.assigns.preview, socket.assigns.experiment}
 
   defp preview_amount(socket, amount) do
     with {n, ""} when n in 1..1_000_000 <- Integer.parse(amount),
@@ -864,7 +878,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   defp select_step(socket, id) do
-    if id == "start" or Trace.step(socket.assigns.doc, id),
+    if id == "start" or Trace.step(experiment_doc(socket.assigns), id),
       do:
         {:noreply,
          socket
@@ -875,7 +889,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   defp inspect_source(socket, name, bytes, sha) do
     socket
-    |> assign(inspected: %{name: name, bytes: bytes, sha: sha}, proof_open: true)
+    |> assign(inspected: %{name: name, bytes: bytes, sha: sha})
     |> push_event("focus_evidence", %{id: "inline-source"})
   end
 
@@ -943,11 +957,71 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     end
   end
 
-  defp evaluation_doc(%{preview: nil} = assigns), do: assigns.doc
-  defp evaluation_doc(assigns), do: Map.update!(assigns.doc, "steps", &(&1 ++ [assigns.preview]))
+  defp experiment_doc(%{experiment: nil} = assigns), do: assigns.doc
+  defp experiment_doc(assigns), do: assigns.experiment.doc
+  defp evaluation_doc(%{preview: nil} = assigns), do: experiment_doc(assigns)
+
+  defp evaluation_doc(assigns),
+    do: Map.update!(experiment_doc(assigns), "steps", &(&1 ++ [assigns.preview]))
 
   defp selected(%{preview: preview}) when is_map(preview), do: preview
-  defp selected(assigns), do: if(assigns.doc, do: Trace.step(assigns.doc, assigns.cursor))
+
+  defp selected(assigns),
+    do: if(assigns.doc, do: Trace.step(experiment_doc(assigns), assigns.cursor))
+
+  defp save_experiment(socket, exp) do
+    case Experiment.save(socket.assigns.doc, exp) do
+      {:ok, saved} ->
+        {:noreply,
+         socket
+         |> assign(doc: saved, cursor: exp.cursor, experiment: nil, preview: nil)
+         |> refresh_case(socket.assigns.candidate)
+         |> load_package()}
+
+      {:error, reason, partial, remaining} ->
+        {:noreply,
+         socket
+         |> assign(doc: partial, experiment: remaining, preview: nil)
+         |> error(
+           "Saving stopped: #{reason}. #{length(remaining.pending)} steps are still unsaved. Your experiment is kept here."
+         )}
+    end
+  end
+
+  defp prepare_experiment(socket) do
+    exp = socket.assigns.experiment || Experiment.new(socket.assigns.doc, socket.assigns.cursor)
+    exp = %{exp | cursor: socket.assigns.cursor}
+
+    case socket.assigns.preview do
+      nil ->
+        {:ok, exp}
+
+      step ->
+        Experiment.run(exp, %{
+          "kind" => "append",
+          "parent" => step["parent"],
+          "event" => step["event"]
+        })
+    end
+  end
+
+  defp run_experiment(socket, action) do
+    with {:ok, exp} <- prepare_experiment(socket),
+         {:ok, updated} <- Experiment.run(exp, action.(exp)) do
+      {:noreply,
+       socket
+       |> assign(
+         experiment: updated,
+         cursor: updated.cursor,
+         preview: nil,
+         hunt: %{status: "idle"}
+       )
+       |> refresh_case(nil)}
+    else
+      {:error, reason} -> {:noreply, error(socket, "Could not run this event: #{reason}.")}
+    end
+  end
+
   defp last_id(doc), do: if(doc["steps"] == [], do: "start", else: List.last(doc["steps"])["id"])
 
   defp error(socket, text), do: put_flash(socket, :error, text)
@@ -1017,205 +1091,198 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <section :if={!@doc} aria-label="Opening review">
-        <h1>Review guarantee</h1><p role="status">Opening a source-bound case…</p>
-      </section>
+      <p :if={!@doc} role="status">Opening ledger…</p>
       <div :if={@doc && @reading} id="review-document">
         <header class="review-bar">
-          <div class="review-heading">
-            <h1>Review guarantee</h1><.form
-              for={to_form(%{"slug" => @slug})}
-              id="law-picker"
-              phx-change="law_change"
-            >
-              <.input
-                name="slug"
-                value={@slug}
-                type="select"
-                label="Law under review"
-                options={Enum.map(@catalog, &{&1["title"], &1["slug"]})}
-              />
-            </.form><div class="history-actions">
-              <button
-                id="append-preview"
-                phx-click="apply_preview"
-                disabled={!@preview}
-                class="record-action"
-              >Save case</button><button
-                id="record-event"
-                phx-click="open_tools"
-                phx-value-tool="events"
-              >Record event…</button>
-            </div>
-          </div>
-          <.disposition package={@package} doc={@doc} selected_evidence={@selected_evidence} />
+          <.form for={to_form(%{"slug" => @slug})} id="law-picker" phx-change="law_change">
+            <.input
+              name="slug"
+              value={@slug}
+              type="select"
+              label="Choose a rule"
+              options={Enum.map(@catalog, &{ReviewCopy.title(&1), &1["slug"]})}
+            />
+          </.form>
         </header>
         <p :if={!Trace.current?(@doc)} role="alert" id="stale-session">
-          Session source changed. Results cannot be used as current evidence.
+          The source files changed. Reopen this rule to run it again.
         </p>
-        <div id="review-workspace">
-          <.comparison
-            reading={@reading}
-            case={@case_data}
-            step={selected(assigns)}
-            package={@package}
-            delta={@delta}
-            preview={@preview}
-            compare_form={@compare_form}
-            snapshots={@snapshots}
-            show_sources={@show_sources}
-            doc={@doc}
-          />
-          <.timeline doc={@doc} cursor={@cursor} preview={@preview} />
-          <section class="case-layout" aria-label="Active case and findings">
+        <div class="connected-experiment">
+          <div class="primary-experiment">
+            <.comparison
+              reading={@reading}
+              case={@case_data}
+              step={selected(assigns)}
+              package={@package}
+              delta={@delta}
+              preview={@preview}
+              compare_form={@compare_form}
+              snapshots={@snapshots}
+              show_sources={@show_sources}
+              doc={@doc}
+            />
+            <.timeline doc={experiment_doc(assigns)} cursor={@cursor} preview={@preview} saved={@doc} />
             <div class="active-case" id="active-case">
-              <.active_state doc={@doc} cursor={@cursor} step={selected(assigns)} /><.input_strip
-                case={@case_data}
-                preview={@preview}
-              /><p :if={@preview} class="scratch-label" id="scratch-status">
-                Unsaved case · history unchanged <button phx-click="discard_preview">Discard</button>
-              </p><.contrast
-                case={@case_data}
-                step={selected(assigns)}
-                slug={@slug}
-                invalid={@invalid}
-              />
+              <.active_state doc={evaluation_doc(assigns)} cursor={@cursor} step={selected(assigns)} />
+              <.input_strip case={@case_data} preview={@preview} />
+              <p :if={@preview || @experiment} id="scratch-status" class="scratch-label">
+                Experiment <button phx-click="reset_experiment">Reset</button>
+              </p>
+              <.contrast case={@case_data} step={selected(assigns)} slug={@slug} invalid={@invalid} />
+              <section :if={@tools} id="case-tools" class="inline-tools" phx-hook="InlineTools">
+                <header>
+                  <h3>
+                    {case @tools do
+                      "draft" -> "Edit the alternative result"
+                      "events" -> "Run another event"
+                      _ -> "Starting account"
+                    end}
+                  </h3><button id="close-tools" phx-click="close_tools">Done editing</button>
+                </header>
+                <div :if={@tools == "draft"}>
+                  <.draft_tools case={@case_data} step={selected(assigns)} preview={@preview} /><.form
+                    :if={@candidate_form}
+                    for={to_form(%{"amount" => @candidate_form.params["used_amount"]})}
+                    id="alternative-counter"
+                    phx-change="alternative_total"
+                  >
+                    <.input
+                      name="amount"
+                      value={@candidate_form.params["used_amount"]}
+                      type="number"
+                      label="Money reserved (¢)"
+                    />
+                    <p :if={@case_data} id="inline-checks">
+                      Accounting: {if @case_data["candidate_valid"],
+                        do: "balances",
+                        else: "does not balance"} · Rule: {ReviewCopy.check(@case_data["law_status"])}
+                    </p>
+                  </.form><div class="candidate-search">
+                    <button
+                      phx-click="hunt"
+                      id="hunt-candidate"
+                      disabled={!@case_data || @hunt.status == "running"}
+                    >Try six alternatives</button><button
+                      :if={@hunt.status == "running"}
+                      phx-click="cancel_hunt"
+                    >Stop search</button><output id="hunt-status">{@hunt.status}{if @hunt[:cases],
+                      do: " · #{@hunt.cases} cases · #{@hunt.elapsed_ms}ms · seed #{@hunt.seed}"}</output>
+                  </div><.editors
+                    :if={@advanced}
+                    case={@case_data}
+                    editor="candidate"
+                    candidate_form={@candidate_form}
+                    initial_form={@initial_form}
+                  />
+                </div>
+                <.event_controls
+                  :if={@tools == "events"}
+                  builder_open={true}
+                  doc={@doc}
+                  event_form={@event_form}
+                  step={selected(assigns)}
+                  preview={nil}
+                />
+                <.editors
+                  :if={@tools == "initial"}
+                  case={@case_data}
+                  editor="initial"
+                  candidate_form={@candidate_form}
+                  initial_form={@initial_form}
+                />
+              </section>
+              <div class="experiment-actions">
+                <button id="record-event" phx-click="open_tools" phx-value-tool="events">Run another event</button><button
+                  id="append-preview"
+                  phx-click="apply_preview"
+                  disabled={!@preview && !@experiment}
+                >Save experiment</button>
+              </div>
             </div>
+          </div>
+          <div class="context-experiment">
+            <section id="proof-panel">
+              <.proof_source reading={@reading} stage={@stage} full={@proof_full} /><section
+                :if={@inspected}
+                id="inline-source"
+                class="inline-source"
+              >
+                <header>
+                  <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
+                </header><pre>{@inspected.bytes}</pre>
+              </section>
+            </section>
             <aside class="case-findings" id="case-findings">
-              <h2>What this case shows</h2><.pair_results
+              <.verdict case={@case_data} slug={@slug} /><.pair_results
                 case={@case_data}
                 reading={@reading}
                 step={selected(assigns)}
                 package={@package}
                 preview={nil}
-              /><.verdict case={@case_data} slug={@slug} /><p class="scope-note">
-                Full formal acceptance: {@reading["formal"]["status"]}. Concrete results do not establish universal acceptance.
-              </p><nav class="evidence-links" id="inspector-tools">
-                <button
-                  :for={
-                    {view, label} <- [
-                      {"proof", "Proof source"},
-                      {"premises", "External premises"},
-                      {"record", "Review notes"}
-                    ]
-                  }
-                  phx-click="inspect"
-                  phx-value-view={view}
-                >{label} ↓</button>
-              </nav>
+              /><section id="clauses-panel">
+                <.dissector
+                  reading={@reading}
+                  case={@case_data}
+                  basis={@basis}
+                  helper={@helper}
+                  binding_index={@binding_index}
+                />
+              </section>
             </aside>
-          </section>
-          <details id="clauses-panel" class="evidence-panel" open={@clauses_open}>
-            <summary phx-click="toggle_panel" phx-value-panel="clauses">Clause evidence</summary><.dissector
-              reading={@reading}
-              case={@case_data}
-              basis={@basis}
-              helper={@helper}
-              binding_index={@binding_index}
-            />
-          </details>
-          <details id="proof-panel" class="evidence-panel" open={@proof_open}>
-            <summary phx-click="toggle_panel" phx-value-panel="proof">
-              Proof source and dependencies
-            </summary><.proof_source reading={@reading} stage={@stage} /><section
-              :if={@inspected}
-              id="inline-source"
-              class="inline-source"
-            >
-              <header>
-                <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
-              </header><small>SHA-256 {@inspected.sha}</small><pre>{@inspected.bytes}</pre>
-            </section><button :if={@package} phx-click="pair_proof" id="pair-proof">Inspect pair proof artifacts</button><.pair_artifacts
-              :if={@package_proof}
-              proof={@package_proof}
-              package={@package}
-              slug={@slug}
-            />
-          </details>
-          <details id="premises-panel" class="evidence-panel" open={@premises_open}>
-            <summary phx-click="toggle_panel" phx-value-panel="premises">
-              External assumptions
-            </summary><.premise case={@case_data} fencing={@fencing} selected_key={@premise_key} /><.assumptions
-              reading={@reading}
-              show_status={false}
-            />
-          </details>
-          <details id="record-panel" class="evidence-panel" open={@record_open}>
-            <summary phx-click="toggle_panel" phx-value-panel="record">
-              Review history and notes
-            </summary><section id="session-record">
-              <h2>Review record</h2><a href={~p"/sessions/#{@doc["id"]}/export"}>Download session</a><button
-                phx-click="save_challenge"
-                disabled={!@case_data || @preview != nil}
-              >Save recorded-input challenge</button><span>{length(@doc["challenges"])} saved challenges</span><.form
-                for={@note_form}
-                id="note-form"
-                phx-submit="record_note"
-              >
-                <.input field={@note_form[:text]} type="textarea" label="Review note" /><button>Record concern</button>
-              </.form>
-            </section><.review_history package={@package} doc={@doc} />
-          </details>
-        </div>
-      </div>
-      <div :if={@tools} class="tool-overlay">
-        <div class="tool-backdrop" phx-click="close_tools" aria-hidden="true"></div>
-        <aside
-          id="tool-drawer"
-          class="tool-drawer"
-          phx-hook="ToolDrawer"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="tool-title"
-        >
-          <header class="drawer-header">
-            <div>
-              <h2 id="tool-title">
-                {case @tools do
-                  "draft" -> "Change drafted outcome"
-                  "events" -> "Record an event"
-                  _ -> "Edit starting state"
-                end}
-              </h2><p :if={@tools == "draft" && @case_data} id="drawer-verdict">
-                Accounting: {@case_data["candidate_valid"]} · {@slug}: {@case_data["law_status"]}
-              </p>
-            </div><button id="close-tools" phx-click="close_tools">Close</button>
-          </header>
-          <div class="drawer-body">
-            <div :if={@tools == "draft"}>
-              <.draft_tools case={@case_data} step={selected(assigns)} preview={@preview} /><div class="candidate-search">
-                <button
-                  phx-click="hunt"
-                  id="hunt-candidate"
-                  disabled={!@case_data || @hunt.status == "running"}
-                >Try six output variations</button><button
-                  :if={@hunt.status == "running"}
-                  phx-click="cancel_hunt"
-                >Cancel search</button><output id="hunt-status">{@hunt.status}{if @hunt[:cases],
-                  do: " · #{@hunt.cases} cases · #{@hunt.elapsed_ms}ms · seed #{@hunt.seed}"}</output>
-              </div><.editors
-                :if={@advanced}
-                case={@case_data}
-                editor="candidate"
-                candidate_form={@candidate_form}
-                initial_form={@initial_form}
-              />
-            </div><.event_controls
-              :if={@tools == "events"}
-              builder_open={true}
-              doc={@doc}
-              event_form={@event_form}
-              step={selected(assigns)}
-              preview={@preview}
-            /><.editors
-              :if={@tools == "initial"}
-              case={@case_data}
-              editor="initial"
-              candidate_form={@candidate_form}
-              initial_form={@initial_form}
-            />
           </div>
-        </aside>
+        </div>
+        <nav class="evidence-links" id="inspector-tools">
+          <button
+            :for={
+              {view, label} <- [
+                {"proof", "Proof"},
+                {"clauses", "Conditions"},
+                {"premises", "Assumptions"},
+                {"artifacts", "Verification files"},
+                {"record", "Review notes"}
+              ]
+            }
+            phx-click="inspect"
+            phx-value-view={view}
+          >{label}</button>
+        </nav>
+        <section :if={@secondary == "premises"} id="premises-panel" class="secondary-panel">
+          <h2>What the payment processor must guarantee</h2><.premise
+            case={@case_data}
+            fencing={@fencing}
+            selected_key={@premise_key}
+          /><.assumptions reading={@reading} show_status={false} />
+        </section>
+        <section :if={@secondary == "artifacts"} id="artifacts-panel" class="secondary-panel">
+          <h2>Verification files</h2><.verification_files reading={@reading} /><button
+            :if={@package}
+            phx-click="pair_proof"
+            id="pair-proof"
+          >Read reports for both versions</button><.pair_artifacts
+            :if={@package_proof}
+            proof={@package_proof}
+            package={@package}
+            slug={@slug}
+          />
+        </section>
+        <section :if={@secondary == "record"} id="record-panel" class="secondary-panel">
+          <h2>Review notes</h2><section id="session-record">
+            <a href={~p"/sessions/#{@doc["id"]}/export"}>Download saved session</a><button
+              phx-click="save_challenge"
+              disabled={!@case_data || @preview != nil || @experiment != nil}
+            >Save this case for review</button><span>{length(@doc["challenges"])} saved cases</span><.form
+              for={@note_form}
+              id="note-form"
+              phx-submit="record_note"
+            >
+              <.input field={@note_form[:text]} type="textarea" label="Your observation" /><button>Add note</button>
+            </.form>
+          </section><.disposition
+            package={@package}
+            doc={@doc}
+            selected_evidence={@selected_evidence}
+          /><.review_history package={@package} doc={@doc} />
+        </section>
       </div>
     </Layouts.app>
     """

@@ -3,10 +3,12 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
   use HoldLedgerReviewWeb, :html
   import HoldLedgerReviewWeb.DissectorComponents, only: [term: 1]
   alias HoldLedgerReview.Trace
+  alias HoldLedgerReviewWeb.ReviewCopy
 
   attr :doc, :map, required: true
   attr :cursor, :string, required: true
   attr :preview, :any, default: nil
+  attr :saved, :map, required: true
 
   def timeline(assigns) do
     parent =
@@ -36,10 +38,10 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         </button>
         <span :if={@preview} id="transient-branch" aria-current="step">↳ {event_label(
           @preview["event"]
-        )} · transient from {@parent_label}</span>
+        )} · trying from {@parent_label}</span>
       </nav>
-      <p id="trace-revision" class="scope-note">
-        Revision {@doc["revision"]} · Select any event to explore a branch.
+      <p id="trace-revision" data-revision={@saved["revision"]} class="scope-note">
+        Choose a step to continue from it.
       </p>
     </section>
     """
@@ -64,25 +66,37 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           phx-click="edit_initial"
         >Edit starting state</button>
       </header>
+      <p class="available-money">
+        <strong>{@ledger["amount_limit"] - @ledger["used_amount"]}¢</strong> available
+      </p><meter
+        class="money-bar"
+        min="0"
+        max={max(@ledger["amount_limit"], 1)}
+        value={@ledger["used_amount"]}
+        aria-label="Money reserved before this event"
+      ></meter>
       <div class="capacity-grid">
         <strong id="amount-counter">{@ledger["used_amount"]}¢ / {@ledger["amount_limit"]}¢</strong><span>reserved / limit</span><strong id="slot-counter">{@ledger[
           "used_holds"
         ]} / {@ledger["hold_limit"]}</strong><span>slots</span>
       </div>
-      <table id="entries">
+      <table :if={@ledger["entries"] != []} id="entries">
         <thead>
           <tr>
             <th>Identity</th><th>Amount</th><th>Status</th>
           </tr>
         </thead><tbody>
           <tr :for={entry <- @ledger["entries"]}>
-            <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>{entry["status"]}</td>
+            <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>
+              {ReviewCopy.state(entry["status"])}
+            </td>
           </tr>
           <tr :if={@ledger["entries"] == []}>
             <td colspan="3">No entries</td>
           </tr>
         </tbody>
       </table>
+      <p :if={@ledger["entries"] == []} id="entries">No entries</p>
       <div :if={@doc["mode"] == "exposure"} id="remote-state">
         <h3>After selected coupled event</h3>
         <p id="coupled-amount-counter">
@@ -97,7 +111,9 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             </tr>
           </thead><tbody>
             <tr :for={entry <- @recorded["ledger"]["entries"]}>
-              <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>{entry["status"]}</td>
+              <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>
+                {ReviewCopy.state(entry["status"])}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -108,7 +124,9 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             </tr>
           </thead><tbody>
             <tr :for={entry <- @recorded["remote"]}>
-              <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>{entry["status"]}</td>
+              <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>
+                {ReviewCopy.state(entry["status"])}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -127,9 +145,6 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
   def event_controls(assigns) do
     ~H"""
     <section id="next-actions">
-      <p :if={@preview} class="scratch-label">
-        An unsaved input is active. Save or discard it before recording a different event.
-      </p><button :if={@preview} phx-click="apply_preview" class="record-action">Save current case</button>
       <div id="event-builder">
         <.form
           for={@event_form}
@@ -141,7 +156,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           <.input
             field={@event_form[:type]}
             type="select"
-            label="Event to record after the selected saved step"
+            label="Next event"
             options={event_options(@doc["mode"])}
           />
           <.input
@@ -167,7 +182,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             label="Outcome"
             options={~w(approved declined)}
           />
-          <button class="primary" id="apply-event" disabled={!Trace.current?(@doc) || @preview != nil}>Record event</button>
+          <button class="primary" id="apply-event" disabled={!Trace.current?(@doc)}>Run event</button>
         </.form>
       </div>
       <button id="coupled-model" phx-click="coupled" class="text-button">Open coupled processor case</button>

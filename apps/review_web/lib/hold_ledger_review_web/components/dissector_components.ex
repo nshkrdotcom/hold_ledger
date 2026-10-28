@@ -20,14 +20,16 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     ~H"""
     <section class="instrument" id="dissector">
       <header>
-        <span class="section-number">02</span><h2>Evaluated clauses</h2>
+        <span class="section-number">02</span><h2>Why it passes or fails</h2>
       </header>
       <p :if={@reading["kind"] == "native_lean"}>
         Native Lean statement. No executable Elixir counterpart.
       </p>
       <div :if={@case}>
         <p id="binding-count">
-          {length(@bindings)} source-derived bindings · all remain part of this case result
+          {if length(@bindings) == 1,
+            do: "Values used for this check",
+            else: "#{length(@bindings)} combinations checked"}
         </p>
         <.form
           :if={length(@bindings) > 1}
@@ -39,7 +41,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             name="index"
             value={@binding_index}
             type="select"
-            label="Inspect binding"
+            label="Inspect values"
             options={
               Enum.map(Enum.with_index(@bindings), fn {binding, index} ->
                 {"#{index + 1}: " <>
@@ -55,12 +57,12 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             phx-click="basis"
             phx-value-value="actual"
             aria-pressed={to_string(@basis == "actual")}
-          >Ledger output</button>
+          >Code result</button>
           <button
             phx-click="basis"
             phx-value-value="candidate"
             aria-pressed={to_string(@basis == "candidate")}
-          >Hypothetical output</button>
+          >Alternative result</button>
         </div>
         <article
           :for={{binding, index} <- Enum.with_index(@bindings)}
@@ -68,7 +70,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
           class="binding"
           id={"binding-#{index}"}
         >
-          <h3>Binding {index + 1}</h3>
+          <h3>Values {index + 1}</h3>
           <dl class="binding-values">
             <div :for={{name, value} <- binding["values"]}>
               <dt>{name}</dt><dd>{term(value)}</dd>
@@ -77,20 +79,20 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
           <p :if={binding["error"]} role="alert">{binding["error"]}</p>
           <div :if={binding["requires"]}>
             <.clause_table
-              title="When the law applies"
+              title="When this rule applies"
               node={binding["requires"]}
               phase="requires"
               binding={index}
             />
             <.clause_table
               :if={binding[@basis]}
-              title="What the output must satisfy"
+              title="What the rule requires"
               node={binding[@basis]}
               phase={@basis}
               binding={index}
             />
             <p :if={!binding[@basis]} class="scope-note" id="outside-domain">
-              Precondition false. This law makes no promise for this input.
+              This rule does not apply to this input.
             </p>
           </div>
         </article>
@@ -156,7 +158,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
       assign(assigns,
         op: op,
         children: logical_children(assigns.node, op),
-        helpers: helper_children(assigns.node)
+        helpers: if(assigns.phase == "helper", do: helper_children(assigns.node), else: [])
       )
 
     ~H"""

@@ -7,11 +7,9 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Review a guarantee through a concrete ledger case. The page shows the requirement and changed condition first, then the input, executed output and a drafted alternative. Source coverage and candidate checks appear beside the case. Proof source, clause observations and external assumptions follow below.
+Explore payment-hold rules by running concrete cases. Change a request, try a different result and follow the next event. The rule, its proof source and the checks explain what each experiment shows.
 
-The default admission example changes `amount <= remaining` to `amount < remaining`. At exact fit, the illustrated proposal stops covering the input while the checkout still admits it. Attach two trusted local snapshots to replace that illustration with an actual source comparison and isolated replay.
-
-This separate Phoenix application sends no payments and exposes no provider controls.
+The Phoenix app uses the original Ledger, independent Spec and claim evaluator. It sends no payments.
 
 ## Run locally
 
@@ -27,55 +25,48 @@ uv run --locked python scripts/local_run.py --cwd apps/review_web mix phx.server
 
 Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `100` means one dollar.
 
-## Explore a case
+## Try a case
 
-Choose a law in the top bar. Read its policy source and changed condition, then adjust the active input with **Below / Exact fit / Above** or an amount. The outputs and clause observations update without changing saved history. **Save case** records that input; **Discard** restores the selected recorded case.
+Choose a rule. Its requirement and changed condition appear beside the relevant proof source. The opening example compares `amount <= remaining` with `amount < remaining`: a request using all available capacity is covered by the first condition and excluded by the second.
 
-The findings distinguish two comparisons:
+Enter an amount or choose **1¢ less / All available / 1¢ more**. The page shows what the code returns and whether the rule covers this input. The opening comparison is labeled **Example change**; attach two source versions to replace it with actual isolated runs.
 
-| Comparison | Question |
-|---|---|
-| Source coverage | Does each source version's claim cover this input? What did its isolated execution return? |
-| Executed checkout / drafted outcome | Does this checkout's claim permit the deliberately drafted output? |
+**Code returned** shows the executed result. **What if it returned…** is an alternative you can edit to challenge the rule. Click a status or **Edit alternative**, then change reserved money, remove an action or release a hold. The adjacent checks update while the editor remains open. The rest of the page stays usable.
 
-The default source comparison is a labeled illustration. Attach a trusted local source pair for actual isolated executions. A precondition excluding an input does not tell you that the implementation rejects it. A contract accepting a drafted output does not tell you that the implementation produces it.
+An alternative can have inconsistent counters. **Recalculate totals** corrects them only when requested. The full state and JSON editor provides the same bounded values: up to eight entries and integers up to 1,000,000.
 
-**Change drafted output…** opens the secondary tools. Remove an effect, zero counters, change an identity, or use the complete state / JSON editor. The drawer header reports the current candidate check. Counters stay as entered until **Recalculate totals**. **Try six output variations** records its seed, case count and elapsed time; it is a bounded experiment, not a general solver. Escape closes the drawer and returns focus to its opener.
+The checks distinguish accounting from the selected rule. A balanced account can still release a hold too early. The condition view shows the original observed operands; when a rule checks multiple sets of values, the selector changes which set you inspect without removing any from the result.
 
-## Record and step through history
+## Follow what happens next
 
-Select a saved event on the timeline to inspect its starting account and resulting state. **Record event…** opens a custom event form. Recording is refused while an unsaved scratch case is active: save or discard it first. The action never silently saves a prefix. Selecting an earlier saved state and recording from it creates a branch; the other branch remains selectable.
+**Run another event** opens an inline event form. Try dispatch, timeout, retry, cancellation or confirmation. These steps change the experiment without writing saved history. You can keep going from an unsaved request.
 
-**Record hypothetical branch**, in the draft tools, continues from a deliberately drafted output. That branch and its descendants stay labeled hypothetical. For example, continue from premature release and request another 100 cents, then compare the admission with the actual pending-void branch where capacity remains reserved. This does not claim the actual implementation releases early.
+**Continue from this alternative** instead uses the edited result as the starting point for subsequent events. Those steps remain labeled as following an alternative. For example, release a hold early, then request the same capacity again; compare that with the original branch, where the money remains reserved.
 
-**Edit starting state** edits limits, counters and remembered entries in a separate session. Structured and JSON editing share the original bounded codec: at most eight entries and integers up to 1,000,000. Inconsistent candidate totals are allowed as a challenge; continuing from a candidate requires a valid state.
+Select an earlier step to branch from there. **Reset** discards the experiment. **Save experiment** records its pending commands through the original revision-checked store. Each command saves atomically; if another tab interrupts a multi-step save, the page retains the unsaved suffix and reports the partial result. Reloading discards unsaved work.
 
-## Inspect clauses and assumptions
+**Edit starting state** opens the account fields inline and creates a separate saved session. It never changes the governing payment policy.
 
-**Clause evidence** shows exact claim expressions and observed operand values. Select a binding when a law ranges over several entries; every binding remains part of the overall case result. A helper's **Definition** opens its evaluated body. No expression is re-evaluated by the presentation layer.
+## Read the proof and assumptions
 
-The terminal-fencing experiment selects an eligible entry and compares confirmation with a deliberately resurrected modeled authorization. It changes no trace and tests no real bank. **Coupled processor model** opens the original Exposure model, separating local knowledge from modeled remote records across dispatch, timeout, observation and confirmation.
+The proof shows actual source around the selected step. **Read full proof** expands the declaration. Referenced lemmas open their source alongside the rule; the selected case remains available. These source readings are not saved Lean hypotheses or tactic goal states.
 
-## Follow the proof
+**Assumptions** opens the processor model. Select a hold and compare a processor that remembers cancellation with one that later resurrects an authorization. The model does not establish how a real processor behaves. **Open coupled processor case**, in the event tools, separates local knowledge from remote authorization, delivery and terminal confirmation.
 
-**Proof source and dependencies** and **External assumptions** open independently. Reading a lemma or registered artifact adds its source below the proof rather than replacing it. Proof stages navigate actual source anchors; captured Lean hypotheses and goal states remain unavailable.
+All 49 catalog obligations remain readable. Native Lean statements without an executable Elixir counterpart say so.
 
-Select a proof stage to read its actual source and follow a referenced lemma to its declaration. These are source readings, not recorded Lean tactic states or kernel dependency footprints. Pointwise clauses explain this case; the theorem states what is universally claimed.
-
-To produce fresh translation sources and focused Lean elaboration for the three primary worked claims, run from the repository root:
+**Verification files** contains generated sources, matching reports, checker details and unavailable artifacts. To generate focused translation and Lean elaboration for the three primary worked claims, run from the repository root:
 
 ```sh
 MIX_ENV=test uv run --locked python scripts/local_run.py \
   mix run apps/review_web/scripts/produce_claim_readings.exs
 ```
 
-This invokes the original ProofCase assembler and pinned Lynx runner. Generated files and source hashes stay under ignored `tmp/verification/claim-reading`. Refresh evidence on the page to inspect matching artifacts. Focused elaboration does not establish full release acceptance, exports, theorem-specific axiom footprints or six-checker consensus.
+This uses the original ProofCase assembler and pinned Lynx runner. Generated artifacts remain under ignored `tmp/verification/claim-reading`. Focused elaboration is separate from full formal acceptance. Only the original `ProofEvidence` validator accepts a matching required-scope report; see the [verification guide](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md). Missing evidence stays missing.
 
-Only the original `ProofEvidence` validator determines formal acceptance from a matching required-scope report. See the [verification guide](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md) for that gate. Missing and stale evidence remain unavailable.
+## Compare two source versions
 
-## Compare source versions
-
-Stage two operator-trusted local Git worktrees:
+Stage operator-trusted local Git worktrees:
 
 ```sh
 python3 apps/review_web/scripts/stage_part3_snapshot.py \
@@ -83,17 +74,15 @@ python3 apps/review_web/scripts/stage_part3_snapshot.py \
   --destination /absolute/path/to/hold_ledger/tmp/review_studio/snapshots
 ```
 
-Provision compatible pinned dependencies offline into each snapshot’s ignored `tmp/part3_build` directories before replay. Use **Choose local source pair** to select the registered snapshots. The exact identities accompany the comparison. Each version executes in a separate BEAM process through the original source-derived evaluator. Dirty changes and deletions are identified by content, not branch name.
+Provision compatible pinned dependencies offline under each snapshot's ignored `tmp/part3_build` directories. **Compare versions** selects their registered content identities. **Run on both versions** executes the active input in separate BEAM processes using the original evaluator. Neither a branch name nor a historical receipt substitutes for matching source.
 
-The comparison distinguishes an excluded input, an unwanted output permitted by a contract, and an observed implementation difference. A failed search establishes none of their universal negations. Separate processes prevent module-version mixing; they do not make hostile code safe. Browser actions neither install dependencies nor accept executable uploads.
+Read three results separately: an input excluded by a rule, an alternative output permitted by a rule, and an actual execution difference. No example found does not establish equivalence or safety. Separate processes prevent module mixing; they do not sandbox hostile code. The browser does not install project dependencies or accept executable uploads.
 
-## Keep a review record
+## Keep review notes
 
-The top bar records scoped concerns against the selected stored comparison witness. With no pair, it records an explicitly labeled example concern. Full evidence and notes remain under **Review history and notes**. These actions do not authorize policy, merge a PR or grant formal acceptance. All 49 catalog obligations remain readable; native Lean obligations explicitly lack an executable Elixir counterpart.
+After exploring, open **Review notes** to save an observation or attach one to a computed comparison result. These are review records, not policy authorization or formal acceptance. Download a saved session to retain its history, challenges and notes. Source changes prevent stale computations and writes; revision checks prevent another tab from overwriting a newer record.
 
-Save a challenge to retain its input, candidate, selected law and source identity. Record a concern separately. Download the session to retain branches, challenges and notes. Concurrent edits use revision checks; stale tabs cannot overwrite newer records. Source drift prevents further execution or writes.
-
-Notes do not authorize policy changes or establish formal acceptance. Exporting any local content grants no permission to send it to a provider.
+A local export grants no permission to send source or review content to a model. This interface makes no provider calls.
 
 ## Use the same operations from a command
 

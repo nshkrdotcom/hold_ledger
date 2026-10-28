@@ -14,12 +14,14 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
   await expect(page.locator('#replay-pair')).toBeVisible();await page.locator('#replay-pair').click();
   await expect(page.locator('.attempt').filter({hasText:'succeeded'})).toHaveCount(4,{timeout:90000});
   await expect(page.locator('#timeline button')).toHaveCount(traceCount);
+  await page.locator('#inspector-tools [phx-value-view=record]').click();
   await expect(page.locator('.pair-evidence')).toContainText('lost_domain_input');
   const source=await page.getByRole('link',{name:'Read proposal source ↗'}).first().getAttribute('href');
   const response=await page.request.get(source);expect(response.status()).toBe(200);expect(await response.text()).toContain('amount <');
-  await page.locator('#inspector-tools [phx-value-view=proof]').click();await page.locator('#pair-proof').click();await expect(page.locator('#pair-proof-artifacts')).toContainText('missing');
-  await page.locator('#inspector-tools [phx-value-view=proof]').click();
+  await page.locator('#inspector-tools [phx-value-view=artifacts]').click();await page.locator('#pair-proof').click();await expect(page.locator('#pair-proof-artifacts')).toContainText('missing');
+  await page.locator('#inspector-tools [phx-value-view=artifacts]').click();
   await expect(page.locator('#pair-execution')).toContainText('admitted');
+  await page.locator('#inspector-tools [phx-value-view=record]').click();
   await page.locator('#decision-docket button[phx-value-action=design]').click();
   await page.locator('#inspector-tools [phx-value-view=record]').click();
   const repair=await page.getByRole('link',{name:'Download local repair packet'}).first().getAttribute('href');
