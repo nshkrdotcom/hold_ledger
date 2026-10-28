@@ -1,6 +1,8 @@
 defmodule HoldLedgerReview.MixProject do
   use Mix.Project
 
+  @source_url "https://github.com/nshkrdotcom/hold_ledger"
+
   def project do
     [
       app: :hold_ledger_review_web,
@@ -10,11 +12,36 @@ defmodule HoldLedgerReview.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       name: "Hold Ledger Claim Workbench",
-      docs: [main: "readme", extras: ["README.md"]],
+      description: "A source-anchored workbench for reviewing Hold Ledger claims.",
+      source_url: @source_url,
+      package: package(),
+      docs: docs(),
       dialyzer: [plt_add_apps: [:ex_unit]],
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader]
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => @source_url},
+      files: ~w(lib config priv assets mix.exs .formatter.exs README.md LICENSE CHANGELOG.md)
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      logo: "assets/review_web.svg",
+      favicon: "assets/review_web.svg",
+      assets: %{"assets" => "assets"},
+      extras: ["README.md", "CHANGELOG.md", {"LICENSE", [title: "MIT License"]}],
+      groups_for_extras: [
+        "Getting Started": ["README.md"],
+        Reference: ["CHANGELOG.md", "LICENSE"]
+      ]
     ]
   end
 

@@ -1,4 +1,11 @@
+<p align="center">
+  <img src="assets/review_web.svg" alt="Hold Ledger Claim Workbench" width="200" height="200">
+</p>
+
 # Hold Ledger Claim Workbench — source engine
+
+[![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This directory is a **separate Phoenix Mix application** built against the pure
 Hold Ledger checkout. Milestone A replaces the old Review Studio evaluator,
