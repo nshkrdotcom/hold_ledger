@@ -183,4 +183,43 @@ defmodule HoldLedgerReviewWeb.WorkbenchLiveTest do
 
     assert response(get(conn, "/workbench/#{doc["id"]}/source/unknown"), 404)
   end
+
+  test "reset and invalid drafts do not overwrite saved evidence or its implication", %{
+    conn: conn
+  } do
+    alias HoldLedgerReview.Dossier
+    {:ok, doc, witness} = ReviewStore.create("P01")
+    {:ok, view, _} = live(conn, "/workbench/#{doc["id"]}")
+    assert has_element?(view, "#scenario-brief", "Requests remote cancellation")
+    view |> form("#candidate-form") |> render_submit(%{"draft" => %{"choice" => "unacceptable"}})
+    {:ok, saved} = ReviewStore.get(doc["id"])
+    card = Enum.find(saved["core_cards"], &(&1["kind"] == "escape"))
+
+    {:ok, expected} =
+      Dossier.implication(card, "unacceptable", hd(saved["pinned_probes"])["evaluation"])
+
+    assert has_element?(view, "#latest-answer", expected)
+    assert has_element?(view, ".progress-count", "1 of 3 required questions answered")
+
+    render_change(view, "draft_changed", %{
+      "draft" => Map.put(Adversarial.form(witness), "output_json", "{")
+    })
+
+    refute has_element?(view, "#scenario-brief .scenario-facts")
+    assert has_element?(view, "#latest-answer", expected)
+    render_click(element(view, "#reset-draft"))
+    assert has_element?(view, "#scenario-brief .scenario-facts", "100¢ of 100¢")
+    assert has_element?(view, "#candidate-ok")
+    assert {:ok, ^saved} = ReviewStore.get(doc["id"])
+  end
+
+  test "all eight scenario summaries describe evaluated examples", %{conn: conn} do
+    for seed <- Adversarial.seeds() do
+      {:ok, doc, _} = ReviewStore.create(seed)
+      {:ok, view, _} = live(conn, "/workbench/#{doc["id"]}")
+      assert has_element?(view, "#scenario-brief .scenario-facts dd", "¢")
+      assert has_element?(view, "#computed-contrast details summary", "Show raw JSON")
+      assert has_element?(view, "#reset-draft")
+    end
+  end
 end

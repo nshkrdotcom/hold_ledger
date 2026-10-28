@@ -279,3 +279,31 @@ test('AI opt-in gate never sends source through a disabled workbench', async ({p
   expect(record.ai_jobs).toHaveLength(0);
   expect(record.answers).toHaveLength(0);
 });
+
+test('a first-time reviewer can use definitions, compare, reset and conclude', async ({page}) => {
+  await page.goto('/workbench');
+  await expect(page.locator('#new-review-choices button')).toHaveCount(8);
+  await page.getByRole('link', {name:'Glossary', exact:true}).click();
+  await expect(page.locator('#glossary')).toHaveAttribute('open', '');
+  await expect(page.locator('#glossary-oracle')).toContainText('separately written');
+  await newReview(page, 'P08');
+  await expect(page.locator('#scenario-brief')).toContainText('Hold cancelled.');
+  await expect(page.locator('.progress-count').first()).toContainText('0 of 3');
+  await page.locator('#draft_output_json').fill('{');
+  await expect(page.locator('#scenario-brief .scenario-facts')).toHaveCount(0);
+  await page.locator('#reset-draft').click();
+  await expect(page.locator('#scenario-brief .scenario-facts')).toBeVisible();
+  const before = await record(page, 'reset-does-not-save');
+  expect(before.answers).toHaveLength(0);
+  expect(before.pinned_probes).toHaveLength(0);
+  await page.locator('#escape-acceptable').click();
+  for (const [kind, choice] of [['reading','accurate'], ['trace','sufficient_for_review']]) {
+    await page.locator(`#card-${kind}`).click();
+    await page.locator(`#card-answer-form button[value="${choice}"]`).click();
+  }
+  await expect(page.locator('.progress-count').first()).toContainText('3 of 3');
+  await page.locator('#finish_rationale').fill('Local cancellation releases an undispatched reservation; this review covers that example.');
+  await page.locator('#review-outcome').selectOption('needs_policy_or_evidence');
+  await page.locator('#confirm-finish').click();
+  await expect(page.locator('#review-summary')).toContainText('Human conclusion:');
+});

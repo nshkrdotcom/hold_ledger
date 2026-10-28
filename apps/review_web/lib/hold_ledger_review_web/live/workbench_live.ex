@@ -3,7 +3,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
   use HoldLedgerReviewWeb, :live_view
   alias HoldLedgerReview.{Adversarial, AI, AIJobs, Dossier, ReviewStore}
 
-  alias HoldLedgerReviewWeb.Glossary
+  alias HoldLedgerReviewWeb.{Explain, Glossary, ReviewProgress}
 
   @draft_fields ~w(before_json event_json output_json follow_on_json)
   @submit_fields @draft_fields ++
@@ -108,6 +108,14 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
     end
   end
 
+  def handle_event("reset_draft", _params, socket) do
+    case Adversarial.seed(socket.assigns.review["seed_id"]) do
+      {:ok, witness} -> {:noreply, load_witness(socket, witness)}
+      {:error, reason} -> {:noreply, error_flash(socket, reason, inspect(reason))}
+    end
+  end
+
+  @impl true
   def handle_event("draft_changed", %{"draft" => input}, socket) do
     draft = Map.merge(socket.assigns.draft, Map.take(input, @draft_fields))
     {:noreply, change_draft(socket, draft)}
@@ -455,10 +463,61 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
   defp source_names(review, ids) do
     Enum.map_join(ids, ", ", fn id ->
       case source_for(review, id) do
-        nil -> id
-        source -> source["path"]
+        nil ->
+          case Enum.find(review["graph_snapshot"]["nodes"], &(&1["id"] == id)) do
+            nil ->
+              "Source reference unavailable (see technical record)"
+
+            node ->
+              Enum.map_join(node["source_ids"], ", ", fn source_id ->
+                source_for(review, source_id)["path"]
+              end)
+          end
+
+        source ->
+          source["path"]
       end
     end)
+  end
+
+  defp current_witness(%{draft_error: nil, draft: draft, review: review})
+       when not is_nil(review) do
+    Map.new(~w(before event output follow_on), fn key ->
+      {key, Jason.decode!(draft[key <> "_json"])}
+    end)
+  end
+
+  defp current_witness(_), do: nil
+
+  attr :value, :any, required: true
+  attr :kind, :string, default: "output"
+
+  defp narrated(assigns) do
+    ~H"""
+    <p class="narrative">
+      {case @kind do
+        "state" -> Explain.state(@value)
+        "event" -> Explain.event(@value)
+        _ -> Explain.output(@value)
+      end}
+    </p>
+    <details>
+      <summary>Show raw JSON</summary><pre>{Jason.encode!(@value, pretty: true)}</pre>
+    </details>
+    """
+  end
+
+  attr :review, :map, required: true
+
+  defp progress(assigns) do
+    assigns = assign(assigns, :counts, ReviewProgress.counts(assigns.review))
+
+    ~H"""
+    <p class="progress-count">
+      {@counts.answered} of {@counts.total} required questions answered
+      <span :if={@counts.deferred > 0}>· {@counts.deferred} deferred, still unresolved</span>
+    </p>
+    """
   end
 
   @impl true
@@ -472,6 +531,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           else: nil
         )
       )
+
+    assigns = assign(assigns, :current_witness, current_witness(assigns))
 
     ~H"""
     <Layouts.app flash={@flash}>
@@ -537,7 +598,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
         <div class="workbench-top" id="workbench-top">
           <div>
             <p class="eyebrow">Review / {@review["seed_id"]}</p>
-            <h1>{Glossary.scenario_title(@review["seed_id"])}</h1>
+            <h1>{Glossary.scenario_title(@review["seed_id"])}</h1><.progress review={@review} />
             <details>
               <summary>Review details</summary><p>
                 Document revision {@review["document_revision"]} · Human revision {@review[
@@ -566,32 +627,45 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <p>
             Check whether the rules protect the behavior you intend. Compare the real result with the alternative, decide whether the alternative is acceptable, then inspect which rules address it. You are checking whether the rules are right, not whether the proofs compile.
           </p>
-          <ol class="step-strip">
-            <li>Understand the scenario</li><li>Predict</li><li>Compare with the laws</li><li>
-              Judge
-            </li><li>Conclude</li>
-          </ol>
         </details>
+        <ol class="step-strip">
+          <li
+            :for={
+              {label, number} <-
+                Enum.with_index(
+                  [
+                    "Understand the scenario",
+                    "Predict",
+                    "Compare with the laws",
+                    "Judge",
+                    "Conclude"
+                  ],
+                  1
+                )
+            }
+            aria-current={if ReviewProgress.step(@review, @revealed) == number, do: "step", else: nil}
+          >
+            {label}
+          </li>
+        </ol>
         <section id="scenario-brief" class="scenario-brief" aria-labelledby="scenario-heading">
           <h2 id="scenario-heading">The situation</h2>
-          <p>{elem(Glossary.scenario(@review["seed_id"]), 2)}</p>
           <p><strong>{Glossary.scenario_question(@review["seed_id"])}</strong></p>
-          <dl class="scenario-facts">
+          <p :if={@draft_error} class="notice-alert">
+            The draft cannot be calculated. Correct it or reset to the starting example; no current scenario summary is shown.
+          </p>
+          <dl :if={@current_witness} class="scenario-facts">
             <div>
-              <dt>Starting state</dt><dd>{elem(Glossary.scenario(@review["seed_id"]), 3)}</dd>
+              <dt>Starting state</dt><dd>{Explain.state(@current_witness["before"])}</dd>
             </div>
             <div>
-              <dt>What happens</dt><dd>{elem(Glossary.scenario(@review["seed_id"]), 4)}</dd>
+              <dt>What happens</dt><dd>{Explain.event(@current_witness["event"])}</dd>
             </div>
             <div>
-              <dt>What the real ledger does</dt><dd>
-                {elem(Glossary.scenario(@review["seed_id"]), 5)}
-              </dd>
+              <dt>What the real ledger does</dt><dd>{Explain.output(@evaluation["actual"])}</dd>
             </div>
             <div>
-              <dt>The proposed alternative</dt><dd>
-                {elem(Glossary.scenario(@review["seed_id"]), 6)}
-              </dd>
+              <dt>The proposed alternative</dt><dd>{Explain.output(@current_witness["output"])}</dd>
             </div>
           </dl>
           <p>
@@ -745,6 +819,12 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
             <p class="muted">
               Switching scenario starts a new review; your current one is kept. These are invented examples, not observed failures. Edits are temporary until you save the example or answer its question.
             </p>
+            <button
+              id="reset-draft"
+              type="button"
+              phx-click="reset_draft"
+              disabled={@review["status"] != "in_progress"}
+            >Reset to the starting example</button>
             <details class="field-help">
               <summary>What do these fields mean?</summary>
               <p>
@@ -899,23 +979,46 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 <b>Historical last-good evaluation only</b> · not the draft currently shown
               </p>
               <div>
-                <b>What the real ledger does (reducer)</b><pre>{Jason.encode!(@evaluation["actual"], pretty: true)}</pre>
+                <b>What the real ledger does (reducer)</b><.narrated value={@evaluation["actual"]} />
               </div>
               <div>
-                <b>What the independent reference says (Spec/oracle)</b><pre>{Jason.encode!(@evaluation["oracle"], pretty: true)}</pre>
+                <b>What the independent reference says (Spec/oracle)</b><.narrated value={
+                  @evaluation["oracle"]
+                } />
               </div>
               <div>
-                <b>The what-if you are judging (locally calculated)</b><pre>{if @draft_error, do: "Invalid draft; hypothetical unavailable", else: @draft["output_json"]}</pre>
+                <b>The what-if you are judging (locally calculated)</b>
+                <%= if @current_witness do %>
+                  <.narrated value={@current_witness["output"]} />
+                <% else %>
+                  <p>Invalid draft; hypothetical unavailable.</p>
+                <% end %>
               </div>
               <div :if={@details && !@draft_error} id="diff-panel">
                 <b>These outcomes differ in:</b>
                 <ul>
-                  <li :for={diff <- @details.changed_fields}>{diff["field"]}: reducer ≠ what-if</li>
+                  <li :for={diff <- @details.changed_fields}>
+                    <strong>{case diff["field"] do
+                      "after" -> "Ledger state"
+                      "result" -> "Local result"
+                      "effects" -> "Outside-work requests"
+                    end}</strong><p>Real ledger: {Explain.value(diff["field"], diff["actual"])}</p><p>
+                      Alternative: {Explain.value(diff["field"], diff["hypothetical"])}
+                    </p><details>
+                      <summary>Exact changed values</summary><pre>{Jason.encode!(diff, pretty: true)}</pre>
+                    </details>
+                  </li>
                 </ul>
-                <p :if={@details.request_eligible? != nil}>
-                  Spec.request_eligible? at this input: <b>{@details.request_eligible?}</b>
-                  (fresh request only)
-                </p>
+                <details :if={@details.request_eligible? != nil}>
+                  <summary>
+                    Can this fresh request be admitted? {if @details.request_eligible?,
+                      do: "Yes",
+                      else: "No"}
+                  </summary><p>
+                    Spec.request_eligible? at this input: <b>{@details.request_eligible?}</b>
+                    (fresh request only)
+                  </p>
+                </details>
               </div>
             </div>
             <section id="follow-on-area" aria-label="Second-Event Consequence">
@@ -926,14 +1029,12 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 <p id="no-follow-on" class="muted">No follow-on event selected for this probe.</p>
               <% else %>
                 <%= if @evaluation do %>
-                  <p>
-                    Pure follow-on from actual:
-                    <code>{Jason.encode!(@evaluation["follow_on_actual"])}</code>
-                  </p>
-                  <p>
-                    Pure follow-on from candidate:
-                    <code>{Jason.encode!(@evaluation["follow_on_candidate"])}</code>
-                  </p>
+                  <div>
+                    After the real outcome: <.narrated value={@evaluation["follow_on_actual"]} />
+                  </div>
+                  <div>
+                    After the alternative: <.narrated value={@evaluation["follow_on_candidate"]} />
+                  </div>
                   <p :if={@evaluation["follow_on_candidate"] == nil} class="muted">
                     A Spec-invalid hypothetical cannot be stepped further; no second call was made.
                   </p>
@@ -1080,7 +1181,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               </button>
             </nav>
             <section id="review-summary" class="review-summary">
-              <h3>Conclude this review</h3><p>
+              <h3>Conclude this review</h3><.progress review={@review} /><p>
                 Confirming locks this review and includes your scoped conclusion in the export. You can export an unfinished review too.
               </p><dl class="choice-legend">
                 <div :for={
@@ -1097,7 +1198,10 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 </li>
               </ul>
               <p>
-                Review can be exported unfinished. Mandatory/critical questions must be answered or explicitly deferred before concluding. Material deferrals cannot support a positive outcome.
+                Review can be exported unfinished. Mandatory/critical questions must be answered or explicitly deferred before concluding. A positive outcome also requires the optional questions to be resolved, saved supporting evidence, and no computed conflicts. Deferrals stay open.
+              </p>
+              <p>
+                This conclusion covers: {Glossary.review_title(@review)}. Edit the references below if your scope differs.
               </p>
               <.form for={@finish_form} id="finish-form" phx-submit="finish_review">
                 <.input
