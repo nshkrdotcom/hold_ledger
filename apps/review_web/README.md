@@ -10,9 +10,7 @@
 This directory is a **separate Phoenix Mix application** built against the pure
 Hold Ledger checkout. Milestone A replaces the old Review Studio evaluator,
 tuple codec, fixed teaching cases and receipt/AI explanation flow. The old
-`/review` and receipt routes are **removed**. The only application workflow
-is the **Milestone B source-anchored human workbench**, available at `/` and
-`/workbench`; `/workbench/:id` reopens a durable local review. A source-claim
+`/review` and receipt routes are **removed**. The source-anchored human workbench is available at `/` and `/workbench`; `/workbench/:id` reopens a durable local review. Versioned baseline/proposal reviews use `/changes` as described below. A source-claim
 probe makes **no model, formal-checker or remote-processor call**.
 
 The current application has **one** claim evaluator:
@@ -268,6 +266,40 @@ human answer or conclusion.
 Part 3 tests are in `test/hold_ledger_review/part3_test.exs`,
 `test/browser/part3.spec.cjs` and `scripts/test_part3_tools.py`. On a local
 machine provisioned through the root pinned wrapper, run the standard Phoenix
-and root gates plus the focused tests; the ZIP handoff's Part 3 docset has the
-full safety/verification matrix and local steps. Unrecognized prior record
+and root gates plus the focused tests; the separately maintained Part 3 docset has the
+verification matrix and local steps. Unrecognized prior record
 schemas are refused rather than migrated or silently given new meanings.
+
+Change-directed search offers at most 48 distinct synthetic challenges for
+supported changed rules, helpers and inventories: amounts, statuses, identities,
+wrong candidate effects/frame/totals and two-event consequences. Selecting a
+challenge edits only the draft. **Run bounded isolated search** explicitly runs
+the identified pair for each case; cancellation or failure stops the search.
+Unsupported domains, native-only bindings and general solver results remain
+unresolved. A completed search cannot establish equivalence or safety.
+
+The proof pane also accepts a locally staged offline/CI artifact index under
+`tmp/verification/part3-*/`. The closed index identifies version 1, snapshot ID,
+source-manifest digest, full required scope, producer, optional report digest
+and artifact paths/digests/sizes/kinds/law slugs. Use
+`Part3Store.ingest_artifacts/2` or the explicit intake form after copying exact
+bytes into the selected snapshot. Each new index is retained; exact repeats
+are idempotent. Missing or changed bytes are refused or displayed as missing
+or stale. Translations, dependency records, exports and checker diagnostics
+are inspectable when present. Original `ProofEvidence` alone derives formal
+acceptance; successful artifact intake and historical report revalidation
+are separate from fresh proof execution.
+
+Optional answer-aware follow-up selects a recorded human finding and an
+accepted model question. Only that attributed context and its linked evidence
+join the source-bound packet; source-only discovery still excludes human
+answers. Each send needs fresh opt-in, cleared after submit and reconnect.
+New answers or source changes invalidate pending context. A suggestion cannot
+write a human finding or confer policy or formal acceptance.
+
+For explicit offline snapshot provisioning, copy the already locked local
+dependency sources to the isolated `tmp/part3_build/deps` path, set the
+corresponding `MIX_BUILD_PATH`, `MIX_DEPS_PATH`, and
+`PYTHONPYCACHEPREFIX=<snapshot>/tmp/part3_build/pycache`, and use the pinned
+wrapper with `uv run --offline --locked`. Keep Python caches out of source
+directories; additional unmanifested source files cause refusal.

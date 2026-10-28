@@ -50,6 +50,26 @@ defmodule HoldLedgerReview.ReviewStoreTest do
     assert Enum.find(rows, &(&1["id"] == original["id"]))["status"] == "stale_read_only"
   end
 
+  test "list summaries revalidate changed bytes even when size and mtime match", %{
+    store: store,
+    dir: dir
+  } do
+    {:ok, doc, _} = ReviewStore.create("P01", store)
+    assert {:ok, [_]} = ReviewStore.list(store)
+    path = Path.join(dir, doc["id"] <> ".json")
+    bytes = File.read!(path)
+    {:ok, stat} = File.stat(path)
+    changed = String.replace(bytes, "in_progress", "xx_progress")
+    assert byte_size(changed) == byte_size(bytes)
+    File.write!(path, changed)
+    File.touch!(path, stat.mtime)
+    assert {:ok, []} = ReviewStore.list(store)
+    File.write!(path, bytes)
+    assert {:ok, [_]} = ReviewStore.list(store)
+    File.rm!(path)
+    assert {:ok, []} = ReviewStore.list(store)
+  end
+
   test "atomic Escape answer binds the exact full witness, idempotency, CAS and no orphans", %{
     store: store,
     dir: dir

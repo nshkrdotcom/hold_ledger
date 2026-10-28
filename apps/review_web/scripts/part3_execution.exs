@@ -1,11 +1,11 @@
 # Invoked only by the bounded local worker in a fresh OS process. `mix run`
 # compiles the selected source tree before loading this file. No source code is
 # evaluated or module-rewritten inside the live Phoenix VM.
-alias HoldLedgerReview.{Adversarial, Anchor, Canonical, ClaimProbe, Claims, Config, Part3Snapshots, TermCodec}
+alias HoldLedgerReview.{Adversarial, Anchor, Canonical, Claims, Config, Part3Snapshots}
 
 boolean_or_nil = fn value -> if is_boolean(value), do: value, else: nil end
 
-case System.argv() do
+case Enum.drop_while(System.argv(), &(&1 == "--")) do
   [request_path, result_path] ->
     try do
       request = request_path |> File.read!() |> Jason.decode!()
@@ -38,9 +38,9 @@ case System.argv() do
            {:ok, reencoded} <- Adversarial.encode(decoded),
            true <- reencoded == request["witness"],
            true <- HoldLedger.Spec.valid?(decoded.before),
-           {:ok, evaluation, _details} <- Adversarial.evaluate(reencoded) do
+           {:ok, evaluation, details} <- Adversarial.evaluate(reencoded) do
         slugs = Adversarial.active_slugs(decoded.event)
-        bindings = ClaimProbe.probe_all(decoded.before, decoded.event, decoded.output, slugs: slugs)
+        bindings = details.checks
         claims =
           Map.new(slugs, fn slug ->
             row = Map.fetch!(bindings, slug)
@@ -68,8 +68,10 @@ case System.argv() do
           "source_generation" => Claims.snapshot().source.sha256,
           "evaluator_id" => Canonical.digest(Map.take(snapshot["manifest"], Part3Snapshots.evaluator_paths())),
           "loaded_evaluator_id" => Claims.snapshot().evaluator_id,
-          "dependency_id" => Canonical.digest(Map.take(snapshot["manifest"], ~w(mix.lock apps/review_web/mix.lock))),
-          "toolchain_id" => Canonical.digest(Map.take(snapshot["manifest"], ~w(.tool-versions lean-toolchain))),
+          "loaded_fingerprint" => Claims.snapshot().loaded_fingerprint,
+          "generated_identity" => Claims.snapshot().generated_identity,
+          "dependency_id" => Canonical.digest(Map.take(snapshot["manifest"], ~w(mix.lock apps/review_web/mix.lock uv.lock pyproject.toml))),
+          "toolchain_id" => Canonical.digest(Map.take(snapshot["manifest"], ~w(.tool-versions lean-toolchain .python-version scripts/toolchains.json))),
           "codec_id" => snapshot["manifest"]["apps/review_web/lib/hold_ledger_review/term_codec.ex"],
           "evaluation" => evaluation,
           "claims" => claims

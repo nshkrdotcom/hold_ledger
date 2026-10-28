@@ -46,7 +46,12 @@ defmodule HoldLedgerReview.ReviewStore do
 
     with :ok <- File.mkdir_p(dir),
          {:ok, %{type: :directory}} <- File.lstat(dir) do
-      state = %{dir: Path.expand(dir), writer: Keyword.get(opts, :writer, &atomic_write/2)}
+      state = %{
+        dir: Path.expand(dir),
+        writer: Keyword.get(opts, :writer, &atomic_write/2),
+        list_cache: %{}
+      }
+
       {:ok, state, {:continue, :interrupt_pending}}
     else
       _ -> {:stop, :unsafe_review_directory}
@@ -199,10 +204,14 @@ defmodule HoldLedgerReview.ReviewStore do
   end
 
   def handle_call(:list, _from, state) do
-    documents =
-      for path <- Path.wildcard(Path.join(state.dir, "*.json")),
-          {:ok, doc} <- [read(state, Path.basename(path, ".json"))],
-          do: doc
+    {documents, cache} =
+      Enum.reduce(Path.wildcard(Path.join(state.dir, "*.json")), {[], %{}}, fn path,
+                                                                               {docs, cache} ->
+        case list_entry(path, state.list_cache) do
+          {:ok, digest, entry} -> {[entry | docs], Map.put(cache, path, {digest, entry})}
+          _ -> {docs, cache}
+        end
+      end)
 
     # One fresh snapshot per list operation, never a cross-request cache.
     # Hundreds of reviews normally share the same source files and report.
@@ -218,7 +227,8 @@ defmodule HoldLedgerReview.ReviewStore do
         }
       end)
 
-    {:reply, {:ok, Enum.sort_by(docs, & &1["updated_at_utc"], :desc)}, state}
+    {:reply, {:ok, Enum.sort_by(docs, & &1["updated_at_utc"], :desc)},
+     %{state | list_cache: cache}}
   end
 
   def handle_call({:human, id, kind, input}, _from, state) do
@@ -828,6 +838,32 @@ defmodule HoldLedgerReview.ReviewStore do
     is_map(saved) and saved["status"] == Atom.to_string(current.status) and
       saved["detail"] == String.slice(current.detail, 0, 300) and
       saved["report_sha256"] == Map.get(current, :report_sha256)
+  end
+
+  # Cache only validated immutable summaries, keyed by freshly read exact bytes.
+  # Source/proof freshness is still checked on every list; mutation readers retain
+  # full validation. Neither mtime nor a saved status grants current evidence.
+  defp list_entry(path, cache) do
+    with {:ok, %{type: :regular, size: size}} <- File.lstat(path),
+         true <- size <= @max_bytes,
+         {:ok, bytes} <- File.read(path) do
+      digest = :crypto.hash(:sha256, bytes)
+
+      case Map.get(cache, path) do
+        {^digest, entry} -> {:ok, digest, entry}
+        _ -> decode_list_entry(path, bytes, digest)
+      end
+    end
+  end
+
+  defp decode_list_entry(path, bytes, digest) do
+    id = Path.basename(path, ".json")
+
+    with true <- valid_request_id?(id),
+         {:ok, doc} <- Jason.decode(bytes),
+         true <- valid_document?(doc, id) do
+      {:ok, digest, Map.take(doc, ~w(id status updated_at_utc target_policy_nodes source))}
+    end
   end
 
   defp read(state, id) do

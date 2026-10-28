@@ -25,3 +25,7 @@ config :phoenix_live_view,
 # Sort query params output of verified routes for robust url comparisons
 config :phoenix,
   sort_verified_routes_query_params: true
+
+# A test VM must not recover or interrupt development Part 3 workers/reviews.
+config :hold_ledger_review_web,
+  part3_store_dir: Path.join(System.tmp_dir!(), "hold-ledger-part3-tests-#{System.pid()}")

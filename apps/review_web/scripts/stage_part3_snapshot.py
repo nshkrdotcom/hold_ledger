@@ -100,7 +100,7 @@ def validate(folder):
     digest = sha(canonical(identity))
     if digest != obj["snapshot_id"]:
         raise ValueError("invalid snapshot identity")
-    excluded = {'tmp', '_build', 'deps', 'node_modules', '.venv'}
+    excluded = {'tmp', '_build', 'deps', 'node_modules', '.venv', '.local'}
     actual = set()
     for child in folder.rglob('*'):
         rel = child.relative_to(folder)

@@ -15,6 +15,8 @@ import subprocess
 import sys
 import time
 
+from stage_part3_snapshot import validate
+
 MAX_TIMEOUT = 14_400
 
 
@@ -36,6 +38,11 @@ def main():
     meta = json.loads(manifest.read_text())
     if request.get("snapshot_id") != meta.get("snapshot_id") or root.name != meta.get("snapshot_id"):
         return 3
+    try:
+        if validate(root) != meta.get("snapshot_id"):
+            return 3
+    except (OSError, ValueError, KeyError, TypeError):
+        return 3
     if not (root / "scripts/local_run.py").is_file():
         return 3
     args.result.parent.mkdir(parents=True, exist_ok=True)
@@ -44,6 +51,7 @@ def main():
     env = os.environ.copy()
     env.update({"MIX_ENV": "test", "MIX_BUILD_PATH": str(work / "_build"),
                 "MIX_DEPS_PATH": str(work / "deps"),
+                "PYTHONPYCACHEPREFIX": str(work / "pycache"),
                 "HOLD_LEDGER_REVIEW_ROOT": str(root), "PORT": "0"})
     # Dependencies must already have been provisioned explicitly in this
     # isolated snapshot. A web request must never download/resolve packages.
@@ -84,7 +92,12 @@ def main():
                 # Limit evidence retained; no arbitrary unbounded stdout.
                 with log.open("rb+") as truncated:
                     truncated.truncate(100_000)
-            return 0 if status == 0 and args.result.is_file() else 2
+            if status == 0 and args.result.is_file():
+                try:
+                    return 0 if validate(root) == meta["snapshot_id"] else 3
+                except (OSError, ValueError, KeyError, TypeError):
+                    return 3
+            return 2
         except OSError as e:
             output.write(str(e).encode()[:500])
             return 2

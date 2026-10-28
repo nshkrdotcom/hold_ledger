@@ -14,7 +14,13 @@ defmodule HoldLedgerReview.Application do
       HoldLedgerReview.Claims,
       {Task.Supervisor, name: HoldLedgerReview.AITaskSupervisor},
       HoldLedgerReview.ReviewStore,
-      HoldLedgerReview.Part3Store,
+      {HoldLedgerReview.Part3Store,
+       dir:
+         Application.get_env(
+           :hold_ledger_review_web,
+           :part3_store_dir,
+           Path.join(HoldLedgerReview.Config.root(), "tmp/review_studio/packages")
+         )},
       HoldLedgerReview.Part3Runner,
       HoldLedgerReviewWeb.Telemetry,
       {DNSCluster,

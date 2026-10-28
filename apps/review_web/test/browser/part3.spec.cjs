@@ -51,7 +51,7 @@ test('creation, review reopening, explicit pin and source evidence', async ({pag
 test('structured inconsistent candidate is not silently repaired or pinned', async ({page}) => {
   test.skip(!hasSnapshots, 'Requires staged local snapshot fixture');
   await create(page);
-  await page.locator('#part3-structured-editor summary').click();
+  await page.locator('#part3-structured-editor > summary').click();
   await page.locator('button[phx-value-action="add_entry"][phx-value-section="candidate"]').click();
   await expect(page.locator('#candidate-0-status')).toHaveValue('reserved');
   await expect(page.locator('#candidate-used_amount')).toHaveValue('0');
@@ -105,11 +105,79 @@ test('mobile navigation, keyboard access and no default external send', async ({
   const page = await context.newPage();
   try {
     await create(page);
-    await page.locator('#part3-structured-editor summary').focus();
+    await page.locator('#part3-structured-editor > summary').focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('#before-used_amount')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     await page.locator('#part3-ai summary').click();
     await expect(page.locator('#part3-ai-consent')).not.toBeChecked();
     await expect(page.locator('#part3-ai-jobs li')).toHaveCount(0);
   } finally { await context.close(); }
+});
+
+test('editable fields and JSON round trip keep save, replay, answer and conclusion separate', async ({page}) => {
+  test.skip(!hasSnapshots, 'Requires staged local snapshots');
+  await create(page);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.locator('#part3-structured-editor > summary').click();
+  await page.locator('#candidate-used_amount').fill('7');
+  await page.locator('#candidate-used_amount').press('Tab');
+  await expect(page.locator('#part3-comparison')).toContainText('Used amount 7');
+  await expect(page.locator('#part3-pins summary')).toContainText('0');
+  await page.locator('#part3-advanced-json > summary').click();
+  let draft = JSON.parse(await page.locator('#part3-export-json').innerText());
+  expect(draft.output.after.used_amount).toBe(7);
+  draft.output.after.used_holds = 2;
+  await page.locator('#part3-raw').fill(JSON.stringify(draft));
+  await page.locator('#part3-import button').click();
+  await expect(page.locator('#candidate-used_holds')).toHaveValue('2');
+  await page.locator('#part3-raw').fill('{broken');
+  await page.locator('#part3-import button').click();
+  await expect(page.locator('#part3-structured-editor [role=alert]')).toContainText('Import refused');
+  await expect(page.locator('#candidate-used_holds')).toHaveValue('2');
+  await expect(page.locator('#part3-replay-attempts li')).toHaveCount(0);
+  await page.locator('#part3-pin').click();
+  await expect(page.locator('#part3-pins summary')).toContainText('1');
+  await expect(page.locator('#part3-replay-attempts li')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('actual isolated replay and source-bound proof inspector expose results with limits', async ({page}) => {
+  test.skip(!hasSnapshots, 'Requires provisioned local snapshots');
+  test.setTimeout(150000);
+  await create(page);
+  await page.locator('#run-isolated-replay').click();
+  await expect(page.locator('#part3-replay-result')).toBeVisible({timeout: 130000});
+  await expect(page.locator('#part3-replay-attempts li')).toHaveCount(2);
+  await expect(page.locator('#part3-replay-result')).toContainText('admitted');
+  await expect(page.locator('#part3-evidence-list')).toContainText('lost domain input');
+  await page.locator('#run-isolated-replay').click();
+  await expect(page.locator('#part3-replay-attempts li')).toHaveCount(2);
+  await page.locator('#part3-proof > summary').click();
+  await page.locator('#part3-inspect-proof').click();
+  await expect(page.locator('#part3-proof-inspection')).toContainText('49');
+  await expect(page.locator('#part3-proof-inspection')).toContainText('not_run');
+  await expect(page.locator('#part3-ai-jobs li')).toHaveCount(0);
+  await expect(page.locator('#part3-accepted-questions li')).toHaveCount(0);
+});
+
+test('learning reveal history survives reconnect while consent resets and stale drafts remain', async ({page}) => {
+  test.skip(!hasSnapshots, 'Requires staged local snapshots');
+  await create(page);
+  await page.locator('button[phx-value-mode="learning"]').click();
+  await expect(page.locator('button[phx-value-mode="learning"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#part3-finding-scope').fill('Before revealing computed evidence');
+  await page.locator('#part3-finding-rationale').fill('A recorded prediction context, with no proof acceptance claimed.');
+  await page.locator('#part3-finding button[type=submit]').click();
+  await expect(page.locator('#part3-decision')).toContainText('revealed before answer: false');
+  await page.locator('#part3-ai > summary').click();
+  await page.locator('#part3-ai-consent').check(); // No submit, no source send.
+  await page.evaluate(() => window.liveSocket.disconnect());
+  await expect(page.locator('[data-phx-main]')).not.toHaveClass(/phx-connected/);
+  await page.evaluate(() => window.liveSocket.connect());
+  await connected(page);
+  await expect(page.locator('#part3-ai-consent')).not.toBeChecked();
+  await expect(page.locator('#part3-ai-jobs li')).toHaveCount(0);
+  await expect(page.locator('#part3-decision')).toContainText('A recorded prediction context');
 });

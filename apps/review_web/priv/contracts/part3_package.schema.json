@@ -29,6 +29,31 @@
             }
           ]
         },
+        "followup_context": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "finding_id": {
+                  "pattern": "^[A-Za-z0-9_-]{16,80}$",
+                  "type": "string"
+                },
+                "question_id": {
+                  "pattern": "^[A-Za-z0-9_-]{16,80}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "finding_id",
+                "question_id"
+              ],
+              "type": "object"
+            }
+          ]
+        },
         "human_revision_at_request": {
           "minimum": 0,
           "type": "integer"
@@ -75,7 +100,8 @@
         "result",
         "error",
         "created_at",
-        "finished_at"
+        "finished_at",
+        "followup_context"
       ],
       "type": "object"
     },

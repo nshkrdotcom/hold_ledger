@@ -84,11 +84,17 @@ class ProcessRunnerTest(unittest.TestCase):
         base = Path(self.temp.name)
         self.bin = base / "bin"
         self.bin.mkdir()
-        self.id = "a" * 64
-        self.root = base / self.id
+        self.root = base / "pending"
         (self.root / "scripts").mkdir(parents=True)
-        (self.root / "scripts/local_run.py").write_text("# fake wrapper; not executed by these tests\n")
-        (self.root / ".part3-snapshot.json").write_text(json.dumps({"snapshot_id": self.id}))
+        wrapper = "# fake wrapper; not executed by these tests\n"
+        (self.root / "scripts/local_run.py").write_text(wrapper)
+        identity = {"schema_version": 1, "commit": "0" * 40, "dirty": True,
+                    "manifest": {"scripts/local_run.py": stage.sha(wrapper.encode())}}
+        self.id = stage.sha(stage.canonical(identity))
+        target = base / self.id
+        self.root.rename(target)
+        self.root = target
+        (self.root / ".part3-snapshot.json").write_text(json.dumps({**identity, "snapshot_id": self.id}))
         self.request = base / "request.json"
         self.request.write_text(json.dumps({"snapshot_id": self.id}))
         self.out = base / "result.json"
@@ -128,6 +134,16 @@ class ProcessRunnerTest(unittest.TestCase):
         proc = subprocess.Popen(self.command(timeout=1), stdin=subprocess.PIPE, env=self.env)
         try:
             self.assertEqual(proc.wait(timeout=7), 124)
+            self.assertFalse(self.out.exists())
+        finally:
+            proc.stdin.close()
+
+    def test_unmanifested_source_refused_before_spawn(self):
+        (self.root / "unmanifested.py").write_text("raise RuntimeError('must never execute')")
+        self.fake_uv('pathlib.Path(sys.argv[-1]).write_text("should never happen")')
+        proc = subprocess.Popen(self.command(), stdin=subprocess.PIPE, env=self.env)
+        try:
+            self.assertEqual(proc.wait(timeout=5), 3)
             self.assertFalse(self.out.exists())
         finally:
             proc.stdin.close()
