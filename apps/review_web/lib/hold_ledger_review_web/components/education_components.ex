@@ -20,12 +20,12 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
         >
           <h2>1. Why is a person needed?</h2>
           <p>
-            Suppose you ask a coding agent to build a payment system. It writes code, writes rules for that code, and supplies proofs that the code obeys those rules. Who checks whether it chose the rules you meant?
+            Suppose you ask a coding agent to build a payment system. It proposes code, rules for that code, and proofs that the rules hold. You need to decide whether those rules describe the service you wanted.
           </p>
           <p>
-            That is your job here.
+            That decision belongs to you.
             <.term key="formal_verification">Formal verification</.term>
-            means using a mathematical proof to establish a precisely stated property of a program. A property might say that every request which fits the available limits must be admitted.
+            means using a mathematical proof to show that a stated rule holds. For example, every request that fits the available limits must be admitted.
           </p>
           <table>
             <thead>
@@ -40,7 +40,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
               </tr>
               <tr>
                 <td><.term key="lean">Lean</.term>, a proof checker</td><td>
-                  Checks that a supplied proof establishes its exact statement.
+                  Checks whether a proof establishes the statement it was given.
                 </td><td>The statement, its assumptions and the recorded checker result.</td>
               </tr>
               <tr>
@@ -51,10 +51,10 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
             </tbody>
           </table>
           <p>
-            A proof answers the question written in its statement. Ask whether the total stays below 100 cents, and an implementation that refuses every request can satisfy that question. You also need to ask whether a request that fits gets accepted.
+            A proof answers the question in its statement. A ledger that refuses every request can keep its total at or below 100 cents. If you also want it to accept requests that fit, you need a rule saying so.
           </p>
           <p>
-            You do not need to read Lean to use this page. This app never runs Lean; it calculates examples and displays a separate proof report if one is attached. The three roles above describe an agent-assisted workflow, regardless of who authored a particular file.
+            You don’t need to read Lean to use this page. This app never runs Lean; it calculates examples and shows a separate proof report when one is attached.
           </p>
         </section>
         <section
@@ -63,12 +63,12 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
         >
           <h2>2. What is a payment hold?</h2>
           <p>
-            Imagine a hotel reserving money on your card before it knows the final bill. The payment service could approve the reservation while its reply gets lost on the way back. From the hotel's side, silence leaves the outcome unknown.
+            Imagine a hotel reserving money on your card before it knows the final bill. The payment service could approve the reservation while its reply gets lost on the way back. The hotel still doesn’t know what happened.
           </p>
           <p>
             A
             <.term key="hold">hold</.term>
-            is a reservation of money. Hold Ledger keeps a record of holds for one account, with two limits: total cents reserved and number of holds. Each hold gets an integer <.term key="identity">key</.term>; the record remembers it after release, and retries use that same key and amount.
+            reserves money. Hold Ledger records holds for one account and limits both their total amount in cents and their count. Each hold gets an integer <.term key="identity">key</.term>; the ledger keeps it after release, and retries use the same key and amount.
           </p>
           <ol>
             <li>Start with a 100-cent limit, room for two holds, and no money reserved.</li>
@@ -76,17 +76,17 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
               Request a 100-cent hold under key 11. The ledger admits it and reserves all 100 cents.
             </li>
             <li>
-              Dispatch its authorization. The ledger records that a request to the payment service is needed.
+              Dispatch the authorization. The ledger returns a request for the payment service to authorize that hold.
             </li>
             <li>
-              Let that request time out. The ledger marks its outcome unknown and keeps the 100 cents reserved.
+              The request times out. The ledger marks it unknown and keeps the 100 cents reserved.
             </li>
             <li>
               Ask for another 100 cents under key 12. The ledger refuses: the first hold might still exist remotely.
             </li>
           </ol>
           <p>
-            The code being examined is <.term key="pure">pure</.term>: it calculates a next state and requests for outside work without doing that work. Calculating this example moves no money. An issued hold stays counted until trusted evidence permits release; a reservation that was never dispatched can be cancelled locally.
+            The ledger code is <.term key="pure">pure</.term>: it returns a next state and a list of outside work to request. Running this example moves no money. A hold that may have reached the processor stays counted until trusted evidence permits release; an undispatched reservation can be cancelled locally.
           </p>
         </section>
         <section
@@ -107,7 +107,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
     sent or unknown ── decline → declined
     reserved ── local cancellation → voided</pre>
           <p>
-            Read the arrows as changes in the ledger's record. Sending a request does not establish approval, and asking to cancel an approved hold does not establish cancellation. A timeout keeps the reservation because the service may have acted before the reply was lost.
+            Each arrow changes the ledger’s record. A request may be awaiting approval or cancellation confirmation even after it has been sent. A timeout keeps the money reserved because the service may have acted before the reply was lost.
           </p>
           <table>
             <thead>
@@ -127,7 +127,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
           <p>
             An
             <.term key="event">event</.term>
-            is an input telling the ledger what happened or what to calculate next. The full ledger accepts these events; the example editor supports request, dispatch, timeout and void.
+            tells the ledger what happened or what to calculate next. The ledger accepts the events below; this page’s editor supports request, dispatch, timeout and void.
           </p>
           <ul class="event-vocabulary">
             <li><.term key="request">Request</.term>: reserve an amount.</li><li>
@@ -148,7 +148,9 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
           </ul>
           <p>
             <.term key="effects">Effects</.term>
-            are requests for outside work, such as authorizing or cancelling a hold. They describe what the runtime should attempt. They do not prove that a service received or completed anything.
+            describe outside work to request, such as authorizing or cancelling a hold. The
+            <.term key="runtime">runtime</.term>
+            attempts that work; a returned effect alone tells you nothing about whether the service received or completed it.
           </p>
         </section>
         <section
@@ -159,11 +161,11 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
           <p>
             A
             <.term key="law">law</.term>
-            is a precise rule about the code. It has a
+            states what the code must do. Its
             <.term key="precondition">requires</.term>
-            part saying when it applies and an
+            part says when it applies; its
             <.term key="postcondition">expects</.term>
-            part saying what must follow. Here is the positive-admission rule, called <code>po_a2</code>.
+            part says what must follow. Here is the rule requiring the ledger to accept eligible requests, called <code>po_a2</code>.
           </p>
           <table>
             <thead>
@@ -189,10 +191,13 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
             </tbody>
           </table>
           <p>
-            For an empty 100-cent account, a fresh request for exactly 100 cents qualifies. Returning “insufficient amount” would break this rule. The reference is useful for comparison, but it cannot decide which payment policy you intended.
+            An empty account with a 100-cent limit must accept a fresh request for exactly 100 cents. Returning “insufficient amount” would break this rule. The reference model provides a comparison; you still choose the policy it should express.
+          </p>
+          <p>
+            The ledger is written in <.term key="elixir">Elixir</.term>, a programming language. You can read the rule in words above or open its code below.
           </p>
           <details>
-            <summary>Read the original Elixir declaration</summary><pre phx-no-curly-interpolation>law(po_a2(s, key, amount),
+            <summary>Read the original rule in code</summary><pre phx-no-curly-interpolation>law(po_a2(s, key, amount),
     requires: Spec.request_eligible?(s, key, amount),
     expects:
     Ledger.request(s, key, amount) ==
@@ -205,7 +210,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
     )</pre>
           </details>
           <p>
-            There are 49 registered rule groups, about fifty in all. Some describe a single operation; others describe histories or supporting models. These four show the range:
+            The catalog contains 49 rule groups, about fifty in all. Some address one operation; others address a sequence of events or a supporting model. Here are four more:
           </p>
           <ul>
             <li :for={slug <- ~w(po_exposure_retain po_b5_declined po_b6 po_b3)}>
@@ -215,7 +220,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
         </section>
         <section
           id="primer-proof"
-          data-source="README.md#what-the-checks-establish;guides/formal_verification_crash_course.md#how-lynx-proves-something-about-elixir;guides/agentic_verification.md#compare-candidate-contracts"
+          data-source="README.md#what-the-checks-establish;guides/formal_verification_crash_course.md#from-elixir-to-lean-with-lynx;guides/agentic_verification.md#compare-candidate-contracts"
         >
           <h2>5. What can a proof tell you?</h2>
           <table>
@@ -242,20 +247,20 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
             </tbody>
           </table>
           <p>
-            Consider a ledger that refuses every request. It can keep every total within the limits while doing none of the useful work. The positive-admission rule adds the promise that eligible requests actually succeed.
+            Compare two ledgers with a 100-cent limit. One accepts a fresh 100-cent request; the other refuses it. Both stay within the limit, but only the first meets the admission rule.
           </p>
           <p>
-            Or consider an approved hold cancelled before confirmation. Its local counters could add up perfectly after an early release, while the payment service still holds the money. A rule about consistent counters alone does not forbid that transition.
+            Now suppose an approved hold releases its 100 cents before cancellation is confirmed. The local counters could still add up while the payment service holds the money. To forbid that change, a rule must require the hold to remain reserved until confirmation.
           </p>
           <p>
             <.term key="lynx">Lynx</.term>
-            translates compiled Elixir code and rules into Lean definitions and statements. Lean checks supplied proofs of those statements. The compiler and translation remain part of what you trust.
+            translates the compiled ledger code and its rules into Lean definitions and statements. Lean checks proofs of those statements. You still rely on the compiler that built the code and the translator that converted it.
           </p>
           <details class="limits">
             <summary>Limits: things a pure proof does not establish</summary><p>
               A
               <.term key="journal">journal</.term>
-              is the runtime's durable input log; its actual survival on disk depends on storage. The processor must give truthful reports, deduplicate requests and permanently refuse delayed authorization after terminal cancellation. Proofs about the pure model do not test a real bank, disk or network.
+              records the runtime’s inputs so they can survive a restart; actual durability depends on storage. The processor must report truthfully, recognize repeated requests, and permanently reject delayed authorization for a terminally cancelled identity. A proof about the model does not test a real bank, disk or network.
             </p>
           </details>
         </section>
@@ -265,12 +270,12 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
         >
           <h2>6. Why show you an alternative?</h2>
           <p>
-            Reading correct code can make a weak rule look sufficient. Instead, take one situation and propose a different outcome: perhaps freeing money after a timeout. This
+            A correct result does not show whether a rule would permit a bad one. Try changing the result, perhaps by freeing money after a timeout. That
             <.term key="what_if">alternative</.term>
-            lets you ask whether the rules would reject a mistake.
+            lets you ask whether the rules reject the mistake you have in mind.
           </p>
           <p>
-            Most starting alternatives imitate plausible bugs; they are invented examples, not observed failures. One starting alternative is deliberately correct. Your task is to judge the behavior, rather than assume every suggested change is bad.
+            Most starting alternatives describe an invented mistake. P08 repeats the correct result, so you can practise accepting a behavior. None is an observed failure.
           </p>
           <table>
             <thead>
@@ -279,24 +284,26 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
               </tr>
             </thead><tbody>
               <tr>
-                <td>Unacceptable</td><td>A named rule excludes this alternative here.</td><td>
-                  A candidate gap among examined checks; the unexamined rules remain unknown.
+                <td>Unacceptable</td><td>A named rule rejects this alternative in this example.</td><td>
+                  These checks leave a question open. Examine the remaining rules before calling it a gap.
                 </td>
               </tr>
               <tr>
                 <td>Acceptable</td><td>
-                  Possible disagreement between the rule and intended policy; investigate.
-                </td><td>You accept this local behavior; overall adequacy is still undecided.</td>
+                  Check whether the rule is too strict or the policy needs a decision.
+                </td><td>
+                  You accept this example. That alone does not show that the rules cover everything needed.
+                </td>
               </tr>
             </tbody>
           </table>
           <p>
             A
             <.term key="pointwise">single-example check</.term>
-            calculates a rule on this concrete example. “No catch” may include rules that do not apply or cannot be checked here. It is a reason to investigate, not a proof that all rules permit the alternative.
+            evaluates a rule on this example. Some rules may concern another situation or be beyond this tool’s checker. A missing catch leaves those rules undecided.
           </p>
           <p>
-            Decide what you think before revealing the rule results. Write your prediction in your own notes if that helps. The reveal flag records whether you looked before saving an answer; it does not record your private prediction or measure your honesty.
+            Choose your answer before you reveal the rule results. You can jot a prediction in your own notes. The reveal flag records whether you looked before saving your answer; your private prediction stays in your notes.
           </p>
         </section>
         <section
@@ -305,7 +312,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
         >
           <h2>7. What does one review look like?</h2>
           <p>
-            Start with “Cancel before anything is sent” (P08). It teaches an important exception: cancelling a reservation that was never dispatched can release it immediately. That makes it a useful first case before the uncertain remote outcomes.
+            Start with “Cancel before anything is sent” (P08). Cancelling an undispatched reservation can release it immediately. Try this local case before tackling uncertain remote outcomes.
           </p>
           <dl class="worked-example">
             <div>
@@ -326,7 +333,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
             An example answer is “Acceptable.” A reason could be: “This identity was never dispatched, so there is no issued authorization to wait for. Local cancellation may release the reservation.”
           </p>
           <p>
-            After revealing, the supported checks either allow this example or do not apply; none catches it. That supports this local answer, not every cancellation policy. You still need to review the other questions and name what your conclusion covers.
+            After you reveal, the supported checks either allow this example or do not apply; none catches it. The result supports your answer for this case. The other questions help you decide what else needs review.
           </p>
           <table>
             <thead>
@@ -359,13 +366,13 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
             </tbody>
           </table>
           <p>
-            The first three questions are required before concluding; you may explicitly defer them with a reason. “Not sure” records uncertainty; “Defer” postpones the question and says what is missing. A positive conclusion also requires the otherwise optional questions resolved, saved evidence and no computed conflicts.
+            Answer the first three questions before concluding, or defer them with a reason. Choose “Not sure” when you cannot decide, or “Defer” when the question needs later work. A positive conclusion also requires you to resolve the other questions, save supporting evidence and address any computed conflicts.
           </p>
           <p>
             For this introductory pass, you could conclude “Needs policy or evidence” and name the unresolved issued-hold or deployment questions. “Needs design change” records a disagreement with intended behavior. “Meets intent in reviewed scope” records agreement only within what you examined, once the remaining requirements are met.
           </p>
           <p>
-            Confirming a conclusion locks the review. The Markdown or JSON export contains its scope, reasons, saved examples, answer history and open questions, ready to share with the policy owner or coding agent. Editing alone is temporary; saving an example or answering its behavior question stores it locally, and later answers keep earlier history.
+            Confirming locks the review. You can export a Markdown document or JSON file with your conclusion, reasons, saved examples, answer history and open questions. Share it with the policy owner or coding agent; edits stay temporary until you save or answer, and revising an answer keeps its history.
           </p>
         </section>
         <section
@@ -374,10 +381,10 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
         >
           <h2>8. Which AI are we talking about?</h2>
           <p>
-            The coding agent can propose the code, rules and proofs you are reviewing. The optional AI helper in the decision pane has a different role: it can suggest questions or alternative examples for you to examine. It receives selected source and, for some requests, draft or review content only after you opt in for that request.
+            The coding agent can propose the code, rules and proofs under review. You can separately ask the optional AI helper in the decision pane to suggest questions or alternatives. Each send needs your consent: it shares selected source and, depending on the request, draft or review content.
           </p>
           <p>
-            You decide whether to accept a suggested question or save a proposed example. The helper cannot change your answer or certify a proof. You can complete a review without using it.
+            You choose whether to accept a question or save an example. The helper cannot change your answer or certify a proof. Using it is optional.
           </p>
         </section>
         <section
@@ -411,8 +418,8 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
             </p>
           </details>
           <details>
-            <summary>What does Lean check, and what does a proof leave open?</summary><p>
-              Lean checks that a proof establishes its stated theorem under its assumptions. It does not choose the policy, establish every outside-world assumption, or decide that the rules cover everything you need.
+            <summary>What does Lean check, and what must you still decide?</summary><p>
+              Lean checks that a proof establishes its stated rule under its assumptions. You still choose the policy, check the outside-world assumptions and judge whether the rules cover the situations you need.
             </p>
           </details>
           <details>
@@ -444,7 +451,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
       id="scenario-briefing"
       class="briefing"
       open={@review["answers"] == [] && @review["pinned_probes"] == []}
-      data-source="guides/specification.md#events;apps/review_web/priv/scenarios"
+      data-source={"guides/specification.md#events;apps/review_web/priv/scenarios/#{@review["seed_id"]}.json"}
     >
       <summary>Before you start</summary>
       <p>{Glossary.briefing(@review["seed_id"])["why"]}</p>
@@ -493,7 +500,7 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
       id="step-coaching"
       class="step-coaching"
       aria-label="Review instructions"
-      data-source="guides/interactive_review.md;apps/review_web/lib/hold_ledger_review_web/review_progress.ex#step"
+      data-source="guides/interactive_review.md;apps/review_web/lib/hold_ledger_review_web/review_progress.ex#step;apps/review_web/lib/hold_ledger_review/review_store.ex#conclusion_ready?"
     >
       <details
         :for={{key, number} <- Enum.with_index(~w(understand predict compare judge conclude), 1)}
@@ -517,10 +524,10 @@ defmodule HoldLedgerReviewWeb.EducationComponents do
       class="answer-help"
       data-source="apps/review_web/lib/hold_ledger_review/dossier.ex#implication"
     >
-      <summary>What a good answer considers</summary>
+      <summary>What to consider in your answer</summary>
       <p>{Glossary.answer_help(@current_card["kind"])["consider"]}</p>
       <p>
-        <b>Example reason, not a suggested answer:</b> {Glossary.answer_help(@current_card["kind"])[
+        <b>An example reason:</b> {Glossary.answer_help(@current_card["kind"])[
           "reason"
         ]}
       </p>

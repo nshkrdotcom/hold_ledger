@@ -13,51 +13,52 @@ defmodule HoldLedgerReviewWeb.Glossary do
        "HoldLedger.Spec computes the expected result independently of Ledger. Agreement on examples is useful evidence, not a universal proof."},
     "spec" =>
       {"Reference model (Spec)",
-       "The independent reference used to compare the real ledger with policy.",
-       "Spec also defines predicates such as valid state, matching effects and retained exposure."},
+       "A separate implementation used to compare the ledger with policy.",
+       "Spec also checks whether a state is valid, effects match the result and issued holds remain reserved."},
     "law" =>
-      {"Rule / law", "A precise statement with conditions and a promised result.",
+      {"Rule / law", "A rule saying what must happen when its conditions hold.",
        "A proof establishes the law as written under its conditions. Human review asks whether those conditions and promises match intended policy. PO means proof obligation."},
     "lean" =>
       {"Lean", "The proof checker used by the separate verification workflow.",
        "This web app does not run Lean. Its proof-status display requires an independently checked, source-matching report."},
     "lynx" =>
-      {"Lynx", "The translator connecting the Elixir claims to Lean theorems.",
-       "Its translation and the underlying compiler are part of the verification trust boundary."},
+      {"Lynx", "The tool that translates compiled Elixir code and rules into Lean.",
+       "The proofs rely on both the compiler and Lynx translating the code correctly."},
     "witness" =>
-      {"Concrete example", "A complete starting state, event and proposed outcome.",
+      {"Concrete example",
+       "A starting state, an event and a proposed outcome, all given together.",
        "This workbench can also attach an optional next event to explore a consequence. The JSON editor describes this complete example."},
     "what_if" =>
-      {"Proposed alternative", "An outcome you are being asked to judge against the real result.",
-       "The alternative is checked locally against rule expressions. A follow-on may also be calculated from it. No remote payment operation is performed."},
+      {"Proposed alternative", "A proposed outcome for you to compare with the real result.",
+       "The app checks the alternative against source rules and can calculate a next event from it. These calculations make no remote payment request."},
     "pointwise" =>
       {"Single-example check",
-       "A rule evaluated on one concrete example and its eligible values.",
+       "A rule checked on one example with values that meet its conditions.",
        "Catches or Allows here describes only the tested example and bindings. It does not establish a Lean theorem or complete policy coverage."},
     "binding" =>
-      {"Combination of values", "Concrete values assigned to the parameters of a rule.",
+      {"Combination of values", "The values used for one check of a rule.",
        "A rule may protect several holds, including a different key from the event key. The matrix says whether all eligible combinations were examined."},
     "pin" =>
       {"Save example", "Keep this example as evidence in the local review file.",
-       "Ordinary editor changes stay temporary. Answering the alternative-behavior question saves that complete example and the answer together."},
+       "Editor changes stay temporary until you save. Answering the alternative question saves the example and your answer together."},
     "card" =>
-      {"Review question", "One question with its own stable identity and answer history.",
-       "Required questions must be answered or explicitly deferred before concluding. AI suggestions become questions only after deliberate human acceptance."},
+      {"Review question", "One question whose answers and revisions stay together.",
+       "Answer or defer required questions before concluding. An AI suggestion joins the review only when you accept it."},
     "formal_checker" =>
       {"Independent proof report",
        "Evidence that a separate formal checker ran on matching source.",
-       "This status is separate from local example checks and your judgment. A missing report is not a proof failure."},
+       "Read this status separately from example results and your judgment. No attached report means no checker evidence was supplied."},
     "effects" =>
       {"Requests for outside work",
-       "Descriptions such as authorize this hold or request its cancellation.",
-       "Effects are returned by the pure ledger. They do not establish delivery, approval or completed cancellation."},
+       "Instructions to request work, such as authorizing or cancelling a hold.",
+       "The ledger returns these instructions without carrying them out. A returned effect does not show that the service received or completed the request."},
     "capacity" =>
       {"Reserved capacity", "The amount and number of hold slots currently in use.",
        "Reserved, sent, unknown, authorized and voiding entries use capacity. Declined and voided entries do not."},
     "ast" =>
       {"Parsed source expression",
-       "The structured representation of a rule read from source code.",
-       "The example checker uses the original requires and expects expressions. It is not a model-written paraphrase."},
+       "A rule’s source code broken into expressions the checker can read.",
+       "The example checker uses the original requires and expects expressions directly."},
     "reading" =>
       {"Is the rule stated correctly?",
        "Compare the shown policy and rule with the intended requirement.",
@@ -68,71 +69,72 @@ defmodule HoldLedgerReviewWeb.Glossary do
        "An unwanted alternative may escape some rules while another rule catches it. This is a question about behavior, not proof compilation."},
     "silence" =>
       {"Should the rules cover more?",
-       "Decide whether an excluded input situation should be covered.",
-       "A false precondition is not a failed proof. An additional domain requirement needs an explicit policy decision."},
+       "Decide whether the rule should also cover a case it excludes.",
+       "A false precondition is not a failed proof. Ask the policy owner whether the rule should cover that input."},
     "assumption" =>
       {"Do we trust the outside world here?",
-       "Identify evidence for the processor or storage promises this design relies on.",
-       "Pure proofs do not authenticate a real processor report or establish physical disk durability."},
+       "Ask what evidence supports the processor or storage promises the design needs.",
+       "A pure proof cannot tell whether a real processor reports truthfully or a disk keeps its data."},
     "trace" =>
       {"Is this evidence enough?",
-       "Judge whether the examined evidence addresses the selected policy.",
-       "The judgment applies only to named dimensions and examples, not all possible policy requirements."},
+       "Decide whether these examples and source checks address the policy you selected.",
+       "Name what you examined. Other examples and requirements remain outside that judgment."},
     "accurate" =>
-      {"Matches the intended reading", "Record agreement with this reading of the rule.",
-       "This is agreement with an interpretation, not general policy approval."},
+      {"Matches the intended reading", "You agree with this reading of the rule.",
+       "You are agreeing with this interpretation; the rest of the policy still needs review."},
     "inaccurate" =>
       {"Does not match", "Dispute the reading and explain the intended meaning.",
        "The correction remains a human judgment; no source rule is changed."},
     "unsure" =>
-      {"Not sure", "Leave this question unresolved while recording your answer.",
+      {"Not sure", "Record that you cannot decide this question yet.",
        "Inspect the source, compare another example or ask the policy owner."},
     "deferred" =>
       {"Defer for later", "Postpone this question and keep it open in the export.",
-       "Give a reason. An unresolved critical question prevents a positive conclusion."},
+       "Give a reason. Deferred questions remain open and prevent a positive conclusion."},
     "acceptable" =>
-      {"Acceptable", "This alternative behavior is acceptable in this concrete situation.",
-       "If a tested rule rejects it, investigate a possible policy/rule mismatch."},
+      {"Acceptable", "You would accept the alternative in this situation.",
+       "If a tested rule rejects it, check whether the rule and intended policy disagree."},
     "unacceptable" =>
-      {"Unacceptable", "This alternative behavior should be ruled out in this situation.",
+      {"Unacceptable", "You would reject the alternative in this situation.",
        "Inspect which tested rules reject it. An untested remainder prevents a whole-policy conclusion."},
     "should_cover" =>
-      {"Should cover this", "Record a candidate requirement to cover this situation.",
+      {"Should cover this", "Ask for a requirement covering this situation.",
        "This proposes further policy work; it does not change a law or turn an excluded case into a failed proof."},
     "intentionally_excluded" =>
-      {"Intentionally outside scope", "Record that this situation is deliberately excluded.",
+      {"Intentionally outside scope",
+       "Record that the policy intentionally leaves this situation out.",
        "Explain the scope decision so another reviewer can assess it."},
     "supported" =>
       {"Evidence supports it", "Record supporting evidence for this outside-world promise.",
-       "Your answer does not authenticate or automatically attest the external service."},
+       "Your answer records the evidence you cite; it does not check the external service."},
     "disputed" =>
-      {"I dispute this assumption", "Record a deployment promise that needs investigation.",
-       "The review keeps this dependency unresolved."},
+      {"I dispute this assumption", "Flag an outside-world promise you doubt.",
+       "The review keeps this question open."},
     "unknown" =>
       {"Unknown", "The outcome or supporting evidence has not been established.",
        "For a payment hold, an unknown outcome still consumes capacity. For a deployment question, unknown means evidence is still needed."},
     "sufficient_for_review" =>
-      {"Enough for this review", "The evidence is sufficient within the named reviewed scope.",
-       "This does not establish whole-policy completeness."},
+      {"Enough for this review", "You have enough evidence for the part of the policy you named.",
+       "Other parts of the policy may still need review."},
     "gap_suspected" =>
       {"A gap needs investigation",
        "Record an open question about missing evidence or a requirement.",
-       "A suspected gap is not automatically a confirmed implementation defect."},
+       "Investigate the suspected gap before calling it a code defect."},
     "pin_only" =>
       {"Save example only", "Save the example without answering whether it is acceptable.",
        "The review question remains unanswered."},
     "needs_policy_or_evidence" =>
       {"Needs policy or evidence", "We cannot settle the reviewed question yet.",
-       "Confirming saves this scoped conclusion and locks the review. Open questions remain visible in the export."},
+       "Confirming saves your conclusion for the named scope and locks the review. The export keeps its open questions."},
     "needs_design_change" =>
       {"Needs design change", "The reviewed rules or code disagree with intended behavior.",
-       "This is a human conclusion for the stated scope, not an automatic defect verdict."},
+       "You make this conclusion for the scope you name; the app does not decide that there is a defect."},
     "meets_intent_in_reviewed_scope" =>
       {"Meets intent in reviewed scope",
-       "Within what was examined, the rules match the intended policy.",
-       "This is not universal adequacy, proof acceptance or deployment certification. Unresolved critical conflicts prevent this outcome."},
+       "The rules match the intended policy within what you examined.",
+       "This conclusion covers only what you reviewed. It does not accept a proof or approve deployment; unresolved conflicts prevent it."},
     "reserved" =>
-      {"Reserved", "Admitted locally; authorization has not yet been dispatched.",
+      {"Reserved", "Reserved locally, before authorization is dispatched.",
        "Uses an amount and a hold slot. A local void can release an undispatched reservation."},
     "sent" =>
       {"Sent", "Authorization was dispatched; no trusted outcome is known yet.",
@@ -142,10 +144,10 @@ defmodule HoldLedgerReviewWeb.Glossary do
        "Consumes capacity. Asking to void starts cancellation; it does not finish it."},
     "voiding" =>
       {"Cancellation pending", "A void has been requested; remote confirmation is pending.",
-       "Still consumes capacity until trusted terminal confirmation."},
+       "Keeps its amount and slot until trusted confirmation permits release."},
     "declined" =>
       {"Declined", "The processor reported a decline; capacity is released.",
-       "The identity and amount remain recorded. The key cannot be reused as a new hold."},
+       "The ledger keeps the key and amount. A new hold cannot reuse that key."},
     "voided" =>
       {"Cancelled", "The hold is terminal and no longer consumes capacity.",
        "For an issued hold this requires terminal confirmation. An undispatched reservation can be cancelled locally. Its identity remains recorded."},
@@ -187,7 +189,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     "selected_checked" =>
       {"Selected obligations checked",
        "The report supports checked acceptance for a selected source-matching subset.",
-       "This does not establish full-catalog acceptance or policy adequacy."},
+       "Other obligations and the policy itself still need review."},
     "full_catalog_checked" =>
       {"Full catalog checked",
        "The attached source-matching report supports the complete required catalog.",
@@ -212,7 +214,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
       {"Unreadable review", "The saved review cannot be safely interpreted.",
        "No approval is inferred from unreadable data. Keep the file for inspection and start a new review."},
     "pending" =>
-      {"Waiting for AI", "An explicitly requested model job is pending.",
+      {"Waiting for AI", "The AI request you chose to send is waiting for a result.",
        "Completion is stored independently of the browser connection. There is no automatic resend."},
     "complete" =>
       {"AI response received", "A structured response passed the local checks.",
@@ -226,7 +228,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     "discarded_late" =>
       {"Outdated response discarded",
        "The result arrived after its source or human context changed.",
-       "It cannot overwrite your later answer. A retry requires a new explicit request."},
+       "It cannot overwrite your later answer. To retry, opt in and send a new request."},
     "catches" =>
       {"Catches", "This rule rejects the alternative for the tested example.",
        "It is a pointwise counterfactual check, not a proof about another program."},
@@ -252,7 +254,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     "probe" =>
       {"Saved or draft example check",
        "A concrete input and alternative checked against selected rules.",
-       "A draft becomes saved evidence only through an explicit save or answer."},
+       "The draft stays temporary until you save it or answer its question."},
     "identity" =>
       {"Request identity", "The integer key and original amount identifying a hold.",
        "Identity is remembered after release. Retries retain it and terminal keys cannot allocate again."},
@@ -313,7 +315,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
            "deck" =>
              {"Discover questions",
               "Ask the AI to read selected source and suggest questions or competing interpretations.",
-              "Locally computed synthetic checks verify any model predictions. Suggestions require explicit human acceptance."},
+              "The app compares predictions with local example results. A suggestion joins the review only when you accept it."},
            "challenge" =>
              {"Propose an alternative",
               "Ask the AI for a complete typed example to test locally.",
@@ -321,18 +323,24 @@ defmodule HoldLedgerReviewWeb.Glossary do
            "followup" =>
              {"Challenge my answer",
               "Ask the AI about the selected question's latest saved answer and evidence.",
-              "The request includes recorded revision history and the prior validated model question, if present. It does not change your answer."}
+              "The request includes your answer history and any prior validated model question. Your saved answer stays unchanged."}
          })
 
   @terms Map.merge(@terms, %{
            "formal_verification" =>
              {"Formal verification",
               "Using a mathematical proof to establish a precisely stated program property.",
-              "A checked theorem covers its stated inputs and assumptions. Choosing the property and judging its adequacy remain separate tasks."},
+              "A checked proof covers its stated inputs and assumptions. You still choose the rule and decide whether it is enough."},
            "pure" =>
              {"Pure calculation",
               "A calculation that returns values without performing outside work or changing hidden state.",
               "Ledger.step returns a next state, result and descriptions of effects. The runtime is responsible for I/O."},
+           "hypothesis" =>
+             {"Hypothesis", "One possible interpretation of the intended policy.",
+              "An AI hypothesis is a suggestion to examine, not a source rule, human answer or proof result."},
+           "elixir" =>
+             {"Elixir", "The programming language used to write this ledger.",
+              "Lynx translates the compiled code into Lean. You can review the examples and policy here without knowing Elixir."},
            "runtime" =>
              {"Runtime",
               "The processes that record inputs and attempt the requested outside work.",
@@ -459,7 +467,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
   @briefings %{
     "P08" => %{
       "why" =>
-        "This is the control example: the alternative matches the real local cancellation. Start here to separate an undispatched reservation from an issued authorization.",
+        "Here the alternative matches the real result. Start with this local cancellation, before looking at holds that may have reached the processor.",
       "term1" => "reserved",
       "idea1" => "No authorization has been dispatched for this reservation.",
       "term2" => "voided",
@@ -474,12 +482,11 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "P04" => %{
       "why" =>
-        "This example imitates refusing a request even though it fits exactly. It asks whether keeping within limits is enough.",
+        "The proposed result refuses a request that fits exactly. Decide whether staying within the limits is enough.",
       "term1" => "capacity",
       "idea1" => "Both the amount limit and the hold-count limit must have room.",
       "term2" => "precondition",
-      "idea2" =>
-        "The admission rule applies to fresh positive requests that fit, including equality at the limit.",
+      "idea2" => "A positive request with a new key must be admitted when it fits, even exactly.",
       "arrow" => "fresh request → reserved",
       "policy" =>
         "A fresh positive request with a free slot and enough amount capacity must be admitted. An exact amount fit qualifies.",
@@ -491,7 +498,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "P01" => %{
       "why" =>
-        "This alternative imitates releasing an approved hold as soon as cancellation is requested. It also omits the remote cancellation request.",
+        "This alternative releases an approved hold as soon as cancellation is requested. It also leaves out the request to cancel remotely.",
       "term1" => "authorized",
       "idea1" => "The processor has reported approval; the hold still uses capacity.",
       "term2" => "voiding",
@@ -507,7 +514,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "P05" => %{
       "why" =>
-        "This alternative sends the cancellation request but releases capacity immediately. Compare it with the earlier cancellation example to isolate the retained-capacity question.",
+        "This alternative requests cancellation but releases capacity immediately. Unlike P01, it includes the request for outside work; focus on when the money becomes available again.",
       "term1" => "effects",
       "idea1" => "A returned void effect requests cancellation; it does not confirm it.",
       "term2" => "voiding",
@@ -522,7 +529,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "P03" => %{
       "why" =>
-        "This alternative treats a timeout as a decline. It asks what the absence of a reply tells you about the processor.",
+        "This alternative treats a timeout as a decline. Ask what a missing reply tells you about the processor.",
       "term1" => "sent",
       "idea1" => "Authorization was dispatched, but the ledger has no outcome yet.",
       "term2" => "unknown",
@@ -537,7 +544,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "P06" => %{
       "why" =>
-        "This alternative uses the unknown status but drops both reserved totals to zero. It tests whether the label and accounting agree.",
+        "The entry says unknown, but both totals drop to zero. Compare the status with the money and slots still reserved.",
       "term1" => "unknown",
       "idea1" => "An unresolved authorization still counts as held.",
       "term2" => "validity",
@@ -552,7 +559,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "P02" => %{
       "why" =>
-        "This alternative keeps the money reserved but omits the request to cancel it remotely. It separates accounting from the work still owed.",
+        "The money stays reserved, but the alternative leaves out the request to cancel remotely. Check the outside work as well as the counters.",
       "term1" => "voiding",
       "idea1" => "Remote cancellation remains unfinished.",
       "term2" => "effects",
@@ -567,7 +574,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "P07" => %{
       "why" =>
-        "This alternative times out one hold while cancelling a different approved hold. The reduced counters are consistent with that unrelated cancellation.",
+        "One hold times out; the alternative also cancels another, approved hold. Its reduced counters add up, so look at which identities changed.",
       "term1" => "identity",
       "idea1" =>
         "Each event names a particular key; other holds still have their own obligations.",
@@ -598,7 +605,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
       "look" =>
         "Whether you would accept the alternative under the stated policy, before knowing which rules catch it.",
       "done" =>
-        "You have a provisional judgment and a reason. The app records whether you revealed first, not your private notes."
+        "You have an answer in mind and can explain it. The app records whether you revealed before saving; your private notes stay with you."
     },
     "compare" => %{
       "title" => "Compare with the laws",
@@ -607,7 +614,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
       "look" =>
         "Catches rejects the alternative here; Allows here accepts it at tested values; Doesn’t apply concerns a different case; Can’t check gives no answer. Tested N combinations says how many eligible parameter values were examined.",
       "done" =>
-        "You can name the relevant catches and the checks that leave questions open. These are example results, not a proof run."
+        "You can name the relevant catches and the checks that leave questions open. No proof checker runs when you reveal these results."
     },
     "judge" => %{
       "title" => "Judge",
@@ -625,7 +632,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
       "look" =>
         "Unanswered questions, deferred work, computed conflicts and missing outside evidence. A positive conclusion requires all questions resolved and supporting evidence saved.",
       "done" =>
-        "You explicitly confirm a conclusion, which locks the review. Export its Markdown or JSON record for the policy owner or agent."
+        "You confirm a conclusion, which locks the review. Export the Markdown or JSON record for the policy owner or agent."
     }
   }
   @answer_help %{
@@ -643,7 +650,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "trace" => %{
       "consider" =>
-        "Name the dimensions the examples examined and those they did not. One cancellation example does not address every possible history.",
+        "Say which cases the examples address and which you have not examined. One cancellation example does not cover every history.",
       "reason" =>
         "“This example addresses local cancellation; I still need to examine a cancellation after dispatch.”"
     },
@@ -655,7 +662,7 @@ defmodule HoldLedgerReviewWeb.Glossary do
     },
     "assumption" => %{
       "consider" =>
-        "Ask who can provide evidence about storage and the actual processor. A model’s assumed promise is different from an observed deployment guarantee.",
+        "Ask who can provide evidence about storage and the actual processor. A model can assume a promise that the real service has not demonstrated.",
       "reason" =>
         "“I need processor evidence that a cancelled identity cannot later be authorized by a delayed request.”"
     }
@@ -728,10 +735,10 @@ defmodule HoldLedgerReviewWeb.Glossary do
       "Resolve open questions and computed conflicts, and save supporting evidence before a positive conclusion. Otherwise choose Needs policy or evidence."
 
   def error(:unanswered_mandatory_or_critical),
-    do: "Answer or explicitly defer the required questions before concluding."
+    do: "Answer or defer the required questions before concluding."
 
   def error(:mandatory_questions_open),
-    do: "Answer or explicitly defer the required questions before concluding."
+    do: "Answer or defer the required questions before concluding."
 
   def error(:review_closed),
     do: "This review has been concluded and is read only. Start a new review to keep evaluating."

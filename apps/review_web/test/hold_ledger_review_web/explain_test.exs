@@ -8,7 +8,7 @@ defmodule HoldLedgerReviewWeb.ExplainTest do
       "P01" => ["0¢ of 100¢", "cancelled", "No outside work requested"],
       "P02" => ["100¢ of 100¢", "cancellation pending", "No outside work requested"],
       "P03" => ["Hold declined", "0¢ of 100¢"],
-      "P04" => ["refused for insufficient amount", "No recorded holds"],
+      "P04" => ["not enough room under the amount limit", "No recorded holds"],
       "P05" => ["0¢ of 100¢", "Requests remote cancellation"],
       "P06" => ["0¢ of 100¢", "unknown"],
       "P07" => ["100¢ of 250¢", "Hold 1 (50¢): cancelled", "Hold 2 (100¢): unknown"],
@@ -64,7 +64,7 @@ defmodule HoldLedgerReviewWeb.ExplainTest do
 
     text = Explain.output(output)
     assert text =~ "Requests authorization of hold 3 for 25¢"
-    assert text =~ "does not confirm approval"
-    assert text =~ "does not confirm cancellation"
+    assert text =~ "Approval still needs a processor report"
+    assert text =~ "Cancellation still needs confirmation"
   end
 end

@@ -298,7 +298,10 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
     {:noreply,
      socket
      |> assign(:review, updated)
-     |> put_flash(:info, "AI #{kind} request queued; no finding is assumed")}
+     |> put_flash(
+       :info,
+       "#{Glossary.label(kind)} request queued; results will appear in the AI panel"
+     )}
   end
 
   defp ai_request_result(socket, {:error, reason}, _kind) do
@@ -539,10 +542,10 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <p class="eyebrow">Payment policy / human review</p>
           <h1>Decide what the ledger <em>should</em> guarantee.</h1>
           <p class="intro-lead">
-            A payment hold reserves money while a processor decides what happens next. Hold Ledger tracks these reservations for one account, with limits on their total amount and count.
+            A payment hold reserves money while a payment service decides what happens next. Hold Ledger records these holds for one account and limits their total amount and count.
           </p>
           <p>
-            Your job is to check whether the rules match the intended policy. A proof can establish a rule as written; it cannot choose the right rule. No Lean knowledge is needed, and this app does not run Lean.
+            You decide whether the rules match the intended payment policy. The primer below walks through a 100-cent hold and shows what to look for. You can use the page without knowing Lean.
           </p>
           <.primer reviews={@reviews} />
           <nav class="help-links" aria-label="Getting started">
@@ -559,7 +562,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           </nav>
           <h2>Eight situations to learn from</h2>
           <p>
-            Four kinds of mistake, plus a correct cancellation. Follow the groups below as a suggested learning order; the times are planning estimates, not a limit. Each choice starts a separate saved review.
+            Four kinds of mistake, plus a correct cancellation. Start with the first group and work down; allow the suggested times as a rough budget. Each choice starts a separate saved review.
           </p>
           <div class="scenario-families" id="new-review-choices">
             <section :for={
@@ -593,7 +596,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           </div>
           <h2>Existing review files</h2>
           <p class="muted">
-            Answers and saved examples stay in this checkout. Editor changes stay temporary until you save the example or answer its question.
+            Your answers and saved examples stay in this local checkout. Editor changes are temporary until you save the example or answer its question.
           </p>
           <p :if={@reviews == []}>No reviews yet — pick a scenario above.</p>
           <ul id="existing-reviews" class="review-list">
@@ -650,7 +653,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
         <details class="orientation" open={@review["answers"] == [] && @review["pinned_probes"] == []}>
           <summary>Your job here</summary>
           <p>
-            Check whether the rules protect the behavior you intend. Compare the real result with the alternative, decide whether the alternative is acceptable, then inspect which rules address it. You are checking whether the rules are right, not whether the proofs compile.
+            Compare the real result with the alternative and decide what you would accept. Then inspect the rules and ask whether they express the behavior you want. This review concerns the rules; the separate proof checker concerns their proofs.
           </p>
         </details>
         <ol class="step-strip">
@@ -679,7 +682,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <h2 id="scenario-heading">The situation</h2>
           <p><strong>{Glossary.scenario_question(@review["seed_id"])}</strong></p>
           <p :if={@draft_error} class="notice-alert">
-            The draft cannot be calculated. Correct it or reset to the starting example; no current scenario summary is shown.
+            The draft cannot be calculated. Correct it or reset to the starting example to see the current result.
           </p>
           <dl :if={@current_witness} class="scenario-facts">
             <div>
@@ -698,7 +701,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <p>
             The
             <.term key="what_if">what-if</.term>
-            is an alternative behavior for you to judge. It is calculated locally; no remote payment operation is performed.
+            is a proposed outcome for you to judge. The app calculates it locally without making a payment request.
           </p>
         </section>
         <section
@@ -708,7 +711,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           aria-label="Complete design and proof map"
         >
           <h2>How the policy connects to code and rules</h2>
-          <p class="muted">
+          <p class="muted" data-source="guides/interactive_review.md#evidence-and-limits">
             Use this map to look up how a policy row connects to code and rules; you can leave it closed on your first pass. A source-backed connection comes from the source; an inferred connection is only a navigation suggestion. The list includes both Elixir rule declarations and Lean-only obligations. A listing does not mean a proof has run.
           </p>
           <div class="map-columns">
@@ -772,8 +775,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <aside class="pane guarantee" aria-labelledby="claim-heading">
             <p class="eyebrow">Reference</p>
             <h2 id="claim-heading">What the code and rules say</h2>
-            <p>
-              This pane is a lookup area, not required reading before you judge the example. Open a source file when you want to check what a rule actually says. The
+            <p data-source="guides/interactive_review.md#evidence-and-limits;lib/hold_ledger/spec.ex">
+              Use this pane to look up a rule’s exact source. You can leave it closed on your first pass. The
               <.term key="oracle">independent reference</.term>
               is a separate implementation of the policy.
             </p>
@@ -789,7 +792,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 <code>{@review["source"]["evaluator_id"]}</code>
               </p>
               <p>
-                Proof status is separate from example checks and human intent. Processor fencing and storage durability remain outside-world assumptions.
+                Read proof status separately from example results and your own judgment. Processor fencing and storage durability still need outside evidence.
               </p>
             </details>
             <button
@@ -800,7 +803,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
             >Browse source evidence</button>
             <div :if={@source_open} id="source-panel" class="source-panel">
               <p>
-                Choose a source anchor to inspect exact checkout bytes and digest. The map shows inferred associations separately.
+                Choose a file to read its exact source and content fingerprint. The map distinguishes direct source links from suggested connections.
               </p>
               <ul>
                 <li :for={s <- @review["graph_snapshot"]["excerpts"]}>
@@ -831,8 +834,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           </aside>
           <section class="pane arena" aria-labelledby="probe-heading">
             <p class="eyebrow">Test</p>
-            <h2 id="probe-heading">Test the scenario</h2><p>
-              Use the starting example first; you can ignore the editor on your first pass. Later, edit it to ask a different question and compare the calculated outcomes.
+            <h2 id="probe-heading">Test the scenario</h2><p data-source="guides/interactive_review.md#other-counterexamples">
+              Start by reading the supplied example. You can edit it later to ask a different question and compare the results.
             </p>
             <div class="fixture-strip" aria-label="Synthetic initial examples">
               <button
@@ -844,7 +847,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               >{Glossary.scenario_title(seed)} <small>{seed}</small></button>
             </div>
             <p class="muted">
-              Switching scenario starts a new review; your current one is kept. These are invented examples, not observed failures. Edits are temporary until you save the example or answer its question.
+              Switching scenario starts a new review and keeps your current one. The examples are invented, not observed failures. Edits stay temporary until you save or answer.
             </p>
             <button
               id="reset-draft"
@@ -949,10 +952,10 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
               />
               <input type="hidden" name="draft[card_id]" value={@selected_card_id} />
               <input type="hidden" name="draft[revealed_before_answer]" value={to_string(@revealed)} />
-              <label for="escape-reason">Why? A reason helps the next reviewer. To defer, explain what is missing.</label>
+              <label for="escape-reason">Why did you choose this answer? A reason helps the next reviewer. To defer, say what is missing.</label>
               <textarea id="escape-reason" name="draft[reason]" maxlength="600" rows="2"></textarea>
               <p :if={@draft_error} id="draft-error" role="alert" class="notice-alert">
-                {@draft_error} · The matrix below, if shown, belongs to the last good input and is historical—not this invalid draft.
+                {@draft_error} The rule checks below belong to the last valid input, not this draft.
               </p>
               <p
                 :if={@evaluation && !@draft_error}
@@ -960,7 +963,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 role="status"
                 class="neutral-tag"
               >
-                Your edited example is well-formed. Does the alternative end in a valid ledger state? {if @details.candidate_after_valid?,
+                The editor can read this example. Does the alternative end in a valid ledger state? {if @details.candidate_after_valid?,
                   do: "Yes.",
                   else: "No."} Does the real ledger match the reference? {if @details.actual_equals_oracle?,
                   do: "Yes.",
@@ -1008,8 +1011,11 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   id="pin-candidate"
                 >Save example only</button>
               </div>
-              <p class="save-help">
-                Save example only keeps this example without a judgment. Defer postpones the question; give a reason and keep it open for follow-up.
+              <p
+                class="save-help"
+                data-source="apps/review_web/lib/hold_ledger_review/review_store.ex#answer_escape;guides/interactive_review.md#other-counterexamples"
+              >
+                Save example only keeps the example without answering the question. To defer, give a reason and leave the question open for later.
               </p>
             </.form>
             <dl class="choice-legend">
@@ -1069,7 +1075,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 Historical last-good calculation only; this is not the current invalid draft.
               </p>
               <h3>What happens next?</h3><p>
-                We calculate one more event from each outcome to see the knock-on effect, such as whether a new request can be admitted.
+                Calculate one more event from each outcome to see what follows. For example, could a new request now be admitted?
               </p>
               <%= if @evaluation && @evaluation["follow_on_actual"] == nil && @evaluation["follow_on_candidate"] == nil && (@details == nil || @details.follow_reason == :no_follow_on_event) do %>
                 <p id="no-follow-on" class="muted">No follow-on event selected for this probe.</p>
@@ -1082,7 +1088,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                     After the alternative: <.narrated value={@evaluation["follow_on_candidate"]} />
                   </div>
                   <p :if={@evaluation["follow_on_candidate"] == nil} class="muted">
-                    A Spec-invalid hypothetical cannot be stepped further; no second call was made.
+                    The reference model says the alternative’s state is invalid, so no next event was calculated from it.
                   </p>
                 <% end %>
               <% end %>
@@ -1102,7 +1108,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 type="button"
                 phx-click="reveal"
               >I’ve made my prediction — show what the rules say</button><p>
-                Recording whether you looked first helps keep your judgment honest.
+                Choose your answer first, then reveal. The saved answer records whether you looked first.
               </p><dl class="matrix-legend">
                 <div :for={key <- ~w(catches allows_here does_not_apply cant_check)}>
                   <dt>{status_label(key)}</dt><dd>{Glossary.one_line(key)}</dd>
@@ -1153,8 +1159,8 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           <aside class="pane decision" aria-labelledby="decision-heading">
             <p class="eyebrow">Decision</p>
             <h2 id="decision-heading">Your judgment</h2>
-            <p>
-              Record what you think about the example and the policy, one question at a time. Start with the alternative-behavior question; the others help you decide what the evidence supports. Revisions keep earlier answers in your history.
+            <p data-source="apps/review_web/lib/hold_ledger_review/dossier.ex#for_seed;apps/review_web/lib/hold_ledger_review/review_store.ex">
+              Answer one question at a time, starting with whether the alternative is acceptable. Use the other questions to review the rule’s meaning and the evidence. You can revise an answer while keeping its history.
             </p>
             <%= if @current_card do %>
               <article id="active-question" class="active-question">
@@ -1169,9 +1175,9 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 <p>{Glossary.one_line(@current_card["kind"])}</p><p>
                   <b>Why it matters:</b> {if @current_card["critical"],
                     do: @current_card["critical_reason"],
-                    else: "Your answer defines what this review can conclude."}
+                    else: "Your answer helps set the scope of the conclusion."}
                 </p><p>
-                  Look at the scenario, computed comparison and exact source in the reference pane.
+                  Read the scenario and compare the results. Use the reference pane when you need the exact source.
                 </p><details>
                   <summary>Question reference</summary><code>{@current_card["target_node_id"]}</code>
                 </details>
@@ -1245,7 +1251,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
             </nav>
             <section id="review-summary" class="review-summary">
               <h3>Conclude this review</h3><.progress review={@review} /><p>
-                Confirming locks this review and includes your scoped conclusion in the export. You can export an unfinished review too.
+                Confirming saves your conclusion and locks the review. You can also export it unfinished.
               </p><dl class="choice-legend">
                 <div :for={
                   outcome <-
@@ -1261,7 +1267,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 </li>
               </ul>
               <p>
-                Review can be exported unfinished. Mandatory/critical questions must be answered or explicitly deferred before concluding. A positive outcome also requires the optional questions to be resolved, saved supporting evidence, and no computed conflicts. Deferrals stay open.
+                Answer or defer every required question before concluding. To choose a positive outcome, also resolve the optional questions, save supporting evidence and address computed conflicts. Deferred questions stay open in the export.
               </p>
               <p>
                 This conclusion covers: {Glossary.review_title(@review)}. Edit the references below if your scope differs.
@@ -1280,7 +1286,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   label="Human rationale (required)"
                   rows="2"
                 />
-                <label for="review-outcome">Choose one explicit outcome</label>
+                <label for="review-outcome">Choose a conclusion</label>
                 <select id="review-outcome" name="finish[outcome]">
                   <option value="needs_policy_or_evidence">Needs policy or evidence</option>
                   <option value="needs_design_change">Needs design change</option>
@@ -1311,10 +1317,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 </div>
               </dl><details>
                 <summary>Limits and data sent to AI</summary><p class="muted">
-                  Source-only discovery precedes answers; challenge sends the displayed draft;
-                  follow-up sends the selected card's recorded human answer and computed evidence.
-                  The configured external inference provider receives data only on your explicit opt-in.
-                  Model suggestions never certify a proof or change your answer.
+                  Discovery sends selected source and invented examples. A challenge also sends the displayed draft; a follow-up sends the selected question’s saved answer and computed evidence. The configured provider receives this data only after your consent for that request; suggestions cannot certify a proof or change your answer.
                 </p>
               </details>
               <p :if={!@ai_capability} class="notice-alert" id="ai-unavailable">
@@ -1361,7 +1364,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 >Challenge my answer</button>
               </div>
               <p class="muted">
-                Failed or interrupted jobs need an explicit new request. There is no automatic retry.
+                If a request fails or is interrupted, choose whether to send it again. The app never retries automatically.
               </p>
               <ol id="ai-job-history" class="ai-job-list">
                 <li :for={job <- @review["ai_jobs"]} id={"ai-job-#{job["job_id"]}"}>
@@ -1370,7 +1373,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                   <span :if={job["error_class"]}>· {job["error_class"]}</span>
                   <%= if job["status"] == "complete" && is_map(job["validated_output"]) do %>
                     <div :if={job["request_kind"] == "deck"} class="ai-results">
-                      <h4>Computed predictions (shown before AI paraphrases)</h4>
+                      <h4>Computed predictions (checked locally)</h4>
                       <ul :for={check <- job["validated_output"]["reading_checks"]}>
                         <li :for={p <- check["predictions"]}>
                           <b>{Glossary.law_description(check["claim_slug"])}</b>
@@ -1387,7 +1390,10 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                           </details>
                         </li>
                       </ul>
-                      <h4>Model hypotheses and readings · unapproved proposals</h4>
+                      <h4>
+                        <.term key="hypothesis">Model hypotheses</.term>
+                        and readings — suggestions for review
+                      </h4>
                       <p :for={item <- job["validated_output"]["deck"]["intent_hypotheses"]}>
                         <b>{item["statement"]}</b> — {item["distinguishing_question"]}
                         <small>Sources: {source_names(@review, item["source_ids"])}</small>
@@ -1446,7 +1452,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
                 </li>
               </ol>
               <%= if @review["suggested_ai_cards"] != [] do %>
-                <h4>Suggestions (AI) · accept deliberately</h4>
+                <h4>AI suggestions — choose which questions to add</h4>
                 <ul id="ai-suggestions" class="ai-job-list">
                   <li :for={card <- @review["suggested_ai_cards"]} id={"suggest-#{card["id"]}"}>
                     <b>{Glossary.label(card["kind"])}</b>

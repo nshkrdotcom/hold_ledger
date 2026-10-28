@@ -9,7 +9,9 @@ defmodule HoldLedgerReviewWeb.Explain do
         "hold_limit" => slots,
         "entries" => entries
       }) do
-    totals = "#{used}¢ of #{limit}¢ reserved; #{count} of #{slots} hold slots in use."
+    totals =
+      "The ledger has #{used}¢ of #{limit}¢ reserved, with #{count} of #{slots} hold slots in use."
+
     totals <> " " <> entries(entries)
   end
 
@@ -53,14 +55,17 @@ defmodule HoldLedgerReviewWeb.Explain do
   defp entry(_), do: "Unrecognized entry (see raw JSON)"
 
   defp result("admitted"), do: "New hold admitted."
-  defp result("marked_unknown"), do: "Authorization outcome remains unknown."
+  defp result("marked_unknown"), do: "The authorization outcome is still unknown."
   defp result("voiding"), do: "Cancellation is pending."
   defp result("voided"), do: "Hold cancelled."
-  defp result("dispatched"), do: "Authorization dispatch recorded."
-  defp result("insufficient_amount"), do: "Request refused for insufficient amount capacity."
-  defp result("insufficient_holds"), do: "Request refused for insufficient hold slots."
-  defp result("duplicate"), do: "This identity and amount were already recorded."
-  defp result("conflict"), do: "This identity was already recorded with a different amount."
+  defp result("dispatched"), do: "The authorization is marked as dispatched."
+
+  defp result("insufficient_amount"),
+    do: "Request refused: not enough room under the amount limit."
+
+  defp result("insufficient_holds"), do: "Request refused: no hold slot is available."
+  defp result("duplicate"), do: "The ledger already remembers this key and amount."
+  defp result("conflict"), do: "The ledger remembers this key with a different amount."
   defp result("declined"), do: "Hold declined."
   defp result("authorized"), do: "Hold authorized."
   defp result("not_found"), do: "No matching hold found."
@@ -75,10 +80,11 @@ defmodule HoldLedgerReviewWeb.Explain do
   defp effects(_), do: "Outside work unavailable; inspect raw JSON."
 
   defp effect(%{"type" => "void", "key" => key}),
-    do: "Requests remote cancellation of hold #{key}; this does not confirm cancellation."
+    do: "Requests remote cancellation of hold #{key}. Cancellation still needs confirmation."
 
   defp effect(%{"type" => "authorize", "key" => key, "amount" => amount}),
-    do: "Requests authorization of hold #{key} for #{amount}¢; this does not confirm approval."
+    do:
+      "Requests authorization of hold #{key} for #{amount}¢. Approval still needs a processor report."
 
   defp effect(_), do: "Unrecognized outside-work request; inspect raw JSON."
 end
