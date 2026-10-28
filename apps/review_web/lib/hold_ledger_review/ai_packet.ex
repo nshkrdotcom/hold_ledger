@@ -303,31 +303,30 @@ defmodule HoldLedgerReview.AIPacket do
         seed_witnesses
       end
 
-    with :ok <- Claims.freshness() do
-      result =
-        Claims.memoize(
-          __MODULE__,
-          {:synthetic_probes, Adversarial.module_info(:md5), candidates},
-          fn ->
-            result = compute_probes(candidates)
+    case Claims.freshness() do
+      :ok ->
+        result =
+          Claims.memoize(
+            __MODULE__,
+            {:synthetic_probes, Adversarial.module_info(:md5), candidates},
+            fn -> fresh_probe_result(compute_probes(candidates)) end
+          )
 
-            case Claims.freshness() do
-              :ok -> result
-              _ -> {:error, :stale_source}
-            end
-          end
-        )
+        fresh_probe_result(result)
 
-      case Claims.freshness() do
-        :ok -> result
-        _ -> {:error, :stale_source}
-      end
-    else
-      _ -> {:error, :stale_source}
+      _ ->
+        {:error, :stale_source}
     end
   end
 
   defp probes(_review, _kind), do: {:ok, [], %{}}
+
+  defp fresh_probe_result(result) do
+    case Claims.freshness() do
+      :ok -> result
+      _ -> {:error, :stale_source}
+    end
+  end
 
   defp compute_probes(candidates) do
     candidates

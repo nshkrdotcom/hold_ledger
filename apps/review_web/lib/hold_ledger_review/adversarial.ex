@@ -73,22 +73,21 @@ defmodule HoldLedgerReview.Adversarial do
   end
 
   def evaluate(witness) do
-    with :ok <- Claims.freshness() do
-      result =
-        Claims.memoize(__MODULE__, witness, fn ->
-          result = evaluate_current(witness)
+    case Claims.freshness() do
+      :ok ->
+        result =
+          Claims.memoize(__MODULE__, witness, fn -> fresh_result(evaluate_current(witness)) end)
 
-          case Claims.freshness() do
-            :ok -> result
-            _ -> {:error, :stale_source}
-          end
-        end)
+        fresh_result(result)
 
-      case Claims.freshness() do
-        :ok -> result
-        _ -> {:error, :stale_source}
-      end
-    else
+      _ ->
+        {:error, :stale_source}
+    end
+  end
+
+  defp fresh_result(result) do
+    case Claims.freshness() do
+      :ok -> result
       _ -> {:error, :stale_source}
     end
   end

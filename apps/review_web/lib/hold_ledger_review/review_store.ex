@@ -808,17 +808,19 @@ defmodule HoldLedgerReview.ReviewStore do
   defp current_context(documents) do
     paths = documents |> Enum.flat_map(&Map.keys(&1["source"]["source_manifest"])) |> Enum.uniq()
 
-    with {:ok, context} <- Claims.source_context(Config.root(), paths) do
-      proof =
-        ProofEvidence.load(
-          Config.root(),
-          Application.get_env(:hold_ledger_review_web, :proof_report),
-          Enum.map(context.generation.source.catalog, & &1["slug"])
-        )
+    case Claims.source_context(Config.root(), paths) do
+      {:ok, context} ->
+        proof =
+          ProofEvidence.load(
+            Config.root(),
+            Application.get_env(:hold_ledger_review_web, :proof_report),
+            Enum.map(context.generation.source.catalog, & &1["slug"])
+          )
 
-      {:ok, Map.put(context, :proof, proof)}
-    else
-      _ -> {:error, :stale_source}
+        {:ok, Map.put(context, :proof, proof)}
+
+      _ ->
+        {:error, :stale_source}
     end
   end
 
