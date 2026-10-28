@@ -3,15 +3,14 @@ async function open(page,slug='po_exposure_retain') {
   await page.goto('/claims/'+slug);
   await expect(page).toHaveURL(new RegExp('/claims/'+slug+'/trace-'));
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  await page.locator('#technical-inspector > summary').click();
   await expect(page.locator('#timeline')).toBeVisible();
   return page.url();
 }
-async function inspect(page) {
+async function tab(page,name) {
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  if(await page.locator('#technical-inspector').getAttribute('open')===null) await page.locator('#technical-inspector > summary').click();
-  await expect(page.locator('#technical-inspector')).toHaveAttribute('open');
+  await page.locator('#workspace-tabs [phx-value-view="'+name+'"]').click();
 }
+async function inspect(page) { await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/); }
 async function event(page,type,key='2',amount='100') {
   await inspect(page);
   const revision=await page.locator('#trace-revision').innerText();
@@ -25,26 +24,28 @@ async function event(page,type,key='2',amount='100') {
 test('early release: valid accounting is distinct from required retention',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const url=await open(page);
-  for(const id of ['contrast','dissector','lean-bridge','assumptions','timeline']) await expect(page.locator('#'+id)).toBeVisible();
+  await tab(page,'outputs');
   await expect(page.locator('#ledger-output')).toContainText(/100¢ reserved[\s\S]*voiding/);
   await expect(page.locator('#hypothetical-output')).toContainText(/0¢ reserved[\s\S]*voided/);
   await expect(page.locator('#validity-row td').nth(1)).toHaveText('true');
   await expect(page.locator('#validity-row td').nth(2)).toHaveText('true');
   await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('false');
+  await tab(page,'clauses');
   await expect(page.locator('#dissector')).toContainText(':voided');
   await expect(page.locator('#dissector')).toContainText(':sent, :unknown, :authorized, :voiding');
-  await page.reload();await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  await expect(page).toHaveURL(url);await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('false');
+  await page.reload();await tab(page,'outputs');await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  expect(new URL(page.url()).pathname).toBe(new URL(url).pathname);await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('false');
   expect(errors).toEqual([]);
 });
 
 test('the same output passes validity; inspect its helper definition',async({page})=>{
-  await open(page,'po_b1_void');
+  await open(page,'po_b1_void');await tab(page,'outputs');
   await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('true');
+  await tab(page,'clauses');await page.locator('#dissector .operand-detail > summary').first().click();
   await page.locator('#dissector').getByRole('button',{name:'Definition',exact:true}).first().click();
   await expect(page.locator('#helper-definition')).toContainText('Definition on these values');
   await page.locator('#helper-definition').getByRole('button',{name:'Close',exact:true}).click();
-  await page.locator('#inspect-retention').click();
+  await tab(page,'outputs');await page.locator('#inspect-retention').click();
   await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('false');
 });
 
@@ -53,33 +54,33 @@ test('99, 100 and 101 expose actual eligibility operands and outside-domain sile
   for(const amount of ['99','100','101']) {
     await page.locator('#timeline button').first().click();
     await event(page,'request','11',amount);
+    await tab(page,'clauses');
     const clause=page.locator('#dissector tr').filter({hasText:'amount <= amount_limit - used_amount'});
     await expect(clause).toContainText(amount+' · 100');
     await expect(clause).toContainText(amount==='101'?'false':'true');
+    await tab(page,'outputs');
     if(amount==='101') {
+      await expect(page.locator('#ledger-output')).toContainText('insufficient_amount');await tab(page,'clauses');
       await expect(page.locator('#outside-domain')).toBeVisible();
-      await expect(page.locator('#ledger-output')).toContainText('insufficient_amount');
     } else await expect(page.locator('#ledger-output')).toContainText('admitted');
   }
   await expect(page.locator('#timeline button')).toHaveCount(4);
 });
 
-test('proof stages and shared lemma links display actual source',async({page})=>{
-  await open(page);
-  await expect(page.locator('#lean-bridge .theorem')).toContainText('po_exposure_retain/5');
-  await page.locator('#proof-stages button').last().click();
-  await expect(page.locator('#proof-step pre')).toContainText('retained_lookup');
-  await page.locator('#lemma-links button').filter({hasText:'retained_lookup'}).click();
-  await expect(page.locator('#lemma-source pre')).toContainText('theorem retained_lookup');
-  const url=await page.locator('#lemma-source a').first().getAttribute('href');
-  const response=await page.request.get(url);expect(response.status()).toBe(200);
-  expect(await response.text()).toContain('theorem retained_lookup');
-  const stale=await page.request.get(url.replace(/[a-f0-9]{64}$/,'0'.repeat(64)));expect(stale.status()).toBe(404);
+test('full actual proof source stays beside selected source stage',async({page})=>{
+  await open(page);await tab(page,'proof');
+  await expect(page.locator('#proof-source-workspace')).toContainText('po_exposure_retain');
+  await page.locator('#proof-source-workspace .proof-source-stages button').last().click();
+  await expect(page.locator('.active-proof-line').first()).toBeVisible();
+  await expect.poll(()=>page.locator('#proof-script').evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
+  const link=page.locator('#lemma-links a').first();
+  const response=await page.request.get(await link.getAttribute('href'));expect(response.status()).toBe(200);
+  const stale=await page.request.get((await link.getAttribute('href')).replace(/[a-f0-9]{64}$/,'0'.repeat(64)));expect(stale.status()).toBe(404);
   await expect(page.locator('#formal-status')).toHaveText('not_supplied');
 });
 
 test('hypothetical early release changes the next request; actual branch is retained',async({page})=>{
-  await open(page);await page.locator('#edit-candidate').click();await page.locator('#branch-candidate').click();
+  await open(page);await tab(page,'outputs');await page.locator('#edit-candidate').click();await page.locator('#branch-candidate').click();
   await expect(page.locator('#hypothetical-lineage')).toBeVisible();
   await event(page,'request');await expect(page.locator('#ledger-output')).toContainText('admitted');
   await expect(page.locator('#hypothetical-lineage')).toBeVisible();
@@ -89,7 +90,7 @@ test('hypothetical early release changes the next request; actual branch is reta
 });
 
 test('structured candidate and JSON round trip keep inconsistent totals until recalculation',async({page})=>{
-  await open(page);await page.locator('#edit-candidate').click();
+  await open(page);await tab(page,'outputs');await page.locator('#edit-candidate').click();
   await page.locator('#output_used_amount').fill('50');
   await expect(page.locator('#validity-row td').nth(2)).toHaveText('false');
   await expect(page.locator('#branch-candidate')).toBeDisabled();
@@ -108,12 +109,12 @@ test('adjusting initial state creates a separate session',async({page})=>{
   const old=await open(page,'po_a2');await page.locator('#timeline button').first().click();await expect(page.locator('#entries')).toContainText('No entries');await page.locator('#edit-start').click();
   await page.locator('#initial_amount_limit').fill('101');await page.locator('#save-starting').click();
   await expect(page).not.toHaveURL(old);
-  await event(page,'request','11','101');await expect(page.locator('#ledger-output')).toContainText('admitted');
+  await event(page,'request','11','101');await tab(page,'outputs');await expect(page.locator('#ledger-output')).toContainText('admitted');
   await page.goto(old);await expect(page.locator('#amount-counter')).toHaveText('100¢ / 100¢');
 });
 
 test('scrubber supports keyboard navigation and preserves branches',async({page})=>{
-  await open(page);await event(page,'request');
+  await open(page);await tab(page,'outputs');await event(page,'request');
   await page.locator('#position').focus();await page.keyboard.press('Home');
   await expect(page.locator('#timeline button').first()).toHaveAttribute('aria-current','step');
   await page.keyboard.press('End');await expect(page.locator('#ledger-output')).toContainText('insufficient_amount');
@@ -133,17 +134,18 @@ test('coupled model separates remote delivery, observation and terminal fencing'
   await expect(page.locator('#amount-counter')).toHaveText('100¢ / 100¢');
   await event(page,'confirm','11');await event(page,'authorize','11');
   await expect(page.locator('#amount-counter')).toHaveText('0¢ / 100¢');await expect(page.locator('#remote-state')).toContainText('voided');
-  await expect(page.locator('#dissector')).toContainText('Native Lean statement');
+  await tab(page,'clauses');await expect(page.locator('#dissector')).toContainText('Native Lean statement');
 });
 
 test('two tabs preserve CAS conflict and reconnect source identity',async({page,context})=>{
   const url=await open(page);const right=await context.newPage();await right.goto(url);
   await inspect(right);
   await expect(right.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await tab(page,'record');await tab(right,'record');
   await page.locator('#note_text').fill('Check actual processor evidence.');await page.locator('#note-form button').click();
   await right.locator('#note_text').fill('Stale reviewer edit.');await right.locator('#note-form button').click();
   await expect(right.locator('[role=alert]')).toContainText('Another tab');
-  await right.reload();await expect(right.locator('#session-record')).toContainText('Check actual processor evidence.');
+  await right.reload();await tab(right,'record');await expect(right.locator('#session-record')).toContainText('Check actual processor evidence.');
   await right.evaluate(()=>window.liveSocket.disconnect());await right.evaluate(()=>window.liveSocket.connect());
   await expect(right.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(right.locator('#session-record')).toContainText('Check actual processor evidence.');
@@ -152,13 +154,13 @@ test('two tabs preserve CAS conflict and reconnect source identity',async({page,
 test('mobile stays within viewport and requests no provider',async({page})=>{
   const requests=[];page.on('request',r=>{if(!/^https?:\/\/(localhost|127\.0\.0\.1):4000\//.test(r.url()))requests.push(r.url())});
   await page.setViewportSize({width:390,height:844});await open(page);
-  await expect(page.locator('#contrast')).toBeVisible();await expect(page.locator('#dissector')).toBeVisible();
+  await expect(page.locator('#contract-diff')).toBeVisible();await expect(page.locator('#boundary-fork')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await expect(page.locator('#ai-consent, #review-primer, #glossary')).toHaveCount(0);expect(requests).toEqual([]);
 });
 
 test('generated Lean artifacts are readable when fresh and cannot become full acceptance',async({page})=>{
-  await open(page);await page.locator('.translation summary').click();
+  await open(page);await tab(page,'proof');
   const status=await page.locator('#focused-status').innerText();
   if(status==='elaborated') {
     const links=page.locator('#generated-artifacts a');expect(await links.count()).toBeGreaterThan(0);
@@ -174,7 +176,7 @@ test('command and interface share the same law reading and clause observations',
   const file=path.join(dir,'read.json');fs.writeFileSync(file,JSON.stringify({operation:'read_claim',slug:'po_a2'}));
   const output=execFileSync('uv',['run','--locked','python','scripts/local_run.py','--cwd','apps/review_web','mix','run','--no-start','scripts/explore.exs','--',file],{cwd:root,encoding:'utf8'});
   const doc=JSON.parse(output.trim().split('\n').at(-1));
-  await open(page,'po_a2');await expect(page.locator('#requires-expression')).toHaveText(doc.receipt.contract.requires);
+  await open(page,'po_a2');await tab(page,'clauses');await expect(page.locator('#requires-expression')).toHaveText(doc.receipt.contract.requires);
   const witness=JSON.parse(fs.readFileSync(path.join(root,'apps/review_web/priv/scenarios/P04.json')));
   fs.writeFileSync(file,JSON.stringify({operation:'explain_claim',slug:'po_a2',witness}));
   const explained=execFileSync('uv',['run','--locked','python','scripts/local_run.py','--cwd','apps/review_web','mix','run','--no-start','scripts/explore.exs','--',file],{cwd:root,encoding:'utf8'});

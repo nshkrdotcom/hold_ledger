@@ -21,13 +21,40 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
     ~H"""
     <section class="machine" id="state-machine">
       <header class="section-heading">
-        <h2>State machine</h2><div class="action-row">
+        <h2>Recorded state & timeline</h2><div class="action-row">
           <button :if={@doc["mode"] == "ledger"} phx-click="edit_initial" id="edit-start">Adjust starting state</button><button
             phx-click="coupled"
             id="coupled-model"
           >Coupled processor model</button>
         </div>
       </header>
+      <nav id="timeline" aria-label="Trace steps">
+        <button
+          phx-click="select_step"
+          phx-value-id="start"
+          aria-current={if @cursor == "start", do: "step", else: "false"}
+        >Start</button><button
+          :for={{step, index} <- Enum.with_index(@doc["steps"], 1)}
+          phx-click="select_step"
+          phx-value-id={step["id"]}
+          aria-current={if @cursor == step["id"], do: "step", else: "false"}
+        >{index}. {event_label(step["event"])}{if step["origin"] != "computed", do: " · hypothetical"}</button>
+      </nav>
+      <div class="scrub-row">
+        <button phx-click="previous" id="previous-step" disabled={@cursor == "start"}>Previous</button><form
+          id="scrubber"
+          phx-change="scrub"
+        >
+          <label for="position">Trace position</label><input
+            id="position"
+            type="range"
+            name="position"
+            min="0"
+            max={length(@path)}
+            value={length(Trace.path(@doc, @cursor))}
+          />
+        </form><button phx-click="next" id="next-step">Next</button>
+      </div>
       <div class="capacity-grid">
         <div>
           <span>Reserved / limit</span><strong id="amount-counter">{@ledger["used_amount"]}¢ / {@ledger[
@@ -69,33 +96,6 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           </tbody>
         </table><p>Pending voids: {length(@state["obligations"])}</p>
       </div>
-      <nav id="timeline" aria-label="Trace steps">
-        <button
-          phx-click="select_step"
-          phx-value-id="start"
-          aria-current={if @cursor == "start", do: "step", else: "false"}
-        >Start</button><button
-          :for={{step, index} <- Enum.with_index(@doc["steps"], 1)}
-          phx-click="select_step"
-          phx-value-id={step["id"]}
-          aria-current={if @cursor == step["id"], do: "step", else: "false"}
-        >{index}. {event_label(step["event"])}{if step["origin"] != "computed", do: " · hypothetical"}</button>
-      </nav>
-      <div class="scrub-row">
-        <button phx-click="previous" id="previous-step" disabled={@cursor == "start"}>Previous</button><form
-          id="scrubber"
-          phx-change="scrub"
-        >
-          <label for="position">Trace position</label><input
-            id="position"
-            type="range"
-            name="position"
-            min="0"
-            max={length(@path)}
-            value={length(Trace.path(@doc, @cursor))}
-          />
-        </form><button phx-click="next" id="next-step">Next</button>
-      </div>
       <.form
         for={@event_form}
         id="next-event"
@@ -106,42 +106,34 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         <.input
           field={@event_form[:type]}
           type="select"
-          label="Next event"
+          label="Append event after selected step"
           options={event_options(@doc["mode"])}
         />
         <.input
           field={@event_form[:key]}
-          type={if @event_form[:type].value == "restart", do: "hidden", else: "number"}
+          type="number"
+          disabled={@event_form[:type].value == "restart"}
           label="Identity"
           min="0"
           max="1000000"
         />
         <.input
           field={@event_form[:amount]}
-          type={if @event_form[:type].value == "request", do: "number", else: "hidden"}
+          type="number"
+          disabled={@event_form[:type].value != "request"}
           label="Amount (¢)"
           min="1"
           max="1000000"
         />
         <.input
           field={@event_form[:outcome]}
-          type={
-            if @event_form[:type].value in ~w(authorize processor_result),
-              do: "select",
-              else: "hidden"
-          }
+          type="select"
+          disabled={@event_form[:type].value not in ~w(authorize processor_result)}
           label="Outcome"
           options={~w(approved declined)}
         />
-        <button class="primary" id="apply-event" disabled={!Trace.current?(@doc)}>Apply event</button>
+        <button class="primary" id="apply-event" disabled={!Trace.current?(@doc)}>Append event</button>
       </.form>
-      <div class="action-row">
-        <button phx-click="next_request" id="try-next-request">Try another 100¢ request</button><button
-          :if={@doc["mode"] == "ledger"}
-          phx-click="confirm_void"
-          id="confirm-void"
-        >Confirm void</button>
-      </div>
       <p class="scope-note" id="trace-revision">
         Revision {@doc["revision"]}. Applying an event at an earlier step creates a branch.
       </p>

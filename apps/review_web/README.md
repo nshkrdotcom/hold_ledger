@@ -7,9 +7,9 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Move a request across a capacity boundary, follow the clause that changes, and play through the assumptions behind a proof. The visual laboratory connects account diagrams, executable conditions, an illustrated proof player and a local/remote exposure sandbox.
+Review a changed guarantee against a concrete case. The main view puts the changed condition beside contract applicability, a hypothetical output and actual execution. One recorded-state timeline keeps the account, entries and events together.
 
-The default case compares a pending void with a deliberate early release. Both outputs have consistent accounting; the retention law rejects the early release. The account and clause views use actual local execution. Proof-storyboard frames and assumption failures are labeled illustrations, with original source and checking evidence available in the inspector.
+The default admission example changes `amount <= remaining` to `amount < remaining`. At exact fit, the example proposal stops covering the input while the actual checkout still admits it. This is a labeled example proposal, not a modification of governing source. Attach two trusted local snapshots to replace it with an actual source comparison and isolated execution.
 
 This separate Phoenix application sends no payments and exposes no provider controls.
 
@@ -27,24 +27,29 @@ uv run --locked python scripts/local_run.py --cwd apps/review_web mix phx.server
 
 Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `100` means one dollar.
 
-## Explore the visual laboratory
+## Review a change
 
-| Instrument | Interaction |
+**Change & case** shows the condition and a comparison table. Precondition applicability, candidate permission and actual execution answer different questions. A failed precondition does not mean that the implementation rejects the input.
+
+Use **Below / Exact fit / Above** or enter an amount. These are scratch inputs: moving a control does not append an event. **Replay scratch input on both sources** runs an attached source pair without changing the recorded trace. **Append this case to trace** explicitly saves a new branch.
+
+**Request repair**, **Needs policy / evidence decision** and **Considered in scope** record scoped reviewer dispositions. An example action records a local concern; actual evidence actions use the original revision-checked review store. Neither authorizes a policy change, blocks a PR nor grants formal acceptance.
+
+The task tabs keep related work together:
+
+| View | What it shows |
 |---|---|
-| Account diagram | Compare before/after capacity, occupied slots and remembered hold identities. Switch between the actual and hypothetical output. |
-| Expression tree | Follow source-derived checks and concrete operands. Hover, focus or pin a clause to highlight its capacity, identity or status in the account. |
-| Proof player | Step or play through given facts, a goal and the source tactic. These frames reconstruct a proof reading; they are not captured Lean Infoview states. |
-| Assumption sandbox | Disable fencing or durability and scrub the local/remote sequence. Uncovered remote exposure appears separately from local capacity. |
+| Clauses | Actual source expressions, explicit AND / OR / NOT groups, operands and helper inspection. |
+| Proof | Full proof source alongside a selected source stage, referenced lemmas and available generated artifacts. No invented live tactic states. |
+| Premises | External assumptions and a current-entry fencing counterfactual. The key and amount come from the selected case; unsupported contexts remain unavailable. |
+| Edit output | Actual and hypothetical results, editable state/effects and deliberate inconsistent totals. |
+| Review record | Saved challenges, notes and session export. |
 
-Choose `po_a2` and use the amount dial or **Below / Exact fit / Above**. The real evaluator updates its eligibility operands immediately. At 101 against 100, the precondition fails and no postcondition promise is evaluated. **Add to trace** preserves a preview as a new branch; moving the dial alone writes nothing.
+The fencing comparison illustrates terminal confirmation followed by delayed authorization for the selected entry. It runs the original local transition and coverage model, then explicitly substitutes a remote outcome when fencing is disabled. It does not test a real processor or alter the session. Other external assumptions remain documented rather than given fabricated fault animations.
 
-In the fault sandbox, disable **Terminal fencing**, then jump to delayed delivery. Local capacity remains zero while the hypothetical processor resurrects 100 cents of remote exposure. Restore fencing to compare with the original Exposure model. Disabling **Durable local record** illustrates an orphaned remote authorization after local recovery loses its identity. These experiments neither mutate the actual session nor change governing models or policy.
+**Find a rejected output** checks six seeded hypothetical output variations against the original selected claim. It reports cases, seed and elapsed time; findings are rechecked. This bounded candidate search is not general fuzzing or a proof of safety when it finds nothing.
 
-**Find a rejected output** tries a small seeded set of hypothetical output variations against the selected real claim, off the LiveView request path. Its result includes cases tested, elapsed time and seed. A result is rechecked before display; cancellation and context changes cannot promote a late result. This is bounded single-source candidate discovery, not general fuzzing, two-version divergence, a universal proof or a promise that every run finds a problem.
-
-The main account/clause path is executable. The proof player is a source-guided illustration. The fault sandbox uses the original model for the conforming prefix and explicit counterfactual state projections for assumption failures. Formal acceptance still comes only from the original report validator.
-
-Open **Inspect source, edit state & review evidence** for full contracts, every tested binding, helper definitions, actual Lean declarations, generated sources and formal status. All 49 catalog obligations are readable; native Lean obligations retain their explicit lack of an executable Elixir counterpart. The admission, timeout-validity and retention readings have illustrated proof sequences. Other obligations keep their actual source without invented storyboards.
+All 49 catalog obligations remain readable. Native Lean obligations retain their explicit lack of an executable Elixir counterpart. Pointwise executions, proof-source readings and full formal evidence remain separate.
 
 ## Step, adjust and branch
 
@@ -81,7 +86,7 @@ python3 apps/review_web/scripts/stage_part3_snapshot.py \
   --destination /absolute/path/to/hold_ledger/tmp/review_studio/snapshots
 ```
 
-Provision compatible pinned dependencies offline into each snapshot’s ignored `tmp/part3_build` directories before replay. Enter the exact printed IDs under **Compare two locally staged source versions**. Each version executes in a separate BEAM process through the original source-derived evaluator. Dirty changes and deletions are identified by content, not branch name.
+Provision compatible pinned dependencies offline into each snapshot’s ignored `tmp/part3_build` directories before replay. Use **Choose source pair** to select the registered snapshots. The exact identities accompany the comparison. Each version executes in a separate BEAM process through the original source-derived evaluator. Dirty changes and deletions are identified by content, not branch name.
 
 The comparison distinguishes an excluded input, an unwanted output permitted by a contract, and an observed implementation difference. A failed search establishes none of their universal negations. Separate processes prevent module-version mixing; they do not make hostile code safe. Browser actions neither install dependencies nor accept executable uploads.
 

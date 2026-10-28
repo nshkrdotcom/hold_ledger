@@ -103,40 +103,161 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     ~H"""
     <section class="clause-table">
       <h3>{@title} <.truth value={@node["value"]} /></h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Source expression</th><th>Values</th><th>Result</th>
-          </tr>
-        </thead><tbody>
-          <tr
-            :for={{node, index} <- Enum.with_index(@clauses)}
-            data-expression={node["expression"]}
-            data-result={inspect(node["value"])}
-          >
-            <td>
-              <code>{short(node["expression"])}</code><button
-                :if={expandable?(node) && @phase != "helper"}
-                class="text-button"
-                phx-click="helper"
-                phx-value-phase={@phase}
-                phx-value-binding={@binding}
-                phx-value-index={index}
-              >Definition</button>
-            </td>
-            <td class="operand-values">{operands(node)}</td>
-            <td>
-              <span :if={node["status"] == "not_evaluated"} class="muted">not evaluated</span><.truth
-                :if={node["status"] != "not_evaluated"}
-                value={node["value"]}
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <.logic node={@node} />
+      <details class="operand-detail">
+        <summary>Operand table & helper inspection</summary>
+        <table>
+          <thead>
+            <tr>
+              <th>Source expression</th><th>Values</th><th>Result</th>
+            </tr>
+          </thead><tbody>
+            <tr
+              :for={{node, index} <- Enum.with_index(@clauses)}
+              data-expression={node["expression"]}
+              data-result={inspect(node["value"])}
+            >
+              <td>
+                <code>{short(node["expression"])}</code><button
+                  :if={expandable?(node) && @phase != "helper"}
+                  class="text-button"
+                  phx-click="helper"
+                  phx-value-phase={@phase}
+                  phx-value-binding={@binding}
+                  phx-value-index={index}
+                >Definition</button>
+              </td>
+              <td class="operand-values">{operands(node)}</td>
+              <td>
+                <span :if={node["status"] == "not_evaluated"} class="muted">not evaluated</span><.truth
+                  :if={node["status"] != "not_evaluated"}
+                  value={node["value"]}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
     </section>
     """
   end
+
+  attr :node, :map, required: true
+
+  def logic(assigns) do
+    op = operator(assigns.node)
+
+    assigns =
+      assign(assigns,
+        op: op,
+        children: logical_children(assigns.node, op),
+        helpers: helper_children(assigns.node)
+      )
+
+    ~H"""
+    <div class={["logic-node", @node["status"] == "not_evaluated" && "not-evaluated"]}>
+      <div :if={@op in [:and, :or, :not] && @node["status"] != "not_evaluated"} class="logic-group">
+        <div class="logic-group-heading">
+          <span class="logic-operator">{String.upcase(Atom.to_string(@op))}</span><span>{if @op ==
+                                                                                              :and,
+                                                                                            do:
+                                                                                              "every condition",
+                                                                                            else:
+                                                                                              if(
+                                                                                                @op ==
+                                                                                                  :or,
+                                                                                                do:
+                                                                                                  "either condition",
+                                                                                                else:
+                                                                                                  "negated condition"
+                                                                                              )}</span><.truth value={
+            @node["value"]
+          } />
+        </div>
+        <div class="logic-children"><.logic :for={child <- @children} node={child} /></div>
+      </div>
+      <div
+        :if={
+          (@op not in [:and, :or, :not, :if, :case] && @node["helper"] == nil) ||
+            @node["status"] == "not_evaluated"
+        }
+        class="logic-leaf"
+      >
+        <code>{String.replace(@node["expression"], "HoldLedger.", "")}</code>
+        <strong :if={inline_values(@node, @op)} class="inline-values">{inline_values(@node, @op)}</strong>
+        <span :if={@node["status"] != "not_evaluated"}><.truth value={@node["value"]} /></span><span :if={
+          @node["status"] == "not_evaluated"
+        }>Not evaluated</span>
+      </div>
+      <div
+        :if={@helpers != [] && @node["status"] != "not_evaluated"}
+        class="helper-logic"
+      >
+        <.logic :for={child <- @helpers} node={child} />
+      </div>
+    </div>
+    """
+  end
+
+  defp helper_children(%{"helper" => helper, "children" => children}) when helper != nil,
+    do: children
+
+  defp helper_children(node) do
+    case Code.string_to_quoted(node["expression"]) do
+      {:ok, {op, _, _}} when op in [:if, :case] ->
+        node["children"]
+
+      {:ok, {{:., _, [_, name]}, _, _}} when name in [:request_eligible?, :exposed_entry?] ->
+        node["children"]
+
+      {:ok, {name, _, _}} when name in [:request_eligible?, :exposed_entry?] ->
+        node["children"]
+
+      _ ->
+        []
+    end
+  end
+
+  defp operator(%{"expression" => expression}) do
+    case Code.string_to_quoted(expression) do
+      {:ok, {op, _, _}}
+      when op in [:and, :or, :not, :if, :case, :<=, :<, :>=, :>, :==, :===, :!=, :!==, :in] ->
+        op
+
+      _ ->
+        nil
+    end
+  end
+
+  defp logical_children(node, op) when op in [:and, :or] do
+    Enum.flat_map(node["children"], fn child ->
+      if child["status"] != "not_evaluated" and operator(child) == op,
+        do: logical_children(child, op),
+        else: [child]
+    end)
+  end
+
+  defp logical_children(node, _), do: node["children"]
+
+  defp inline_values(%{"children" => [left, right]}, op)
+       when op in [:<=, :<, :>=, :>, :==, :===, :!=, :!==, :in] do
+    symbol =
+      %{
+        :< => "<",
+        :<= => "≤",
+        :> => ">",
+        :>= => "≥",
+        :== => "=",
+        :=== => "≡",
+        :!= => "≠",
+        :!== => "≠",
+        :in => "∈"
+      }[op]
+
+    term(left["value"]) <> " " <> symbol <> " " <> term(right["value"])
+  end
+
+  defp inline_values(_, _), do: nil
 
   attr :value, :any, required: true
 
