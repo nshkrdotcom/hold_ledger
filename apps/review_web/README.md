@@ -2,62 +2,20 @@
   <img src="assets/review_web.svg" alt="Hold Ledger Claim Workbench" width="200" height="200">
 </p>
 
-# Hold Ledger Claim Workbench — source engine
+# Hold Ledger Claim Workbench
 
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-This directory is a **separate Phoenix Mix application** built against the pure
-Hold Ledger checkout. Milestone A replaces the old Review Studio evaluator,
-tuple codec, fixed teaching cases and receipt/AI explanation flow. The old
-`/review` and receipt routes are **removed**. The source-anchored human workbench is available at `/` and `/workbench`; `/workbench/:id` reopens a durable local review. Versioned baseline/proposal reviews use `/changes` as described below. A source-claim
-probe makes **no model, formal-checker or remote-processor call**.
+Hold Ledger can prove that its code satisfies a law. But does the law capture the behavior people wanted? The Claim Workbench helps you answer that question by putting the source, requirements, concrete examples, and your review notes side by side.
 
-The current application has **one** claim evaluator:
+This is a **separate Phoenix Mix application** in `apps/review_web`, running against your Hold Ledger checkout. You can test what a law rules out, record your judgment, or compare an existing version with a proposed change. The optional AI assistant suggests questions but cannot answer on your behalf. Claim probes run locally, without calls to a model, formal checker, or payment processor.
 
-- `HoldLedgerReview.Claims.Source` validates all registered DSL and native Lean
-  catalog paths against a live checkout inventory, reads trusted Elixir law AST
-  and binds the exact source bytes plus relevant dependencies to an independent
-  digest. `HoldLedgerReview.Config.source_matches?/1` separately checks the
-  compiled pure Ledger/Spec source. Build-time dependency hashes and core BEAM
-  identities also prevent a restart with stale compiled code from blessing
-  changed evaluator source.
-- `HoldLedgerReview.Claims.Compiler` audits supported `requires`/`expects`
-  expressions, resolves approved aliases, demands identical reducer-call
-  signatures and replaces every occurrence with a hygienic candidate output.
-  One generated in-memory module is compiled **once at startup**, not per
-  request, user input or model output.
-- `HoldLedgerReview.Claims` owns the generation, diagnostics and loaded-code
-  identity. Every new probe compares the fresh source and loaded-code
-  fingerprints. Drift yields `:source_or_compiled_code_drift`, requires a
-  controlled rebuild/restart and never hot-purges an active evaluator.
-- `HoldLedgerReview.ClaimProbe` binds actual event arguments and source
-  `Spec.lookup` entry equalities, enumerating all eligible bounded entries
-  (including entries at keys different from the event key). It compares the
-  exact generated actual and substituted source expressions, checks independent
-  `Spec.expected_step`, and reports per-binding provenance, completeness and
-  the bounded four-label result. A different reducer operation is marked
-  `:not_probed`, not silently treated as a green claim.
-  Only required positive lookup equalities justify finite entry enumeration;
-  an optional equality under `or` cannot certify an exhaustive domain.
-- `HoldLedgerReview.TermCodec` is the **only** native event/effect/state/output
-  codec. Events/effects use exact `type`/`key`/`amount` JSON with `null` for
-  arity-two operations; outputs use exact `after`/`result`/`effects`. Statuses,
-  results, integers, list sizes and properties are allowlisted. A shape-valid
-  hypothetical after-state may fail `HoldLedger.Spec.valid?/1` and still be
-  evaluated. `HoldLedgerReview.Canonical` hashes only validated JSON and uses
-  the typed output codec for native values, with no generic tuple fallback.
+This app replaces the old Review Studio evaluator, tuple codec, fixed teaching cases, and receipt/AI explanation flow. The `/review` and receipt routes are gone; checks now use source-derived claims and one typed codec.
 
-These modules do **not** assert that a hypothetical passes Lean. The original
-`test/laws` declarations and independent `HoldLedger.Spec` remain unchanged.
-Native Lean obligations are catalogued but never fabricated as compiled Elixir
-contracts. Formal status requires an independently checked source-matching
-report; the available `ProofEvidence` parser does not execute a checker.
+## Run it locally
 
-## Local development
-
-Use the pinned Elixir **1.20.4**, OTP **29.1.2** and repository toolchain. From
-the repository root:
+Use the repository's pinned toolchain: **Elixir 1.20.4** and **Erlang/OTP 29.1.2**. Set up the root checkout as described in [Getting started](../../guides/getting-started.md), then run the Phoenix app from the repository root:
 
 ```sh
 cd apps/review_web
@@ -68,158 +26,91 @@ mix precommit
 mix phx.server
 ```
 
-Open `http://localhost:4000/` for the human workbench, or `/workbench` to
-list/create durable reviews. Choose P01–P08, explore source and typed graph,
-edit raw bounded JSON as a complete what-if witness, and submit a human judgment
-or pin. The store re-evaluates **the submitted complete witness**, atomically
-persists matching source/probe/answer and maintains independent human and
-document revisions. Source/report generation drift makes existing reviews
-read-only; rebuild/restart and begin a new review. The app must not start
-`HoldLedger.Server`, perform remote operations, or synthesize a proof report. If a
-registered law, predicate, compiler or loaded module changes in development,
-stop probing and rebuild/restart before relying on results.
+Open <http://localhost:4000/>. In development, Phoenix listens on loopback. This prototype is for local work, not hosted deployment. If the ledger is in another checkout, point `HOLD_LEDGER_REVIEW_ROOT` at that checkout before starting the app. Its ledger source must match the code the app was compiled against.
 
-Run the root suite independently from the root checkout, including
-`test/claim_source_parity_test.exs`, which compares the AST extraction against
-the root Lynx-dependent `HoldLedger.ProofCase.law_declarations/1` in its own
-test environment. Phoenix never imports that test-only module at runtime.
+The main routes are:
 
-B workbench modules are `lib/hold_ledger_review/{design_graph,dossier,adversarial,review_store,review_report}.ex`,
-`lib/hold_ledger_review_web/live/workbench_live.ex`, and the source and export
-controllers. The eight bounded seed JSON fixtures live in `priv/scenarios/`.
-Current record shape is specified by the separately managed milestone docset's
-`contracts/review.schema.json`, not a backward-compatible migration.
+| Route | Purpose |
+| --- | --- |
+| `/` or `/workbench` | Start or list human reviews |
+| `/workbench/:id` | Reopen a saved review |
+| `/changes` | Create a change review from staged local snapshots |
+| `/changes/:id` | Reopen a saved change package |
 
-The tests in `test/hold_ledger_review/` exercise graph provenance, pointwise
-candidates, the current document shape and store transactions; tests in
-`test/hold_ledger_review_web/` exercise the LiveView and source/export routes.
-For browser checks, start Phoenix in a separate terminal, then run `npm ci`,
-`npx playwright install chromium`, and `npm test` from `test/browser/`. The
-committed lockfile was resolved by a real npm installation. The browser tests
-create synthetic review files under ignored `tmp/review_studio/reviews/`.
+Reviews are stored locally. You can inspect source-linked evidence and export a review without starting `HoldLedger.Server` or sending payments.
 
-For offline, isolated M1–M10 reducer observation from the code root, run:
+## Review a claim
 
-```sh
-uv run --locked python scripts/harvest_mutants.py --execute
-uv run --locked python scripts/local_run.py --cwd apps/review_web mix run scripts/assess_mutant_harvest.exs -- ../../tmp/verification/mutant-harvest.json
-```
+At `/workbench`, choose one of eight bounded examples, P01–P08. Each pairs a starting ledger state and an event with a proposed output. Follow the source links and typed design graph, then edit that output to ask: *Would the law reject this behavior?*
 
-The harvester forces scratch compilation and records source SHA-256, loaded
-BEAM identity, complete outputs and concrete assertion results. The assessor
-uses the original A evaluator and records both tested rows and the unexamined
-catalog. Native operations outside the review codec stay explicitly unprobeable;
-they are not escapes or formal failures. Static manifests never claim observed
-outputs. Generated logs and reports stay ignored.
+Suppose the processor has authorized a hold and the ledger receives a void request. Releasing capacity right away may leave the counters consistent, but it lets another request use capacity before the void is confirmed. Change the proposed output to see which laws reject that behavior. The workbench makes no claim that the altered output happened in a real run.
 
-For a manual no-server challenge to the contract's meaning, use
-[`guides/interactive_review.md`](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md). Product, transaction and evidence specifications for the B workbench and
-later configured AI C phase live in the separate milestone docset. Nothing
-here changes root proof acceptance or human policy authority.
+The editor takes a **complete proposed output** with `after`, `result`, and `effects` fields. Events and effects use `type`, `key`, and `amount` (`null` for operations without an amount). The codec checks exact fields, types, statuses, integer values, and list sizes. A proposed after-state can be well formed yet fail `HoldLedger.Spec.valid?/1`; that is often exactly the behavior you want to challenge. An invalid JSON draft, by contrast, cannot be submitted as an answer.
 
-## Milestone C: optional configured-model collaboration
+When you submit a judgment, the server checks the **exact witness you submitted**, not an earlier valid draft. It saves the matching source identity, probe, and answer together and tracks human-answer revisions separately from document revisions. Pinning a witness, accepting a question, and recording a conclusion are separate actions.
 
-Milestone C adds one **opt-in** Inference path to the existing workbench; it does
-not change the provider/model, add an alternative evaluator, resurrect the
-Explainer routes or authorize model-written judgments. It reuses
-`Inference.Client.new!/1`, `Inference.capabilities/1`, JSON-Schema
-`Inference.Request.from_messages/2`, and `Inference.complete/2` with the
-configured ASM/Codex adapter. Without declared JSON-Schema support, requests
-fail closed. Failures never block human review or source-based what-if checking.
+You can use the workbench without an AI provider. Model suggestions are kept separate from your recorded choices, and computed contradictions appear before any model interpretation.
 
-- `AI` is the configured provider boundary, `AIPacket` creates bounded
-  source-linked packets, and `AIProtocol` validates exact schemas plus packet
-  IDs/citations, independent pointwise predictions and typed challenge witnesses.
-  Canonical contracts remain byte-identical to the docset. The configured
-  provider receives a strict wire schema using disjoint `anyOf` event branches
-  and locally enforced array uniqueness; every response still passes the full
-  canonical schema and semantic checks. Permitted card targets are explicit.
-  Source excerpts prioritize policy, complete reducer/oracle and law text before
-  large proof files, within the same 64 KiB source budget. Source, prompt and
-  report freshness are checked again immediately before dispatch.
-  Discovery sends *source-only* graph snippets and unlabeled synthetic probes;
-  the hidden rubric, fixture case names, expected matrix, mutant labels and
-  human answers are not included. Verified noncontiguous source excerpts are
-  marked; source/digest drift refuses a packet. Follow-up sends the latest
-  **recorded** human answer, computed evidence and prior model question **only
-  on the explicit follow-up opt-in**.
-- `AIJobs` starts one pending request per review via the single-writer
-  `ReviewStore`, then runs the provider call in `Task.Supervisor` independently
-  of the LiveView. A completed result is validated again at the commit boundary.
-  A stale human revision/source is discarded; restart interrupts pending work;
-  there is no implicit resend. `completion_digest` retains exact-retry
-  idempotency. All model questions remain `ai_proposed` suggestions until
-  explicitly accepted by a person; the human answer CAS and conclusion remain
-  separate.
-- The UI requires a fresh checkbox opt-in for **each** request. Source/graph
-  evidence is used for discovery; challenge additionally sends the current
-  draft; follow-up additionally sends reviewer choice/reason and computed
-  examples. The AI history is durable, reveals computed contradictions before
-  model readings, links suggestions to sources, and lets the user try a typed
-  challenge as an **unsaved** draft.
+## How the claim check works
 
-Controlled ExUnit tests live in
-`test/hold_ledger_review/{ai_protocol,ai_jobs}_test.exs`, with a test-only
-`test/support/controlled_adapter.ex`; UI no-consent checks live in the LiveView
-and Playwright suites. These controlled tests are not live provider evidence.
+The workbench reads Elixir law declarations from your checkout. It does not maintain another set of rules. At startup, it compiles one evaluator. Each probe checks the proposed output against the source expressions and the independent `HoldLedger.Spec.expected_step` oracle.
 
-### Configured-model quality benchmark (requires deliberate data-sharing consent)
+The main pieces are:
 
-The actual evaluation must run **locally with the configured provider and
-credentials**. From the repository root, after the required QC/toolchain setup,
-with explicit authorization to transmit selected source and synthetic draft
-content to that provider:
+- **`HoldLedgerReview.Claims.Source`** checks the registered DSL and native Lean catalog against the checkout inventory, extracts trusted law AST, and hashes the exact source and dependencies. `HoldLedgerReview.Config` separately checks the compiled `Ledger` and `Spec` source and build identity.
+- **`HoldLedgerReview.Claims.Compiler`** audits supported `requires` and `expects` forms, resolves approved aliases, checks reducer-call signatures, and substitutes the hypothetical output for every matching call. The resulting module is compiled once at startup, never from a browser request or model response.
+- **`HoldLedgerReview.Claims`** owns evaluator generation, diagnostics, and loaded-code identity. Each probe compares the current source and loaded modules with their recorded fingerprints.
+- **`HoldLedgerReview.ClaimProbe`** binds event arguments and required `Spec.lookup` equalities to actual entries. It checks all eligible entries in the bounded state, even when the entry key differs from the event key. Results report binding provenance, domain completeness, and one of four bounded outcomes. Claims involving another reducer operation are marked `:not_probed`.
+- **`HoldLedgerReview.TermCodec`** defines the native JSON representation; **`HoldLedgerReview.Canonical`** hashes validated JSON and uses the typed codec when converting native outputs. There is no generic tuple fallback.
+
+Only required positive `Spec.lookup` equalities justify enumerating a complete bounded set of entries. A lookup in an optional `or` branch cannot do that. The probe reports the gap rather than calling a partial check complete.
+
+If a law, predicate, compiler dependency, or loaded module changes, new probes return `:source_or_compiled_code_drift`. Rebuild and restart before probing again. Reviews tied to the old source or report generation become read-only; start a new review for the changed source. The running evaluator is never hot-purged.
+
+### What the evidence means
+
+A pointwise check tells you whether one candidate output satisfies a source claim for one bounded input. It does not prove that the law holds generally. Native Lean obligations are listed in the catalog but are never compiled into invented Elixir contracts. `ProofEvidence` reads existing checked reports; it does not run a formal checker.
+
+Formal status requires an independently checked report for the same source. That report establishes the stated theorem, not the policy behind it. The original `test/laws` definitions and the independent `HoldLedger.Spec` remain the reference points for this workbench.
+
+For a manual exercise that questions the contract without starting the web app, read [Interactive review](../../guides/interactive_review.md). For the boundaries of the root proof pipeline, see [Verification](../../guides/verification.md).
+
+## Ask a model for another question (optional)
+
+AI requests use the configured [Inference](https://hex.pm/packages/inference) client and ASM/Codex adapter. The evaluator stays the same, and only a person can submit a human judgment. If the provider does not declare JSON-Schema support, the request fails closed; a provider error never blocks a manual review.
+
+You must opt in **separately for every request**. Discovery sends bounded source-linked excerpts and unlabeled synthetic probes. It excludes human answers, hidden scoring criteria, fixture names, expected matrices, and mutant labels. A challenge can include the current draft. An answer-aware follow-up can include the latest recorded choice, the reason for it, computed evidence, and the previous question—but only when you opt in to that particular follow-up.
+
+`HoldLedgerReview.AIPacket` builds the source-bound packet, while `AIProtocol` checks the reply against the canonical schemas, allowable source IDs, pointwise predictions, and typed witnesses. The provider sees a strict wire schema with disjoint `anyOf` event branches. Local checks enforce array uniqueness, permitted card targets, and the canonical response contract. Packets have a **64 KiB source budget**, prioritizing policy, full reducer/oracle definitions, and laws over large proof files. The app checks source, prompt, and report freshness before dispatch. Excerpts from nonadjacent source regions are marked, and source/digest drift stops dispatch.
+
+`AIJobs` permits one pending request per review through the single-writer `ReviewStore`. It runs the provider call under a `Task.Supervisor`, outside LiveView. It validates the reply again before saving it. A changed human revision or stale source discards the result. A restart interrupts pending work without resending it; `completion_digest` handles exact retries. Suggested cards remain `ai_proposed` until you accept them. An offered challenge opens as an **unsaved draft**. Your answers and final conclusion remain yours.
+
+### Evaluate the configured provider
+
+Controlled ExUnit and browser tests cover the protocol and consent controls. They do not measure a live provider. To run the local benchmark against the configured provider, authorize transmitting selected source and synthetic drafts, then run this from the repository root:
 
 ```sh
 uv run --locked python scripts/local_run.py --cwd apps/review_web mix run scripts/benchmark_discovery.exs -- --allow-external-source-data
 ```
 
-Run the benchmark and browser exercise sequentially: each Mix runtime owns a
-single writer, and startup recovery interrupts pending jobs in its configured
-review directory. Concurrent runtimes sharing that directory are unsupported.
+Without `--allow-external-source-data`, the benchmark refuses to send. With consent, it runs source-only discovery and typed challenges for three policy situations. It saves real provider output, including rejected proposals, in ignored `tmp/review_studio/benchmarks/`. Errors are not replaced with fixtures. The model never sees the private rubric or scorer. The scorer counts distinct state/event/output challenges and excludes supplied examples and changes limited to optional follow-on events.
 
-Without that flag the benchmark **refuses without sending**. It runs source-only
-discovery and one typed challenge on each of three policy situations, writing a
-real-provider result to ignored `tmp/review_studio/benchmarks/` only if the
-invocation runs. Errors remain errors, not substituted controlled fixtures. Bounded original
-provider responses (including rejected proposals) remain in the ignored report
-for review. Challenge novelty excludes all supplied synthetic witnesses;
-source-node citations resolve to exact files alongside excerpt citations.
-The scorer counts distinct before/event/output challenges, excluding supplied
-examples and changes limited to optional follow-on events. Challenge requests
-show the same opaque, unlabeled synthetic examples so the model can seek a
-new transition boundary without receiving computed labels or the rubric.
-The model never receives `priv/benchmark/rubric.json` or the scorer.
-
-Run the separate private offline scorer against the **actual generated path**:
+Score the file actually created by that run:
 
 ```sh
 python3 apps/review_web/scripts/score_discovery.py tmp/review_studio/benchmarks/discovery-<actual-digest>.json
 python3 -m unittest discover -s apps/review_web/scripts -p 'test_score_discovery.py' -v
 ```
 
-The scorer's six criteria and source-link checks yield only provisional lexical
-previews unless the reviewer supplies a complete `--adjudication` JSON mapping
-`R1`–`R6` to `label`, `rationale` and `source_evidence`. Only semantic review
-of actual source-linked model statements can establish discovery quality;
-benchmark success does not establish formal verification or a human conclusion.
-A development target is 4/6 properly surfaced, zero unchallenged false proof
-status claims, and one genuinely novel valid challenge. Preserve the actual
-run log, latency, redundancies, prediction conflicts, challenge novelty and
-human-adjudication record as **local C QC**, not as a fabricated first-half pass.
+The private scorer can preview lexical matches. To judge actual discovery quality, a reviewer must supply an `--adjudication` JSON mapping `R1`–`R6` to `label`, `rationale`, and `source_evidence`. The local quality target is **4/6 correctly surfaced**, no unchallenged false proof-status claims, and at least one genuinely new valid challenge. Keep the real run log, latency, repetitions, disagreements, and adjudication record; do not treat a benchmark score as proof acceptance or a human conclusion.
 
-## Versioned change-review workspace
+Run the benchmark and browser checks **sequentially** if they share a review directory. Each Mix runtime owns a single writer, and startup recovery interrupts pending jobs. Concurrent runtimes against the same review directory are unsupported.
 
-`/changes` is a separate, optional baseline-versus-proposal review route. The
-existing `/workbench`, strict codec, source-derived rule evaluator, human review
-CAS and formal acceptance workflow remain in place. This route reviews two
-**content-addressed, operator-staged local source trees** with policy anchors
-from the baseline source. Neither a branch label nor a source excerpt is an
-execution or proof identity.
+## Compare a baseline with a proposal
 
-Prepare two trusted local Git worktrees (including an uncommitted proposal if
-necessary), each based on the same pinned dependencies and compatible evaluator
-and toolchain sources. From the repository root, stage each source tree using:
+At `/changes`, you can compare how the claims behave before and after a code change. The workspace reads two **local source trees that you stage yourself**. Each snapshot has a content-based identity, so a branch name alone will not do. A review package keeps the baseline policy anchors alongside the source differences.
+
+Prepare two trusted local Git worktrees, with the same pinned dependencies and compatible toolchain/evaluator sources. The proposal may contain uncommitted changes. Stage each tree separately from the repository root:
 
 ```sh
 python3 apps/review_web/scripts/stage_part3_snapshot.py \
@@ -227,79 +118,63 @@ python3 apps/review_web/scripts/stage_part3_snapshot.py \
   --destination /absolute/path/to/hold_ledger/tmp/review_studio/snapshots
 ```
 
-Open `/changes`, select the printed 64-character snapshot IDs, and create a
-package. A package freezes both source manifests, derived differences and the
-baseline specification-policy anchor. If the source changes, stage a **new**
-identity; the old findings cannot silently move to the new tree. The app allows
-only locally selected trusted snapshots. It refuses arbitrary uploaded code.
+Open `/changes`, enter the two printed 64-character snapshot IDs, and create a package. It freezes the source manifests, differences, and baseline specification-policy anchor. If either tree changes, stage it again and create a new identity. The app accepts locally selected trusted snapshots, not arbitrary uploaded projects.
 
-Use the structured event/state/entry/effect editor or the advanced JSON importer
-(the same `TermCodec` validates both). Proposed totals are editable separately:
-only an explicit **Recalculate used totals** action changes them automatically.
-A starting ledger must be valid to pin/replay; a structurally representable
-wrong proposed output is useful and allowed. Pin, isolated replay, a scoped
-human finding, a model-question acceptance and conclusion are separate actions.
-An expert view exposes results directly; the learning view records when the
-reviewer chose to reveal results.
+### Explore the change
 
-Replay starts two **separate local BEAM processes** through
-`apps/review_web/scripts/part3_worker.py` and the pinned `scripts/local_run.py`.
-Each selected source compiles into its own isolated build directory. The worker
-uses the **existing** `Adversarial`, `ClaimProbe`, `Claims`, `Ledger`, `Spec` and
-`TermCodec` modules rather than a new evaluator. The wrapper uses no shell,
-network fetch or browser-controlled command arguments. Local dependencies must
-be provisioned explicitly and offline beforehand. The supervision boundary
-provides resource/time/cancellation handling but **is not a sandbox** for
-malicious executable projects; only operator-trusted worktrees may be staged.
-An unchanged source and an identified successful replay may be reused only
-under their exact package/input/dependency/codec/evaluator identities.
+Use the structured editor for states, events, entries, and effects, or import the same data as JSON; both paths use `TermCodec`. Proposed accounting totals remain independently editable. They change automatically only when you select **Recalculate used totals**. The starting ledger must be valid before a witness can be pinned or replayed, but the proposed output may deliberately be wrong.
 
-The separate formal attempt uses the existing required-scope `run_laws.py` gate
-and retains source-matching checked-report status. Pointwise examples and
-syntactic differences do not constitute general contract implications or proof
-acceptance. Source, proof inventory, translations and checked artifacts are
-shown with their own provenance and missing state. The model adviser is
-optional, uses the pre-existing Inference ASM/Codex configuration, and sends
-nothing without an explicit new checkbox consent per request. No model owns a
-human answer or conclusion.
+You can pin a witness, replay the two versions, record a scoped human finding, accept a model question, or write a conclusion. Those are separate actions. The learning view records when you choose to reveal results; the expert view shows them directly.
 
-Part 3 tests are in `test/hold_ledger_review/part3_test.exs`,
-`test/browser/part3.spec.cjs` and `scripts/test_part3_tools.py`. On a local
-machine provisioned through the root pinned wrapper, run the standard Phoenix
-and root gates plus the focused tests; the separately maintained Part 3 docset has the
-verification matrix and local steps. Unrecognized prior record
-schemas are refused rather than migrated or silently given new meanings.
+Replay starts **two local BEAM processes**, one per source tree, using `apps/review_web/scripts/part3_worker.py` and the pinned `scripts/local_run.py`. Each source tree compiles in its own isolated build directory. Both processes use the existing `Adversarial`, `ClaimProbe`, `Claims`, `Ledger`, `Spec`, and `TermCodec` modules; there is no change-review-only evaluator. The runner avoids shell commands, network fetches, and browser-supplied command arguments. Provision local dependencies offline before replay.
 
-Change-directed search offers at most 48 distinct synthetic challenges for
-supported changed rules, helpers and inventories: amounts, statuses, identities,
-wrong candidate effects/frame/totals and two-event consequences. Selecting a
-challenge edits only the draft. **Run bounded isolated search** explicitly runs
-the identified pair for each case; cancellation or failure stops the search.
-Unsupported domains, native-only bindings and general solver results remain
-unresolved. A completed search cannot establish equivalence or safety.
+**Isolation is not a security sandbox.** Time limits, cancellation, and separate build directories do not make a malicious project safe to execute. Stage only worktrees you trust. A successful replay can be reused only when its package, input, dependencies, codec, and evaluator identities are unchanged.
 
-The proof pane also accepts a locally staged offline/CI artifact index under
-`tmp/verification/part3-*/`. The closed index identifies version 1, snapshot ID,
-source-manifest digest, full required scope, producer, optional report digest
-and artifact paths/digests/sizes/kinds/law slugs. Use
-`Part3Store.ingest_artifacts/2` or the explicit intake form after copying exact
-bytes into the selected snapshot. Each new index is retained; exact repeats
-are idempotent. Missing or changed bytes are refused or displayed as missing
-or stale. Translations, dependency records, exports and checker diagnostics
-are inspectable when present. Original `ProofEvidence` alone derives formal
-acceptance; successful artifact intake and historical report revalidation
-are separate from fresh proof execution.
+For changed supported laws, helpers, and inventories, change-directed search can propose up to **48 distinct synthetic challenges**. It varies amounts, statuses, keys, effects, frame fields, accounting totals, and two-event consequences. Selecting a suggestion changes the draft only. **Run bounded isolated search** actually replays the selected pair; cancellation or failure stops the run. Unsupported domains, native-only bindings, and general solver results remain unresolved. A bounded search cannot prove the two versions equivalent or safe.
 
-Optional answer-aware follow-up selects a recorded human finding and an
-accepted model question. Only that attributed context and its linked evidence
-join the source-bound packet; source-only discovery still excludes human
-answers. Each send needs fresh opt-in, cleared after submit and reconnect.
-New answers or source changes invalidate pending context. A suggestion cannot
-write a human finding or confer policy or formal acceptance.
+### Inspect proof evidence
 
-For explicit offline snapshot provisioning, copy the already locked local
-dependency sources to the isolated `tmp/part3_build/deps` path, set the
-corresponding `MIX_BUILD_PATH`, `MIX_DEPS_PATH`, and
-`PYTHONPYCACHEPREFIX=<snapshot>/tmp/part3_build/pycache`, and use the pinned
-wrapper with `uv run --offline --locked`. Keep Python caches out of source
-directories; additional unmanifested source files cause refusal.
+The separate formal attempt uses the existing `run_laws.py` required-scope gate. A pointwise witness, source diff, or accepted snapshot does not establish a general theorem or formal acceptance. The proof pane keeps the source, proof inventory, translations, checked artifacts, and missing evidence distinct.
+
+You can also import an offline or CI-produced artifact index from `tmp/verification/part3-*/`. A closed version-1 index records its snapshot, source-manifest digest, required scope, producer, optional report digest, and each artifact's path, hash, size, kind, and law slug. Use the explicit intake form or `Part3Store.ingest_artifacts/2` after copying the exact files into the selected snapshot. The app retains new indexes, recognizes identical repeats, and flags missing or changed bytes. It lets you inspect translations, dependency records, exports, and checker diagnostics when they exist.
+
+Artifact intake is not a fresh proof run. The original `ProofEvidence` machinery alone determines formal acceptance from matching checked reports. Revalidating an old report, importing an artifact, and running a checker are different operations.
+
+Change review can also request an answer-aware model follow-up based on one recorded human finding and an accepted model question. It sends only their attributed context and linked evidence after new consent. Source-only discovery still excludes human answers. Pending context becomes stale when a relevant answer or source changes; model suggestions cannot alter findings or confer policy or proof approval. Existing `/workbench` review and human-answer compare-and-swap (CAS) rules continue to apply.
+
+For fully offline snapshots, provision the locked dependency sources into `tmp/part3_build/deps`, set the corresponding `MIX_BUILD_PATH`, `MIX_DEPS_PATH`, and `PYTHONPYCACHEPREFIX=<snapshot>/tmp/part3_build/pycache`, and run the pinned wrapper with `uv run --offline --locked`. Keep Python caches out of source directories: unexpected source files fail manifest checks. Unknown older review formats are refused, not silently migrated.
+
+## Check your changes
+
+The Phoenix tests cover the app; the root tests cover the law declarations it reads. Run both when changing the source evaluator or the laws. In particular, the root `test/claim_source_parity_test.exs` compares AST extraction against `HoldLedger.ProofCase.law_declarations/1` in the root's Lynx-dependent test environment. Phoenix does not import that test-only module at runtime.
+
+The tests are grouped by what they exercise:
+
+- `test/hold_ledger_review/` — graph provenance, candidate outputs, codecs, record revisions, AI protocol/jobs, and change-review behavior.
+- `test/hold_ledger_review_web/` — LiveView, source inspection, export routes, and opt-in behavior.
+- `test/browser/` — browser interactions, submission races, and consent regressions.
+- `test/hold_ledger_review/part3_test.exs`, `test/browser/part3.spec.cjs`, and `scripts/test_part3_tools.py` — change-review coverage.
+
+To run the browser suite, start Phoenix in one terminal. In another:
+
+```sh
+cd apps/review_web/test/browser
+npm ci
+npx playwright install chromium
+npm test
+```
+
+The Playwright tests write synthetic review records under ignored `tmp/review_studio/reviews/`; they do not contact a provider, run the formal checker, or execute mutants. The controlled AI tests use `test/support/controlled_adapter.ex`, not live provider output.
+
+For offline M1–M10 mutation observations, run these commands at the repository root:
+
+```sh
+uv run --locked python scripts/harvest_mutants.py --execute
+uv run --locked python scripts/local_run.py --cwd apps/review_web mix run scripts/assess_mutant_harvest.exs -- ../../tmp/verification/mutant-harvest.json
+```
+
+The harvester compiles in scratch space, then records source SHA-256 hashes, loaded BEAM identities, complete outputs, and assertion results. The assessor uses the original source evaluator and records what was tested alongside what remains outside the catalog. Operations the native codec cannot represent stay marked unprobeable—not as proof failures or unexpected successes. Static manifests describe expectations, not observed runs. Generated logs and reports remain ignored.
+
+The core and web code live in `lib/hold_ledger_review/` and `lib/hold_ledger_review_web/`. `design_graph.ex`, `dossier.ex`, `adversarial.ex`, `review_store.ex`, and `review_report.ex` support human review. `live/workbench_live.ex` provides the review UI; `live/part3_live.ex` provides the change workspace. The bounded seed cases live in `priv/scenarios/`.
+
+Review records and their schema are maintained with the separate milestone contracts (including `contracts/review.schema.json`); they are not promised a backward-compatible migration path. The separate Part 3 docset contains its verification matrix and local quality-control steps. None of the workbench's results change the root project's proof-acceptance rules or transfer policy authority away from the reviewer.
