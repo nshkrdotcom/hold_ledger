@@ -6,7 +6,7 @@ defmodule HoldLedgerReview.Claims.Source do
   """
   alias HoldLedgerReview.Anchor
 
-  @compiler_version "source-ast-trace-20261028"
+  @compiler_version "source-ast-explain-20261028"
   @support_sources ~w(
     lib/hold_ledger/ledger.ex
     lib/hold_ledger/spec.ex
@@ -20,6 +20,11 @@ defmodule HoldLedgerReview.Claims.Source do
     apps/review_web/lib/hold_ledger_review/claims.ex
     apps/review_web/lib/hold_ledger_review/claims/source.ex
     apps/review_web/lib/hold_ledger_review/claims/compiler.ex
+    apps/review_web/lib/hold_ledger_review/claims/explanation.ex
+    apps/review_web/lib/hold_ledger_review/proof_reading.ex
+    apps/review_web/lib/hold_ledger_review/contrast.ex
+    apps/review_web/priv/claim_readings.json
+    test/support/lean/library.json
     apps/review_web/lib/hold_ledger_review/claim_probe.ex
     apps/review_web/lib/hold_ledger_review/term_codec.ex
     apps/review_web/lib/hold_ledger_review/anchor.ex
@@ -27,6 +32,11 @@ defmodule HoldLedgerReview.Claims.Source do
     apps/review_web/lib/hold_ledger_review/config.ex
     apps/review_web/lib/hold_ledger_review/application.ex
   )
+
+  @build_root Path.expand("../../../../..", __DIR__)
+  @shared_sources Path.wildcard(Path.join(@build_root, "test/support/lean/*.lean"))
+                  |> Enum.map(&Path.relative_to(&1, @build_root))
+  @support_sources Enum.uniq(@support_sources ++ @shared_sources)
 
   def version, do: @compiler_version
   def support_sources, do: @support_sources
@@ -92,7 +102,7 @@ defmodule HoldLedgerReview.Claims.Source do
       |> Enum.map(&Path.relative_to(&1, root))
       |> Enum.sort()
 
-    with true <- files == source.law_files,
+    with true <- files == source.law_files and shared_inventory_matches?(root, source),
          {:ok, bytes} <- Anchor.read_many_under(root, Map.keys(expected) ++ extra_paths),
          digests = Map.new(bytes, fn {path, content} -> {path, Anchor.sha(content)} end),
          true <- Enum.all?(expected, fn {path, digest} -> digests[path] == digest end) do
@@ -100,6 +110,23 @@ defmodule HoldLedgerReview.Claims.Source do
     else
       _ -> {:error, :source_or_compiled_code_drift}
     end
+  end
+
+  defp shared_inventory_matches?(root, source) do
+    expected =
+      source.file_sha256
+      |> Map.keys()
+      |> Enum.filter(
+        &(String.starts_with?(&1, "test/support/lean/") and String.ends_with?(&1, ".lean"))
+      )
+      |> Enum.sort()
+
+    actual =
+      Path.wildcard(Path.join(root, "test/support/lean/*.lean"))
+      |> Enum.map(&Path.relative_to(&1, root))
+      |> Enum.sort()
+
+    expected == actual
   end
 
   def extract(root, %{catalog: catalog}) do

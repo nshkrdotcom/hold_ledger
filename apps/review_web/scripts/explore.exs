@@ -1,6 +1,6 @@
 # Run with mix run --no-start scripts/explore.exs -- request.json.
 # This process owns a separate scratch store and never opens a listener or provider.
-alias HoldLedgerReview.{Canonical, Config, Trace}
+alias HoldLedgerReview.{Canonical, Config, ProofReading, Trace}
 
 args = Enum.reject(System.argv(), &(&1 == "--"))
 with [path] <- args,
@@ -16,6 +16,10 @@ with [path] <- args,
   result = case request do
     %{"operation" => "step", "mode" => mode, "before" => before, "event" => event} when map_size(request) == 4 ->
       Trace.execute(mode, before, event)
+    %{"operation" => "read_claim", "slug" => slug} when map_size(request) == 2 ->
+      ProofReading.document(slug)
+    %{"operation" => "explain_claim", "slug" => slug, "witness" => witness} when map_size(request) == 3 ->
+      ProofReading.explain(slug, witness)
     %{"operation" => "source", "path" => path} when map_size(request) == 2 ->
       case Trace.source(path) do
         {:ok, bytes, digest} -> {:ok, %{"path" => path, "bytes" => bytes, "sha256" => digest}}

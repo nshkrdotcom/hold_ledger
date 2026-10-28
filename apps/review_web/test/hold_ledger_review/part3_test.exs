@@ -1,6 +1,5 @@
 defmodule HoldLedgerReview.Part3Test do
   use ExUnit.Case, async: false
-  import Phoenix.LiveViewTest
   import Phoenix.ConnTest, only: [get: 2]
   @endpoint HoldLedgerReviewWeb.Endpoint
 
@@ -70,6 +69,11 @@ defmodule HoldLedgerReview.Part3Test do
     source = Config.root()
 
     files = Enum.filter(files, &File.regular?(Path.join(Config.root(), &1)))
+
+    readme = Map.get(overrides, "README.md", File.read!(Path.join(source, "README.md")))
+
+    overrides =
+      Map.put(overrides, "README.md", readme <> "\n<!-- isolated test VM #{System.pid()} -->\n")
 
     manifest =
       Map.new(files, fn path ->
@@ -617,11 +621,9 @@ defmodule HoldLedgerReview.Part3Test do
     assert late["conclusion"] == nil
   end
 
-  test "archived change records are read only and cannot dispatch model requests", ctx do
+  test "removed archive routes cannot dispatch model requests", ctx do
     {:ok, p} = Part3Store.create(ctx.baseline, ctx.proposal)
-    {:ok, view, _} = live(Phoenix.ConnTest.build_conn(), "/changes/" <> p["id"])
-    assert has_element?(view, "#archived-record")
-    refute has_element?(view, "#part3-finding")
+    assert get(Phoenix.ConnTest.build_conn(), "/changes/" <> p["id"]).status == 404
     assert {:ok, unchanged, :ok} = Part3Store.get(p["id"])
     assert unchanged["human_findings"] == []
     assert unchanged["ai_history"] == []
@@ -876,7 +878,7 @@ defmodule HoldLedgerReview.Part3Test do
   test "identified source and export routes refuse unknown paths and formats", ctx do
     {:ok, p} = Part3Store.create(ctx.baseline, ctx.proposal)
     [change] = p["source_changes"]
-    prefix = "/changes/" <> p["id"]
+    prefix = "/comparisons/" <> p["id"]
     conn = get(Phoenix.ConnTest.build_conn(), prefix <> "/source/proposal/" <> change["id"])
     assert conn.status == 200
 

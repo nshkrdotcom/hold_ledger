@@ -5,7 +5,7 @@ defmodule HoldLedgerReview.Claims.Compiler do
   call in the original `expects`, never an independently handwritten predicate.
   """
 
-  alias HoldLedgerReview.Claims.Source
+  alias HoldLedgerReview.Claims.{Explanation, Source}
 
   @generated HoldLedgerReview.Claims.Generated
   # This module is created only after the trusted source has been audited.
@@ -98,7 +98,7 @@ defmodule HoldLedgerReview.Claims.Compiler do
           @compile :debug_info
           def claim_manifest_sha256, do: unquote(manifest_sha)
           def compiler_version, do: unquote(Source.version())
-          unquote_splicing(definitions)
+          unquote_splicing(definitions ++ Explanation.definitions())
         end
 
       case Module.create(@generated, ast, Macro.Env.location(__ENV__)) do
@@ -115,7 +115,10 @@ defmodule HoldLedgerReview.Claims.Compiler do
       definition(:requires, slug, names, law.normalized_requires),
       definition(:actual, slug, names, law.normalized_expects),
       definition(:candidate, slug, names, law.substituted_expects),
-      definition(:target, slug, names, law.target_ast)
+      definition(:target, slug, names, law.target_ast),
+      definition(:inspect_requires, slug, names, Explanation.trace(law.normalized_requires)),
+      definition(:inspect_actual, slug, names, Explanation.trace(law.normalized_expects)),
+      definition(:inspect_candidate, slug, names, Explanation.trace(law.substituted_expects))
     ]
   end
 
@@ -132,7 +135,11 @@ defmodule HoldLedgerReview.Claims.Compiler do
       end)
 
     args = [slug, vars]
-    args = if function == :candidate, do: args ++ [candidate_variable()], else: args
+
+    args =
+      if function in [:candidate, :inspect_candidate],
+        do: args ++ [candidate_variable()],
+        else: args
 
     quote do
       def unquote(function)(unquote_splicing(args)), do: unquote(expression)

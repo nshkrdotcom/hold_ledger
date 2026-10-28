@@ -45,6 +45,52 @@ defmodule HoldLedgerReview.ClaimProbe do
     _ -> unavailable(slug, :source_expression_error)
   end
 
+  def explain(slug, before, event, candidate, opts \\ []) do
+    root = Keyword.get(opts, :root, Config.root())
+
+    with :ok <- Claims.freshness(root),
+         {:ok, law} <- Claims.claim(slug),
+         {:ok, _} <- TermCodec.encode_output(candidate),
+         true <- Spec.valid?(before),
+         {:ok, binding} <-
+           bindings(law, before, event, Keyword.get(opts, :binding_limit, @max_bindings)) do
+      rows = Enum.map(binding.rows, &explain_binding(&1, law, candidate, root))
+
+      with :ok <- Claims.freshness(root),
+           do:
+             {:ok,
+              %{"bindings" => rows, "complete" => binding.exhaustive?, "reason" => binding.reason}}
+    else
+      {:not_probed, operation} -> {:error, {:different_operation, operation}}
+      false -> {:error, :invalid_before_state}
+      error -> error
+    end
+  end
+
+  defp explain_binding(row, law, candidate, root) do
+    values = Enum.map(law.formals, &Map.fetch!(row.values, &1))
+
+    case Claims.explain(law.slug, values, candidate, root) do
+      {:ok, trace} ->
+        %{
+          "values" => binding_values(row.values),
+          "origins" => origin_json(row.origins),
+          "requires" => trace.requires,
+          "actual" => trace.actual,
+          "candidate" => trace.candidate
+        }
+
+      {:error, reason} ->
+        %{"error" => inspect(reason)}
+    end
+  end
+
+  defp origin_json(map) when is_map(map),
+    do: Map.new(map, fn {key, value} -> {to_string(key), origin_json(value)} end)
+
+  defp origin_json(value) when is_atom(value), do: Atom.to_string(value)
+  defp origin_json(value), do: value
+
   defp probe_generation_all(slugs, before, event, candidate, opts, evaluate) do
     Map.new(slugs, fn slug ->
       {slug, probe_generation(slug, before, event, candidate, opts, evaluate)}

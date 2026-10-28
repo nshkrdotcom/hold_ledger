@@ -1,12 +1,14 @@
-defmodule HoldLedgerReviewWeb.Part3FileController do
+defmodule HoldLedgerReviewWeb.CockpitController do
   use HoldLedgerReviewWeb, :controller
 
   alias HoldLedgerReview.{
     Anchor,
     Part3ProofInspector,
+    Part3RepairPacket,
     Part3Snapshots,
     Part3Store,
-    Part3Verification
+    Part3Verification,
+    Trace
   }
 
   @max_source 256_000
@@ -72,4 +74,80 @@ defmodule HoldLedgerReviewWeb.Part3FileController do
   end
 
   def artifact(conn, _), do: send_resp(conn, 404, "Unknown artifact or side")
+
+  def export(conn, %{"id" => id}) do
+    case Trace.get(id) do
+      {:ok, doc} ->
+        body =
+          Jason.encode!(
+            %{
+              "trace" => doc,
+              "current_source" => Trace.current?(doc),
+              "scope" => "recorded_exploration_not_formal_acceptance"
+            },
+            pretty: true
+          )
+
+        send_download(conn, {:binary, body},
+          filename: id <> ".json",
+          content_type: "application/json"
+        )
+
+      _ ->
+        send_resp(conn, 404, "Trace unavailable")
+    end
+  end
+
+  # Explicit local GET/download only. No revision write, provider dispatch or
+  # implicit consent is performed by exporting this fixed-scope data packet.
+  def repair(conn, %{"id" => id, "file" => file}) do
+    case Regex.run(~r/\A(e-[0-9a-f]{32})\.(json|md)\z/, file) do
+      [_, evidence_id, format] ->
+        repair(conn, %{"id" => id, "evidence_id" => evidence_id, "format" => format})
+
+      _ ->
+        send_resp(conn, 404, "Unknown local repair format or evidence identity")
+    end
+  end
+
+  def repair(conn, %{"id" => id, "evidence_id" => evidence_id, "format" => format})
+      when format in ~w(json md) do
+    with {:ok, package, :ok} <- Part3Store.get(id),
+         {:ok, packet} <- Part3RepairPacket.build(package, evidence_id) do
+      {bytes, type} =
+        case format do
+          "json" -> {Part3RepairPacket.json(packet), "application/json"}
+          "md" -> {Part3RepairPacket.markdown(packet), "text/markdown; charset=utf-8"}
+        end
+
+      send_download(conn, {:binary, bytes},
+        filename: "hold-ledger-repair-#{evidence_id}.#{format}",
+        content_type: type
+      )
+    else
+      _ -> send_resp(conn, 409, "Current-source repair export refused; no permission to send")
+    end
+  end
+
+  def repair(conn, _), do: send_resp(conn, 404, "Unknown local repair format")
+
+  def generated(conn, %{"slug" => slug, "sha" => sha}) do
+    case HoldLedgerReview.ProofReading.artifact(slug, sha) do
+      {:ok, bytes} ->
+        conn |> put_resp_content_type("text/plain", "utf-8") |> send_resp(200, bytes)
+
+      _ ->
+        send_resp(conn, 404, "Generated source missing or stale")
+    end
+  end
+
+  def source(conn, %{"slug" => slug, "source_id" => id, "sha" => sha}) do
+    case HoldLedgerReview.ProofReading.source(slug, id, sha) do
+      {:ok, bytes} ->
+        conn |> put_resp_content_type("text/plain", "utf-8") |> send_resp(200, bytes)
+
+      _ ->
+        send_resp(conn, 404, "Identified source missing or stale")
+    end
+  end
 end

@@ -7,29 +7,8 @@ defmodule HoldLedgerReview.Trace do
   alias HoldLedger.{Exposure, Ledger, Spec}
   alias HoldLedgerReview.{Canonical, ClaimProbe, Claims, Config, ProofEvidence, TermCodec}
 
-  @topics [
-    {"admission", "Admission",
-     "Fresh positive requests fitting both limits must be admitted, including exact fits.",
-     "po_a2"},
-    {"identity", "Identity",
-     "Retries keep identity and amount. Terminal identities remain remembered.",
-     "po_a4_duplicate"},
-    {"uncertainty", "Uncertainty",
-     "A timeout or restart does not release potentially live capacity.", "po_exposure_retain"},
-    {"release", "Release",
-     "An authorized hold retains capacity until terminal void confirmation.",
-     "po_exposure_retain"},
-    {"recovery", "Recovery",
-     "Journaled inputs and pending obligations preserve recovery behavior.", "po_b7"},
-    {"exposure", "Remote exposure",
-     "Live remote authorizations must remain covered under the modeled processor premises.",
-     "po_exposure_retain"}
-  ]
   @max_steps 64
   @context_paths ~w(guides/specification.md guides/processors.md guides/runtime.md mix.lock apps/review_web/mix.lock .tool-versions lean-toolchain uv.lock pyproject.toml .python-version scripts/toolchains.json)
-
-  def topics, do: @topics
-  def topic(id), do: Enum.find(@topics, &(elem(&1, 0) == id)) || hd(@topics)
 
   def create(mode \\ "ledger", amount \\ 100, slots \\ 2),
     do: GenServer.call(HoldLedgerReview.ReviewStore, {:trace_create, mode, amount, slots}, 60_000)
@@ -71,7 +50,7 @@ defmodule HoldLedgerReview.Trace do
 
       {:ok,
        %{
-         "schema_version" => 1,
+         "schema_version" => 2,
          "id" => "trace-" <> token(),
          "identity" => identity,
          "mode" => mode,
@@ -79,6 +58,7 @@ defmodule HoldLedgerReview.Trace do
          "initial" => state,
          "steps" => [],
          "notes" => [],
+         "challenges" => [],
          "commands" => [],
          "comparison" => nil,
          "created_at" => DateTime.to_iso8601(DateTime.utc_now())
@@ -206,6 +186,33 @@ defmodule HoldLedgerReview.Trace do
       {:ok, Map.update!(doc, "notes", &(&1 ++ [note]))}
     else
       {:error, :unknown_step}
+    end
+  end
+
+  defp change(
+         doc,
+         %{"kind" => "challenge", "step" => id, "slug" => slug, "output" => output} = action
+       )
+       when map_size(action) == 4 do
+    with true <- length(doc["challenges"]) < 32,
+         step when is_map(step) <- step(doc, id),
+         {:ok, _} <- Claims.claim(slug),
+         {:ok, before} <- TermCodec.decode_state(step["before"]),
+         {:ok, event} <- TermCodec.decode_event(step["event"]),
+         {:ok, native} <- TermCodec.decode_output(output) do
+      finding = HoldLedgerReview.ClaimProbe.probe(slug, before, event, native)
+
+      record =
+        Map.merge(action, %{
+          "source_identity" => doc["identity"],
+          "status" => Atom.to_string(finding.status),
+          "origin" => "pointwise_challenge",
+          "revision" => doc["revision"] + 1
+        })
+
+      {:ok, Map.update!(doc, "challenges", &(&1 ++ [record]))}
+    else
+      _ -> {:error, :invalid_challenge}
     end
   end
 
@@ -367,7 +374,7 @@ defmodule HoldLedgerReview.Trace do
          true <- size <= 4_000_000,
          {:ok, bytes} <- File.read(path),
          {:ok, doc} <- Jason.decode(bytes),
-         true <- doc["schema_version"] == 1 and doc["id"] == id,
+         true <- doc["schema_version"] == 2 and doc["id"] == id,
          true <- doc["document_digest"] == Canonical.digest(Map.delete(doc, "document_digest")) do
       {:ok, doc}
     else

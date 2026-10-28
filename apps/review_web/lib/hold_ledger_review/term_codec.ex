@@ -324,6 +324,38 @@ defmodule HoldLedgerReview.TermCodec do
 
   defp decode_remote(_), do: {:error, :invalid_remote}
 
+  @doc "Closed, bounded values for source-expression operands; never a generic tuple fallback."
+  def encode_inspection(value) when is_boolean(value) or is_nil(value), do: {:ok, value}
+
+  def encode_inspection(value)
+      when is_integer(value) and value >= -@max_number and value <= @max_number, do: {:ok, value}
+
+  def encode_inspection(value)
+      when value in @statuses or value in @results or
+             value in [:approved, :not_found, :ok, :issued, :request, :processor_result],
+      do: {:ok, %{"atom" => Atom.to_string(value)}}
+
+  def encode_inspection({_, _, _, _, _} = state), do: encode_state(state)
+  def encode_inspection({{_, _, _, _, _}, _, _} = output), do: encode_output(output)
+
+  def encode_inspection({:ok, {_, _, _} = entry}) do
+    with {:ok, json} <- encode_entry(entry), do: {:ok, %{"lookup_found" => json}}
+  end
+
+  def encode_inspection({_, _, _} = value) do
+    case encode_event(value) do
+      {:ok, json} -> {:ok, json}
+      _ -> encode_entry(value)
+    end
+  end
+
+  def encode_inspection({_, _} = value), do: encode_event(value)
+
+  def encode_inspection(list) when is_list(list) and length(list) <= @max_entries,
+    do: map_checked(list, &encode_inspection/1)
+
+  def encode_inspection(_), do: {:error, :unsupported_inspection_value}
+
   defp encode_entry({key, amount, status}) do
     if key?(key) and positive?(amount) and status in @statuses,
       do: {:ok, %{"key" => key, "amount" => amount, "status" => Atom.to_string(status)}},

@@ -1,45 +1,22 @@
-const {test, expect} = require('@playwright/test');
-const baseline = process.env.PART3_TEST_BASELINE_ID;
-const proposal = process.env.PART3_TEST_PROPOSAL_ID;
-const ready = /^[0-9a-f]{64}$/.test(baseline || '') && /^[0-9a-f]{64}$/.test(proposal || '');
-
-test('actual isolated replay exposes exact-fit lost coverage and readable source evidence', async ({page}) => {
-  test.skip(!ready, 'NOT RUN: set real freshly staged baseline/proposal IDs for isolated worker QC');
-  await page.goto('/');
+const {test,expect}=require('@playwright/test');
+const baseline=process.env.PART3_TEST_BASELINE_ID, proposal=process.env.PART3_TEST_PROPOSAL_ID;
+test('actual isolated source replay distinguishes a tightened exact-fit premise',async({page})=>{
+  test.skip(!/^[a-f0-9]{64}$/.test(baseline||'')||!/^[a-f0-9]{64}$/.test(proposal||''),'NOT RUN: real staged compatible IDs required');
+  await page.goto('/claims/po_a2');await expect(page).toHaveURL(/\/claims\/po_a2\/trace-/);
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  await page.locator('#create-trace').click();
-  await expect(page.locator('#explorer')).toBeVisible();
-  await page.locator('#apply-event').click();
-  await expect(page.locator('#actual-result')).toHaveText('admitted');
-  await page.locator('#compare_baseline').fill(baseline);
-  await page.locator('#compare_proposal').fill(proposal);
-  await page.locator('#comparison-form button').click();
-  await expect(page.locator('#source-changes')).toContainText('po_a2_test.exs');
-  await page.locator('#replay').click();
-  await expect(page.locator('#comparison-results .attempt')).toHaveCount(2);
-  await expect(page.locator('#comparison-results .attempt').filter({hasText:'succeeded'})).toHaveCount(2, {timeout:90000});
-  await expect(page.locator('.comparison-evidence')).toContainText(['lost_domain_input']);
-  const source = page.getByRole('link', {name:'Read proposal source'}).first();
-  const response = await page.request.get(await source.getAttribute('href'));
-  expect(response.status()).toBe(200);
-  expect(await response.text()).toContain('amount <');
-  await page.locator('#inspect-proof').click();
-  await expect(page.locator('#proof-detail')).toContainText('baseline');
-  await expect(page.locator('#proof-detail')).toContainText('proposal');
-  await expect(page.locator('#proof-detail')).toContainText('Statement missing');
-  const repair = page.getByRole('link', {name:/Download repair packet/}).first();
-  const exported = await page.request.get(await repair.getAttribute('href'));
-  expect(exported.status()).toBe(200);
-  const packet = await exported.json();
-  expect(packet.content_sha256).toMatch(/^[0-9a-f]{64}$/);
+  await page.locator('#source-comparison summary').click();
+  await page.locator('#compare_baseline').fill(baseline);await page.locator('#compare_proposal').fill(proposal);await page.locator('#compare-form button').click();
+  await expect(page.locator('#replay-pair')).toBeVisible();await page.locator('#replay-pair').click();
+  await expect(page.locator('.attempt').filter({hasText:'succeeded'})).toHaveCount(2,{timeout:90000});
+  await expect(page.locator('.pair-evidence')).toContainText('lost_domain_input');
+  const source=await page.getByRole('link',{name:'Read proposal source ↗'}).first().getAttribute('href');
+  const response=await page.request.get(source);expect(response.status()).toBe(200);expect(await response.text()).toContain('amount <');
+  await page.locator('#pair-proof').click();await expect(page.locator('#pair-proof-artifacts')).toContainText('missing');
+  const repair=await page.getByRole('link',{name:'Download local repair packet'}).first().getAttribute('href');
+  const exported=await page.request.get(repair);expect(exported.status()).toBe(200);expect((await exported.json()).content_sha256).toMatch(/^[a-f0-9]{64}$/);
 });
-
-test('invalid source pair is refused without fake replay or approval', async ({page}) => {
-  await page.goto('/'); await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/); await page.locator('#create-trace').click();
-  await expect(page.locator('#explorer')).toBeVisible();
-  await page.locator('#compare_baseline').fill('0'.repeat(64));
-  await page.locator('#compare_proposal').fill('1'.repeat(64));
-  await page.locator('#comparison-form button').click();
-  await expect(page.locator('[role=alert]')).toContainText('compatible');
-  await expect(page.locator('#comparison-results')).toHaveCount(0);
+test('unknown source snapshots are refused',async({page})=>{
+  await page.goto('/');await expect(page).toHaveURL(/\/claims\/po_exposure_retain\/trace-/);
+  await page.locator('#source-comparison summary').click();await page.locator('#compare_baseline').fill('0'.repeat(64));await page.locator('#compare_proposal').fill('1'.repeat(64));
+  await page.locator('#compare-form button').click();await expect(page.locator('[role=alert]')).toContainText('Compatible locally staged snapshots required');await expect(page.locator('#replay-pair')).toHaveCount(0);
 });

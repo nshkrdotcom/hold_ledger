@@ -12,18 +12,15 @@ defmodule HoldLedgerReviewWeb.Router do
 
   scope "/", HoldLedgerReviewWeb do
     pipe_through :browser
-    live "/", TraceLive, :index
-    live "/explore/:id", TraceLive, :show
-    get "/explore/:id/export", TraceController, :export
-    live "/changes", TraceLive, :index
-    live "/changes/:id", ArchiveLive, :change
-    get "/changes/:id/repair/:file", Part3RepairController, :export
-    get "/changes/:id/source/:side/:change_id", Part3FileController, :change
-    get "/changes/:id/law/:side/:slug/source", Part3FileController, :law
-    get "/changes/:id/artifact/:side/:sha256", Part3FileController, :artifact
-    live "/workbench", TraceLive, :index
-    live "/workbench/:id", ArchiveLive, :review
-    get "/workbench/:id/export.:format", ExportController, :export
-    get "/workbench/:id/source/:source_id", SourceController, :show
+    live "/", CockpitLive, :index
+    live "/claims/:slug", CockpitLive, :claim
+    live "/claims/:slug/:id", CockpitLive, :show
+    get "/claims/:slug/source/:source_id/:sha", CockpitController, :source
+    get "/claims/:slug/generated/:sha", CockpitController, :generated
+    get "/sessions/:id/export", CockpitController, :export
+    get "/comparisons/:id/repair/:file", CockpitController, :repair
+    get "/comparisons/:id/source/:side/:change_id", CockpitController, :change
+    get "/comparisons/:id/law/:side/:slug/source", CockpitController, :law
+    get "/comparisons/:id/artifact/:side/:sha256", CockpitController, :artifact
   end
 end

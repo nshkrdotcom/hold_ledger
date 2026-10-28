@@ -66,3 +66,36 @@ dd { margin:0 0 .4rem; }
 .trace-toolbar form label { margin:0; }
 article { border-top:1px solid var(--line); margin-top:1rem; padding-top:1rem; }
 @media (max-width:640px) { .workspace { padding:1.3rem .8rem; } .site-header { padding:.8rem; } .mode { display:none; } .anchor-grid { grid-template-columns:1fr; } .anchor { border-right:0!important; border-bottom:1px solid var(--line); padding:1.1rem; } .anchor:last-child { border-bottom:0; } .capacity-grid { grid-template-columns:1fr; gap:.7rem; } .controls { align-items:stretch; } .controls > div { min-width:45%; } .surface,.machine,.start-panel { padding:1rem; } }
+
+.cockpit-heading { display:flex; align-items:end; justify-content:space-between; gap:2rem; margin-bottom:1.5rem; }
+.cockpit-heading h1 { font-size:1.9rem; white-space:nowrap; }
+#law-picker { width:min(100%,650px); }
+.instrument-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:1.5rem; }
+.instrument { min-width:0; background:var(--surface); padding:1.5rem; }
+.instrument > header { display:flex; align-items:center; gap:.7rem; margin-bottom:1rem; }
+.instrument > header h2 { margin:0; }
+.section-number { font-size:.7rem; color:var(--muted); border:1px solid var(--line); border-radius:50%; width:1.8rem; height:1.8rem; display:grid; place-items:center; flex-shrink:0; }
+.output-pair { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+.output { padding:1rem; border:1px solid var(--line); border-radius:6px; min-width:0; }
+.output strong { font-size:1.15rem; }
+.output ul { padding-left:1rem; font-size:.82rem; }
+.output h3 { font-size:.75rem; color:var(--muted); }
+.output p,.scope-note { font-size:.8rem; color:var(--muted); }
+.action-row,.segmented,.proof-stages,.form-row,.scrub-row { display:flex; gap:.6rem; flex-wrap:wrap; align-items:end; margin:.8rem 0; }
+.form-row > div { flex:1; min-width:110px; }
+.action-row button,.segmented button,.proof-stages button { font-size:.8rem; padding:.4rem .6rem; }
+.segmented [aria-pressed=true],.proof-stages [aria-current=step] { color:#fff; background:var(--accent); }
+.contract-source { display:grid; grid-template-columns:65px minmax(0,1fr); gap:.6rem; margin:.7rem 0; font-size:.8rem; }
+.binding-values { display:flex; gap:1rem; flex-wrap:wrap; background:#f6f4f9; padding:.7rem; }
+.binding-values dd { font:12px/1.7 monospace; }
+.yes { color:#24633c; }.no,.signal,.omission { color:#8c342c; }
+.evidence-status { display:grid; grid-template-columns:1fr 1.4fr; gap:.5rem; font-size:.8rem; }
+.source-links { display:flex; gap:1rem; flex-wrap:wrap; font-size:.8rem; }
+.lemma-links { margin:1rem 0; }
+#proof-step { border-left:3px solid var(--accent); padding-left:1rem; }
+#proof-step p,#lemma-source p { font-size:.85rem; }
+#proof-step small { font-size:.7rem; color:var(--muted); }
+#contrast-matrix { font-variant-numeric:tabular-nums; }
+#state-machine .capacity-grid { grid-template-columns:1fr 1fr; }
+.scrub-row #scrubber { flex:1; margin:0; min-width:160px; }
+@media(max-width:760px) { .instrument-grid { grid-template-columns:minmax(0,1fr); }.cockpit-heading { align-items:start; flex-direction:column; gap:.5rem; }.instrument { padding:1rem; }.output-pair { gap:.4rem; }.output { padding:.6rem; }.evidence-status { grid-template-columns:1fr; }.workspace { padding:1rem .7rem 3rem; } }

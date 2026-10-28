@@ -9,7 +9,7 @@ defmodule HoldLedgerReviewWeb.Layouts do
     <a href="#workspace" class="skip-link">Skip to workspace</a>
     <header class="site-header">
       <a href="/" class="brand"><img src="/images/lambda.svg" width="24" height="24" alt="" />
-      HOLD LEDGER <span>/ EXPLORER</span></a>
+      HOLD LEDGER <span>/ VERIFICATION</span></a>
       <span class="mode">Local source · no external dispatch</span>
     </header>
     <main id="workspace" class="workspace">{render_slot(@inner_block)}</main>

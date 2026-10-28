@@ -20,6 +20,9 @@ defmodule HoldLedgerReview.Claims do
     HoldLedgerReview.Claims,
     HoldLedgerReview.Claims.Source,
     HoldLedgerReview.Claims.Compiler,
+    HoldLedgerReview.Claims.Explanation,
+    HoldLedgerReview.ProofReading,
+    HoldLedgerReview.Contrast,
     HoldLedgerReview.ClaimProbe,
     HoldLedgerReview.TermCodec,
     HoldLedgerReview.Canonical,
@@ -243,6 +246,62 @@ defmodule HoldLedgerReview.Claims do
 
   def evaluate(slug, formal_values, output, root \\ Config.root()) do
     with {:ok, result} <- with_generation(root, & &1.(slug, formal_values, output)), do: result
+  end
+
+  def explain(slug, formal_values, output, root \\ Config.root()) do
+    with {:ok, result} <-
+           with_generation(root, &explain_generation(&1, slug, formal_values, output)),
+         do: result
+  rescue
+    _ -> {:error, :source_observation_unavailable}
+  end
+
+  defp explain_generation(evaluate, slug, values, output) do
+    with {:ok, aggregate} <- evaluate.(slug, values, output) do
+      module = snapshot().module
+      requires = module.inspect_requires(slug, values)
+
+      if requires.value != aggregate.requires,
+        do: raise(ArgumentError, "condition observation mismatch")
+
+      explain_output(module, slug, values, output, aggregate, requires)
+    end
+  end
+
+  defp explain_output(module, slug, values, output, %{requires: true} = aggregate, requires) do
+    actual = module.inspect_actual(slug, values)
+    candidate = module.inspect_candidate(slug, values, output)
+
+    if actual.value != aggregate.actual or candidate.value != aggregate.candidate,
+      do: raise(ArgumentError, "promise observation mismatch")
+
+    {:ok,
+     %{
+       requires: observation(requires),
+       actual: observation(actual),
+       candidate: observation(candidate)
+     }}
+  end
+
+  defp explain_output(_, _, _, _, _, requires),
+    do: {:ok, %{requires: observation(requires), actual: nil, candidate: nil}}
+
+  defp observation(node) do
+    value =
+      case TermCodec.encode_inspection(node.value) do
+        {:ok, value} -> value
+        _ -> %{"unavailable" => "outside_typed_display_domain"}
+      end
+
+    %{
+      "expression" => node.expression,
+      "value" => value,
+      "status" => Map.get(node, :status, "evaluated"),
+      "children" => Enum.map(node.children, &observation/1),
+      "helper" => Map.get(node, :helper),
+      "source_path" => Map.get(node, :source_path),
+      "source_line" => Map.get(node, :source_line)
+    }
   end
 
   defp evaluate_generation(generation, slug, formal_values, output) do

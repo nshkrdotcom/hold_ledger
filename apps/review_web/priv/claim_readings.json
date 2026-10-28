@@ -1,0 +1,127 @@
+{
+  "po_a2": {
+    "title": "Exact-fit admission",
+    "policy_quote": "An exact amount fit is admitted.",
+    "reviewed_source_sha256": {
+      "guides/specification.md": "665ffff3f2bfd82d08170b216c364137e78b511dbfacebddeac3701e0e057cfe",
+      "lib/hold_ledger/spec.ex": "a00556287315dacb3d97d7ed5125f3354d463d4776212e3ec50a0566d854ac0d",
+      "lib/hold_ledger/ledger.ex": "fbfd454f7daaec016ab56b042df9e50527be83b9ba285c42767d8d954190ab83",
+      "test/laws/po_a2_test.exs": "1e741e72dd4c4979eb49ff9e3c942c34242cf0ed16e9358a5f8f682307180d2d",
+      "test/support/lean/Request.lean": "bb077364ce833c18043058541d073256da1c77e10e1ac9c429ee1a9f7dabb6ba"
+    },
+    "steps": [
+      {
+        "anchor": "have compatible :=",
+        "title": "Lookup and accounting",
+        "reason": "The proof relates Ledger.find to the independent Spec.lookup and obtains the stored totals."
+      },
+      {
+        "anchor": "cases key",
+        "title": "Input terms",
+        "reason": "Key and amount range over Lynx.Term. Case splits eliminate representations excluded by eligibility."
+      },
+      {
+        "anchor": "all_goals try simp only",
+        "title": "Eligibility and validity",
+        "reason": "Unfolding the precondition supplies valid entries, matching counters and capacity bounds."
+      },
+      {
+        "anchor": "have find_eq",
+        "title": "Independent lookup",
+        "reason": "The compatibility lemma establishes equality of the two separately implemented lookups."
+      },
+      {
+        "anchor": "all_goals simp_all [\u00abpo_a2:ensures/3\u00bb",
+        "title": "Required transition",
+        "reason": "The proof unfolds the actual request, expected output and independent reference."
+      },
+      {
+        "anchor": "all_goals omega",
+        "title": "Remaining arithmetic",
+        "reason": "The remaining arithmetic goals follow from the capacity inequalities already obtained."
+      }
+    ],
+    "omits": "This admission law does not establish processor behavior, journal durability or every later transition."
+  },
+  "po_exposure_retain": {
+    "title": "Pending void retention",
+    "policy_quote": "An approved authorization continues consuming capacity while voiding, until a trusted terminal confirmation is journaled.",
+    "reviewed_source_sha256": {
+      "guides/specification.md": "665ffff3f2bfd82d08170b216c364137e78b511dbfacebddeac3701e0e057cfe",
+      "lib/hold_ledger/spec.ex": "a00556287315dacb3d97d7ed5125f3354d463d4776212e3ec50a0566d854ac0d",
+      "lib/hold_ledger/ledger.ex": "fbfd454f7daaec016ab56b042df9e50527be83b9ba285c42767d8d954190ab83",
+      "test/laws/po_exposure_retain_test.exs": "694148a7a12db62faac45ccf2614f900d3ab7c21a7cba80a8fe7f9eaad39a921",
+      "test/support/lean/Retention.lean": "935c57f0d4644a408ea50d80865189635cf7d3b7a819f46477da65d4df56e217"
+    },
+    "steps": [
+      {
+        "anchor": "have valid :",
+        "title": "Valid starting state",
+        "reason": "The proof obtains Spec.valid? from the actual requires predicate."
+      },
+      {
+        "anchor": "have shape :=",
+        "title": "Remembered entry",
+        "reason": "The lookup-shape lemma separates absence from a stored entry. The required lookup excludes absence."
+      },
+      {
+        "anchor": "have protected_status :",
+        "title": "Protected statuses",
+        "reason": "The precondition restricts the remembered entry to sent, unknown, authorized or voiding."
+      },
+      {
+        "anchor": "have no_decline :",
+        "title": "Release evidence",
+        "reason": "The proof excludes the two events that count as terminal release evidence for this identity."
+      },
+      {
+        "anchor": "exact HoldLedgerProof.retained_lookup",
+        "title": "Retention lemma",
+        "reason": "The final lemma covers the remaining transition cases and requires the entry to remain exposed."
+      }
+    ],
+    "omits": "A locally consistent released state can still violate retention. Applicability to remote authorizations additionally depends on the coupled environment model."
+  },
+  "po_b1_timeout": {
+    "title": "Timeout validity",
+    "policy_quote": "A timeout or restart never releases capacity.",
+    "reviewed_source_sha256": {
+      "guides/specification.md": "665ffff3f2bfd82d08170b216c364137e78b511dbfacebddeac3701e0e057cfe",
+      "lib/hold_ledger/spec.ex": "a00556287315dacb3d97d7ed5125f3354d463d4776212e3ec50a0566d854ac0d",
+      "lib/hold_ledger/ledger.ex": "fbfd454f7daaec016ab56b042df9e50527be83b9ba285c42767d8d954190ab83",
+      "test/laws/po_b1_timeout_test.exs": "4846467566ba2a5e903d208735997caffd1997326ee3db000877b9f3af3caa3e",
+      "test/support/lean/Lifecycle.lean": "f7cd8a71ce6c7c755956f91c6999746be81339b458b59c3a00ffe619ca866e1e"
+    },
+    "steps": [
+      {
+        "anchor": "have totals :=",
+        "title": "State structure",
+        "reason": "Accounting, shape and update lemmas support preservation of the valid-state predicate."
+      },
+      {
+        "anchor": "have changing :",
+        "title": "Changing sent to unknown",
+        "reason": "The helper goal establishes validity after the status update."
+      },
+      {
+        "anchor": "cases key",
+        "title": "Transition cases",
+        "reason": "The proof considers encoded keys and lookup outcomes for the timeout transition."
+      }
+    ],
+    "omits": "Validity alone does not require retention: a released entry with correctly reduced counters can be valid."
+  },
+  "po_b1_void": {
+    "title": "Void validity",
+    "policy_quote": "An approved authorization continues consuming capacity while voiding, until a trusted terminal confirmation is journaled.",
+    "reviewed_source_sha256": {
+      "guides/specification.md": "665ffff3f2bfd82d08170b216c364137e78b511dbfacebddeac3701e0e057cfe",
+      "lib/hold_ledger/spec.ex": "a00556287315dacb3d97d7ed5125f3354d463d4776212e3ec50a0566d854ac0d",
+      "lib/hold_ledger/ledger.ex": "fbfd454f7daaec016ab56b042df9e50527be83b9ba285c42767d8d954190ab83",
+      "test/laws/po_b1_void_test.exs": "a28a15babb1d8097ecb8d25204745416eb4ccfec94820cf9c71b6ce18808c6f7",
+      "test/support/lean/Lifecycle.lean": "f7cd8a71ce6c7c755956f91c6999746be81339b458b59c3a00ffe619ca866e1e"
+    },
+    "steps": [],
+    "omits": "This law demands validity. Compare its result on a coherent early release with po_exposure_retain, which demands continued exposure."
+  }
+}
