@@ -17,6 +17,44 @@ class TutorialChecksTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 tutorials.one(blocks, 'example')
 
+    def test_current_tutorial_inventory_is_complete(self):
+        examples = tutorials.standalone_lean_examples()
+        self.assertEqual(len(examples), 6)
+        self.assertTrue(any('theorem reserve_within_limit' in code for code in examples))
+        self.assertTrue(any('inductive ToyRun' in code for code in examples))
+        tutorials.one(tutorials.blocks('guides/formal_verification_crash_course.md', 'elixir'),
+                      'law(over_capacity(')
+        for diagnostic in ('omega could not prove the goal', 'unsolved goals'):
+            tutorials.one(tutorials.blocks('guides/formal_verification_crash_course.md', 'text'),
+                          diagnostic)
+
+    def test_removing_or_duplicating_required_example_fails(self):
+        original_blocks = tutorials.blocks
+        crash = 'guides/formal_verification_crash_course.md'
+        examples = original_blocks(crash, 'lean')
+        required = tutorials.one(examples, 'theorem reserve_within_limit')
+        for replacement in ([code for code in examples if code != required],
+                            examples + [required]):
+            def changed_blocks(guide, language):
+                return replacement if guide == crash and language == 'lean' else original_blocks(guide, language)
+            with patch.object(tutorials, 'blocks', side_effect=changed_blocks):
+                with self.assertRaises(ValueError):
+                    tutorials.standalone_lean_examples()
+
+    def test_new_unregistered_standalone_example_cannot_be_ignored(self):
+        original_blocks = tutorials.blocks
+        crash = 'guides/formal_verification_crash_course.md'
+
+        def changed_blocks(guide, language):
+            result = original_blocks(guide, language)
+            if guide == crash and language == 'lean':
+                return result + ['import Lean\nexample : True := by trivial\n']
+            return result
+
+        with patch.object(tutorials, 'blocks', side_effect=changed_blocks):
+            with self.assertRaisesRegex(ValueError, 'Unregistered standalone Lean example'):
+                tutorials.standalone_lean_examples()
+
     def test_arbitrary_failure_is_not_mutant_evidence(self):
         with self.assertRaises(RuntimeError):
             tutorials.require('CompileError: undefined function', 'law fits/2 expects returned false')

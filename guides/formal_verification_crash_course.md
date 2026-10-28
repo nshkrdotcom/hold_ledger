@@ -213,6 +213,22 @@ The arguments are still general Elixir terms. The proof separates the integer ca
 | `omega` | Proves suitable linear integer arithmetic |
 | `exact` | Uses an existing proof or theorem to establish the goal |
 
+### A failed tactic does not establish a false claim
+
+In a disposable copy of the unchanged capacity example, replace the proof
+body with only `omega`. The pinned toolchain reports:
+
+```text
+omega could not prove the goal:
+No usable constraints found.
+```
+
+The rest of the diagnostic suggests unfolding definitions. The inputs are
+still `Lynx.Term` values, and the precondition is a translated computation;
+`omega` cannot yet see the integer arithmetic. This is a tactic failure on
+the unchanged claim, not a behavioral counterexample. Restore the complete
+proof before changing the implementation in the next section.
+
 ## Break the code, keep the law
 
 Copy the working example with `cp tmp/cap_test.exs tmp/cap_mutant_test.exs`. In the copy, rename the module to `CrashCourseMutantTest` and the proof reference to `Elixir.CrashCourseMutantTest.«admit/2»`. Change `amount > remaining` to `amount >= remaining`, **without** changing `requires:` or `expects:`.
@@ -231,7 +247,7 @@ unsolved goals
 case integer.integer
 a b : Int
 requires : a ≤ b
-not_over : ¬ b < a
+not_over : ¬b < a
 ⊢ (match
       match if b ≤ a then Lynx.Term.atom "true" else Lynx.Term.atom "false" with
       | Lynx.Term.atom "false" => Except.ok (Lynx.Term.atom "ok")
@@ -241,6 +257,43 @@ not_over : ¬ b < a
 The facts still permit `a = b`, but `b ≤ a` is true at equality and the changed function returns `:full`. The concrete failure confirms that this claim is false for the changed code. An unsolved goal alone would not.
 
 This deliberately broken copy is a [mutant](#mutant-and-mutation-testing). It tests whether the existing checks notice a fault. Keep `tmp/cap_test.exs` unchanged for the rest of the course.
+
+### Review the complementary over-capacity claim
+
+The toy `admit/2` function above returns `:full` when `amount > remaining`.
+The admission law covers the other branch. This complete worked extension
+checks refusal without changing `fits/2` or excluding exact fits from it.
+Add it inside the existing `laws "capacity"` block in the unchanged
+`tmp/cap_test.exs`:
+
+```elixir
+law(over_capacity(amount, remaining),
+  requires: is_integer(amount) and is_integer(remaining) and remaining < amount,
+  expects: admit(amount, remaining) == :full,
+  proof: ~LEAN"""
+  cases amount <;>
+    simp_all [«over_capacity:requires/2», Erlang.erlang.«is_integer/1», bind, Except.bind]
+  cases remaining <;>
+    simp_all [«over_capacity:requires/2», Erlang.erlang.«is_integer/1», bind, Except.bind]
+  rename_i a b
+  have over : b < a := by omega
+  simp [«over_capacity:ensures/2», Elixir.CrashCourseTest.«admit/2»,
+    Erlang.erlang.«=</2», Erlang.erlang.«>/2», Erlang.erlang.«==/2»,
+    bind, Except.bind, Lynx.Term.true, Lynx.Term.false, Int.compare_eq_gt, over]
+  """
+)
+```
+
+Its domain is every pair of integers with `remaining < amount`. For example,
+`over_capacity(2, 1)` must succeed because `admit(2, 1) == :full`. A wrong
+`:ok` output on that input violates this claim. Equality is deliberately
+outside this refusal claim and remains covered by the original `fits/2`.
+
+Add `assert over_capacity(2, 1)` as a witness test. For the property, generate
+`remaining <- integer()` and `gap <- positive_integer()`, then assert
+`over_capacity(remaining + gap, remaining)`. Run the same ordinary and proof
+commands again; the module now checks both complementary laws. These are toy
+tutorial claims, not changes to the governing payment policy or law catalog.
 
 ### Stuck or false?
 

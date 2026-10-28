@@ -22,6 +22,29 @@ def one(candidates, needle):
     return matches[0]
 
 
+def standalone_lean_examples():
+    # Require each current worked example by identity, not a stale total.
+    # New standalone blocks must also be registered so none silently go unchecked.
+    inventory = {
+        'guides/formal_verification_crash_course.md': (
+            'theorem reserve_within_limit', 'theorem impossible_admission',
+        ),
+        'guides/reading_deeper_proofs.md': (
+            'theorem exact_fit', 'theorem append_empty',
+            'structure ToyHold', 'inductive ToyRun',
+        ),
+    }
+    examples = []
+    for guide, names in inventory.items():
+        candidates = [code for code in blocks(guide, 'lean')
+                      if code.lstrip().startswith(('import Lean', 'structure ToyHold'))]
+        selected = [one(candidates, name) for name in names]
+        if len(selected) != len(candidates):
+            raise ValueError(f'Unregistered standalone Lean example in {guide}')
+        examples.extend(selected)
+    return examples
+
+
 def normalize(value):
     return '\n'.join(line.strip() for line in value.strip().splitlines())
 
@@ -58,10 +81,7 @@ def main():
     crash = 'guides/formal_verification_crash_course.md'
     deeper = 'guides/reading_deeper_proofs.md'
     agentic = 'guides/agentic_verification.md'
-    lean = [code for guide in (crash, deeper) for code in blocks(guide, 'lean')
-            if code.startswith(('import Lean', 'structure ToyHold'))]
-    if len(lean) != 7:
-        raise ValueError(f'Expected seven standalone Lean examples, found {len(lean)}')
+    lean = standalone_lean_examples()
     for index, code in enumerate(lean):
         output = run(f'lean-{index}', ['lean', '--stdin'], code)
         if 'warning:' in output or 'error:' in output:
@@ -113,7 +133,7 @@ def main():
     output = run('mutant-proof', ['mix', 'test', path, '--only', 'laws'], expected=2, fresh=True)
     require(output, one(blocks(crash, 'text'), 'unsolved goals'))
 
-    # Exercise 3 extends the same module, preserving its original claim.
+    # The complementary worked example extends the module, preserving its original claim.
     law = one(blocks(crash, 'elixir'), 'law(over_capacity(')
     extended = base.rsplit('  end', 1)
     code = extended[0] + '\n' + law + '\n  end' + extended[1]
