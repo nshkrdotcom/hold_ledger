@@ -20,12 +20,10 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       if assigns.step && assigns.reading["slug"] == "po_a2",
         do: ReviewWorkspace.example(assigns.step)
 
-    rows =
-      if assigns.package && assigns.case,
-        do: ReviewWorkspace.replay_rows(assigns.package, assigns.case, assigns.reading["slug"]),
-        else: []
+    policy_source =
+      Enum.find(assigns.reading["sources"], &(&1["path"] == "guides/specification.md"))
 
-    assigns = assign(assigns, example: example, rows: rows)
+    assigns = assign(assigns, example: example, policy_source: policy_source)
 
     ~H"""
     <section id="review-comparison" class="review-surface">
@@ -64,6 +62,17 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <p :if={!@package && !@example} class="example-label">
         Current checkout · no proposal attached
       </p>
+      <div :if={@policy_source} class="policy-anchor" id="policy-anchor">
+        <strong>Required behavior</strong><p>
+          {@reading["policy"]["quote"] || "Read the governing specification for this obligation."}
+        </p><button
+          class="text-button"
+          id="policy-source"
+          phx-click="inspect_registered_source"
+          phx-value-id={@policy_source["id"]}
+          phx-value-sha={@policy_source["sha256"]}
+        >Specification:{@reading["policy"]["line"] || 1}</button>
+      </div>
       <div :if={@package} class="source-pair-label" id="attached-sources">
         <span title={@package["baseline"]["snapshot_id"]}>Baseline {String.slice(
           @package["baseline"]["snapshot_id"],
@@ -75,143 +84,158 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           12
         )}</span><span>Exact source pair · pointwise replay required</span>
       </div>
-      <div class="review-pair">
-        <section class="contract-pane" id="contract-diff">
-          <h3>{if @package, do: "Changed conditions / promises", else: "Eligibility condition"}</h3>
-          <div :if={!@package && @example} class="diff-lines">
+      <section class="contract-pane" id="contract-diff">
+        <h3>{if @package, do: "Changed conditions / promises", else: "Eligibility condition"}</h3>
+        <div :if={!@package && @example} class="diff-lines">
+          <div class="removed">
+            <span>−</span><code>requires amount <del>&lt;=</del> remaining</code>
+          </div>
+          <div class="added">
+            <span>+</span><code>requires amount <ins>&lt;</ins> remaining</code>
+          </div>
+          <p>
+            The example excludes equality; other eligibility checks remain. Compare coverage with the actual result.
+          </p>
+        </div>
+        <div :if={!@package && !@example} class="diff-lines">
+          <code>{@reading["contract"]["requires"] || "Native Lean statement"}</code><p>
+            Select a real source pair to inspect changes.
+          </p>
+        </div>
+        <article
+          :for={change <- if(@package, do: @package["source_changes"], else: [])}
+          class="source-change"
+        >
+          <h4>{change["path"]}</h4>
+          <div
+            :for={expression <- (@delta[change["id"]] || %{})["expressions"] || []}
+            class="diff-expression"
+          >
+            <small>{expression["field"]} · {expression["status"]}</small>
             <div class="removed">
-              <span>−</span><code>requires amount <del>&lt;=</del> remaining</code>
+              <span>−</span><code><span :for={chunk <- expression["baseline"]} class={chunk["kind"]}>{chunk[
+                "text"
+              ]}</span></code>
             </div>
             <div class="added">
-              <span>+</span><code>requires amount <ins>&lt;</ins> remaining</code>
+              <span>+</span><code><span :for={chunk <- expression["proposal"]} class={chunk["kind"]}>{chunk[
+                "text"
+              ]}</span></code>
             </div>
-            <p>
-              The example excludes equality; other eligibility checks remain. Compare coverage with the actual result.
-            </p>
           </div>
-          <div :if={!@package && !@example} class="diff-lines">
-            <code>{@reading["contract"]["requires"] || "Native Lean statement"}</code><p>
-              Select a real source pair to inspect changes.
-            </p>
+          <p :if={((@delta[change["id"]] || %{})["expressions"] || []) == []}>
+            No supported normalized claim comparison. Read the changed source.
+          </p>
+          <div class="source-links">
+            <a
+              :for={side <- ~w(baseline proposal)}
+              href={"/comparisons/#{@package["id"]}/source/#{side}/#{change["id"]}"}
+              target="_blank"
+              rel="noopener"
+            >Read {side} source ↗</a>
           </div>
-          <article
-            :for={change <- if(@package, do: @package["source_changes"], else: [])}
-            class="source-change"
-          >
-            <h4>{change["path"]}</h4>
-            <div
-              :for={expression <- (@delta[change["id"]] || %{})["expressions"] || []}
-              class="diff-expression"
-            >
-              <small>{expression["field"]} · {expression["status"]}</small>
-              <div class="removed">
-                <span>−</span><code><span :for={chunk <- expression["baseline"]} class={chunk["kind"]}>{chunk[
-                  "text"
-                ]}</span></code>
-              </div>
-              <div class="added">
-                <span>+</span><code><span :for={chunk <- expression["proposal"]} class={chunk["kind"]}>{chunk[
-                  "text"
-                ]}</span></code>
-              </div>
-            </div>
-            <p :if={((@delta[change["id"]] || %{})["expressions"] || []) == []}>
-              No supported normalized claim comparison. Read the changed source.
-            </p>
-            <div class="source-links">
-              <a
-                :for={side <- ~w(baseline proposal)}
-                href={"/comparisons/#{@package["id"]}/source/#{side}/#{change["id"]}"}
-                target="_blank"
-                rel="noopener"
-              >Read {side} source ↗</a>
-            </div>
-          </article>
-          <.input_strip case={@case} preview={@preview} />
-        </section>
-        <section class="boundary-pane" id="boundary-fork">
-          <h3>Same input, separate questions</h3>
-          <p :if={@case} class="boundary-input">
-            <strong>{term(@case["event"])}</strong><span>Before: {@case["before"]["used_amount"]}¢ reserved / {@case[
-              "before"
-            ]["amount_limit"]}¢ limit</span>
-          </p>
-          <table>
-            <thead>
-              <tr>
-                <th>Question</th><th>Baseline</th><th>Proposal</th>
-              </tr>
-            </thead><tbody>
-              <tr :if={!@package && @example} id="coverage-row">
-                <th>Precondition applies?</th><td>{answer(@example.baseline)}</td><td class={
-                  if @example.baseline && !@example.proposal, do: "no", else: ""
-                }>
-                  {answer(@example.proposal)}
-                </td>
-              </tr>
-              <tr :if={@package} id="pair-applicability">
-                <th>Any binding applies?</th><td :for={row <- @rows}>{answer(row.requires)}</td>
-              </tr>
-              <tr :if={@package} id="pair-candidate">
-                <th>Candidate promise?</th><td :for={row <- @rows}>{answer(row.candidate)}</td>
-              </tr>
-              <tr :if={@package} id="pair-execution">
-                <th>Actual source result</th><td :for={row <- @rows}>
-                  {row.actual || "Not available"}
-                </td>
-              </tr>
-              <tr :if={@package}>
-                <th>Replay status</th><td :for={row <- @rows}>{row.status}</td>
-              </tr>
-              <tr :if={@case} id="execution-row">
-                <th>Actual checkout Ledger</th><td colspan="2">
-                  {@case["actual"]["result"]} · {@case["actual"]["after"]["used_amount"]}¢ reserved
-                </td>
-              </tr>
-              <tr :if={@case} id="candidate-row">
-                <th>Hypothetical output</th><td colspan="2">
-                  {@case["candidate"]["result"]} · {@case["candidate"]["after"]["used_amount"]}¢ reserved · {@case[
-                    "law_status"
-                  ]}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <p
-            :if={@example && !@package && @example.baseline && !@example.proposal}
-            class="boundary-callout"
-            id="lost-guarantee"
-          >
-            The example proposal makes no promise here. The actual implementation still admits the request.
-          </p>
-          <p :if={@package} class="scope-note">
-            Applicability means at least one evaluated binding applies; candidate failure means at least one evaluated promise fails. Inspect individual bindings in Clauses. Unresolved values stay unresolved.
-          </p>
-          <p class="scope-note">
-            A failed precondition is not an implementation rejection. A permitted hypothetical output is not an observed bug.
-          </p>
-          <div class="action-row">
-            <button id="replay-pair" phx-click="replay" disabled={!@package || !@case}>Replay scratch input on both sources</button><button
-              phx-click="workspace_view"
-              phx-value-view="outputs"
-            >Edit hypothetical output</button>
-          </div>
-          <p :if={@preview} class="scratch-label" id="scratch-status">
-            Scratch input · not appended to the recorded trace
-          </p>
-          <div
-            :for={attempt <- if(@package, do: @package["replay_attempts"], else: [])}
-            class="attempt"
-          >
-            <span>{attempt["status"]}</span><button
-              :if={attempt["status"] in ~w(queued running)}
-              phx-click="cancel"
-              phx-value-id={attempt["id"]}
-            >Cancel</button>
-          </div>
-        </section>
+        </article>
+      </section>
+    </section>
+    """
+  end
+
+  attr :case, :map, default: nil
+  attr :reading, :map, required: true
+  attr :step, :map, default: nil
+  attr :package, :map, default: nil
+  attr :preview, :any, default: nil
+
+  def pair_results(assigns) do
+    example =
+      if assigns.step && assigns.reading["slug"] == "po_a2",
+        do: ReviewWorkspace.example(assigns.step)
+
+    rows =
+      if assigns.package && assigns.case,
+        do: ReviewWorkspace.replay_rows(assigns.package, assigns.case, assigns.reading["slug"]),
+        else: []
+
+    assigns = assign(assigns, example: example, rows: rows)
+
+    ~H"""
+    <section class="boundary-pane" id="boundary-fork">
+      <h3>Same input, separate questions</h3>
+      <p :if={@case} class="boundary-input">
+        <strong>{term(@case["event"])}</strong><span>Before: {@case["before"]["used_amount"]}¢ reserved / {@case[
+          "before"
+        ]["amount_limit"]}¢ limit</span>
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Question</th><th>Baseline</th><th>Proposal</th>
+          </tr>
+        </thead><tbody>
+          <tr :if={!@package && @example} id="coverage-row">
+            <th>Precondition applies?</th><td>{answer(@example.baseline)}</td><td class={
+              if @example.baseline && !@example.proposal, do: "no", else: ""
+            }>
+              {answer(@example.proposal)}
+            </td>
+          </tr>
+          <tr :if={@package} id="pair-applicability">
+            <th>Any binding applies?</th><td :for={row <- @rows}>{answer(row.requires)}</td>
+          </tr>
+          <tr :if={@package} id="pair-candidate">
+            <th>Candidate promise?</th><td :for={row <- @rows}>{answer(row.candidate)}</td>
+          </tr>
+          <tr :if={@package} id="pair-execution">
+            <th>Actual source result</th><td :for={row <- @rows}>
+              {row.actual || "Not available"}
+            </td>
+          </tr>
+          <tr :if={@package}>
+            <th>Replay status</th><td :for={row <- @rows}>{row.status}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p
+        :if={@example && !@package && @example.baseline && !@example.proposal}
+        class="boundary-callout"
+        id="lost-guarantee"
+      >
+        The example drops exact-fit coverage. Ledger still admits it.
+      </p>
+      <p :if={@package} class="scope-note">
+        Applicability means at least one evaluated binding applies; candidate failure means at least one evaluated promise fails. Inspect individual bindings in Clauses. Unresolved values stay unresolved.
+      </p>
+      <p class="scope-note">
+        Excluded input ≠ rejected execution. Hypothetical output ≠ observed behavior.
+      </p>
+      <p :if={!@package} class="pair-help">
+        For actual two-source replay, <button class="text-button" phx-click="show_sources">choose a locally staged pair</button>. The labeled example works without one.
+      </p>
+      <div class="action-row">
+        <button id="replay-pair" phx-click="replay" disabled={!@package || !@case}>Replay scratch input on both sources</button><button phx-click="edit_candidate">Edit hypothetical output</button>
+      </div>
+      <p :if={@preview} class="scratch-label" id="scratch-status">
+        Scratch input · not appended to the recorded trace
+      </p>
+      <div
+        :for={attempt <- if(@package, do: @package["replay_attempts"], else: [])}
+        class="attempt"
+      >
+        <span>{attempt["status"]}</span><button
+          :if={attempt["status"] in ~w(queued running)}
+          phx-click="cancel"
+          phx-value-id={attempt["id"]}
+        >Cancel</button>
       </div>
     </section>
+    """
+  end
+
+  attr :package, :map, default: nil
+  attr :doc, :map, required: true
+
+  def disposition(assigns) do
+    ~H"""
     <section class="review-surface decision-docket" id="decision-docket">
       <header>
         <h2>Review disposition</h2><span class="scope-note">{if @package,
@@ -317,6 +341,9 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <header class="review-section-heading">
         <h2>Proof source & reasoning</h2><span class="type-badge">Source reading · not a captured goal state</span>
       </header>
+      <p id="goal-state-status" class="scope-note">
+        Captured Lean hypotheses / goal states: unavailable. Source navigation below does not simulate them.
+      </p>
       <nav class="proof-source-stages">
         <button
           :for={{step, index} <- Enum.with_index(@reading["proof_steps"])}
@@ -336,7 +363,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
                 )
             }
             class={
-              if @selected && n >= @selected["line"] && n < @selected["line"] + 7,
+              if @selected && n == @selected["line"],
                 do: "active-proof-line",
                 else: ""
             }
@@ -357,14 +384,20 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           Focused elaboration: <span id="focused-status">{@reading["focused"]["status"]}</span>. Full gate: <span id="formal-status">{@reading["formal"]["status"]}</span>.
         </p><ul id="generated-artifacts">
           <li :for={item <- @reading["focused"]["artifacts"] || []}>
-            <a
+            <button class="text-button" phx-click="inspect_artifact" phx-value-sha={item["sha256"]}>{Path.basename(
+              item["path"]
+            )}</button><a
               href={"/claims/#{@reading["slug"]}/generated/#{item["sha256"]}"}
               target="_blank"
               rel="noopener"
             >{Path.basename(item["path"])} ↗</a>
           </li>
         </ul><div id="lemma-links">
-          <span :for={ref <- @reading["references"]}><a
+          <span :for={ref <- @reading["references"]}><button
+            class="text-button"
+            phx-click="lemma"
+            phx-value-name={ref["name"]}
+          >{ref["name"]}</button><a
             :for={d <- ref["declarations"]}
             href={HoldLedgerReviewWeb.DissectorComponents.source_url(@reading, d["path"])}
             target="_blank"
@@ -376,26 +409,82 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     """
   end
 
+  attr :proof, :map, required: true
+  attr :package, :map, required: true
+  attr :slug, :string, required: true
+
+  def pair_artifacts(assigns) do
+    ~H"""
+    <section id="pair-proof-artifacts" class="pair-artifacts">
+      <h3>Source-pair proof artifacts</h3>
+      <section :for={version <- @proof["versions"]}>
+        <h4>{version["side"]}: {version["formal_acceptance"]}</h4><p>{version["report_status"]}</p>
+        <p :for={law <- Enum.filter(version["sources"], &(&1["slug"] == @slug))}>
+          {law["slug"]} · {law["artifact_scope"]} · {if law["translated_statement"],
+            do: "translation supplied",
+            else: "translation missing"} · {if law["proof_dependencies"],
+            do: "dependencies supplied",
+            else: "dependencies missing"}
+        </p>
+        <a
+          :for={item <- Enum.filter(version["artifacts"], &(&1["status"] == "present"))}
+          href={"/comparisons/#{@package["id"]}/artifact/#{version["side"]}/#{item["sha256"]}"}
+        >{item["kind"]}: {item["path"]}</a>
+      </section>
+    </section>
+    """
+  end
+
   attr :case, :map, default: nil
   attr :fencing, :boolean, required: true
+  attr :selected_key, :any, default: nil
 
   def premise(assigns) do
-    key = if assigns.case, do: assigns.case["event"]["key"]
+    entries =
+      if assigns.case,
+        do:
+          Enum.filter(
+            assigns.case["actual"]["after"]["entries"],
+            &(&1["status"] in ~w(authorized voiding))
+          ),
+        else: []
+
+    key =
+      if Enum.any?(entries, &(&1["key"] == assigns.selected_key)),
+        do: assigns.selected_key,
+        else: (List.first(entries) || %{})["key"]
 
     result =
       if assigns.case,
         do: ReviewWorkspace.premise(assigns.case["actual"]["after"], key, assigns.fencing),
         else: %{status: "not_applicable"}
 
-    assigns = assign(assigns, result: result)
+    assigns = assign(assigns, result: result, entries: entries, selected_key: key)
 
     ~H"""
     <section class="review-surface" id="premise-comparison">
       <header class="review-section-heading">
         <h2>External premise: terminal fencing</h2><span class="type-badge">Current-entry illustration</span>
       </header>
+      <.form
+        :if={@entries != []}
+        for={to_form(%{"key" => @selected_key})}
+        id="premise-selector"
+        phx-change="premise_key"
+      >
+        <.input
+          name="key"
+          value={@selected_key}
+          type="select"
+          label="Entry to challenge"
+          options={
+            Enum.map(@entries, &{"Key #{&1["key"]} · #{&1["amount"]}¢ · #{&1["status"]}", &1["key"]})
+          }
+        />
+      </.form>
       <p :if={@result.status == "not_applicable"}>
-        Select an authorized or voiding entry to examine delayed delivery after its terminal confirmation.
+        No authorized or voiding entry in this active result.
+        <button id="open-premise-case" phx-click="open_premise_case">Open a pending-void worked case</button>
       </p>
       <div :if={@result.status != "not_applicable"}>
         <p>

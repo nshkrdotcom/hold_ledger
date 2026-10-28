@@ -1,6 +1,7 @@
 defmodule HoldLedgerReview.Part3Test do
   use ExUnit.Case, async: false
   import Phoenix.ConnTest, only: [get: 2]
+  import Phoenix.LiveViewTest
   @endpoint HoldLedgerReviewWeb.Endpoint
 
   alias HoldLedgerReview.{
@@ -905,5 +906,43 @@ defmodule HoldLedgerReview.Part3Test do
            ).status == 409
 
     assert {:ok, ^p, :ok} = Part3Store.get(p["id"])
+  end
+
+  test "replay updates keep a single subscription and artifact inspection stays responsive",
+       ctx do
+    {:ok, package} = Part3Store.create(ctx.baseline, ctx.proposal)
+    {:ok, doc} = HoldLedgerReview.Contrast.create("po_a2")
+
+    {:ok, doc} =
+      HoldLedgerReview.Trace.command(
+        doc["id"],
+        doc["revision"],
+        HoldLedgerReview.Trace.token(),
+        %{"kind" => "comparison", "id" => package["id"]}
+      )
+
+    {:ok, view, _} = live(Phoenix.ConnTest.build_conn(), "/claims/po_a2/#{doc["id"]}")
+    topic = "part3:" <> package["id"]
+    assert [{pid, _}] = Registry.lookup(HoldLedgerReview.PubSub, topic)
+    assert pid == view.pid
+    send(view.pid, {:part3_updated, package["id"]})
+    render(view)
+    send(view.pid, {:part3_updated, package["id"]})
+    render(view)
+    assert [{^pid, _}] = Registry.lookup(HoldLedgerReview.PubSub, topic)
+    render_click(view, "pair_proof", %{})
+    assert has_element?(view, "#pair-proof-artifacts", "not_run_or_missing")
+    assert has_element?(view, "#verdict")
+    render_click(view, "show_sources", %{})
+
+    form(view, "#compare-form", compare: %{baseline: ctx.baseline, proposal: ctx.proposal})
+    |> render_submit()
+
+    {:ok, changed} = HoldLedgerReview.Trace.get(doc["id"])
+    assert changed["comparison"] != package["id"]
+    assert Registry.lookup(HoldLedgerReview.PubSub, topic) == []
+
+    assert [{^pid, _}] =
+             Registry.lookup(HoldLedgerReview.PubSub, "part3:" <> changed["comparison"])
   end
 end

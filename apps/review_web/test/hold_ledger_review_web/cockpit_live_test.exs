@@ -14,19 +14,27 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     |> render_submit()
   end
 
-  defp tab(view, name), do: render_click(view, "workspace_view", %{"view" => name})
+  defp tab(view, name) when name in ~w(proof premises record),
+    do: render_click(view, "inspect", %{"view" => name})
+
+  defp tab(_view, _name), do: :ok
 
   test "landing has a visible comparison, scoped decisions and just one timeline", %{conn: conn} do
     {view, _} = open(conn, "po_a2")
 
-    for id <- ~w(contract-diff boundary-fork decision-docket timeline scrubber) do
+    for id <- ~w(contract-diff boundary-fork decision-docket timeline active-state verdict) do
       assert has_element?(view, "##{id}")
     end
 
     assert has_element?(view, "#example-provenance", "Example")
     assert has_element?(view, "#coverage-row td:last-child", "No")
-    assert has_element?(view, "#execution-row", "admitted")
-    refute has_element?(view, "#technical-inspector, #visual-timeline, #proof-player")
+    assert has_element?(view, "#ledger-output", "admitted")
+
+    refute has_element?(
+             view,
+             "#technical-inspector, #visual-timeline, #proof-player, #workspace-tabs, #position"
+           )
+
     tab(view, "proof")
     assert has_element?(view, "#proof-source-workspace")
     assert has_element?(view, "#formal-status", "not_supplied")
@@ -40,7 +48,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     tab(view, "outputs")
     assert has_element?(view, "#selected-law-row td:nth-child(3)", "true")
     view |> element("#inspect-retention") |> render_click()
-    assert_patch(view, "/claims/po_exposure_retain/#{doc["id"]}?view=outputs")
+    assert_patch(view, "/claims/po_exposure_retain/#{doc["id"]}?inspect=proof")
     assert has_element?(view, "#selected-law-row td:nth-child(3)", "false")
     assert has_element?(view, "#hypothetical-output", "0¢ reserved")
   end
@@ -218,5 +226,67 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     render_change(view, "law_change", %{"slug" => "po_a2"})
     assert has_element?(view, "#session-record")
     assert {:ok, ^doc} = Trace.get(doc["id"])
+  end
+
+  test "transient input, mutation and quick follow-on share one actual context", %{conn: conn} do
+    {view, doc} = open(conn, "po_a2")
+    render_change(view, "preview_amount", %{"amount" => "99"})
+    assert has_element?(view, "#transient-branch", "99")
+    assert has_element?(view, "#ledger-output", "99¢")
+    render_click(view, "quick_event", %{"type" => "dispatch", "key" => "11"})
+    {:ok, saved} = Trace.get(doc["id"])
+    assert length(saved["steps"]) == 3
+    assert Enum.at(saved["steps"], 1)["event"]["amount"] == 99
+    assert List.last(saved["steps"])["before"]["used_amount"] == 99
+    assert has_element?(view, "#ledger-output", "sent")
+  end
+
+  test "mutation chips and status edits update verdict without repairing counters", %{conn: conn} do
+    {view, doc} = open(conn)
+    render_click(view, "mutate_candidate", %{"kind" => "zero_counters"})
+    assert has_element?(view, "#validity-row td:nth-child(3)", "true")
+    render_click(view, "restore_candidate", %{})
+    render_click(view, "cycle_status", %{"index" => "0"})
+    {:ok, unchanged} = Trace.get(doc["id"])
+    assert unchanged == doc
+    assert has_element?(view, "#hypothetical-output", "100¢ reserved")
+    assert has_element?(view, "#validity-row")
+  end
+
+  test "registered proof dependencies open inline, forged references are refused", %{conn: conn} do
+    {view, _} = open(conn)
+    {:ok, reading} = ProofReading.document("po_exposure_retain")
+    ref = hd(reading["references"])
+    render_click(view, "lemma", %{"name" => ref["name"]})
+    assert has_element?(view, "#inline-source", ref["name"])
+    render_click(view, "inspect_law", %{"slug" => "po_a2"})
+    refute has_element?(view, "#inline-source")
+    render_click(view, "close_source", %{})
+    render_click(view, "lemma", %{"name" => "../../secret"})
+    refute has_element?(view, "#inline-source")
+    assert has_element?(view, "[role=alert]", "unavailable")
+  end
+
+  test "custom event builder stays open while fields change", %{conn: conn} do
+    {view, _} = open(conn, "po_a2")
+    render_click(view, "toggle_event_builder", %{})
+    render_change(view, "event_change", %{"event" => %{"type" => "dispatch"}})
+    assert has_element?(view, "#event-builder[open]")
+    assert has_element?(view, "#event_amount[disabled]")
+  end
+
+  test "policy anchor reads only registered current source", %{conn: conn} do
+    {view, _} = open(conn, "po_a2")
+    assert has_element?(view, "#policy-anchor", "An exact amount fit is admitted")
+    element(view, "#policy-source") |> render_click()
+    assert has_element?(view, "#inline-source", "Specification")
+    render_click(view, "close_source", %{})
+
+    render_click(view, "inspect_registered_source", %{
+      "id" => "unknown",
+      "sha" => String.duplicate("0", 64)
+    })
+
+    refute has_element?(view, "#inline-source")
   end
 end

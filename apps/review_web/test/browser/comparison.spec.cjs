@@ -17,8 +17,8 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
   await expect(page.locator('.pair-evidence')).toContainText('lost_domain_input');
   const source=await page.getByRole('link',{name:'Read proposal source ↗'}).first().getAttribute('href');
   const response=await page.request.get(source);expect(response.status()).toBe(200);expect(await response.text()).toContain('amount <');
-  await page.locator('#workspace-tabs [phx-value-view=proof]').click();await page.locator('#pair-proof').click();await expect(page.locator('#pair-proof-artifacts')).toContainText('missing');
-  await page.locator('#workspace-tabs [phx-value-view=compare]').click();
+  await page.locator('#inspector-tools [phx-value-view=proof]').click();await page.locator('#pair-proof').click();await expect(page.locator('#pair-proof-artifacts')).toContainText('missing');
+  await page.locator('#inspector-tools [phx-value-view=proof]').click();
   await expect(page.locator('#pair-execution')).toContainText('admitted');
   await page.locator('.pair-evidence button').first().click();
   const repair=await page.getByRole('link',{name:'Download local repair packet'}).first().getAttribute('href');

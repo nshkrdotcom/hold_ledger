@@ -15,15 +15,9 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
     ~H"""
     <section class="instrument" id="contrast">
       <header>
-        <span class="section-number">01</span><h2>Concrete contrast</h2>
+        <span class="section-number">01</span><h2>Outputs</h2>
       </header>
       <div :if={@step && @step["output"]}>
-        <p class="case-input" id="case-input">
-          {term(@step["before"])}<br /><strong>{term(@step["event"])}</strong>
-        </p>
-        <ul class="starting-entries">
-          <li :for={entry <- @step["before"]["entries"]}>{term(entry)}</li>
-        </ul>
         <p :if={@step["origin"] != "computed"} id="hypothetical-lineage" class="signal">
           Hypothetical continuation
         </p>
@@ -43,46 +37,28 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         <p :if={@invalid} id="invalid-candidate" role="alert">
           Invalid candidate. No candidate verdict is shown.
         </p>
-        <table :if={@case} id="contrast-matrix">
-          <thead>
-            <tr>
-              <th>Check</th><th>Ledger</th><th>Hypothetical</th>
-            </tr>
-          </thead><tbody>
-            <tr id="validity-row">
-              <td><code>Spec.valid?(after)</code></td><td>
-                <.truth value={@case["actual_valid"]} />
-              </td><td><.truth value={@case["candidate_valid"]} /></td>
-            </tr>
-            <tr id="selected-law-row">
-              <td><code>{@slug}</code></td><td>{actual_result(@case)}</td><td class={
-                candidate_class(@case)
-              }>
-                {candidate_result(@case)}
-              </td>
-            </tr>
-            <tr :if={@case["comparison_law"] != @slug && @case["comparison_status"] != "not_probed"}>
-              <td>
-                <button
-                  class="text-button"
-                  phx-click="inspect_law"
-                  phx-value-slug={@case["comparison_law"]}
-                >{@case["comparison_law"]}</button>
-              </td><td>{if @case["comparison_actual"] == true, do: "true", else: "unprobed"}</td><td>
-                {status(@case["comparison_status"])}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="mutation-chips" id="candidate-mutations">
+          <button phx-click="mutate_candidate" phx-value-kind="drop_effects">Drop effects</button>
+          <button phx-click="mutate_candidate" phx-value-kind="zero_counters">Zero counters</button>
+          <button phx-click="mutate_candidate" phx-value-kind="change_identity">Change first identity</button>
+          <button phx-click="candidate_recalculate" id="recalculate-inline">Recalculate totals</button>
+        </div>
         <div class="action-row">
-          <button phx-click="early_release" id="early-release">Early release</button><button phx-click="restore_candidate">Use Ledger output</button><button
+          <button phx-click="early_release" id="early-release">Premature release</button><button phx-click="restore_candidate">Use Ledger output</button><button
             phx-click="edit_candidate"
             id="edit-candidate"
-          >Edit hypothetical output</button><button
+          >Structured / JSON editor</button><button
             phx-click="inspect_law"
             phx-value-slug="po_exposure_retain"
             id="inspect-retention"
           >Inspect retention</button>
+        </div>
+        <div class="action-row">
+          <button
+            phx-click="branch_candidate"
+            id="branch-candidate"
+            disabled={!@case || !@case["candidate_valid"]}
+          >Continue hypothetical branch</button>
         </div>
         <p class="scope-note">
           Reference: {@step["oracle"]["result"]}. Hypothetical output ≠ observed behavior.
@@ -124,11 +100,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           <button class="primary" id="check-candidate">Check output</button>
         </.form>
         <div class="action-row">
-          <button phx-click="candidate_recalculate" id="recalculate">Recalculate totals</button><button phx-click="candidate_add_entry">Add entry</button><button phx-click="candidate_add_effect">Add void effect</button><button phx-click="candidate_clear_effects">Clear effects</button><button
-            phx-click="branch_candidate"
-            id="branch-candidate"
-            disabled={!@case || !@case["candidate_valid"]}
-          >Continue hypothetical branch</button>
+          <button phx-click="candidate_recalculate" id="recalculate">Recalculate totals</button><button phx-click="candidate_add_entry">Add entry</button><button phx-click="candidate_add_effect">Add void effect</button><button phx-click="candidate_clear_effects">Clear effects</button>
         </div>
         <section :if={@case} id="json-editor">
           <h3>Output JSON</h3>
@@ -161,6 +133,51 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           <button phx-click="initial_add_entry">Add entry</button><button phx-click="initial_recalculate">Recalculate totals</button>
         </div>
       </div>
+    </section>
+    """
+  end
+
+  attr :case, :map, default: nil
+  attr :slug, :string, required: true
+
+  def verdict(assigns) do
+    ~H"""
+    <section id="verdict" class="verdict-panel">
+      <h2>Does this output satisfy the law?</h2>
+      <table :if={@case} id="contrast-matrix">
+        <thead>
+          <tr>
+            <th>Check</th><th>Ledger</th><th>Hypothetical</th>
+          </tr>
+        </thead><tbody>
+          <tr id="validity-row">
+            <td><code>Spec.valid?(after)</code></td><td>
+              <.truth value={@case["actual_valid"]} />
+            </td><td><.truth value={@case["candidate_valid"]} /></td>
+          </tr>
+          <tr id="selected-law-row">
+            <td><code>{@slug}</code></td><td>{actual_result(@case)}</td><td class={
+              candidate_class(@case)
+            }>
+              {candidate_result(@case)}
+            </td>
+          </tr>
+          <tr :if={@case["comparison_law"] != @slug && @case["comparison_status"] != "not_probed"}>
+            <td>
+              <button
+                class="text-button"
+                phx-click="inspect_law"
+                phx-value-slug={@case["comparison_law"]}
+              >{@case["comparison_law"]}</button>
+            </td><td>{if @case["comparison_actual"] == true, do: "true", else: "unprobed"}</td><td>
+              {status(@case["comparison_status"])}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p :if={!@case} class="scope-note">
+        No evaluable case. Invalid candidate verdicts are cleared.
+      </p>
     </section>
     """
   end
@@ -210,7 +227,16 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       <h3>{@title}</h3><strong>{@output["after"]["used_amount"]}¢ reserved</strong><p>
         {@output["after"]["used_holds"]} slots · {@output["result"]}
       </p><ul>
-        <li :for={entry <- @output["after"]["entries"]}>{term(entry)}</li>
+        <li :for={{entry, index} <- Enum.with_index(@output["after"]["entries"])}>
+          <span>{entry["key"]} · {entry["amount"]}¢</span>
+          <button
+            :if={@id == "hypothetical-output"}
+            class="status-pill"
+            phx-click="cycle_status"
+            phx-value-index={index}
+          >{entry["status"]}</button>
+          <span :if={@id != "hypothetical-output"} class="status-pill">{entry["status"]}</span>
+        </li>
       </ul><p class="effect-list">
         Effects: {if @output["effects"] == [],
           do: "none",

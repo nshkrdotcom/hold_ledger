@@ -7,9 +7,9 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Review a changed guarantee against a concrete case. The main view puts the changed condition beside contract applicability, a hypothetical output and actual execution. One recorded-state timeline keeps the account, entries and events together.
+Explore a law while keeping its concrete case and proof context visible. The workspace places the contract and operands on the left, the active transition and candidate output in the center, and the verdict and evidence inspector on the right. A compact timeline records branches above them.
 
-The default admission example changes `amount <= remaining` to `amount < remaining`. At exact fit, the example proposal stops covering the input while the actual checkout still admits it. This is a labeled example proposal, not a modification of governing source. Attach two trusted local snapshots to replace it with an actual source comparison and isolated execution.
+The default admission example changes `amount <= remaining` to `amount < remaining`. At exact fit, the illustrated proposal stops covering the input while the checkout still admits it. Attach two trusted local snapshots to replace that illustration with an actual source comparison and isolated replay.
 
 This separate Phoenix application sends no payments and exposes no provider controls.
 
@@ -27,33 +27,35 @@ uv run --locked python scripts/local_run.py --cwd apps/review_web mix phx.server
 
 Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `100` means one dollar.
 
-## Review a change
+## Explore one connected case
 
-**Change & case** shows the condition and a comparison table. Precondition applicability, candidate permission and actual execution answer different questions. A failed precondition does not mean that the implementation rejects the input.
+The three columns remain together on desktop and stack on narrow screens:
 
-Use **Below / Exact fit / Above** or enter an amount. These are scratch inputs: moving a control does not append an event. **Replay scratch input on both sources** runs an attached source pair without changing the recorded trace. **Append this case to trace** explicitly saves a new branch.
-
-**Request repair**, **Needs policy / evidence decision** and **Considered in scope** record scoped reviewer dispositions. An example action records a local concern; actual evidence actions use the original revision-checked review store. Neither authorizes a policy change, blocks a PR nor grants formal acceptance.
-
-The task tabs keep related work together:
-
-| View | What it shows |
+| Instrument | What it does |
 |---|---|
-| Clauses | Actual source expressions, explicit AND / OR / NOT groups, operands and helper inspection. |
-| Proof | Full proof source alongside a selected source stage, referenced lemmas and available generated artifacts. No invented live tactic states. |
-| Premises | External assumptions and a current-entry fencing counterfactual. The key and amount come from the selected case; unsupported contexts remain unavailable. |
-| Edit output | Actual and hypothetical results, editable state/effects and deliberate inconsistent totals. |
-| Review record | Saved challenges, notes and session export. |
+| Contract and clauses | Shows the changed condition, original claim expressions, bound values and AND / OR / NOT structure. Helper inspection stays within the workspace. |
+| Active transition | Shows the starting account, event controls and actual versus hypothetical output. Boundary controls change the active case. |
+| Verdict and evidence | Keeps state validity and the selected law beside the candidate. The inspector opens proof source, premises or notes without replacing the case. |
 
-The fencing comparison illustrates terminal confirmation followed by delayed authorization for the selected entry. It runs the original local transition and coverage model, then explicitly substitutes a remote outcome when fencing is disabled. It does not test a real processor or alter the session. Other external assumptions remain documented rather than given fabricated fault animations.
+Use **Below / Exact fit / Above** or enter an amount. A **transient branch** appears on the timeline, and the account, outputs, clause evaluation and replay use that same input. This writes no history. **Append this case to trace** keeps it; **Discard** restores the recorded case. Selecting a recorded event leaves the transient branch.
 
-**Find a rejected output** checks six seeded hypothetical output variations against the original selected claim. It reports cases, seed and elapsed time; findings are rechecked. This bounded candidate search is not general fuzzing or a proof of safety when it finds nothing.
+Precondition applicability, candidate permission and actual execution answer different questions. A failed precondition does not mean that the implementation rejects the input. For real two-source replay, **Choose local source pair** selects registered trusted snapshots. The replay action explains this prerequisite inline.
 
-All 49 catalog obligations remain readable. Native Lean obligations retain their explicit lack of an executable Elixir counterpart. Pointwise executions, proof-source readings and full formal evidence remain separate.
+Mutation chips change the candidate immediately: remove effects, zero counters, change the first identity or propose premature release. Click a candidate status to cycle its bounded statuses. The adjacent verdict updates on change. Counters stay as entered until **Recalculate totals**; changing an entry never silently repairs its accounting. **Structured / JSON editor** provides complete typed editing when a chip is insufficient.
+
+**Try six output variations** checks a seeded, bounded set of candidates against the original selected claim. Its candidate and verdict update in place; cases, seed, elapsed time and cancellation remain visible. This is neither general fuzzing nor proof of safety when no variation is rejected.
+
+Quick lifecycle buttons append the next event from the displayed actual output. If an input is transient, appending first preserves that input as a recorded branch. **Continue hypothetical branch** instead preserves the candidate and its descendants as hypothetical. The custom event builder remains available for other keys, amounts, declines, restarts and coupled-model events.
+
+The **Premises** inspector selects an authorized or voiding entry from the active result. Its fencing experiment uses that key and amount, then contrasts terminal confirmation with a deliberately resurrected remote authorization. It does not test a real bank or change the session. When the active result has no suitable entry, a button opens a separate pending-void worked case.
+
+The **Proof** inspector displays actual source and exact source anchors. Registered lemma and generated-artifact buttons open matching source inline; raw source downloads remain available. Captured Lean hypotheses and goal states are explicitly unavailable. Source readings and individual executions do not establish universal formal acceptance.
+
+All 49 catalog obligations remain readable. Native Lean obligations retain their explicit lack of an executable Elixir counterpart. Example concerns are stored as scoped local notes; actual evidence dispositions use the original revision-checked review store. Neither authorizes policy, blocks a PR nor grants formal acceptance.
 
 ## Step, adjust and branch
 
-The state machine shows reserved capacity, remembered identities and statuses. Select an earlier step or move the scrubber, then apply an event to branch from that state. Other branches remain selectable. **Adjust starting state** changes limits, counters and entries in a new session.
+The state machine shows reserved capacity, remembered identities and statuses. Select an earlier event on the timeline, then append an event to branch from that state. Other branches remain selectable. **Adjust starting state** changes limits, counters and entries in a new session.
 
 **Edit hypothetical output** changes the returned state, result and requested effects. Counters stay as entered until you choose **Recalculate totals**. Inconsistent outputs can challenge a law; continuing from one requires a valid state. The optional JSON editor uses the same bounded codec as structured controls: at most eight entries and integers up to 1,000,000.
 

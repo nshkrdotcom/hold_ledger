@@ -3,13 +3,13 @@ async function open(page,slug='po_a2') {
  await page.goto('/claims/'+slug);await expect(page).toHaveURL(new RegExp('/claims/'+slug+'/trace-'));
  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
 }
-async function tab(page,name){await page.locator('#workspace-tabs [phx-value-view="'+name+'"]').click()}
+async function tab(page,name){if(['proof','premises','record'].includes(name))await page.locator('#inspector-tools [phx-value-view="'+name+'"]').click()}
 test('review opens with the change, separate questions and scoped actions',async({page})=>{
  await open(page);for(const id of ['contract-diff','boundary-fork','decision-docket','timeline'])await expect(page.locator('#'+id)).toBeVisible();
  await expect(page.locator('#example-provenance')).toContainText('Example');
  await expect(page.locator('#contract-diff')).toContainText('amount <');
  await expect(page.locator('#coverage-row td').last()).toHaveText('No');
- await expect(page.locator('#execution-row')).toContainText('admitted');
+ await expect(page.locator('#ledger-output')).toContainText('admitted');
  await expect(page.locator('#technical-inspector, #proof-player, #visual-timeline')).toHaveCount(0);
 });
 test('99/100/101 are scratch cases until explicitly appended',async({page})=>{
@@ -36,5 +36,31 @@ test('clauses display boolean structure and actual operands',async({page})=>{
  await open(page);await tab(page,'clauses');await expect(page.locator('.logic-group').first()).toContainText('AND');await expect(page.locator('.inline-values').filter({hasText:'100 ≤ 100'}).first()).toBeVisible();
 });
 test('non-request controls keep a stable input strip',async({page})=>{
- await open(page,'po_exposure_retain');await expect(page.locator('#review-amount')).toBeVisible();await expect(page.locator('#review-amount')).toBeDisabled();await expect(page.locator('#event_amount')).toBeVisible();
+ await open(page,'po_exposure_retain');await expect(page.locator('#review-amount')).toBeVisible();await expect(page.locator('#review-amount')).toBeDisabled();await expect(page.locator('#event-builder')).toBeVisible();
+});
+
+test('one active transient context drives account, candidate and visible verdict',async({page})=>{
+ await open(page);await page.locator('#review-amount').fill('99');await expect(page.locator('#transient-branch')).toContainText('99');
+ await expect(page.locator('#ledger-output')).toContainText('99¢ reserved');await expect(page.locator('#hypothetical-output')).toBeVisible();await expect(page.locator('#verdict')).toBeVisible();
+ await page.getByRole('button',{name:'Use Ledger output',exact:true}).click();await page.getByRole('button',{name:'Zero counters',exact:true}).click();await expect(page.locator('#validity-row td').last()).toHaveText('false');
+ await page.locator('#hypothetical-output .status-pill').first().click();await expect(page.locator('#hypothetical-output')).toContainText('0¢ reserved');
+ await page.locator('[phx-click=discard_preview]').click();await expect(page.locator('#transient-branch')).toHaveCount(0);await expect(page.locator('#ledger-output')).toContainText('100¢ reserved');
+});
+test('quick event records the active transient prefix before continuing',async({page})=>{
+ await open(page);await page.locator('#review-amount').fill('99');await expect(page.locator('#ledger-output')).toContainText('99¢');
+ await page.locator('[phx-click=quick_event][phx-value-type=dispatch]').click();await expect(page.locator('#ledger-output')).toContainText('sent');await expect(page.locator('#ledger-output')).toContainText('99¢');await expect(page.locator('#timeline button')).toHaveCount(4);
+});
+test('proof references inspect inline while the case and verdict remain present',async({page})=>{
+ await open(page,'po_exposure_retain');await page.locator('#lemma-links button').first().click();await expect(page.locator('#inline-source pre')).toContainText('theorem');await expect(page.locator('#ledger-output')).toBeVisible();await expect(page.locator('#verdict')).toBeVisible();await page.locator('#inline-source button').click();await expect(page.locator('#goal-state-status')).toContainText('unavailable');
+});
+test('premises offer a worked case instead of an unactionable empty result',async({page})=>{
+ await open(page);await tab(page,'premises');await page.locator('#open-premise-case').click();await expect(page).toHaveURL(/po_exposure_retain/);await tab(page,'premises');await expect(page.locator('#premise-selector')).toBeVisible();await expect(page.locator('#fencing-toggle')).toBeVisible();
+});
+
+test('desktop shows the contract, outputs, verdict and proof context together',async({page})=>{
+ await page.setViewportSize({width:1600,height:1050});await open(page);
+ for(const selector of ['#contract-diff','#hypothetical-output','#contrast-matrix','#goal-state-status'])await expect(page.locator(selector)).toBeInViewport();
+ await expect(page.locator('#policy-anchor')).toContainText('An exact amount fit is admitted');
+ const columns=await page.locator('.workspace-column').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().x));expect(columns[0]).toBeLessThan(columns[1]);expect(columns[1]).toBeLessThan(columns[2]);
+ await page.getByRole('button',{name:'Use Ledger output',exact:true}).click();await page.getByRole('button',{name:'Zero counters',exact:true}).click();await expect(page.locator('#contrast-matrix')).toBeInViewport();
 });

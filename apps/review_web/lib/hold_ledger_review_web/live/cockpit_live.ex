@@ -27,7 +27,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     {:ok,
      assign(socket,
        page_title: "Hold Ledger · Contract review",
-       workspace_view: "compare",
+       inspector: "proof",
+       inspected: nil,
+       premise_key: nil,
        show_sources: false,
        snapshots:
          Enum.map(
@@ -45,7 +47,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
        basis: "candidate",
        helper: nil,
        stage: 0,
-       reference: nil,
        editor: nil,
        candidate_form: nil,
        initial_form: nil,
@@ -53,24 +54,26 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
        preview: nil,
        fencing: true,
        hunt: %{status: "idle"},
+       package_subscription: nil,
        package: nil,
        package_proof: nil,
        delta: %{},
        compare_form: to_form(%{}, as: :compare),
        note_form: to_form(%{}, as: :note),
+       event_builder: false,
        event_form: event_form()
      )}
   end
 
   @impl true
   def handle_params(
-        %{"view" => view, "id" => id, "slug" => slug},
+        %{"inspect" => view, "id" => id, "slug" => slug},
         _,
         %{assigns: %{doc: %{"id" => current}, slug: current_slug}} = socket
       )
       when id == current and slug == current_slug and
-             view in ~w(compare clauses proof premises outputs record),
-      do: {:noreply, assign(socket, workspace_view: view)}
+             view in ~w(proof premises record),
+      do: {:noreply, assign(socket, inspector: view)}
 
   def handle_params(params, _, socket) do
     slug = params["slug"] || "po_a2"
@@ -80,11 +83,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         socket =
           assign(socket,
             slug: slug,
+            inspected: nil,
+            premise_key: nil,
             reading: reading,
             stage: 0,
-            reference: nil,
             helper: nil,
-            workspace_view: workspace_view(params["view"])
+            inspector: inspector(params["inspect"])
           )
 
         load_session(socket, params["id"])
@@ -139,18 +143,103 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     do:
       {:noreply,
        push_patch(socket,
-         to: ~p"/claims/#{slug}/#{socket.assigns.doc["id"]}?view=#{socket.assigns.workspace_view}"
+         to: ~p"/claims/#{slug}/#{socket.assigns.doc["id"]}?inspect=#{socket.assigns.inspector}"
        )}
 
-  def handle_event("workspace_view", %{"view" => view}, socket)
-      when view in ~w(compare clauses proof premises outputs record) do
-    socket = assign(socket, workspace_view: view)
-    socket = if view == "outputs", do: assign(socket, editor: "candidate"), else: socket
+  def handle_event(
+        "inspect",
+        %{"view" => view},
+        %{assigns: %{inspector: current, inspected: nil}} = socket
+      )
+      when view == current, do: {:noreply, socket}
 
+  def handle_event("inspect", %{"view" => view}, socket) when view in ~w(proof premises record) do
     {:noreply,
-     push_patch(socket,
-       to: ~p"/claims/#{socket.assigns.slug}/#{socket.assigns.doc["id"]}?view=#{view}"
+     push_patch(assign(socket, inspector: view, inspected: nil),
+       to: ~p"/claims/#{socket.assigns.slug}/#{socket.assigns.doc["id"]}?inspect=#{view}"
      )}
+  end
+
+  def handle_event("inspect_registered_source", %{"id" => id, "sha" => sha}, socket) do
+    with source when is_map(source) <-
+           Enum.find(socket.assigns.reading["sources"], &(&1["id"] == id && &1["sha256"] == sha)),
+         {:ok, bytes} <- ProofReading.source(socket.assigns.slug, id, sha) do
+      {:noreply, assign(socket, inspected: %{name: source["path"], bytes: bytes, sha: sha})}
+    else
+      _ -> {:noreply, error(socket, "Registered source unavailable or stale.")}
+    end
+  end
+
+  def handle_event("inspect_artifact", %{"sha" => sha}, socket) do
+    case ProofReading.artifact(socket.assigns.slug, sha) do
+      {:ok, bytes} ->
+        {:noreply,
+         assign(socket, inspected: %{name: "Generated Lean source", bytes: bytes, sha: sha})}
+
+      _ ->
+        {:noreply, error(socket, "Matching generated source unavailable.")}
+    end
+  end
+
+  def handle_event("close_source", _, socket), do: {:noreply, assign(socket, inspected: nil)}
+
+  def handle_event("premise_key", %{"key" => key}, socket) do
+    case Integer.parse(key) do
+      {n, ""} when n in 0..1_000_000 -> {:noreply, assign(socket, premise_key: n)}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("open_premise_case", _, socket),
+    do: {:noreply, push_navigate(socket, to: ~p"/claims/po_exposure_retain")}
+
+  def handle_event("discard_preview", _, socket),
+    do: {:noreply, socket |> assign(preview: nil, hunt: %{status: "idle"}) |> refresh_case(nil)}
+
+  def handle_event("quick_event", %{"type" => type, "key" => key}, socket)
+      when type in ~w(request dispatch timeout retry void void_confirmed processor_result) do
+    {:noreply, prepared} = handle_event("apply_preview", %{}, socket)
+
+    if prepared.assigns.preview do
+      {:noreply, prepared}
+    else
+      handle_event(
+        "apply_event",
+        %{"event" => %{"type" => type, "key" => key, "amount" => "100", "outcome" => "approved"}},
+        prepared
+      )
+    end
+  end
+
+  def handle_event("mutate_candidate", %{"kind" => kind}, socket)
+      when kind in ~w(drop_effects zero_counters change_identity) do
+    case socket.assigns.case_data do
+      %{"candidate" => candidate} ->
+        output = perturb(candidate, kind)
+        {:noreply, refresh_case(socket, output)}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("cycle_status", %{"index" => index}, socket) do
+    with {n, ""} when n >= 0 <- Integer.parse(index),
+         %{"candidate" => output} <- socket.assigns.case_data,
+         entry when is_map(entry) <- Enum.at(output["after"]["entries"], n) do
+      statuses = TermCodec.statuses()
+
+      next =
+        Enum.at(
+          statuses,
+          rem(Enum.find_index(statuses, &(&1 == entry["status"])) + 1, length(statuses))
+        )
+
+      {:noreply,
+       refresh_case(socket, put_in(output, ["after", "entries", Access.at(n), "status"], next))}
+    else
+      _ -> {:noreply, socket}
+    end
   end
 
   def handle_event("show_sources", _, socket),
@@ -271,12 +360,19 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     end
   end
 
-  def handle_event("lemma", %{"name" => name}, socket),
-    do:
+  def handle_event("lemma", %{"name" => name}, socket) do
+    with ref when is_map(ref) <-
+           Enum.find(socket.assigns.reading["references"], &(&1["name"] == name)),
+         d when is_map(d) <- List.first(ref["declarations"]),
+         source when is_map(source) <-
+           Enum.find(socket.assigns.reading["sources"], &(&1["path"] == d["path"])),
+         {:ok, _bytes} <- ProofReading.source(socket.assigns.slug, source["id"], source["sha256"]) do
       {:noreply,
-       assign(socket,
-         reference: Enum.find(socket.assigns.reading["references"], &(&1["name"] == name))
-       )}
+       assign(socket, inspected: %{name: name, bytes: d["text"], sha: source["sha256"]})}
+    else
+      _ -> {:noreply, error(socket, "Registered dependency source unavailable or stale.")}
+    end
+  end
 
   def handle_event("refresh_evidence", _, socket) do
     case ProofReading.document(socket.assigns.slug) do
@@ -303,7 +399,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   def handle_event("edit_candidate", _, socket),
-    do: {:noreply, assign(socket, editor: "candidate", workspace_view: "outputs")}
+    do: {:noreply, assign(socket, editor: "candidate")}
 
   def handle_event("candidate_change", %{"output" => params}, socket),
     do: candidate_input(socket, params)
@@ -380,18 +476,20 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def handle_event("candidate_clear_effects", _, socket),
     do: candidate_input(socket, Map.put(socket.assigns.candidate_form.params, "effects", %{}))
 
-  def handle_event("branch_candidate", _, %{assigns: %{preview: preview}} = socket)
-      when is_map(preview),
-      do: {:noreply, error(socket, "Add the preview to the trace first.")}
-
   def handle_event("branch_candidate", _, socket) do
     case socket.assigns.case_data do
       %{"candidate_valid" => true, "candidate" => output} ->
-        mutate(
-          socket,
-          %{"kind" => "candidate", "parent" => socket.assigns.cursor, "output" => output},
-          true
-        )
+        {:noreply, prepared} = handle_event("apply_preview", %{}, socket)
+
+        if prepared.assigns.preview do
+          {:noreply, prepared}
+        else
+          mutate(
+            prepared,
+            %{"kind" => "candidate", "parent" => prepared.assigns.cursor, "output" => output},
+            true
+          )
+        end
 
       _ ->
         {:noreply, error(socket, "The hypothetical state must be valid before continuing.")}
@@ -426,8 +524,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     {:noreply,
      assign(socket,
        initial_form: to_form(params, as: :initial),
-       editor: "initial",
-       workspace_view: "outputs"
+       editor: "initial"
      )}
   end
 
@@ -490,29 +587,8 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   def handle_event("select_step", %{"id" => id}, socket), do: select_step(socket, id)
 
-  def handle_event("previous", _, socket) do
-    case selected(socket.assigns) do
-      nil -> {:noreply, socket}
-      step -> select_step(socket, step["parent"])
-    end
-  end
-
-  def handle_event("next", _, socket) do
-    case Enum.find(socket.assigns.doc["steps"], &(&1["parent"] == socket.assigns.cursor)) do
-      nil -> {:noreply, socket}
-      step -> select_step(socket, step["id"])
-    end
-  end
-
-  def handle_event("scrub", %{"position" => position}, socket) do
-    path = trace_path(socket.assigns.doc, socket.assigns.cursor)
-
-    case Integer.parse(position) do
-      {0, ""} -> select_step(socket, "start")
-      {n, ""} when n > 0 and n <= length(path) -> select_step(socket, Enum.at(path, n - 1)["id"])
-      _ -> {:noreply, socket}
-    end
-  end
+  def handle_event("toggle_event_builder", _, socket),
+    do: {:noreply, assign(socket, event_builder: not socket.assigns.event_builder)}
 
   def handle_event("event_change", %{"event" => params}, socket),
     do:
@@ -520,6 +596,15 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
        assign(socket,
          event_form: to_form(Map.merge(socket.assigns.event_form.params, params), as: :event)
        )}
+
+  def handle_event("apply_event", params, %{assigns: %{preview: preview}} = socket)
+      when is_map(preview) do
+    {:noreply, prepared} = handle_event("apply_preview", %{}, socket)
+
+    if prepared.assigns.preview,
+      do: {:noreply, prepared},
+      else: handle_event("apply_event", params, prepared)
+  end
 
   def handle_event("apply_event", %{"event" => params}, socket) do
     case event_json(socket.assigns.doc["mode"], params) do
@@ -535,33 +620,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       _ ->
         {:noreply, error(socket, "Invalid event fields.")}
     end
-  end
-
-  def handle_event("next_request", _, socket) do
-    {:ok, state} = Trace.state_at(socket.assigns.doc, socket.assigns.cursor)
-    ledger = if socket.assigns.doc["mode"] == "ledger", do: state, else: state["ledger"]
-    keys = Enum.map(ledger["entries"], & &1["key"])
-    key = Enum.find(1..10, &(&1 not in keys))
-
-    params = %{
-      "type" => "request",
-      "key" => to_string(key),
-      "amount" => "100",
-      "outcome" => "approved"
-    }
-
-    handle_event("apply_event", %{"event" => params}, socket)
-  end
-
-  def handle_event("confirm_void", _, socket) do
-    params = %{
-      "type" => "void_confirmed",
-      "key" => first_key(socket.assigns),
-      "amount" => "1",
-      "outcome" => "approved"
-    }
-
-    handle_event("apply_event", %{"event" => params}, socket)
   end
 
   def handle_event("coupled", _, socket) do
@@ -603,8 +661,17 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   def handle_event("pair_proof", _, socket) do
     case Part3ProofInspector.inspect(socket.assigns.package) do
-      {:ok, proof} -> {:noreply, assign(socket, package_proof: proof)}
-      _ -> {:noreply, error(socket, "Matching proof artifacts unavailable.")}
+      {:ok, proof} ->
+        {:noreply,
+         socket
+         |> assign(package_proof: proof)
+         |> put_flash(
+           :info,
+           "Pair artifacts loaded: #{length(proof["versions"])} source versions."
+         )}
+
+      {:error, reason} ->
+        {:noreply, error(socket, "Matching proof artifacts unavailable: #{inspect(reason)}")}
     end
   end
 
@@ -654,10 +721,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     {:noreply, assign(socket, hunt: %{status: status})}
   end
 
-  defp workspace_view(view) when view in ~w(compare clauses proof premises outputs record),
+  defp inspector(view) when view in ~w(proof premises record),
     do: view
 
-  defp workspace_view(_), do: "compare"
+  defp inspector(_), do: "proof"
 
   defp record_example_decision(socket, action) when action in ~w(design policy considered) do
     label =
@@ -695,6 +762,18 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   defp record_example_decision(socket, _), do: {:noreply, error(socket, "Unknown review action.")}
+
+  defp perturb(output, "drop_effects"), do: Map.put(output, "effects", [])
+
+  defp perturb(output, "zero_counters"),
+    do: output |> put_in(["after", "used_amount"], 0) |> put_in(["after", "used_holds"], 0)
+
+  defp perturb(output, "change_identity") do
+    update_in(output, ["after", "entries"], fn
+      [] -> []
+      [entry | rest] -> [Map.put(entry, "key", rem(entry["key"] + 1, 1_000_001)) | rest]
+    end)
+  end
 
   defp hunt_context(socket),
     do:
@@ -805,7 +884,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     id = socket.assigns.doc["comparison"]
 
     if id do
-      if connected?(socket), do: Phoenix.PubSub.subscribe(HoldLedgerReview.PubSub, "part3:" <> id)
+      socket = subscribe_package(socket, id)
 
       case Part3Store.get(id) do
         {:ok, package, :ok} ->
@@ -820,29 +899,24 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     end
   end
 
+  defp subscribe_package(socket, id) do
+    if connected?(socket) && socket.assigns.package_subscription != id do
+      if old = socket.assigns.package_subscription,
+        do: Phoenix.PubSub.unsubscribe(HoldLedgerReview.PubSub, "part3:" <> old)
+
+      :ok = Phoenix.PubSub.subscribe(HoldLedgerReview.PubSub, "part3:" <> id)
+      assign(socket, package_subscription: id, package_proof: nil)
+    else
+      socket
+    end
+  end
+
   defp evaluation_doc(%{preview: nil} = assigns), do: assigns.doc
   defp evaluation_doc(assigns), do: Map.update!(assigns.doc, "steps", &(&1 ++ [assigns.preview]))
 
   defp selected(%{preview: preview}) when is_map(preview), do: preview
   defp selected(assigns), do: if(assigns.doc, do: Trace.step(assigns.doc, assigns.cursor))
   defp last_id(doc), do: if(doc["steps"] == [], do: "start", else: List.last(doc["steps"])["id"])
-  defp trace_path(doc, cursor), do: Trace.path(doc, leaf(doc, cursor))
-
-  defp leaf(doc, cursor) do
-    case Enum.find(doc["steps"], &(&1["parent"] == cursor)) do
-      nil -> cursor
-      next -> leaf(doc, next["id"])
-    end
-  end
-
-  defp first_key(assigns) do
-    {:ok, json} = Trace.state_at(assigns.doc, assigns.cursor)
-
-    case json["entries"] do
-      [entry | _] -> to_string(entry["key"])
-      _ -> "1"
-    end
-  end
 
   defp error(socket, text), do: put_flash(socket, :error, text)
 
@@ -925,106 +999,117 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           />
         </.form>
       </header>
-      <nav class="workspace-tabs" aria-label="Review workspace" id="workspace-tabs">
-        <button
-          :for={
-            {view, label} <- [
-              {"compare", "Change & case"},
-              {"clauses", "Clauses"},
-              {"proof", "Proof source"},
-              {"premises", "External premises"},
-              {"outputs", "Edit state / output"},
-              {"record", "Review record"}
-            ]
-          }
-          phx-click="workspace_view"
-          phx-value-view={view}
-          aria-pressed={to_string(@workspace_view == view)}
-        >{label}</button>
-      </nav>
       <p :if={@doc && !Trace.current?(@doc)} role="alert" id="stale-session">
         Session source changed. Its results cannot be used as current evidence.
       </p>
       <div :if={@doc && @reading} id="review-workspace">
-        <.comparison
-          :if={@workspace_view == "compare"}
-          reading={@reading}
-          case={@case_data}
-          step={selected(assigns)}
-          package={@package}
-          delta={@delta}
-          preview={@preview}
-          compare_form={@compare_form}
-          snapshots={@snapshots}
-          show_sources={@show_sources}
-          doc={@doc}
-        />
-        <section :if={@workspace_view == "clauses"} class="review-surface clause-workspace">
-          <header class="review-section-heading">
-            <h2>Conditions and promised output</h2><span>Actual source-derived values</span>
-          </header>
-          <.dissector case={@case_data} reading={@reading} basis={@basis} helper={@helper} />
-          <div class="action-row">
-            <button
-              phx-click="hunt"
-              id="hunt-candidate"
-              disabled={@hunt.status == "running" || !@case_data}
-            >Try bounded output variations</button><button
-              :if={@hunt.status == "running"}
-              phx-click="cancel_hunt"
-            >Cancel</button><output id="hunt-status">{@hunt.status}{if @hunt[:cases],
-              do: " · #{@hunt.cases} cases · #{@hunt.elapsed_ms}ms · seed #{@hunt.seed}"}</output>
-          </div>
-        </section>
-        <div :if={@workspace_view == "proof"}>
-          <.proof_source reading={@reading} stage={@stage} />
-
-          <button :if={@package} phx-click="pair_proof" id="pair-proof">Inspect pair proof artifacts</button>
-          <div :if={@package_proof} id="pair-proof-artifacts" class="review-surface">
-            <section :for={version <- @package_proof["versions"]}>
-              <h3>{version["side"]}: {version["formal_acceptance"]}</h3><p>
-                {version["report_status"]}
-              </p><p :for={law <- Enum.filter(version["sources"], &(&1["slug"] == @slug))}>
-                {law["slug"]} · {law["artifact_scope"]} · {if law["translated_statement"],
-                  do: "translation supplied",
-                  else: "translation missing"} · {if law["proof_dependencies"],
-                  do: "dependencies supplied",
-                  else: "dependencies missing"}
-              </p><a
-                :for={item <- Enum.filter(version["artifacts"], &(&1["status"] == "present"))}
-                href={"/comparisons/#{@package["id"]}/artifact/#{version["side"]}/#{item["sha256"]}"}
-              >{item["kind"]}: {item["path"]}</a>
+        <.timeline doc={@doc} cursor={@cursor} preview={@preview} />
+        <div class="connected-workspace">
+          <section class="workspace-column contract-column" aria-label="Contract and clauses">
+            <.comparison
+              reading={@reading}
+              case={@case_data}
+              step={selected(assigns)}
+              package={@package}
+              delta={@delta}
+              preview={@preview}
+              compare_form={@compare_form}
+              snapshots={@snapshots}
+              show_sources={@show_sources}
+              doc={@doc}
+            />
+            <.dissector reading={@reading} case={@case_data} basis={@basis} helper={@helper} />
+          </section>
+          <section class="workspace-column transition-column" aria-label="Active transition">
+            <.active_state doc={@doc} cursor={@cursor} step={selected(assigns)} />
+            <.input_strip case={@case_data} preview={@preview} />
+            <p :if={@preview} class="transient-notice" id="scratch-status">
+              Transient branch · all results below use this input.
+              <button phx-click="discard_preview">Discard</button>
+            </p>
+            <div class="transition-arrow" aria-hidden="true">↓</div>
+            <.contrast
+              case={@case_data}
+              step={selected(assigns)}
+              slug={@slug}
+              editor={@editor}
+              candidate_form={@candidate_form}
+              initial_form={@initial_form}
+              invalid={@invalid}
+            />
+            <div class="candidate-search">
+              <button
+                phx-click="hunt"
+                id="hunt-candidate"
+                disabled={!@case_data || @hunt.status == "running"}
+              >Try six output variations</button><button
+                :if={@hunt.status == "running"}
+                phx-click="cancel_hunt"
+              >Cancel search</button><output id="hunt-status">{@hunt.status}{if @hunt[:cases],
+                do: " · #{@hunt.cases} cases · #{@hunt.elapsed_ms}ms · seed #{@hunt.seed}"}</output>
+            </div>
+            <.event_controls
+              builder_open={@event_builder}
+              doc={@doc}
+              event_form={@event_form}
+              step={selected(assigns)}
+              preview={@preview}
+            />
+          </section>
+          <aside class="workspace-column verification-column" aria-label="Verdict and evidence">
+            <.verdict case={@case_data} slug={@slug} />
+            <.pair_results
+              case={@case_data}
+              reading={@reading}
+              step={selected(assigns)}
+              package={@package}
+              preview={nil}
+            />
+            <.pair_artifacts
+              :if={@package_proof}
+              proof={@package_proof}
+              package={@package}
+              slug={@slug}
+            />
+            <nav class="inspector-tools" id="inspector-tools" aria-label="Evidence inspector">
+              <button
+                :for={
+                  {view, label} <- [{"proof", "Proof"}, {"premises", "Premises"}, {"record", "Notes"}]
+                }
+                phx-click="inspect"
+                phx-value-view={view}
+                aria-pressed={to_string(@inspector == view)}
+              >{label}</button>
+            </nav>
+            <section :if={@inspected} id="inline-source" class="inline-source">
+              <header>
+                <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
+              </header><small>SHA-256 {@inspected.sha}</small><pre>{@inspected.bytes}</pre>
             </section>
-          </div>
+            <div :if={@inspector == "proof" && !@inspected}>
+              <.proof_source reading={@reading} stage={@stage} />
+              <button :if={@package} phx-click="pair_proof" id="pair-proof">Inspect pair proof artifacts</button>
+            </div>
+            <div :if={@inspector == "premises"}>
+              <.premise case={@case_data} fencing={@fencing} selected_key={@premise_key} /><.assumptions reading={
+                @reading
+              } />
+            </div>
+            <section :if={@inspector == "record"} id="session-record">
+              <h2>Review record</h2><a href={~p"/sessions/#{@doc["id"]}/export"}>Download session</a><button
+                phx-click="save_challenge"
+                disabled={!@case_data || @preview != nil}
+              >Save recorded-input challenge</button><span>{length(@doc["challenges"])} saved challenges</span><.form
+                for={@note_form}
+                id="note-form"
+                phx-submit="record_note"
+              >
+                <.input field={@note_form[:text]} type="textarea" label="Review note" /><button>Record concern</button>
+              </.form><p :for={note <- @doc["notes"]}>{note["text"]}</p>
+            </section>
+          </aside>
         </div>
-        <div :if={@workspace_view == "premises"}>
-          <.premise case={@case_data} fencing={@fencing} /><.assumptions reading={@reading} />
-        </div>
-        <.contrast
-          :if={@workspace_view == "outputs"}
-          case={@case_data}
-          step={selected(assigns)}
-          slug={@slug}
-          editor={@editor}
-          candidate_form={@candidate_form}
-          initial_form={@initial_form}
-          invalid={@invalid}
-        />
-        <section :if={@workspace_view == "record"} id="session-record" class="review-surface">
-          <header class="review-section-heading">
-            <h2>Review record</h2><a href={~p"/sessions/#{@doc["id"]}/export"}>Download session</a>
-          </header><button phx-click="save_challenge" disabled={!@case_data || @preview != nil}>Save recorded-input challenge</button><span>{length(
-            @doc["challenges"]
-          )} saved challenges</span><.form for={@note_form} id="note-form" phx-submit="record_note">
-            <.input field={@note_form[:text]} type="textarea" label="Review note" /><button>Record concern</button>
-          </.form><p :for={note <- @doc["notes"]}>{note["text"]}</p>
-        </section>
-        <.scrubber
-          doc={@doc}
-          cursor={@cursor}
-          event_form={@event_form}
-          path={trace_path(@doc, @cursor)}
-        />
+        <.disposition package={@package} doc={@doc} />
       </div>
     </Layouts.app>
     """

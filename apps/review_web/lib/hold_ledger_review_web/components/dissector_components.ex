@@ -11,16 +11,8 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     ~H"""
     <section class="instrument" id="dissector">
       <header>
-        <span class="section-number">02</span><h2>Contract deconstructor</h2>
+        <span class="section-number">02</span><h2>Evaluated clauses</h2>
       </header>
-      <div :if={@reading["contract"]["status"] == "source_read"}>
-        <div class="contract-source">
-          <span>requires</span><code id="requires-expression">{@reading["contract"]["requires"]}</code>
-        </div>
-        <div class="contract-source">
-          <span>expects</span><code id="expects-expression">{@reading["contract"]["expects"]}</code>
-        </div>
-      </div>
       <p :if={@reading["kind"] == "native_lean"}>
         Native Lean statement. No executable Elixir counterpart.
       </p>
@@ -82,6 +74,17 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         </p>
         <.clause_table title="Definition on these values" node={@helper} phase="helper" binding={0} />
       </div>
+      <details class="full-contract">
+        <summary>Full claim expressions</summary>
+        <div :if={@reading["contract"]["status"] == "source_read"}>
+          <div class="contract-source">
+            <span>requires</span><code id="requires-expression">{@reading["contract"]["requires"]}</code>
+          </div>
+          <div class="contract-source">
+            <span>expects</span><code id="expects-expression">{@reading["contract"]["expects"]}</code>
+          </div>
+        </div>
+      </details>
       <a
         :if={@reading["law"]["file"]}
         href={source_url(@reading, @reading["law"]["file"])}
@@ -104,8 +107,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     <section class="clause-table">
       <h3>{@title} <.truth value={@node["value"]} /></h3>
       <.logic node={@node} />
-      <details class="operand-detail">
-        <summary>Operand table & helper inspection</summary>
+      <div class="operand-detail">
         <table>
           <thead>
             <tr>
@@ -137,7 +139,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             </tr>
           </tbody>
         </table>
-      </details>
+      </div>
     </section>
     """
   end
@@ -158,19 +160,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     <div class={["logic-node", @node["status"] == "not_evaluated" && "not-evaluated"]}>
       <div :if={@op in [:and, :or, :not] && @node["status"] != "not_evaluated"} class="logic-group">
         <div class="logic-group-heading">
-          <span class="logic-operator">{String.upcase(Atom.to_string(@op))}</span><span>{if @op ==
-                                                                                              :and,
-                                                                                            do:
-                                                                                              "every condition",
-                                                                                            else:
-                                                                                              if(
-                                                                                                @op ==
-                                                                                                  :or,
-                                                                                                do:
-                                                                                                  "either condition",
-                                                                                                else:
-                                                                                                  "negated condition"
-                                                                                              )}</span><.truth value={
+          <span class="logic-operator">{String.upcase(Atom.to_string(@op))}</span><.truth value={
             @node["value"]
           } />
         </div>

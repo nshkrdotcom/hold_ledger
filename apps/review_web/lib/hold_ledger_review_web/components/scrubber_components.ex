@@ -6,137 +6,200 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
 
   attr :doc, :map, required: true
   attr :cursor, :string, required: true
-  attr :event_form, :any, required: true
-  attr :path, :list, required: true
+  attr :preview, :any, default: nil
 
-  def scrubber(assigns) do
-    {:ok, state} = Trace.state_at(assigns.doc, assigns.cursor)
+  def timeline(assigns) do
+    parent =
+      if assigns.preview,
+        do: Enum.find_index(assigns.doc["steps"], &(&1["id"] == assigns.preview["parent"]))
 
     assigns =
       assign(assigns,
-        state: state,
-        ledger: if(assigns.doc["mode"] == "ledger", do: state, else: state["ledger"])
+        parent_label: if(is_integer(parent), do: "step #{parent + 1}", else: "Start")
       )
 
     ~H"""
-    <section class="machine" id="state-machine">
-      <header class="section-heading">
-        <h2>Recorded state & timeline</h2><div class="action-row">
-          <button :if={@doc["mode"] == "ledger"} phx-click="edit_initial" id="edit-start">Adjust starting state</button><button
-            phx-click="coupled"
-            id="coupled-model"
-          >Coupled processor model</button>
-        </div>
-      </header>
+    <section id="trace-rail" class="trace-rail">
       <nav id="timeline" aria-label="Trace steps">
         <button
           phx-click="select_step"
           phx-value-id="start"
-          aria-current={if @cursor == "start", do: "step", else: "false"}
-        >Start</button><button
+          aria-current={if @cursor == "start" && !@preview, do: "step", else: "false"}
+        >Start</button>
+        <button
           :for={{step, index} <- Enum.with_index(@doc["steps"], 1)}
           phx-click="select_step"
           phx-value-id={step["id"]}
-          aria-current={if @cursor == step["id"], do: "step", else: "false"}
-        >{index}. {event_label(step["event"])}{if step["origin"] != "computed", do: " · hypothetical"}</button>
-      </nav>
-      <div class="scrub-row">
-        <button phx-click="previous" id="previous-step" disabled={@cursor == "start"}>Previous</button><form
-          id="scrubber"
-          phx-change="scrub"
+          aria-current={if @cursor == step["id"] && !@preview, do: "step", else: "false"}
         >
-          <label for="position">Trace position</label><input
-            id="position"
-            type="range"
-            name="position"
-            min="0"
-            max={length(@path)}
-            value={length(Trace.path(@doc, @cursor))}
-          />
-        </form><button phx-click="next" id="next-step">Next</button>
-      </div>
+          {index}. {event_label(step["event"])}{if step["origin"] != "computed", do: " · hypothetical"}
+        </button>
+        <span :if={@preview} id="transient-branch" aria-current="step">↳ {event_label(
+          @preview["event"]
+        )} · transient from {@parent_label}</span>
+      </nav>
+      <p id="trace-revision" class="scope-note">
+        Revision {@doc["revision"]} · Select any event to explore a branch.
+      </p>
+    </section>
+    """
+  end
+
+  attr :doc, :map, required: true
+  attr :cursor, :string, required: true
+  attr :step, :any, default: nil
+
+  def active_state(assigns) do
+    {:ok, recorded} = Trace.state_at(assigns.doc, assigns.cursor)
+    before = if assigns.step, do: assigns.step["before"], else: recorded
+    ledger = if assigns.doc["mode"] == "ledger", do: before, else: before["ledger"]
+    assigns = assign(assigns, before: before, ledger: ledger, recorded: recorded)
+
+    ~H"""
+    <section id="active-state" class="before-state">
+      <header>
+        <h2>Before this event</h2><button
+          :if={@doc["mode"] == "ledger"}
+          id="edit-start"
+          phx-click="edit_initial"
+        >Edit starting state</button>
+      </header>
       <div class="capacity-grid">
-        <div>
-          <span>Reserved / limit</span><strong id="amount-counter">{@ledger["used_amount"]}¢ / {@ledger[
-            "amount_limit"
-          ]}¢</strong><meter
-            min="0"
-            max={max(@ledger["amount_limit"], 1)}
-            value={@ledger["used_amount"]}
-          />
-        </div><div>
-          <span>Slots used / limit</span><strong id="slot-counter">{@ledger["used_holds"]} / {@ledger[
-            "hold_limit"
-          ]}</strong><meter min="0" max={max(@ledger["hold_limit"], 1)} value={@ledger["used_holds"]} />
-        </div>
+        <strong id="amount-counter">{@ledger["used_amount"]}¢ / {@ledger["amount_limit"]}¢</strong><span>reserved / limit</span><strong id="slot-counter">{@ledger[
+          "used_holds"
+        ]} / {@ledger["hold_limit"]}</strong><span>slots</span>
       </div>
       <table id="entries">
         <thead>
           <tr>
-            <th>Identity</th><th>Amount</th><th>Local status</th>
+            <th>Identity</th><th>Amount</th><th>Status</th>
           </tr>
         </thead><tbody>
           <tr :for={entry <- @ledger["entries"]}>
             <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>{entry["status"]}</td>
-          </tr><tr :if={@ledger["entries"] == []}>
+          </tr>
+          <tr :if={@ledger["entries"] == []}>
             <td colspan="3">No entries</td>
           </tr>
         </tbody>
       </table>
       <div :if={@doc["mode"] == "exposure"} id="remote-state">
-        <h3>Modeled remote records</h3><table>
-          <thead>
+        <h3>After selected coupled event</h3>
+        <p id="coupled-amount-counter">
+          {@recorded["ledger"]["used_amount"]}¢ / {@recorded["ledger"]["amount_limit"]}¢ reserved · {length(
+            @recorded["obligations"]
+          )} pending voids
+        </p>
+        <table id="coupled-local-after">
+          <caption>Local result</caption><thead>
             <tr>
-              <th>Identity</th><th>Amount</th><th>Remote status</th>
+              <th>Identity</th><th>Amount</th><th>Status</th>
             </tr>
           </thead><tbody>
-            <tr :for={entry <- @state["remote"]}>
+            <tr :for={entry <- @recorded["ledger"]["entries"]}>
               <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>{entry["status"]}</td>
             </tr>
           </tbody>
-        </table><p>Pending voids: {length(@state["obligations"])}</p>
+        </table>
+        <table id="coupled-remote-after">
+          <caption>Modeled processor</caption><thead>
+            <tr>
+              <th>Identity</th><th>Amount</th><th>Status</th>
+            </tr>
+          </thead><tbody>
+            <tr :for={entry <- @recorded["remote"]}>
+              <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>{entry["status"]}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <.form
-        for={@event_form}
-        id="next-event"
-        phx-change="event_change"
-        phx-submit="apply_event"
-        class="form-row"
-      >
-        <.input
-          field={@event_form[:type]}
-          type="select"
-          label="Append event after selected step"
-          options={event_options(@doc["mode"])}
-        />
-        <.input
-          field={@event_form[:key]}
-          type="number"
-          disabled={@event_form[:type].value == "restart"}
-          label="Identity"
-          min="0"
-          max="1000000"
-        />
-        <.input
-          field={@event_form[:amount]}
-          type="number"
-          disabled={@event_form[:type].value != "request"}
-          label="Amount (¢)"
-          min="1"
-          max="1000000"
-        />
-        <.input
-          field={@event_form[:outcome]}
-          type="select"
-          disabled={@event_form[:type].value not in ~w(authorize processor_result)}
-          label="Outcome"
-          options={~w(approved declined)}
-        />
-        <button class="primary" id="apply-event" disabled={!Trace.current?(@doc)}>Append event</button>
-      </.form>
-      <p class="scope-note" id="trace-revision">
-        Revision {@doc["revision"]}. Applying an event at an earlier step creates a branch.
+    </section>
+    """
+  end
+
+  attr :doc, :map, required: true
+  attr :event_form, :any, required: true
+  attr :step, :any, default: nil
+  attr :preview, :any, default: nil
+
+  attr :builder_open, :boolean, required: true
+
+  def event_controls(assigns) do
+    {:ok, state} = Trace.state_at(assigns.doc, "start")
+
+    state =
+      if assigns.step && assigns.doc["mode"] == "ledger",
+        do: assigns.step["output"]["after"],
+        else: state
+
+    entries = state["entries"] || []
+    key = if assigns.step, do: assigns.step["event"]["key"] || 1, else: 1
+    fresh = min(1_000_000, Enum.max(Enum.map(entries, & &1["key"]), fn -> 0 end) + 1)
+    assigns = assign(assigns, key: key, fresh: fresh)
+
+    ~H"""
+    <section id="next-actions">
+      <h3>Append next event{if @preview, do: " after keeping this transient branch"}</h3>
+      <div :if={@doc["mode"] == "ledger"} class="quick-events">
+        <button
+          id="quick-request"
+          phx-click="quick_event"
+          phx-value-type="request"
+          phx-value-key={@fresh}
+        >Request 100¢ · key {@fresh}</button>
+        <button
+          :for={type <- ~w(dispatch timeout retry void void_confirmed)}
+          phx-click="quick_event"
+          phx-value-type={type}
+          phx-value-key={@key}
+        >{String.replace(type, "_", " ")} · {@key}</button>
+        <button phx-click="quick_event" phx-value-type="processor_result" phx-value-key={@key}>approve · {@key}</button>
+      </div>
+      <p class="scope-note">
+        Continues the actual output. To continue the candidate instead, choose Continue hypothetical branch.
       </p>
+      <details id="event-builder" open={@builder_open}>
+        <summary phx-click="toggle_event_builder">Custom event</summary>
+        <.form
+          for={@event_form}
+          id="next-event"
+          phx-change="event_change"
+          phx-submit="apply_event"
+          class="form-row"
+        >
+          <.input
+            field={@event_form[:type]}
+            type="select"
+            label="Append event after selected step"
+            options={event_options(@doc["mode"])}
+          />
+          <.input
+            field={@event_form[:key]}
+            type="number"
+            disabled={@event_form[:type].value == "restart"}
+            label="Identity"
+            min="0"
+            max="1000000"
+          />
+          <.input
+            field={@event_form[:amount]}
+            type="number"
+            disabled={@event_form[:type].value != "request"}
+            label="Amount (¢)"
+            min="1"
+            max="1000000"
+          />
+          <.input
+            field={@event_form[:outcome]}
+            type="select"
+            disabled={@event_form[:type].value not in ~w(authorize processor_result)}
+            label="Outcome"
+            options={~w(approved declined)}
+          />
+          <button class="primary" id="apply-event" disabled={!Trace.current?(@doc)}>Append event</button>
+        </.form>
+      </details>
+      <button id="coupled-model" phx-click="coupled" class="text-button">Open coupled processor case</button>
     </section>
     """
   end

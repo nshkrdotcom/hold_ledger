@@ -8,11 +8,12 @@ async function open(page,slug='po_exposure_retain') {
 }
 async function tab(page,name) {
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  await page.locator('#workspace-tabs [phx-value-view="'+name+'"]').click();
+  if(['proof','premises','record'].includes(name))await page.locator('#inspector-tools [phx-value-view="'+name+'"]').click();
 }
 async function inspect(page) { await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/); }
 async function event(page,type,key='2',amount='100') {
   await inspect(page);
+  if((await page.locator('#event-builder').getAttribute('open'))===null)await page.locator('#event-builder > summary').click();
   const revision=await page.locator('#trace-revision').innerText();
   await page.locator('#event_type').selectOption(type);
   if(type!=='restart') await page.locator('#event_key').fill(key);
@@ -41,7 +42,7 @@ test('early release: valid accounting is distinct from required retention',async
 test('the same output passes validity; inspect its helper definition',async({page})=>{
   await open(page,'po_b1_void');await tab(page,'outputs');
   await expect(page.locator('#selected-law-row td').nth(2)).toHaveText('true');
-  await tab(page,'clauses');await page.locator('#dissector .operand-detail > summary').first().click();
+  await tab(page,'clauses');
   await page.locator('#dissector').getByRole('button',{name:'Definition',exact:true}).first().click();
   await expect(page.locator('#helper-definition')).toContainText('Definition on these values');
   await page.locator('#helper-definition').getByRole('button',{name:'Close',exact:true}).click();
@@ -110,16 +111,17 @@ test('adjusting initial state creates a separate session',async({page})=>{
   await page.locator('#initial_amount_limit').fill('101');await page.locator('#save-starting').click();
   await expect(page).not.toHaveURL(old);
   await event(page,'request','11','101');await tab(page,'outputs');await expect(page.locator('#ledger-output')).toContainText('admitted');
-  await page.goto(old);await expect(page.locator('#amount-counter')).toHaveText('100¢ / 100¢');
+  await page.goto(old);await expect(page.locator('#ledger-output')).toContainText('100¢ reserved');
 });
 
-test('scrubber supports keyboard navigation and preserves branches',async({page})=>{
-  await open(page);await tab(page,'outputs');await event(page,'request');
-  await page.locator('#position').focus();await page.keyboard.press('Home');
+test('timeline supports keyboard selection and preserves branches',async({page})=>{
+  await open(page);await event(page,'request');
+  await page.locator('#timeline button').first().focus();await page.keyboard.press('Enter');
   await expect(page.locator('#timeline button').first()).toHaveAttribute('aria-current','step');
-  await page.keyboard.press('End');await expect(page.locator('#ledger-output')).toContainText('insufficient_amount');
-  await page.locator('#previous-step').click();await expect(page.locator('#ledger-output')).toContainText('voiding');
-  await page.locator('#next-step').click();await expect(page.locator('#ledger-output')).toContainText('insufficient_amount');
+  await page.locator('#timeline button').last().focus();await page.keyboard.press('Enter');
+  await expect(page.locator('#ledger-output')).toContainText('insufficient_amount');
+  await page.locator('#timeline button').nth(1).click();await expect(page.locator('#ledger-output')).toContainText('voiding');
+  await expect(page.locator('#timeline button')).toHaveCount(3);
 });
 
 test('coupled model separates remote delivery, observation and terminal fencing',async({page})=>{
@@ -128,12 +130,12 @@ test('coupled model separates remote delivery, observation and terminal fencing'
   await inspect(page);
   await expect(page.locator('#remote-state')).toBeVisible();
   for(const type of ['request','dispatch','authorize','timeout']) await event(page,type,'11');
-  await expect(page.locator('#entries')).toContainText('unknown');await expect(page.locator('#remote-state')).toContainText('approved');
-  await event(page,'observe','11');await expect(page.locator('#entries')).toContainText('authorized');
+  await expect(page.locator('#remote-state')).toContainText('unknown');await expect(page.locator('#remote-state')).toContainText('approved');
+  await event(page,'observe','11');await expect(page.locator('#coupled-local-after')).toContainText('authorized');
   await event(page,'void','11');await event(page,'remote_void','11');
   await expect(page.locator('#amount-counter')).toHaveText('100¢ / 100¢');
   await event(page,'confirm','11');await event(page,'authorize','11');
-  await expect(page.locator('#amount-counter')).toHaveText('0¢ / 100¢');await expect(page.locator('#remote-state')).toContainText('voided');
+  await expect(page.locator('#coupled-amount-counter')).toContainText('0¢ / 100¢');await expect(page.locator('#remote-state')).toContainText('voided');
   await tab(page,'clauses');await expect(page.locator('#dissector')).toContainText('Native Lean statement');
 });
 
