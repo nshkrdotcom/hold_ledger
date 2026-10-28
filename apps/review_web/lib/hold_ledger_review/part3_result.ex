@@ -62,13 +62,7 @@ defmodule HoldLedgerReview.Part3Result do
   end
 
   defp source_active_slugs(source, root, event) do
-    operation =
-      case event do
-        {:request, _, _} -> :request
-        {:void, _} -> :void
-        {:timeout, _} -> :timeout
-        {:dispatch, _} -> :dispatch
-      end
+    operation = TermCodec.operation(event)
 
     {raw, _errors} = Source.extract(root, source)
 

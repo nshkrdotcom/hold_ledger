@@ -123,6 +123,39 @@ defmodule HoldLedgerReview.ReviewStore do
     do: GenServer.call(server, {:human, id, kind, command}, 60_000)
 
   @impl true
+  def handle_call({:trace_create, mode, amount, slots}, _from, state) do
+    result =
+      with {:ok, doc} <- HoldLedgerReview.Trace.new(mode, amount, slots),
+           do: HoldLedgerReview.Trace.write(state, doc)
+
+    {:reply, result, state}
+  end
+
+  def handle_call({:trace_create_from, json}, _from, state) do
+    result =
+      with {:ok, native} <- HoldLedgerReview.TermCodec.decode_state(json),
+           true <- HoldLedger.Spec.valid?(native),
+           {:ok, doc} <- HoldLedgerReview.Trace.new("ledger", elem(native, 0), elem(native, 1)),
+           do: HoldLedgerReview.Trace.write(state, Map.put(doc, "initial", json))
+
+    {:reply, result, state}
+  end
+
+  def handle_call({:trace_get, id}, _from, state) do
+    {:reply, HoldLedgerReview.Trace.read(state.dir, id), state}
+  end
+
+  def handle_call({:trace_command, id, revision, request_id, action}, _from, state) do
+    result =
+      with {:ok, command} <- canonical_command(action),
+           {:ok, doc} <- HoldLedgerReview.Trace.read(state.dir, id),
+           {:ok, updated} <-
+             HoldLedgerReview.Trace.apply_command(doc, revision, request_id, command),
+           do: HoldLedgerReview.Trace.write(state, updated)
+
+    {:reply, result, state}
+  end
+
   def handle_call({:create, seed}, _from, state) do
     reply =
       with {:ok, witness} <- Adversarial.seed(seed),

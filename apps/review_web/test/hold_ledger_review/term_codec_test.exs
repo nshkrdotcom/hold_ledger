@@ -20,9 +20,57 @@ defmodule HoldLedgerReview.TermCodecTest do
     end
 
     assert {:error, :unsupported_event} =
-             TermCodec.encode_event({:processor_result, 1, :approved})
+             TermCodec.encode_event({:processor_result, 1, :unknown})
 
     assert {:error, :unsupported_effect} = TermCodec.encode_effect({:dispatch, 1})
+  end
+
+  test "versioned lifecycle events round trip and reject old ambiguous shapes" do
+    for event <- [
+          :restart,
+          {:retry, 1},
+          {:transport_ack, 1},
+          {:void_confirmed, 1},
+          {:processor_result, 1, :approved},
+          {:processor_result, 1, :declined}
+        ] do
+      assert {:ok, json} = TermCodec.encode_event(event)
+      assert json["schema_version"] == 2
+      assert {:ok, ^event} = TermCodec.decode_event(json)
+      assert {:error, _} = TermCodec.decode_event(Map.delete(json, "schema_version"))
+      assert {:error, _} = TermCodec.decode_event(Map.put(json, "extra", true))
+    end
+
+    assert {:error, _} =
+             TermCodec.decode_event(%{
+               "schema_version" => 2,
+               "type" => "processor_result",
+               "key" => 1,
+               "amount" => nil,
+               "outcome" => "invented"
+             })
+  end
+
+  test "typed coupled state round trips and rejects additional or unbounded content" do
+    state = HoldLedger.Exposure.init(100, 2)
+    assert {:ok, json} = TermCodec.encode_exposure(state)
+    assert {:ok, ^state} = TermCodec.decode_exposure(json)
+    assert {:error, _} = TermCodec.decode_exposure(Map.put(json, "extra", true))
+
+    assert {:error, _} =
+             TermCodec.decode_exposure(Map.put(json, "remote", List.duplicate(%{}, 9)))
+
+    for event <- [
+          {:local, {:request, 1, 10}},
+          {:authorize, 1, :approved},
+          {:observe, 1},
+          {:void, 1},
+          {:confirm, 1}
+        ] do
+      assert {:ok, encoded} = TermCodec.encode_exposure_event(event)
+      assert {:ok, ^event} = TermCodec.decode_exposure_event(encoded)
+      assert {:error, _} = TermCodec.decode_exposure_event(Map.put(encoded, "extra", true))
+    end
   end
 
   test "the supplied rejection vectors and extra/wrong-field cases fail closed" do

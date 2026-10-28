@@ -43,11 +43,17 @@ defmodule HoldLedgerReview.Part3RepairPacket do
         "content" => content
       }
 
-      if fresh?(package) == :ok and byte_size(Canonical.json(packet)) <= @max_bytes,
-        do: {:ok, packet},
-        else: {:error, :repair_packet_too_large}
+      final_packet(package, packet)
     else
       _ -> {:error, :stale_invalid_or_unknown_repair_source}
+    end
+  end
+
+  defp final_packet(package, packet) do
+    with :ok <- fresh?(package) do
+      if byte_size(Canonical.json(packet)) <= @max_bytes,
+        do: {:ok, packet},
+        else: {:error, :repair_packet_too_large}
     end
   end
 

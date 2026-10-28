@@ -12,6 +12,11 @@ defmodule HoldLedgerReview.Claims do
   @fingerprinted [
     HoldLedger.Ledger,
     HoldLedger.Spec,
+    HoldLedger.Composite,
+    HoldLedger.Outbox,
+    HoldLedger.Environment,
+    HoldLedger.Exposure,
+    HoldLedgerReview.Trace,
     HoldLedgerReview.Claims,
     HoldLedgerReview.Claims.Source,
     HoldLedgerReview.Claims.Compiler,

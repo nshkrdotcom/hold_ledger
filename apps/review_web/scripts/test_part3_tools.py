@@ -59,6 +59,19 @@ class SnapshotTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             stage.validate(self.out / b)
 
+    def test_dirty_deletion_is_content_addressed_and_not_recreated(self):
+        removed = self.repo / "obsolete.ex"
+        removed.write_text("# original source\n")
+        self.git("add", ".")
+        self.git("commit", "-qm", "Source to delete")
+        old = stage.capture(self.repo, self.out)
+        removed.unlink()
+        new = stage.capture(self.repo, self.out)
+        self.assertNotEqual(old, new)
+        self.assertEqual(stage.validate(self.out / new), new)
+        self.assertFalse((self.out / new / "obsolete.ex").exists())
+        self.assertTrue((self.out / old / "obsolete.ex").exists())
+
     def test_unmanifested_file_cannot_be_added_to_snapshot(self):
         identity = stage.capture(self.repo, self.out)
         snapshot = self.out / identity

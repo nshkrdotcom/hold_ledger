@@ -29,7 +29,39 @@ defmodule HoldLedgerReview.TermCodec do
       else: {:error, :unsupported_event}
   end
 
+  # Version 2 adds lifecycle events without changing any version-1 wire form.
+  def encode_event(:restart),
+    do: {:ok, %{"schema_version" => 2, "type" => "restart", "key" => nil, "amount" => nil}}
+
+  def encode_event({tag, key}) when tag in [:retry, :transport_ack, :void_confirmed] do
+    if key?(key),
+      do:
+        {:ok,
+         %{"schema_version" => 2, "type" => Atom.to_string(tag), "key" => key, "amount" => nil}},
+      else: {:error, :unsupported_event}
+  end
+
+  def encode_event({:processor_result, key, outcome}) when outcome in [:approved, :declined] do
+    if key?(key),
+      do:
+        {:ok,
+         %{
+           "schema_version" => 2,
+           "type" => "processor_result",
+           "key" => key,
+           "amount" => nil,
+           "outcome" => Atom.to_string(outcome)
+         }},
+      else: {:error, :unsupported_event}
+  end
+
   def encode_event(_), do: {:error, :unsupported_event}
+
+  def operation(:restart), do: :restart
+  def operation({tag, _, _}) when tag in [:request, :processor_result], do: tag
+
+  def operation({tag, _})
+      when tag in [:dispatch, :timeout, :void, :retry, :transport_ack, :void_confirmed], do: tag
 
   def decode_event(%{"type" => "request", "key" => key, "amount" => amount} = obj)
       when map_size(obj) == 3 do
@@ -42,6 +74,41 @@ defmodule HoldLedgerReview.TermCodec do
     def decode_event(%{"type" => unquote(name), "key" => key, "amount" => nil} = obj)
         when map_size(obj) == 3 do
       if key?(key), do: {:ok, {unquote(tag), key}}, else: {:error, :invalid_event}
+    end
+  end
+
+  def decode_event(
+        %{"schema_version" => 2, "type" => "restart", "key" => nil, "amount" => nil} = obj
+      )
+      when map_size(obj) == 4, do: {:ok, :restart}
+
+  for {name, tag} <- [
+        {"retry", :retry},
+        {"transport_ack", :transport_ack},
+        {"void_confirmed", :void_confirmed}
+      ] do
+    def decode_event(
+          %{"schema_version" => 2, "type" => unquote(name), "key" => key, "amount" => nil} = obj
+        )
+        when map_size(obj) == 4 do
+      if key?(key), do: {:ok, {unquote(tag), key}}, else: {:error, :invalid_event}
+    end
+  end
+
+  def decode_event(
+        %{
+          "schema_version" => 2,
+          "type" => "processor_result",
+          "key" => key,
+          "amount" => nil,
+          "outcome" => outcome
+        } = obj
+      )
+      when map_size(obj) == 5 do
+    case {key?(key), outcome} do
+      {true, "approved"} -> {:ok, {:processor_result, key, :approved}}
+      {true, "declined"} -> {:ok, {:processor_result, key, :declined}}
+      _ -> {:error, :invalid_event}
     end
   end
 
@@ -135,6 +202,127 @@ defmodule HoldLedgerReview.TermCodec do
   end
 
   def decode_output(_), do: {:error, :invalid_output}
+
+  def encode_exposure({{ledger, obligations}, {issued, remote}}) do
+    with {:ok, state} <- encode_state(ledger),
+         true <-
+           length(obligations) <= @max_entries and length(issued) <= @max_entries and
+             length(remote) <= @max_entries,
+         {:ok, pending} <- map_checked(obligations, &encode_obligation/1),
+         {:ok, intents} <- map_checked(issued, &encode_remote/1),
+         {:ok, records} <- map_checked(remote, &encode_remote/1) do
+      {:ok,
+       %{
+         "schema_version" => 2,
+         "ledger" => state,
+         "obligations" => pending,
+         "issued" => intents,
+         "remote" => records
+       }}
+    else
+      _ -> {:error, :unsupported_exposure}
+    end
+  end
+
+  def decode_exposure(
+        %{
+          "schema_version" => 2,
+          "ledger" => ledger,
+          "obligations" => pending,
+          "issued" => issued,
+          "remote" => remote
+        } = obj
+      )
+      when map_size(obj) == 5 do
+    with true <-
+           Enum.all?([pending, issued, remote], &(is_list(&1) and length(&1) <= @max_entries)),
+         {:ok, state} <- decode_state(ledger),
+         {:ok, obligations} <- map_checked(pending, &decode_obligation/1),
+         {:ok, intents} <- map_checked(issued, &decode_remote/1),
+         {:ok, records} <- map_checked(remote, &decode_remote/1) do
+      {:ok, {{state, obligations}, {intents, records}}}
+    else
+      _ -> {:error, :invalid_exposure}
+    end
+  end
+
+  def decode_exposure(_), do: {:error, :invalid_exposure}
+
+  def encode_exposure_event({:local, event}) do
+    with {:ok, json} <- encode_event(event), do: {:ok, %{"kind" => "local", "event" => json}}
+  end
+
+  def encode_exposure_event({tag, key}) when tag in [:observe, :void, :confirm] do
+    if key?(key),
+      do: {:ok, %{"kind" => Atom.to_string(tag), "key" => key}},
+      else: {:error, :invalid_event}
+  end
+
+  def encode_exposure_event({:authorize, key, outcome}) when outcome in [:approved, :declined] do
+    if key?(key),
+      do: {:ok, %{"kind" => "authorize", "key" => key, "outcome" => Atom.to_string(outcome)}},
+      else: {:error, :invalid_event}
+  end
+
+  def encode_exposure_event(_), do: {:error, :invalid_event}
+
+  def decode_exposure_event(%{"kind" => "local", "event" => json} = obj)
+      when map_size(obj) == 2 do
+    with {:ok, event} <- decode_event(json), do: {:ok, {:local, event}}
+  end
+
+  for {name, tag} <- [{"observe", :observe}, {"void", :void}, {"confirm", :confirm}] do
+    def decode_exposure_event(%{"kind" => unquote(name), "key" => key} = obj)
+        when map_size(obj) == 2 do
+      if key?(key), do: {:ok, {unquote(tag), key}}, else: {:error, :invalid_event}
+    end
+  end
+
+  def decode_exposure_event(%{"kind" => "authorize", "key" => key, "outcome" => outcome} = obj)
+      when map_size(obj) == 3 do
+    case {key?(key), outcome} do
+      {true, "approved"} -> {:ok, {:authorize, key, :approved}}
+      {true, "declined"} -> {:ok, {:authorize, key, :declined}}
+      _ -> {:error, :invalid_event}
+    end
+  end
+
+  def decode_exposure_event(_), do: {:error, :invalid_event}
+
+  defp encode_obligation({key, 0, :unattempted}) do
+    if key?(key),
+      do: {:ok, %{"key" => key, "attempts" => 0, "outcome" => "unattempted"}},
+      else: {:error, :invalid_obligation}
+  end
+
+  defp encode_obligation(_), do: {:error, :unsupported_obligation}
+
+  defp decode_obligation(%{"key" => key, "attempts" => 0, "outcome" => "unattempted"} = obj)
+       when map_size(obj) == 3 do
+    if key?(key), do: {:ok, {key, 0, :unattempted}}, else: {:error, :invalid_obligation}
+  end
+
+  defp decode_obligation(_), do: {:error, :invalid_obligation}
+
+  defp encode_remote({key, amount, status})
+       when status in [:issued, :approved, :declined, :voided] do
+    if key?(key) and number?(amount),
+      do: {:ok, %{"key" => key, "amount" => amount, "status" => Atom.to_string(status)}},
+      else: {:error, :invalid_remote}
+  end
+
+  defp encode_remote(_), do: {:error, :invalid_remote}
+
+  defp decode_remote(%{"key" => key, "amount" => amount, "status" => status} = obj)
+       when map_size(obj) == 3 do
+    atom = Enum.find([:issued, :approved, :declined, :voided], &(Atom.to_string(&1) == status))
+
+    if key?(key) and number?(amount) and atom,
+      do: {:ok, {key, amount, atom}},
+      else: {:error, :invalid_remote}
+  end
+
+  defp decode_remote(_), do: {:error, :invalid_remote}
 
   defp encode_entry({key, amount, status}) do
     if key?(key) and positive?(amount) and status in @statuses,

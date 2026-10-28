@@ -13,9 +13,19 @@ defmodule HoldLedgerReview.Config do
   @spec_source HoldLedger.Spec.module_info(:compile)[:source] |> to_string()
   @external_resource @ledger_source
   @external_resource @spec_source
-  @compiled_modules Map.new([HoldLedger.Ledger, HoldLedger.Spec], fn module ->
-                      {module, module.module_info(:md5)}
-                    end)
+  @compiled_modules Map.new(
+                      [
+                        HoldLedger.Ledger,
+                        HoldLedger.Spec,
+                        HoldLedger.Composite,
+                        HoldLedger.Outbox,
+                        HoldLedger.Environment,
+                        HoldLedger.Exposure
+                      ],
+                      fn module ->
+                        {module, module.module_info(:md5)}
+                      end
+                    )
   @compiled_hashes Map.new(
                      [
                        {"lib/hold_ledger/ledger.ex", @ledger_source},

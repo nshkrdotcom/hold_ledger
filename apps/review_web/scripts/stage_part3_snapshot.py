@@ -41,7 +41,10 @@ def capture(root, destination):
     if destination.is_relative_to(root) and not str(destination.relative_to(root)).startswith("tmp/"):
         raise ValueError("snapshots must be under ignored tmp/ when inside source")
     paths = git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").split(b"\0")
-    paths = sorted({os.fsdecode(p) for p in paths if p})
+    # Tracked deletions are legitimate dirty proposals, not unreadable files to copy.
+    # A file disappearing after this inventory is still rejected during capture.
+    deleted = set(git(root, "ls-files", "--deleted", "-z").split(b"\0"))
+    paths = sorted({os.fsdecode(p) for p in paths if p and p not in deleted})
     if not paths or len(paths) > MAX_FILES:
         raise ValueError("empty or excessive Git source inventory")
     entries = {}

@@ -12,15 +12,17 @@ defmodule HoldLedgerReviewWeb.Router do
 
   scope "/", HoldLedgerReviewWeb do
     pipe_through :browser
-    live "/", WorkbenchLive, :index
-    live "/changes", Part3Live, :index
-    live "/changes/:id", Part3Live, :show
+    live "/", TraceLive, :index
+    live "/explore/:id", TraceLive, :show
+    get "/explore/:id/export", TraceController, :export
+    live "/changes", TraceLive, :index
+    live "/changes/:id", ArchiveLive, :change
     get "/changes/:id/repair/:file", Part3RepairController, :export
     get "/changes/:id/source/:side/:change_id", Part3FileController, :change
     get "/changes/:id/law/:side/:slug/source", Part3FileController, :law
     get "/changes/:id/artifact/:side/:sha256", Part3FileController, :artifact
-    live "/workbench", WorkbenchLive, :index
-    live "/workbench/:id", WorkbenchLive, :show
+    live "/workbench", TraceLive, :index
+    live "/workbench/:id", ArchiveLive, :review
     get "/workbench/:id/export.:format", ExportController, :export
     get "/workbench/:id/source/:source_id", SourceController, :show
   end

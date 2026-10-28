@@ -34,7 +34,12 @@ defmodule HoldLedgerReview.Part3Test do
         cd: source
       )
 
-    files = paths |> String.split(<<0>>, trim: true) |> Enum.sort()
+    files =
+      paths
+      |> String.split(<<0>>, trim: true)
+      |> Enum.filter(&File.regular?(Path.join(source, &1)))
+      |> Enum.sort()
+
     commit = System.cmd("git", ["rev-parse", "HEAD"], cd: source) |> elem(0) |> String.trim()
     base = capture(files, commit, %{})
 
@@ -63,6 +68,8 @@ defmodule HoldLedgerReview.Part3Test do
 
   defp capture(files, commit, overrides) do
     source = Config.root()
+
+    files = Enum.filter(files, &File.regular?(Path.join(Config.root(), &1)))
 
     manifest =
       Map.new(files, fn path ->
@@ -610,43 +617,26 @@ defmodule HoldLedgerReview.Part3Test do
     assert late["conclusion"] == nil
   end
 
-  test "LiveView retains unsent forms across panels and human CAS context", ctx do
+  test "archived change records are read only and cannot dispatch model requests", ctx do
     {:ok, p} = Part3Store.create(ctx.baseline, ctx.proposal)
     {:ok, view, _} = live(Phoenix.ConnTest.build_conn(), "/changes/" <> p["id"])
-
-    form(view, "#part3-finding",
-      finding: %{
-        scope: "Unsent scope",
-        rationale: "An unsent policy question",
-        lens: "reading",
-        status: "unresolved"
-      }
-    )
-    |> render_change()
-
-    view |> element("button[phx-value-mode=learning]") |> render_click()
-    view |> element("#part3-structured-editor > summary") |> render_click()
-    assert has_element?(view, "#part3-structured-editor[open]")
-    assert has_element?(view, "#part3-finding-scope[value='Unsent scope']")
-    assert has_element?(view, "button[phx-value-mode=learning][aria-pressed=true]")
-    assert {:ok, original, :ok} = Part3Store.get(p["id"])
-    assert original["human_findings"] == []
-    render_submit(view, "request_ai", %{"ai" => %{"consent" => "false"}})
-    assert {:ok, original, :ok} = Part3Store.get(p["id"])
-    assert original["ai_history"] == []
+    assert has_element?(view, "#archived-record")
+    refute has_element?(view, "#part3-finding")
+    assert {:ok, unchanged, :ok} = Part3Store.get(p["id"])
+    assert unchanged["human_findings"] == []
+    assert unchanged["ai_history"] == []
   end
 
-  test "controlled model question acceptance, human answer and conclusion are separate UI actions",
-       ctx do
+  test "controlled question acceptance, finding and conclusion remain separate commands", ctx do
     {:ok, p} = Part3Store.create(ctx.baseline, ctx.proposal)
     {:ok, packet} = Part3AI.prepare(p)
     {:ok, _, job} = Part3Store.begin_ai(p["id"], 0, packet)
 
     proposal = %{
-      "proposal_id" => "ui-controlled-question",
+      "proposal_id" => "controlled-question",
       "kind" => "review_question",
-      "question" => "Which policy covers the identified source edit?",
-      "rationale" => "Controlled adapter output, not observed model quality.",
+      "question" => "Which policy covers this edit?",
+      "rationale" => "Controlled output only.",
       "source_change_ids" => [hd(p["source_changes"])["id"]],
       "witness" => nil
     }
@@ -663,38 +653,46 @@ defmodule HoldLedgerReview.Part3Test do
          }}
       )
 
-    {:ok, view, _} = live(Phoenix.ConnTest.build_conn(), "/changes/" <> p["id"])
-    view |> element("button[phx-click=accept_ai_question]") |> render_click()
-    {:ok, accepted, :ok} = Part3Store.get(p["id"])
+    {:ok, accepted} =
+      Part3Store.accept_question(p["id"], %{
+        "request_id" => fresh_id(),
+        "expected_human_revision" => 0,
+        "job_id" => job["id"],
+        "proposal_id" => proposal["proposal_id"]
+      })
+
     assert length(accepted["accepted_questions"]) == 1
     assert accepted["human_findings"] == []
     assert accepted["conclusion"] == nil
 
-    form(view, "#part3-finding",
-      finding: %{
-        scope: "One controlled question",
-        rationale: "The source still needs scoped policy review.",
-        lens: "reading",
-        status: "unresolved"
-      }
-    )
-    |> render_submit()
+    {:ok, answered} =
+      Part3Store.finding(p["id"], %{
+        "request_id" => fresh_id(),
+        "expected_human_revision" => 1,
+        "scope" => "Controlled question",
+        "rationale" => "Need policy evidence.",
+        "lens" => "reading",
+        "status" => "unresolved",
+        "evidence_ids" => [],
+        "change_ids" => [],
+        "presentation" => "expert",
+        "revealed_before_answer" => true
+      })
 
-    {:ok, answered, :ok} = Part3Store.get(p["id"])
     assert length(answered["human_findings"]) == 1
     assert answered["conclusion"] == nil
 
-    form(view, "#part3-conclude",
-      conclusion: %{
-        scope: "The controlled question only",
-        rationale: "Evidence remains missing, with no proof acceptance claimed.",
-        outcome: "needs_policy_or_evidence"
-      }
-    )
-    |> render_submit()
+    {:ok, concluded} =
+      Part3Store.conclude(p["id"], %{
+        "request_id" => fresh_id(),
+        "expected_human_revision" => 2,
+        "scope" => "Controlled question",
+        "rationale" => "Missing evidence.",
+        "outcome" => "needs_policy_or_evidence",
+        "evidence_ids" => [],
+        "confirmed" => true
+      })
 
-    assert has_element?(view, "#part3-finish[disabled]")
-    {:ok, concluded, :ok} = Part3Store.get(p["id"])
     assert concluded["conclusion"]["outcome"] == "needs_policy_or_evidence"
     assert concluded["verification_attempts"] == []
   end

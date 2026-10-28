@@ -152,13 +152,7 @@ defmodule HoldLedgerReview.Adversarial do
   end
 
   def active_slugs(event) do
-    operation =
-      case event do
-        {:request, _, _} -> :request
-        {:void, _} -> :void
-        {:timeout, _} -> :timeout
-        {:dispatch, _} -> :dispatch
-      end
+    operation = TermCodec.operation(event)
 
     generation = Claims.snapshot()
 

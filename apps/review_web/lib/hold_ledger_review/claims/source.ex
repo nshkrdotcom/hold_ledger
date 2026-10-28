@@ -6,10 +6,16 @@ defmodule HoldLedgerReview.Claims.Source do
   """
   alias HoldLedgerReview.Anchor
 
-  @compiler_version "source-ast-a-20261027"
+  @compiler_version "source-ast-trace-20261028"
   @support_sources ~w(
     lib/hold_ledger/ledger.ex
     lib/hold_ledger/spec.ex
+    lib/hold_ledger/composite.ex
+    lib/hold_ledger/outbox.ex
+    lib/hold_ledger/environment.ex
+    lib/hold_ledger/exposure.ex
+    apps/review_web/lib/hold_ledger_review/trace.ex
+    apps/review_web/lib/hold_ledger_review/review_store.ex
     test/support/proof_case.ex
     apps/review_web/lib/hold_ledger_review/claims.ex
     apps/review_web/lib/hold_ledger_review/claims/source.ex
