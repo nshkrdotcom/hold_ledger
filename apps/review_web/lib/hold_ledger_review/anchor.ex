@@ -27,6 +27,55 @@ defmodule HoldLedgerReview.Anchor do
     end
   end
 
+  @doc "Read a source set with directory checks shared only within this call."
+  def read_many_under(root, paths) do
+    Enum.reduce_while(Enum.uniq(paths), {:ok, %{}, %{}}, fn path, {:ok, files, checked} ->
+      case read_checked(root, path, checked) do
+        {:ok, bytes, next_checked} -> {:cont, {:ok, Map.put(files, path, bytes), next_checked}}
+        {:error, _} = error -> {:halt, error}
+      end
+    end)
+    |> case do
+      {:ok, files, _checked} -> {:ok, files}
+      error -> error
+    end
+  end
+
+  defp read_checked(root, path, checked) when is_binary(path) do
+    full = Path.expand(path, root)
+    relative = Path.relative_to(full, root)
+
+    if Path.type(path) == :absolute or String.starts_with?(relative, "..") do
+      {:error, :unsafe_path}
+    else
+      with {:ok, next_checked} <- check_parts(root, Path.split(relative), checked),
+           {:ok, bytes} <- File.read(full) do
+        {:ok, bytes, next_checked}
+      end
+    end
+  end
+
+  defp read_checked(_root, _path, _checked), do: {:error, :unsafe_path}
+
+  defp check_parts(_parent, [], checked), do: {:ok, checked}
+
+  defp check_parts(parent, [part | rest], checked) do
+    path = Path.join(parent, part)
+
+    case Map.fetch(checked, path) do
+      {:ok, :safe} -> check_parts(path, rest, checked)
+      :error -> check_part(path, rest, checked)
+    end
+  end
+
+  defp check_part(path, rest, checked) do
+    case File.lstat(path) do
+      {:ok, %{type: :symlink}} -> {:error, :unsafe_path}
+      {:ok, _} -> check_parts(path, rest, Map.put(checked, path, :safe))
+      _ -> {:error, :unsafe_path}
+    end
+  end
+
   def read_under(root, path) when is_binary(path) do
     full = Path.expand(path, root)
     parts = Path.split(Path.relative_to(full, root))

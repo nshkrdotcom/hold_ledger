@@ -19,8 +19,8 @@ defmodule HoldLedgerReview.AIPacket do
 
   @doc "Refuse prepared packets after source, loaded-code, report or prompt drift."
   def freshness(packet) do
-    with :ok <- Claims.freshness(),
-         generation = Claims.snapshot(),
+    with {:ok, context} <- Claims.source_context(Config.root(), Map.keys(packet.source_manifest)),
+         generation = context.generation,
          true <- generation.source.sha256 == packet.source_digest,
          true <- packet.system == AIProtocol.prompt(packet.kind),
          true <-
@@ -28,7 +28,7 @@ defmodule HoldLedgerReview.AIPacket do
              packet.input_digest,
          true <-
            Enum.all?(packet.source_manifest, fn {path, digest} ->
-             ProofEvidence.digest_file(Config.root(), path) == digest
+             context.digests[path] == digest
            end),
          true <- current_report?(packet.proof_report, generation) do
       :ok
@@ -78,7 +78,8 @@ defmodule HoldLedgerReview.AIPacket do
       |> Enum.filter(&(&1["id"] == target or &1["id"] in connected))
       |> Enum.flat_map(& &1["source_ids"])
 
-    with {:ok, excerpts} <- select_excerpts(graph["excerpts"], source_ids, preferred) do
+    with {:ok, excerpts} <- select_excerpts(graph["excerpts"], source_ids, preferred),
+         {:ok, public_probes, private_probes} <- probes(review, kind) do
       included = MapSet.new(Enum.map(excerpts, & &1["id"]))
 
       nodes =
@@ -96,7 +97,6 @@ defmodule HoldLedgerReview.AIPacket do
       allowed_claims =
         for n <- nodes, n["kind"] == "law", do: String.replace_prefix(n["id"], "law.", "")
 
-      {public_probes, private_probes} = probes(review, kind)
       policy_nodes = for n <- graph["nodes"], n["kind"] == "policy_row", do: n["id"]
 
       base = %{
@@ -303,23 +303,50 @@ defmodule HoldLedgerReview.AIPacket do
         seed_witnesses
       end
 
-    candidates
-    |> Enum.reduce({[], %{}}, fn witness, {public, private} ->
-      case Adversarial.evaluate(witness) do
-        {:ok, evaluation, _} ->
-          opaque_id = "probe." <> String.slice(Canonical.digest(witness), 0, 32)
+    with :ok <- Claims.freshness() do
+      result =
+        Claims.memoize(
+          __MODULE__,
+          {:synthetic_probes, Adversarial.module_info(:md5), candidates},
+          fn ->
+            result = compute_probes(candidates)
 
-          {[%{"probe_id" => opaque_id, "witness" => witness} | public],
-           Map.put(private, opaque_id, %{"witness" => witness, "evaluation" => evaluation})}
+            case Claims.freshness() do
+              :ok -> result
+              _ -> {:error, :stale_source}
+            end
+          end
+        )
 
-        _ ->
-          {public, private}
+      case Claims.freshness() do
+        :ok -> result
+        _ -> {:error, :stale_source}
       end
-    end)
-    |> then(fn {public, private} -> {Enum.reverse(public), private} end)
+    else
+      _ -> {:error, :stale_source}
+    end
   end
 
-  defp probes(_review, _kind), do: {[], %{}}
+  defp probes(_review, _kind), do: {:ok, [], %{}}
+
+  defp compute_probes(candidates) do
+    candidates
+    |> Enum.reduce({[], %{}}, &append_computed_probe/2)
+    |> then(fn {public, private} -> {:ok, Enum.reverse(public), private} end)
+  end
+
+  defp append_computed_probe(witness, {public, private}) do
+    case Adversarial.evaluate(witness) do
+      {:ok, evaluation, _} ->
+        opaque_id = "probe." <> String.slice(Canonical.digest(witness), 0, 32)
+
+        {[%{"probe_id" => opaque_id, "witness" => witness} | public],
+         Map.put(private, opaque_id, %{"witness" => witness, "evaluation" => evaluation})}
+
+      _ ->
+        {public, private}
+    end
+  end
 
   defp matching_seed(id, event) do
     case Adversarial.seed(id) do

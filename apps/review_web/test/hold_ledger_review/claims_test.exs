@@ -227,6 +227,29 @@ defmodule HoldLedgerReview.ClaimsTest do
     end
   end
 
+  test "fresh byte comparison rejects catalog, obligation and registered-source drift" do
+    root = cloned_sources()
+    {:ok, source} = Source.snapshot(root)
+    assert Source.matches?(root, source)
+
+    for relative <- [
+          "verification/laws.json",
+          "verification/obligations.json",
+          "test/laws/po_b1_void_test.exs",
+          "lib/hold_ledger/spec.ex"
+        ] do
+      path = Path.join(root, relative)
+      original = File.read!(path)
+      File.write!(path, original <> "\n")
+      refute Source.matches?(root, source)
+      File.write!(path, original)
+      assert Source.matches?(root, source)
+    end
+
+    File.write!(Path.join(root, "test/laws/extra.exs"), "# unregistered law")
+    refute Source.matches?(root, source)
+  end
+
   test "law edits, inventory additions/deletions and catalog changes invalidate the independent manifest" do
     tmp = cloned_sources()
     assert :ok = Claims.freshness(tmp)
@@ -270,6 +293,30 @@ defmodule HoldLedgerReview.ClaimsTest do
     catalog = Path.join(tmp, "verification/laws.json")
     File.write!(catalog, File.read!(catalog) <> "\n")
     assert {:error, :source_or_compiled_code_drift} = Claims.freshness(tmp)
+  end
+
+  test "a batch discards every row when source changes before publication" do
+    root = cloned_sources()
+    source = Path.join(root, "test/laws/po_b1_void_test.exs")
+    {before, event, candidate, _} = fixture("P01")
+
+    rows =
+      ClaimProbe.probe_all(before, event, candidate,
+        root: root,
+        slugs: ["po_b1_void", "po_b3"],
+        before_finish: fn ->
+          calls = Process.get(:batch_probe_finishes, 0) + 1
+          Process.put(:batch_probe_finishes, calls)
+          if calls == 2, do: File.write!(source, "\n# batch drift", [:append])
+        end
+      )
+
+    Process.delete(:batch_probe_finishes)
+    assert map_size(rows) == 2
+
+    assert Enum.all?(rows, fn {_slug, row} ->
+             row.status == :cant_check and row.reason == :source_or_compiled_code_drift
+           end)
   end
 
   test "drift during the evaluation invalidates the result, even if the source actual passed" do

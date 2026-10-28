@@ -17,32 +17,42 @@ defmodule HoldLedgerReview.DesignGraph do
   ]
 
   def build(root \\ Config.root()) do
-    with :ok <- Claims.freshness(root),
-         {:ok, catalog} <- Claims.catalog(),
-         {:ok, spec} <- Anchor.read_under(root, @policy_path) do
-      generation = Claims.snapshot()
-      rows = policy_rows(spec)
-
-      lean_paths =
-        Path.wildcard(Path.join(root, "test/support/lean/*.lean"))
-        |> Enum.map(&Path.relative_to(&1, root))
-
-      sources =
-        Enum.uniq(
-          lean_paths ++
-            [@policy_path, "lib/hold_ledger/ledger.ex", "lib/hold_ledger/spec.ex"] ++
-            Enum.map(catalog, & &1["file"]) ++
-            ["verification/laws.json", "verification/obligations.json"] ++
-            Enum.map(@boundaries, &elem(&1, 2))
-        )
-
-      with {:ok, excerpts} <- excerpts(root, sources) do
-        assemble(root, generation, rows, catalog, excerpts)
-      end
+    case Claims.catalog() do
+      {:ok, catalog} -> build_current(root, catalog)
+      error -> error
     end
   end
 
-  defp assemble(root, generation, rows, catalog, excerpts) do
+  defp build_current(root, catalog) do
+    paths = source_paths(root, catalog)
+
+    with {:ok, context} <- Claims.source_context(root, paths) do
+      source_bytes = Map.take(context.bytes, paths)
+      excerpts = Enum.map(paths, &source_excerpt(&1, Map.fetch!(source_bytes, &1)))
+      rows = policy_rows(Map.fetch!(source_bytes, @policy_path))
+      key = Enum.map(excerpts, &{&1["path"], &1["sha256"]})
+
+      Claims.memoize(__MODULE__, key, fn ->
+        assemble(source_bytes, context.generation, rows, catalog, excerpts)
+      end)
+    end
+  end
+
+  defp source_paths(root, catalog) do
+    lean_paths =
+      Path.wildcard(Path.join(root, "test/support/lean/*.lean"))
+      |> Enum.map(&Path.relative_to(&1, root))
+
+    Enum.uniq(
+      lean_paths ++
+        [@policy_path, "lib/hold_ledger/ledger.ex", "lib/hold_ledger/spec.ex"] ++
+        Enum.map(catalog, & &1["file"]) ++
+        ["verification/laws.json", "verification/obligations.json"] ++
+        Enum.map(@boundaries, &elem(&1, 2))
+    )
+  end
+
+  defp assemble(source_bytes, generation, rows, catalog, excerpts) do
     source_ids = Map.new(excerpts, &{&1["path"], &1["id"]})
 
     policies =
@@ -79,7 +89,7 @@ defmodule HoldLedgerReview.DesignGraph do
         &node("spec." <> &1, "spec", "Spec." <> &1, ["lib/hold_ledger/spec.ex"], source_ids)
       )
 
-    laws = Enum.map(catalog, &law_node(&1, source_ids, excerpts, root))
+    laws = Enum.map(catalog, &law_node(&1, source_ids, excerpts, source_bytes))
 
     boundaries =
       Enum.map(@boundaries, &boundary_node(&1, source_ids))
@@ -132,7 +142,7 @@ defmodule HoldLedgerReview.DesignGraph do
   defp boundary_node({id, label, path}, source_ids),
     do: node("boundary." <> id, "boundary", label, [path], source_ids)
 
-  defp law_node(entry, source_ids, excerpts, root) do
+  defp law_node(entry, source_ids, excerpts, source_bytes) do
     kind = if entry["kind"] == "lean", do: "lean", else: "law"
     title = entry["slug"] <> " · " <> (entry["purpose"] || "registered native obligation")
 
@@ -142,7 +152,7 @@ defmodule HoldLedgerReview.DesignGraph do
       String.slice(title, 0, 600),
       Enum.uniq(
         [entry["file"], "verification/laws.json", "verification/obligations.json"] ++
-          proof_sources(entry, excerpts, root)
+          proof_sources(entry, excerpts, source_bytes)
       ),
       source_ids
     )
@@ -180,28 +190,13 @@ defmodule HoldLedgerReview.DesignGraph do
          index in 2..5, do: "request", else: nil
   end
 
-  defp excerpts(root, paths) do
-    Enum.reduce_while(paths, {:ok, []}, fn path, {:ok, acc} ->
-      case Anchor.read_under(root, path) do
-        {:ok, bytes} ->
-          # The source hash always describes the entire file, even when the readable excerpt is capped.
-          item = %{
-            "id" => "source." <> String.slice(Anchor.sha(path), 0, 20),
-            "path" => path,
-            "sha256" => Anchor.sha(bytes),
-            "text" => excerpt(bytes)
-          }
-
-          {:cont, {:ok, [item | acc]}}
-
-        {:error, _} = error ->
-          {:halt, error}
-      end
-    end)
-    |> case do
-      {:ok, list} -> {:ok, Enum.reverse(list)}
-      error -> error
-    end
+  defp source_excerpt(path, bytes) do
+    %{
+      "id" => "source." <> String.slice(Anchor.sha(path), 0, 20),
+      "path" => path,
+      "sha256" => Anchor.sha(bytes),
+      "text" => excerpt(bytes)
+    }
   end
 
   defp excerpt(bytes) when byte_size(bytes) <= 19_500, do: bytes
@@ -339,18 +334,15 @@ defmodule HoldLedgerReview.DesignGraph do
 
   defp proof_sources(%{"kind" => "lean"}, _excerpts, _root), do: []
 
-  defp proof_sources(entry, excerpts, root) do
+  defp proof_sources(entry, excerpts, source_bytes) do
     declaration = "theorem «#{entry["slug"]}/#{entry["arity"]}»"
 
     excerpts
     |> Enum.filter(
-      &(String.ends_with?(&1["path"], ".lean") and source_declares?(root, &1["path"], declaration))
+      &(String.ends_with?(&1["path"], ".lean") and
+          String.contains?(Map.fetch!(source_bytes, &1["path"]), declaration))
     )
     |> Enum.map(& &1["path"])
-  end
-
-  defp source_declares?(root, path, declaration) do
-    with {:ok, bytes} <- Anchor.read_under(root, path), do: String.contains?(bytes, declaration)
   end
 
   defp spec_predicates(generation) do

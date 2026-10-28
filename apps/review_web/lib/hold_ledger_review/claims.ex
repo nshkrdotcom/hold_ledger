@@ -22,11 +22,61 @@ defmodule HoldLedgerReview.Claims do
     HoldLedgerReview.Config
   ]
 
+  @memo_table :hold_ledger_review_generation_cache
+  @memo_limit 64
+
   def start_link(_opts), do: GenServer.start_link(__MODULE__, :startup, name: __MODULE__)
 
   @impl true
   def init(:startup) do
+    :ets.new(@memo_table, [:named_table, :set, :public, read_concurrency: true])
     {:ok, initialize(Config.root())}
+  end
+
+  @doc """
+  Bounded memoization of immutable derived data, owned by this evaluator process.
+  Callers retain their freshness checks. Keys bind the generation, checkout,
+  calling module's loaded identity and complete inputs; no time-based validity.
+  """
+  def memoize(module, inputs, compute) do
+    case Process.whereis(__MODULE__) do
+      nil -> compute.()
+      _pid -> memoize_generation(snapshot(), module, inputs, compute)
+    end
+  end
+
+  defp memoize_generation(%{status: :ready} = generation, module, inputs, compute) do
+    key =
+      :crypto.hash(
+        :sha256,
+        :erlang.term_to_binary(
+          {generation.evaluator_id, Config.root(), module, module.module_info(:md5), inputs}
+        )
+      )
+
+    case :ets.lookup(@memo_table, key) do
+      [{^key, value}] ->
+        value
+
+      [] ->
+        value = compute.()
+        # Only successful pure results belong in the cache. Failures are retried
+        # against current source; eviction affects cost, never evidence validity.
+        maybe_memoize(key, value)
+        value
+    end
+  end
+
+  defp memoize_generation(_generation, _module, _inputs, compute), do: compute.()
+
+  defp maybe_memoize(key, {:ok, _} = value), do: put_memoized(key, value)
+  defp maybe_memoize(key, {:ok, _, _} = value), do: put_memoized(key, value)
+  defp maybe_memoize(_key, _value), do: :ok
+
+  defp put_memoized(key, value) do
+    if :ets.info(@memo_table, :size) >= @memo_limit, do: :ets.delete_all_objects(@memo_table)
+    :ets.insert_new(@memo_table, {key, value})
+    :ok
   end
 
   def initialize(root) do
@@ -38,7 +88,9 @@ defmodule HoldLedgerReview.Claims do
          {compiled, diagnostics} <- compile_claims(raw, errors),
          {:ok, generated} <- Compiler.compile(source.sha256, compiled),
          {:ok, fingerprint} <- loaded_fingerprint(),
-         {:ok, generated_identity} <- generated_identity(generated) do
+         {:ok, generated_identity} <- generated_identity(generated),
+         true <- Config.source_matches?(root) and Config.build_matches?(root),
+         true <- Source.matches?(root, source) do
       %{
         status: :ready,
         source: source,
@@ -46,6 +98,7 @@ defmodule HoldLedgerReview.Claims do
         claims: compiled,
         diagnostics: diagnostics,
         loaded_fingerprint: fingerprint,
+        loaded_modules: Map.new(@fingerprinted, &{&1, &1.module_info(:md5)}),
         generated_identity: generated_identity,
         module: generated,
         evaluator_id:
@@ -94,27 +147,38 @@ defmodule HoldLedgerReview.Claims do
   def claim(_), do: {:error, :unknown_law}
 
   def freshness(root \\ Config.root()) do
-    case snapshot() do
-      %{status: :ready} = generation ->
-        with true <- Config.source_matches?(root),
-             true <- Config.loaded_core_matches?(),
-             true <- Config.build_matches?(root),
-             {:ok, current} <- Source.snapshot(root),
-             true <- current.sha256 == generation.source.sha256,
-             {:ok, current_fingerprint} <- loaded_fingerprint(),
-             true <- current_fingerprint == generation.loaded_fingerprint,
-             {:ok, current_generated_identity} <- generated_identity(generation.module),
-             true <- current_generated_identity == generation.generated_identity,
-             true <- generation.module.claim_manifest_sha256() == current.sha256,
-             true <- generation.module.compiler_version() == Source.version() do
-          :ok
-        else
-          _ -> {:error, :source_or_compiled_code_drift}
-        end
+    with {:ok, _context} <- source_context(root), do: :ok
+  end
 
-      _ ->
-        {:error, :source_or_compiled_code_drift}
+  @doc "One exact-byte source pass, including any review/report manifest paths."
+  def source_context(root \\ Config.root(), extra_paths \\ []) do
+    case snapshot() do
+      %{status: :ready} = generation -> current_source_context(root, extra_paths, generation)
+      _ -> {:error, :source_or_compiled_code_drift}
     end
+  end
+
+  defp current_source_context(root, extra_paths, generation) do
+    # Initialization already binds these source hashes to the compiled build.
+    # Compare them once here, rather than rereading the core/support files again.
+    # Loaded identity is the MD5 of the actual in-memory module, not a repeated
+    # disk lookup of a BEAM that may no longer be the running module.
+    with {:ok, context} <- Source.current_sources(root, generation.source, extra_paths),
+         true <- Config.loaded_core_matches?(),
+         true <-
+           Enum.all?(generation.loaded_modules, fn {module, expected} ->
+             module.module_info(:md5) == expected
+           end),
+         {:ok, identity} <- generated_identity(generation.module),
+         true <- identity == generation.generated_identity,
+         true <- generation.module.claim_manifest_sha256() == generation.source.sha256,
+         true <- generation.module.compiler_version() == Source.version() do
+      {:ok, Map.put(context, :generation, generation)}
+    else
+      _ -> {:error, :source_or_compiled_code_drift}
+    end
+  rescue
+    _ -> {:error, :source_or_compiled_code_drift}
   end
 
   def loaded_fingerprint do
@@ -150,40 +214,66 @@ defmodule HoldLedgerReview.Claims do
     _ -> {:error, :unavailable_generated_code_identity}
   end
 
-  def evaluate(slug, formal_values, output, root \\ Config.root()) do
-    with :ok <- freshness(root),
-         {:ok, _} <- TermCodec.encode_output(output),
-         {:ok, _law} <- claim(slug) do
-      module = snapshot().module
+  @doc """
+  Evaluate trusted work against one immutable generation. Fresh source and loaded
+  code are checked before and after the entire operation; no results escape when
+  its final identity check fails. Nothing is cached across operations or processes.
+  """
+  def with_generation(root, callback) do
+    with :ok <- freshness(root) do
+      generation = snapshot()
 
-      evaluation =
-        try do
-          case module.requires(slug, formal_values) do
-            true ->
-              {:ok,
-               %{
-                 requires: true,
-                 actual: module.actual(slug, formal_values),
-                 candidate: module.candidate(slug, formal_values, output),
-                 operation_output: module.target(slug, formal_values)
-               }}
+      evaluate = fn slug, values, output ->
+        evaluate_generation(generation, slug, values, output)
+      end
 
-            false ->
-              {:ok, %{requires: false}}
-
-            _ ->
-              {:error, :non_boolean_requires}
-          end
-        rescue
-          _ -> {:error, :source_expression_error}
-        catch
-          _, _ -> {:error, :source_expression_error}
-        end
+      result = callback.(evaluate)
 
       case freshness(root) do
-        :ok -> evaluation
-        _ -> {:error, :source_or_compiled_code_drift}
+        :ok -> {:ok, result}
+        error -> error
       end
+    end
+  end
+
+  def evaluate(slug, formal_values, output, root \\ Config.root()) do
+    with {:ok, result} <- with_generation(root, & &1.(slug, formal_values, output)), do: result
+  end
+
+  defp evaluate_generation(generation, slug, formal_values, output) do
+    with {:ok, _} <- TermCodec.encode_output(output),
+         {:ok, _law} <- generation_claim(generation, slug) do
+      module = generation.module
+
+      try do
+        case module.requires(slug, formal_values) do
+          true ->
+            {:ok,
+             %{
+               requires: true,
+               actual: module.actual(slug, formal_values),
+               candidate: module.candidate(slug, formal_values, output),
+               operation_output: module.target(slug, formal_values)
+             }}
+
+          false ->
+            {:ok, %{requires: false}}
+
+          _ ->
+            {:error, :non_boolean_requires}
+        end
+      rescue
+        _ -> {:error, :source_expression_error}
+      catch
+        _, _ -> {:error, :source_expression_error}
+      end
+    end
+  end
+
+  defp generation_claim(generation, slug) do
+    case Map.fetch(generation.claims, slug) do
+      {:ok, law} -> {:ok, law}
+      :error -> {:error, Map.get(generation.diagnostics, slug, :unknown_law)}
     end
   end
 end

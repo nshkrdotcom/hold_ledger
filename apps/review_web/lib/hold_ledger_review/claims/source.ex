@@ -63,6 +63,39 @@ defmodule HoldLedgerReview.Claims.Source do
     end
   end
 
+  @doc """
+  Compare fresh bytes with an already validated generation. Catalog structure is
+  parsed at initialization; unchanged catalog bytes need no repeated decoding or
+  validation. Every registered file is still read and hashed on each check, and
+  the live law inventory must still match exactly. No mtime or cross-call cache.
+  """
+  def matches?(root, source), do: match?({:ok, _}, current_digests(root, source, []))
+
+  def current_digests(root, source, extra_paths) do
+    with {:ok, context} <- current_sources(root, source, extra_paths), do: {:ok, context.digests}
+  end
+
+  def current_sources(root, source, extra_paths) do
+    expected =
+      source.file_sha256
+      |> Map.put("verification/laws.json", source.catalog_sha256)
+      |> Map.put("verification/obligations.json", source.obligations_sha256)
+
+    files =
+      Path.wildcard(Path.join(root, "test/laws/*.exs"))
+      |> Enum.map(&Path.relative_to(&1, root))
+      |> Enum.sort()
+
+    with true <- files == source.law_files,
+         {:ok, bytes} <- Anchor.read_many_under(root, Map.keys(expected) ++ extra_paths),
+         digests = Map.new(bytes, fn {path, content} -> {path, Anchor.sha(content)} end),
+         true <- Enum.all?(expected, fn {path, digest} -> digests[path] == digest end) do
+      {:ok, %{digests: digests, bytes: bytes}}
+    else
+      _ -> {:error, :source_or_compiled_code_drift}
+    end
+  end
+
   def extract(root, %{catalog: catalog}) do
     Enum.reduce(catalog, {%{}, %{}}, fn law, {claims, errors} ->
       slug = law["slug"]

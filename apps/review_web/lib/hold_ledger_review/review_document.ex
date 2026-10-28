@@ -1,6 +1,6 @@
 defmodule HoldLedgerReview.ReviewDocument do
   @moduledoc "Validates the current stored document before any reader or writer uses nested fields."
-  alias HoldLedgerReview.{Adversarial, Dossier, TermCodec}
+  alias HoldLedgerReview.{Adversarial, Claims, Dossier, TermCodec}
 
   @fields ~w(id seed_id document_revision human_revision target_policy_nodes status source graph_snapshot core_cards accepted_ai_cards suggested_ai_cards pinned_probes answers human_commands ai_jobs review_conclusion created_at_utc updated_at_utc)
 
@@ -44,6 +44,15 @@ defmodule HoldLedgerReview.ReviewDocument do
   end
 
   defp graph?(graph) do
+    {:ok, valid} =
+      Claims.memoize(__MODULE__, {:graph_shape, graph}, fn ->
+        {:ok, valid_graph?(graph)}
+      end)
+
+    valid
+  end
+
+  defp valid_graph?(graph) do
     keys?(graph, ~w(nodes edges excerpts)) and items?(graph["nodes"], 500, &node?/1) and
       items?(graph["edges"], 2000, &edge?/1) and items?(graph["excerpts"], 200, &excerpt?/1)
   end

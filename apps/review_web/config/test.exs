@@ -7,6 +7,11 @@ config :hold_ledger_review_web, HoldLedgerReviewWeb.Endpoint,
   secret_key_base: "QTuizZVwijAJFTVELcnRyjs0+qY32cvlefaEVhjMPqUfrocHunGVfTqzrIhlIozb",
   server: false
 
+# Each test VM owns an empty review directory. Tests must neither enumerate nor
+# modify development reviews, nor accumulate files across repeated test runs.
+config :hold_ledger_review_web,
+  review_store_dir: Path.join(System.tmp_dir!(), "hold-ledger-review-tests-#{System.pid()}")
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

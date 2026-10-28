@@ -806,21 +806,17 @@ defmodule HoldLedgerReview.ReviewStore do
   defp current?(_doc, _unavailable), do: false
 
   defp current_context(documents) do
-    with :ok <- Claims.freshness(),
-         %{status: :ready} = generation <- Claims.snapshot() do
-      paths =
-        documents |> Enum.flat_map(&Map.keys(&1["source"]["source_manifest"])) |> Enum.uniq()
+    paths = documents |> Enum.flat_map(&Map.keys(&1["source"]["source_manifest"])) |> Enum.uniq()
 
-      digests = Map.new(paths, &{&1, ProofEvidence.digest_file(Config.root(), &1)})
-
+    with {:ok, context} <- Claims.source_context(Config.root(), paths) do
       proof =
         ProofEvidence.load(
           Config.root(),
           Application.get_env(:hold_ledger_review_web, :proof_report),
-          Enum.map(generation.source.catalog, & &1["slug"])
+          Enum.map(context.generation.source.catalog, & &1["slug"])
         )
 
-      {:ok, %{generation: generation, digests: digests, proof: proof}}
+      {:ok, Map.put(context, :proof, proof)}
     else
       _ -> {:error, :stale_source}
     end

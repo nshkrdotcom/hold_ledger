@@ -22,14 +22,37 @@ defmodule HoldLedgerReview.ClaimProbe do
 
   def probe_all(before, event, candidate, opts \\ []) do
     slugs = Keyword.get(opts, :slugs, Compiler.initial_slugs())
-    Map.new(slugs, fn slug -> {slug, probe(slug, before, event, candidate, opts)} end)
+    root = Keyword.get(opts, :root, Config.root())
+
+    case Claims.with_generation(root, fn evaluate ->
+           probe_generation_all(slugs, before, event, candidate, opts, evaluate)
+         end) do
+      {:ok, rows} -> rows
+      {:error, reason} -> Map.new(slugs, &{&1, unavailable(&1, reason)})
+    end
   end
 
   def probe(slug, before, event, candidate, opts \\ []) do
     root = Keyword.get(opts, :root, Config.root())
 
-    with :ok <- Claims.freshness(root),
-         {:ok, law} <- Claims.claim(slug),
+    case Claims.with_generation(root, fn evaluate ->
+           probe_generation(slug, before, event, candidate, opts, evaluate)
+         end) do
+      {:ok, row} -> row
+      {:error, reason} -> unavailable(slug, reason)
+    end
+  rescue
+    _ -> unavailable(slug, :source_expression_error)
+  end
+
+  defp probe_generation_all(slugs, before, event, candidate, opts, evaluate) do
+    Map.new(slugs, fn slug ->
+      {slug, probe_generation(slug, before, event, candidate, opts, evaluate)}
+    end)
+  end
+
+  defp probe_generation(slug, before, event, candidate, opts, evaluate) do
+    with {:ok, law} <- Claims.claim(slug),
          {:ok, before_json} <- TermCodec.encode_state(before),
          {:ok, event_json} <- TermCodec.encode_event(event),
          {:ok, candidate_json} <- TermCodec.encode_output(candidate),
@@ -41,17 +64,13 @@ defmodule HoldLedgerReview.ClaimProbe do
           before: before_json,
           event: event_json,
           candidate: candidate_json,
-          root: root
+          evaluate: evaluate
         })
 
-      # A deterministic test-only boundary can change an isolated checkout
-      # between evaluation and publication. Never publish the old green row.
+      # Test-only fault boundary. The enclosing generation check invalidates
+      # the whole matrix if any source or loaded code changes during this work.
       before_finish(opts)
-
-      case Claims.freshness(root) do
-        :ok -> result
-        _ -> unavailable(slug, :source_or_compiled_code_drift)
-      end
+      result
     else
       {:not_probed, other} ->
         %{
@@ -329,7 +348,7 @@ defmodule HoldLedgerReview.ClaimProbe do
           origins = string_keys(binding.origins)
 
           outcome =
-            binding_outcome(Claims.evaluate(law.slug, values, candidate, encoded.root), actual)
+            binding_outcome(encoded.evaluate.(law.slug, values, candidate), actual)
 
           Map.merge(outcome, %{
             law_slug: law.slug,

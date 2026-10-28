@@ -73,9 +73,29 @@ defmodule HoldLedgerReview.Adversarial do
   end
 
   def evaluate(witness) do
+    with :ok <- Claims.freshness() do
+      result =
+        Claims.memoize(__MODULE__, witness, fn ->
+          result = evaluate_current(witness)
+
+          case Claims.freshness() do
+            :ok -> result
+            _ -> {:error, :stale_source}
+          end
+        end)
+
+      case Claims.freshness() do
+        :ok -> result
+        _ -> {:error, :stale_source}
+      end
+    else
+      _ -> {:error, :stale_source}
+    end
+  end
+
+  defp evaluate_current(witness) do
     with {:ok, decoded} <- decode(witness),
          true <- Spec.valid?(decoded.before),
-         :ok <- Claims.freshness(),
          actual = Ledger.step(decoded.before, decoded.event),
          oracle = Spec.expected_step(decoded.before, decoded.event),
          {:ok, actual_json} <- TermCodec.encode_output(actual),
@@ -87,8 +107,7 @@ defmodule HoldLedgerReview.Adversarial do
       follow = ClaimProbe.follow_on(actual, decoded.output, decoded.follow_on)
 
       with {:ok, follow_actual} <- optional_output(follow.actual),
-           {:ok, follow_candidate} <- optional_output(follow.candidate),
-           :ok <- Claims.freshness() do
+           {:ok, follow_candidate} <- optional_output(follow.candidate) do
         rows =
           Enum.map(slugs, &law_row(&1, checks[&1]))
 

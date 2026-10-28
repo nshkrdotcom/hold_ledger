@@ -4,16 +4,19 @@ defmodule HoldLedgerReview.AIProtocol do
   Provider JSON Schema is only a transport constraint; every response is checked
   again here before it can be committed. No model output is an evidence verdict.
   """
-  alias HoldLedgerReview.{Adversarial, Canonical}
+  alias HoldLedgerReview.{Adversarial, Canonical, Claims}
 
   @kinds ~w(deck challenge followup)
   @max_bytes %{"deck" => 32_768, "challenge" => 16_384, "followup" => 16_384}
   @statuses ~w(catches allows_here does_not_apply cant_check)
 
   def schema(kind) when kind in @kinds do
-    Application.app_dir(:hold_ledger_review_web, "priv/contracts/#{kind}.schema.json")
-    |> File.read!()
-    |> Jason.decode!()
+    bytes =
+      Application.app_dir(:hold_ledger_review_web, "priv/contracts/#{kind}.schema.json")
+      |> File.read!()
+
+    {:ok, schema} = Claims.memoize(__MODULE__, {kind, bytes}, fn -> Jason.decode(bytes) end)
+    schema
   end
 
   @doc """
