@@ -35,7 +35,7 @@ defmodule HoldLedgerReview.MixProject do
     [
       main: "readme",
       logo: "assets/review_web.svg",
-      favicon: "assets/review_web.svg",
+      favicon: "assets/lambda.svg",
       assets: %{"assets" => "assets"},
       extras: ["README.md", "CHANGELOG.md", {"LICENSE", [title: "MIT License"]}],
       groups_for_extras: [
