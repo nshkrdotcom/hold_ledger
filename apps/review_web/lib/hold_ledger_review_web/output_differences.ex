@@ -1,5 +1,6 @@
 defmodule HoldLedgerReviewWeb.OutputDifferences do
   alias HoldLedgerReviewWeb.ReviewCopy
+
   @moduledoc """
   A bounded, read-only description of two already-typed outputs. Never evaluates
   a law, normalizes counters, or assumes duplicate identities correspond.
@@ -33,7 +34,8 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
   defp change(label, before, after_value, unit) do
     delta =
       if is_integer(before) and is_integer(after_value),
-        do: " (#{if(after_value - before >= 0, do: "+", else: "")}#{after_value - before}#{unit})",
+        do:
+          " (#{if(after_value - before >= 0, do: "+", else: "")}#{after_value - before}#{unit})",
         else: ""
 
     [%{label: label, before: "#{before}#{unit}", after: "#{after_value}#{unit}", delta: delta}]
@@ -42,7 +44,12 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
   defp entries(before, after_value) do
     compare_list(before, after_value, & &1["key"], "Entry", &entry/1, fn key, a, b ->
       change("Entry #{key} · amount", a["amount"], b["amount"], "¢") ++
-        change("Entry #{key} · status", ReviewCopy.state(a["status"]), ReviewCopy.state(b["status"]), "")
+        change(
+          "Entry #{key} · status",
+          ReviewCopy.state(a["status"]),
+          ReviewCopy.state(b["status"]),
+          ""
+        )
     end)
   end
 
@@ -69,7 +76,13 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
     order =
       if before_ids == after_ids,
         do: [],
-        else: [row("#{name} order / identities", inspect(before_ids), inspect(after_ids))]
+        else: [
+          row(
+            "#{name} order / identities",
+            inspect(before_ids, charlists: :as_lists),
+            inspect(after_ids, charlists: :as_lists)
+          )
+        ]
 
     # Match ONLY when a key occurs exactly once in each list. A duplicate on
     # either side makes every occurrence of that key unpaired, even if equal.
@@ -108,8 +121,8 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
            Enum.count(before_ids, &(&1 == key)) > 1 or
              Enum.count(after_ids, &(&1 == key)) > 1
          end),
-        do: [row("Correspondence", "Repeated identities", "Occurrences left unpaired")],
-        else: []
+         do: [row("Correspondence", "Repeated identities", "Occurrences left unpaired")],
+         else: []
 
     order ++ matched ++ removed ++ added ++ caution
   end

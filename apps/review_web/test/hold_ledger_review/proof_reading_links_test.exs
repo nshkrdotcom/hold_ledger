@@ -25,7 +25,7 @@ defmodule HoldLedgerReview.ProofReadingLinksTest do
       %{"law.ex" => source_sha, "law.lean" => "lean-sha"},
       @declaration,
       steps,
-      %{"law.ex" => "source-sha"}
+      %{"law.ex" => "source-sha", "law.lean" => "lean-sha"}
     )
   end
 
@@ -78,5 +78,41 @@ defmodule HoldLedgerReview.ProofReadingLinksTest do
 
     assert {:ok, other} = ProofReading.document("po_a4_duplicate")
     assert other["connections"] == []
+  end
+
+  test "all three curated groups resolve against actual observed ASTs on both output bases" do
+    for slug <- ~w(po_a2 po_b1_timeout po_exposure_retain) do
+      {:ok, reading} = ProofReading.document(slug)
+      seed = HoldLedgerReview.Contrast.seed(slug)
+
+      {:ok, explanation} =
+        ProofReading.explain(slug, %{
+          "before" => seed["before"],
+          "event" => seed["event"],
+          "output" => seed["output"]
+        })
+
+      data = %{"explanation" => explanation}
+
+      for basis <- ~w(actual candidate) do
+        assert %{links: links, unavailable: []} = Links.project(reading, data, 0, basis)
+        assert Enum.map(links, & &1["id"]) == Enum.map(reading["connections"], & &1["id"])
+        assert Enum.all?(links, &(&1["generation"] == reading["source_generation"]))
+      end
+    end
+  end
+
+  test "Lean source must itself have been reviewed, not merely hash its current bytes" do
+    links =
+      Links.validate(
+        [@link],
+        %{"law.ex" => @source},
+        %{"law.ex" => "source-sha", "law.lean" => "lean-sha"},
+        @declaration,
+        [%{"line" => 4}],
+        %{"law.ex" => "source-sha"}
+      )
+
+    assert [%{"availability" => "Lean declaration missing or ambiguous"}] = links
   end
 end

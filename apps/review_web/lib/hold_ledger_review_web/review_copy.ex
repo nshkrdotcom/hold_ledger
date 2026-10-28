@@ -77,12 +77,23 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
     count = Enum.count(values, &(&1 == true))
 
     cond do
-      not complete or Enum.any?(bindings, &Map.has_key?(&1, "error")) -> "Could not evaluate all bindings"
-      values == [] -> "Not checked"
-      Enum.any?(values, &(not is_boolean(&1))) -> "Could not evaluate"
-      count > 0 -> "Applies (#{count} of #{length(values)} bindings)"
-      Enum.all?(values, &(&1 == false)) -> "Does not apply"
-      true -> "Could not evaluate"
+      not complete or Enum.any?(bindings, &Map.has_key?(&1, "error")) ->
+        "Could not evaluate all bindings"
+
+      values == [] ->
+        "Not checked"
+
+      Enum.any?(values, &(not is_boolean(&1))) ->
+        "Could not evaluate"
+
+      count > 0 ->
+        "Applies (#{count} of #{length(values)} bindings)"
+
+      Enum.all?(values, &(&1 == false)) ->
+        "Does not apply"
+
+      true ->
+        "Could not evaluate"
     end
   end
 
@@ -93,21 +104,29 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
     covered = Enum.filter(bindings, &(get_in(&1, ["requires", "value"]) == true))
     values = Enum.map(covered, &get_in(&1, ["actual", "value"]))
 
+    if incomplete_bindings?(bindings), do: "Unavailable", else: code_result(covered, values)
+  end
+
+  def code_acceptance(_), do: "Unavailable"
+
+  defp incomplete_bindings?(bindings) do
+    bindings == [] or
+      Enum.any?(
+        bindings,
+        &(Map.has_key?(&1, "error") or
+            not is_boolean(get_in(&1, ["requires", "value"])))
+      )
+  end
+
+  defp code_result([], _), do: "Not applicable"
+
+  defp code_result(_, values) do
     cond do
-      bindings == [] -> "Unavailable"
-      Enum.any?(bindings, &Map.has_key?(&1, "error")) -> "Unavailable"
-      Enum.any?(bindings, &(not is_boolean(get_in(&1, ["requires", "value"])))) ->
-        "Unavailable"
-      covered == [] and Enum.all?(bindings, &(get_in(&1, ["requires", "value"]) == false)) ->
-        "Not applicable"
-      values == [] -> "Unavailable"
       false in values -> "Rejects code result"
       Enum.all?(values, &(&1 == true)) -> "Accepts code result"
       true -> "Unavailable"
     end
   end
-
-  def code_acceptance(_), do: "Unavailable"
 
   def candidate_acceptance(%{"law_status" => "allows_here"}), do: "Accepts alternative"
   def candidate_acceptance(%{"law_status" => "catches"}), do: "Rejects alternative"

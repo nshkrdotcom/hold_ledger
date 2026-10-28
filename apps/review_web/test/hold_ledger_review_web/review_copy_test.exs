@@ -31,13 +31,25 @@ defmodule HoldLedgerReviewWeb.ReviewCopyTest do
     out = %{"explanation" => %{"complete" => true, "bindings" => [binding(false, nil)]}}
     assert ReviewCopy.applicability(out) == "Does not apply"
     assert ReviewCopy.code_acceptance(out) == "Not applicable"
-    assert ReviewCopy.applicability(%{"explanation" => %{"complete" => true, "bindings" => [%{"error" => "unavailable"}]}}) ==
+
+    assert ReviewCopy.applicability(%{
+             "explanation" => %{"complete" => true, "bindings" => [%{"error" => "unavailable"}]}
+           }) ==
              "Could not evaluate all bindings"
-    uncertain = %{"explanation" => %{"complete" => true, "bindings" => [binding(true, true), binding(nil, nil)]}}
+
+    uncertain = %{
+      "explanation" => %{
+        "complete" => true,
+        "bindings" => [binding(true, true), binding(nil, nil)]
+      }
+    }
+
     assert ReviewCopy.applicability(uncertain) == "Could not evaluate"
     assert ReviewCopy.code_acceptance(uncertain) == "Unavailable"
+
     assert ReviewCopy.candidate_acceptance(%{"law_status" => "allows_here"}) ==
              "Accepts alternative"
+
     assert ReviewCopy.candidate_acceptance(%{"law_status" => "cant_check"}) == "Unavailable"
     assert ReviewCopy.accounting(nil) == "Unavailable"
   end

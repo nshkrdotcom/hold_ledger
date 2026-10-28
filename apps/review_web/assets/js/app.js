@@ -24,8 +24,13 @@ window.addEventListener("phx:focus_evidence", ({detail}) => {
   requestAnimationFrame(() => {
     const panel = document.getElementById(detail.id)
     if (!panel) return
+    for (let ancestor = panel.parentElement; ancestor; ancestor = ancestor.parentElement) {
+      if (ancestor.tagName === "DETAILS") ancestor.open = true
+    }
     panel.scrollIntoView({block: "start"})
-    const target = panel.querySelector("summary") || panel
+    const target = panel.matches(".logic-node")
+      ? panel.querySelector(":scope > .logic-line > .clause-select") || panel
+      : panel
     if (target === panel) target.setAttribute("tabindex", "-1")
     target.focus({preventScroll: true})
   })

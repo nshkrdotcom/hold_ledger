@@ -22,6 +22,7 @@ defmodule HoldLedgerReview.Claims do
     HoldLedgerReview.Claims.Compiler,
     HoldLedgerReview.Claims.Explanation,
     HoldLedgerReview.ProofReading,
+    HoldLedgerReview.ProofReading.Links,
     HoldLedgerReview.Contrast,
     HoldLedgerReview.ClaimProbe,
     HoldLedgerReview.TermCodec,

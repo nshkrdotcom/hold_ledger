@@ -41,13 +41,22 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             id="hypothetical-output"
           />
         </div>
-        <section :if={@differences} id="output-differences" class="output-differences" aria-live="polite">
+        <section
+          :if={@differences}
+          id="output-differences"
+          class="output-differences"
+          aria-live="polite"
+        >
           <h3>Code result → editable alternative</h3>
           <p :if={@differences.same?} id="same-output">Same as code result.</p>
           <ol :if={!@differences.same?}>
-            <li :for={{difference, index} <- Enum.with_index(@differences.rows)} id={"difference-#{index}"}>
+            <li
+              :for={{difference, index} <- Enum.with_index(@differences.rows)}
+              id={"difference-#{index}"}
+            >
               <strong>{difference.label}</strong>
-              <span>{difference.before} <span aria-label="changed to">→</span> {difference.after}{difference.delta}</span>
+              <span>{difference.before}
+              <span aria-label="changed to">→</span> {difference.after}{difference.delta}</span>
             </li>
           </ol>
           <p :if={!@differences.same?} class="scope-note">
@@ -104,8 +113,12 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   attr :editor, :string, default: nil
   attr :candidate_form, :any, default: nil
   attr :initial_form, :any, default: nil
+  attr :json_form, :any, default: nil
 
   def editors(assigns) do
+    json = if assigns.case, do: Jason.encode!(assigns.case["candidate"], pretty: true), else: ""
+    assigns = assign(assigns, :json_form, assigns.json_form || to_form(%{"json" => json}))
+
     ~H"""
     <section id="structured-editors">
       <div :if={@editor == "candidate" && @candidate_form} id="candidate-editor">
@@ -145,16 +158,15 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         <div class="action-row">
           <button phx-click="candidate_recalculate" id="recalculate">Recalculate totals</button><button phx-click="candidate_add_entry">Add entry</button><button phx-click="candidate_add_effect">Add void effect</button><button phx-click="candidate_clear_effects">Clear effects</button>
         </div>
-        <section :if={@case} id="json-editor">
+        <section id="json-editor">
           <h3>Output JSON</h3>
           <.form
-            for={to_form(%{"json" => Jason.encode!(@case["candidate"], pretty: true)})}
+            for={@json_form}
             id="candidate-json-form"
             phx-submit="candidate_json"
           >
             <.input
-              name="json"
-              value={Jason.encode!(@case["candidate"], pretty: true)}
+              field={@json_form[:json]}
               type="textarea"
               label="Typed output"
               id="candidate-json"
@@ -187,9 +199,15 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
     ~H"""
     <section id="verdict" class="verdict-panel" aria-label="Checks for this case">
       <h2>Checks for this case</h2>
-      <p class="scope-note">Predicate outcomes describe the selected rule, not whether an alternative is desirable.</p>
+      <p class="scope-note">
+        Predicate outcomes describe the selected rule, not whether an alternative is desirable.
+      </p>
       <table :if={@case} id="contrast-matrix">
-        <thead><tr><th>Question</th><th>Code result</th><th>Alternative (not executed)</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Question</th><th>Code result</th><th>Alternative (not executed)</th>
+          </tr>
+        </thead>
         <tbody>
           <tr id="applicability-row">
             <th scope="row">Does the rule apply?</th>
@@ -207,11 +225,17 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           </tr>
           <tr :if={@case["comparison_law"] != @slug && @case["comparison_status"] != "not_probed"}>
             <th scope="row">
-              <button class="text-button" phx-click="inspect_law" phx-value-slug={@case["comparison_law"]}>
+              <button
+                class="text-button"
+                phx-click="inspect_law"
+                phx-value-slug={@case["comparison_law"]}
+              >
                 {ReviewCopy.title(%{"slug" => @case["comparison_law"]})}
               </button>
             </th>
-            <td>{if @case["comparison_actual"] === true, do: "Accepts code result", else: "Unavailable"}</td>
+            <td>
+              {if @case["comparison_actual"] === true, do: "Accepts code result", else: "Unavailable"}
+            </td>
             <td>{ReviewCopy.candidate_acceptance(%{"law_status" => @case["comparison_status"]})}</td>
           </tr>
         </tbody>
@@ -278,10 +302,18 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         {@output["after"]["used_holds"]} slots · {ReviewCopy.result(@output["result"])}
       </p>
       <dl class="output-fields">
-        <div><dt>Amount limit</dt><dd>{@output["after"]["amount_limit"]}¢</dd></div>
-        <div><dt>Hold limit</dt><dd>{@output["after"]["hold_limit"]} slots</dd></div>
-        <div><dt>Used hold slots</dt><dd>{@output["after"]["used_holds"]}</dd></div>
-        <div><dt>Result</dt><dd>{@output["result"]}</dd></div>
+        <div>
+          <dt>Amount limit</dt><dd>{@output["after"]["amount_limit"]}¢</dd>
+        </div>
+        <div>
+          <dt>Hold limit</dt><dd>{@output["after"]["hold_limit"]} slots</dd>
+        </div>
+        <div>
+          <dt>Used hold slots</dt><dd>{@output["after"]["used_holds"]}</dd>
+        </div>
+        <div>
+          <dt>Result</dt><dd>{@output["result"]}</dd>
+        </div>
       </dl>
       <ul>
         <li :for={{entry, index} <- Enum.with_index(@output["after"]["entries"])}>
@@ -308,5 +340,4 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
 
   defp nested_form(params, index, field, name),
     do: to_form(params, as: "#{name}[#{field}][#{index}]")
-
 end

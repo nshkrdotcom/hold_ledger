@@ -34,7 +34,7 @@ test('review notes follow analysis and preserve its active input',async({page})=
 
 test('processor assumption experiment is separate from saved history',async({page})=>{
  await open(page,'po_exposure_retain');const initial=await saved(page);await inspect(page,'premises');
- await page.locator('#fencing-toggle').click();await expect(page.locator('#premise-local')).toHaveText('0¢');await expect(page.locator('#premise-remote')).toHaveText('100¢');await expect(page.locator('#premise-covered')).toHaveText('Accounting does not balance');
+ await page.locator('#fencing-toggle').click();await expect(page.locator('#premise-local')).toHaveText('0¢');await expect(page.locator('#premise-remote')).toHaveText('100¢');await expect(page.locator('#premise-covered')).toHaveText('No');
  await page.locator('#fencing-toggle').click();await expect(page.locator('#premise-remote')).toHaveText('0¢');expect((await saved(page)).steps).toEqual(initial.steps);
 });
 

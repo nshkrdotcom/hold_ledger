@@ -49,6 +49,8 @@ Select an earlier step to branch from there. **Reset** discards the experiment. 
 
 ## Read the proof and assumptions
 
+Conditions show the checks first. Expand a definition or its operand values for detail. Selecting a linked proof step reveals its matching condition. The proof appears alongside the conditions on wide screens and after them on narrow screens.
+
 **Why this check has that result** shows the observed clauses for the selected binding, with explicit true/false/not-evaluated values. In admission, timeout validity and exposure retention, reviewed links let you select a clause and highlight related Lean reading passages, or select a proof-reading step to highlight its related clauses. These many-to-many readings are validated against exact reviewed source digests, structural AST clauses and unique Lean anchors; stale, absent or ambiguous links are unavailable, not guessed. Other claims and unsupported links remain visible and unlinked. Keyboard and touch use the same buttons.
 
 **Read full proof** expands the actual Lean declaration. Lemma references open source alongside the case. Neither linked passages nor the displayed proof lines represent Lean goal states, kernel dependencies, translation correctness or formal acceptance.

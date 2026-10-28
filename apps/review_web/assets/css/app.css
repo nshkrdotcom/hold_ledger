@@ -81,7 +81,8 @@ del {background: #f7d0c8}
 ins {background: #ccebd7; text-decoration: none}
 .source-change {padding: .7rem 0; border-bottom: 1px solid var(--line)}
 #contract-diff > code {font-size: .82rem}
-.connected-experiment {display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); grid-template-areas: "case result" "editing reasoning"; column-gap: clamp(.8rem,2vw,1.6rem); row-gap: .9rem; align-items: start}
+.connected-experiment {display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); column-gap: clamp(.8rem,2vw,1.6rem); row-gap: .9rem; align-items: start}
+.experiment-lane,.reasoning-lane {min-width:0}
 .case-stage {grid-area: case; min-width: 0}
 .case-results {grid-area: result; background: white; padding: .85rem 1rem; border-top: 3px solid var(--accent); min-width: 0}
 .case-editing {grid-area: editing; min-width: 0}
@@ -188,6 +189,8 @@ ins {background: #ccebd7; text-decoration: none}
 .logic-leaf > .inline-values,.logic-leaf > strong,.logic-leaf > small {flex: 1 1 100%}
 .truth.yes,.truth.no {color: var(--ink); font-weight: 600}
 .clause-select {display: block; text-align: left; justify-content: start; padding: .1rem .25rem; border: 1px solid transparent; background: transparent; color: inherit; font: 12px/1.55 monospace; overflow-wrap: anywhere; white-space: normal; min-width: 0}
+.clause-details {margin:.2rem 0 .4rem .5rem;font-size:.75rem;color:var(--muted)}
+.clause-details summary {cursor:pointer}
 .clause-select:hover {border-color: var(--line); background: var(--accent-soft)}
 .clause-select[aria-pressed=true] {text-decoration: underline 2px; text-underline-offset: 3px}
 .connected-clause,.selected-clause {background: #ede7f4; border-left: 3px solid #735791}
@@ -202,7 +205,7 @@ ins {background: #ccebd7; text-decoration: none}
 .full-contract {margin: .7rem 0}
 .contract-source {display: flex; gap: .6rem; flex-wrap: wrap; margin: .45rem 0; font-size: .8rem}
 .contract-source span {color: var(--muted)}
-#proof-panel {border-top: 1px solid var(--line); padding-top: 1rem; min-width: 0}
+#proof-panel {grid-area:proof;border-top: 1px solid var(--line); padding-top: 1rem; min-width: 0}
 .proof-source-stages {display: flex; flex-wrap: wrap; gap: .35rem; margin: .55rem 0}
 .proof-source-stages button {font-size: .75rem}
 .proof-source-stages [aria-current=step] {border-color: var(--accent); background: var(--accent-soft)}
@@ -233,7 +236,8 @@ ins {background: #ccebd7; text-decoration: none}
 #proof-panel,#clauses-panel,.inline-source,#nearby-observation,.secondary-panel {scroll-margin-top: 1rem}
 
 @media (max-width: 1119px) {
-  .connected-experiment {grid-template-columns: minmax(0,1fr); grid-template-areas: "case" "result" "editing" "reasoning"; row-gap: .75rem}
+  .connected-experiment {grid-template-columns: minmax(0,1fr); grid-template-areas: "case" "result" "editing" "reasoning" "proof"; row-gap: .75rem}
+  .experiment-lane,.reasoning-lane {display:contents}
   .case-results {padding: .8rem; margin-bottom: .2rem}
   #proof-panel {margin-top: 1rem}
 }

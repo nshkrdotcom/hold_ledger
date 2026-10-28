@@ -34,13 +34,23 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         Clause ↔ proof links are reviewed source-reading aids, not Lean goal states,
         kernel dependencies or acceptance evidence.
       </p>
-      <p :if={!@reading["reading_current"]} id="links-stale" class="scope-note connection-unavailable">
+      <p
+        :if={@reading["reading_status"] == "stale"}
+        id="links-stale"
+        class="scope-note connection-unavailable"
+      >
         Source-bound reading notes are stale for the current law source. Clause/proof links are unavailable; ordinary checks remain accessible.
       </p>
-      <p :if={@reading["reading_current"] && @reading["connections"] == []} id="links-unsupported" class="scope-note">
+      <p
+        :if={@reading["reading_status"] != "stale" && @reading["connections"] == []}
+        id="links-unsupported"
+        class="scope-note"
+      >
         No reviewed proof correspondence is available for this claim. Its ordinary source and checks remain accessible.
       </p>
-      <p :for={reason <- @unavailable} class="scope-note connection-unavailable">Reading unavailable: {reason}</p>
+      <p :for={reason <- @unavailable} class="scope-note connection-unavailable">
+        Reading unavailable: {reason}
+      </p>
       <div :if={@case}>
         <p id="binding-count">
           {if length(@bindings) == 1,
@@ -71,12 +81,12 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         <div class="segmented" aria-label="Output being inspected">
           <button
             phx-click="basis"
-            phx-value-value="actual"
+            phx-value-basis="actual"
             aria-pressed={to_string(@basis == "actual")}
           >Code result</button>
           <button
             phx-click="basis"
-            phx-value-value="candidate"
+            phx-value-basis="candidate"
             aria-pressed={to_string(@basis == "candidate")}
           >Alternative result</button>
         </div>
@@ -169,8 +179,14 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     <section class="clause-table">
       <h3>{@title} <.truth value={@node["value"]} /></h3>
       <.logic
-        node={@node} root={@node} phase={@phase} binding={@binding} path={[]}
-        links={@links} selection={@selection} active_links={@active_links}
+        node={@node}
+        root={@node}
+        phase={@phase}
+        binding={@binding}
+        path={[]}
+        links={@links}
+        selection={@selection}
+        active_links={@active_links}
         generation={@generation}
       />
     </section>
@@ -219,7 +235,9 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         related: related,
         active: active,
         selected: selected,
-        children: children
+        children: children,
+        compact_label: node_label(assigns.node, op),
+        expand_children: expand_children?(assigns, op)
       )
 
     ~H"""
@@ -231,10 +249,16 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         @active && "connected-clause",
         @selected && "selected-clause"
       ]}
-      id={if @phase != "helper", do: "clause-#{@binding}-#{@phase}-#{if @address == "", do: "root", else: String.replace(@address, ".", "-")}"}
+      id={
+        if @phase != "helper",
+          do:
+            "clause-#{@binding}-#{@phase}-#{if @address == "", do: "root", else: String.replace(@address, ".", "-")}"
+      }
     >
       <div class="logic-line logic-leaf">
-        <span :if={@op in [:and, :or, :not]} class="logic-operator">{String.upcase(Atom.to_string(@op))}</span>
+        <span :if={@op in [:and, :or, :not]} class="logic-operator">{String.upcase(
+          Atom.to_string(@op)
+        )}</span>
         <button
           :if={@phase != "helper"}
           class="clause-select"
@@ -245,8 +269,8 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
           phx-value-generation={@generation}
           aria-pressed={to_string(@selected)}
           title="Select this observed condition"
-        >{@node["expression"]}</button>
-        <code :if={@phase == "helper"}>{@node["expression"]}</code>
+        >{@compact_label}</button>
+        <code :if={@phase == "helper"}>{@compact_label}</code>
         <span :if={@node["status"] == "not_evaluated"} class="unevaluated-value">Not evaluated</span>
         <.truth :if={@node["status"] != "not_evaluated"} value={@node["value"]} />
         <strong :if={inline_values(@node, @op)} class="inline-values">{inline_values(@node, @op)}</strong>
@@ -261,17 +285,69 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         <small :if={@related != []} class="connection-marker">Related proof passage ({length(@related)})</small>
         <small :if={@selected && @related == []} class="scope-note">No reviewed proof passage for this condition</small>
       </div>
-      <div :if={@children != []} class="logic-children">
+      <div :if={@children != [] && @expand_children} class="logic-children">
         <.logic
           :for={{child, index} <- @children}
-          node={child} root={@root} phase={@phase} binding={@binding} path={@path ++ [index]}
-          links={@links} selection={@selection} active_links={@active_links}
+          node={child}
+          root={@root}
+          phase={@phase}
+          binding={@binding}
+          path={@path ++ [index]}
+          links={@links}
+          selection={@selection}
+          active_links={@active_links}
           generation={@generation}
         />
       </div>
+      <details :if={@children != [] && !@expand_children} class="clause-details">
+        <summary>Inspect values and definition</summary>
+        <div class="logic-children">
+          <.logic
+            :for={{child, index} <- @children}
+            node={child}
+            root={@root}
+            phase={@phase}
+            binding={@binding}
+            path={@path ++ [index]}
+            links={@links}
+            selection={@selection}
+            active_links={@active_links}
+            generation={@generation}
+          />
+        </div>
+      </details>
     </div>
     """
   end
+
+  defp node_label(%{"helper" => name}, _) when is_binary(name), do: name <> " definition"
+  defp node_label(_, :and), do: "All conditions"
+  defp node_label(_, :or), do: "Any condition"
+  defp node_label(_, :if), do: "Conditional branches"
+  defp node_label(_, :case), do: "Selected branch"
+  defp node_label(node, _), do: node["expression"]
+
+  defp expand_children?(assigns, op) do
+    logical? = op in [:and, :or, :not, :if, :case]
+
+    eligibility? =
+      assigns.node["helper"] == "request_eligible?/3" or
+        Enum.any?(assigns.node["children"] || [], &(&1["helper"] == "request_eligible?/3"))
+
+    logical? or eligibility? or selected_descendant?(assigns)
+  end
+
+  defp selected_descendant?(assigns) do
+    prefix = Enum.join(assigns.path, ".")
+
+    Enum.any?(assigns.active_links, fn link ->
+      link["phase"] == assigns.phase and link["binding"] == assigns.binding and
+        descendant_path?(prefix, link["path"])
+    end)
+  end
+
+  defp descendant_path?("", path), do: path != ""
+  defp descendant_path?(prefix, path), do: String.starts_with?(path, prefix <> ".")
 
   defp operator(%{"expression" => expression}) do
     case Code.string_to_quoted(expression) do

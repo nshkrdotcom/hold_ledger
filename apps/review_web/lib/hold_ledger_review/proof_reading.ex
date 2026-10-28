@@ -48,6 +48,9 @@ defmodule HoldLedgerReview.ProofReading do
       inline = inline_proof(law)
       sources = Enum.map(paths(law), fn path -> source_record(path, context.bytes[path]) end)
 
+      steps = if(guide_current, do: proof_steps(hd(declarations), guide["steps"]), else: [])
+      connections = reading_connections(guide_current, guide, context, hd(declarations), steps)
+
       {:ok,
        %{
          "slug" => slug,
@@ -57,19 +60,10 @@ defmodule HoldLedgerReview.ProofReading do
          "contract" => contract(law),
          "declarations" => declarations,
          "inline_proof" => inline,
-         "proof_steps" =>
-           if(guide_current, do: proof_steps(hd(declarations), guide["steps"]), else: []),
-         "connections" =>
-           if(guide_current,
-             do:
-               Links.validate(
-                 guide["connections"] || [], context.bytes, context.digests,
-                 hd(declarations), proof_steps(hd(declarations), guide["steps"]),
-                 guide["reviewed_source_sha256"]
-               ),
-             else: []
-           ),
+         "proof_steps" => steps,
+         "connections" => connections,
          "reading_current" => guide_current == true,
+         "reading_status" => reading_status(guide, guide_current),
          "policy" =>
            policy(
              context.bytes["guides/specification.md"],
@@ -87,6 +81,24 @@ defmodule HoldLedgerReview.ProofReading do
     else
       _ -> {:error, :claim_source_unavailable}
     end
+  end
+
+  defp reading_status(nil, _), do: "not_supplied"
+  defp reading_status(_, true), do: "current"
+  defp reading_status(_, _), do: "stale"
+
+  defp reading_connections(current, guide, context, declaration, steps) do
+    if current,
+      do:
+        Links.validate(
+          guide["connections"] || [],
+          context.bytes,
+          context.digests,
+          declaration,
+          steps,
+          guide["reviewed_source_sha256"]
+        ),
+      else: []
   end
 
   def explain(slug, %{"before" => before, "event" => event, "output" => output}) do
@@ -265,7 +277,10 @@ defmodule HoldLedgerReview.ProofReading do
           Map.merge(step, %{"line" => line, "code" => code, "path" => declaration["path"]})
 
         _ ->
-          Map.merge(step, %{"line" => nil, "code" => "Anchor missing or ambiguous; reading unavailable"})
+          Map.merge(step, %{
+            "line" => nil,
+            "code" => "Anchor missing or ambiguous; reading unavailable"
+          })
       end
     end)
   end

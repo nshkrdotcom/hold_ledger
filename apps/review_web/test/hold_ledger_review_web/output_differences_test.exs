@@ -39,6 +39,7 @@ defmodule HoldLedgerReviewWeb.OutputDifferencesTest do
 
     original = actual
     rows = OutputDifferences.between(actual, alternative).rows
+
     assert Enum.map(rows, & &1.label) == [
              "Amount limit",
              "Hold limit",
@@ -107,5 +108,14 @@ defmodule HoldLedgerReviewWeb.OutputDifferencesTest do
     rows = OutputDifferences.between(actual, changed).rows
 
     assert [%{label: "authorize action 4 · amount", delta: " (-1¢)"}] = rows
+  end
+
+  test "integer identities are displayed as numbers, never character lists" do
+    actual = output([entry(11, 100, "voiding")])
+    alternative = output([])
+    %{rows: rows} = OutputDifferences.between(actual, alternative)
+
+    assert %{before: "[11]", after: "[]"} =
+             Enum.find(rows, &(&1.label == "Entry order / identities"))
   end
 end

@@ -27,6 +27,17 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
   await page.locator('#inspector-tools [phx-value-view=record]').click();
   const repair=await page.getByRole('link',{name:'Download local repair packet'}).first().getAttribute('href');
   const exported=await page.request.get(repair);expect(exported.status()).toBe(200);expect((await exported.json()).content_sha256).toMatch(/^[a-f0-9]{64}$/);
+  await expect(page.locator('#repair-ready')).toBeVisible();
+  await page.locator('#review-amount').fill('99');
+  await expect(page.locator('#repair-ready')).toHaveCount(0);
+  await expect(page.locator('#repair-unavailable')).toContainText('exact input and alternative');
+  await page.locator('#review-amount').fill('100');
+  await expect(page.locator('#repair-ready')).toBeVisible();
+  await page.locator('#edit-candidate').click();
+  await page.locator('#alternative-counter input').fill('1');
+  await expect(page.locator('#repair-ready')).toHaveCount(0);
+  await expect(page.locator('#repair-unavailable')).toContainText('exact input and alternative');
+
 });
 test('source selection uses registered identities and replay is unavailable without a pair',async({page})=>{
   await page.goto('/');await expect(page).toHaveURL(/\/claims\/po_a2\/trace-/);

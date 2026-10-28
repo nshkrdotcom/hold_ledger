@@ -36,12 +36,18 @@ test('malformed alternative clears the checked result without saving the last va
   const before = await saved(page);
   await page.locator('#edit-candidate').click();
   await page.locator('#advanced-editor').click();
+  const validJSON = await page.locator('#candidate-json').inputValue();
   await page.locator('#candidate-json').fill('{broken');
   await page.locator('#candidate-json-form button').click();
   await expect(page.locator('#invalid-candidate')).toBeVisible();
   await expect(page.locator('#contrast-matrix')).toHaveCount(0);
   await expect(page.locator('#output-differences')).toHaveCount(0);
   expect((await saved(page)).steps).toEqual(before.steps);
+  await expect(page.locator('#candidate-json')).toHaveValue('{broken');
+  await page.locator('#candidate-json').fill(validJSON);
+  await page.locator('#candidate-json-form button').click();
+  await expect(page.locator('#contrast-matrix')).toBeVisible();
+  await expect(page.locator('#invalid-candidate')).toHaveCount(0);
 });
 
 test('applicability, code acceptance, alternative acceptance and accounting stay distinct', async ({page}) => {
@@ -60,6 +66,7 @@ test('source-bound proof passage and observed clause select each other by keyboa
   await step.focus();
   await page.keyboard.press('Enter');
   await expect(page.locator('#selected-reading-links')).toBeVisible();
+  await expect(page.locator('#dissector .clause-select:focus')).toHaveText('amount <= amount_limit - used_amount');
   const clauses = page.locator('#dissector .connected-clause button.clause-select');
   await expect(clauses.first()).toBeVisible();
   await clauses.first().focus();
@@ -127,3 +134,45 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
     await expect(page.locator('[role=dialog],.tool-backdrop')).toHaveCount(0);
   });
 }
+
+for (const [slug, stage] of [['po_b1_timeout', 1], ['po_exposure_retain', 4]]) {
+  test(`reviewed ${slug} postcondition links both output bases without changing the case`, async ({page}) => {
+    await open(page, slug);
+    const before = await saved(page);
+    const proof = page.locator('#proof-source-workspace');
+    await proof.locator('.proof-source-stages button').nth(stage).click();
+    await expect(page.locator('#selected-reading-links')).toBeVisible();
+    await expect(page.locator('#dissector .connected-clause[id*=candidate]')).not.toHaveCount(0);
+    await page.getByRole('button', {name: 'Code result', exact: true}).click();
+    await proof.locator('.proof-source-stages button').nth(stage).click();
+    await expect(page.locator('#dissector .connected-clause[id*=actual]')).not.toHaveCount(0);
+    expect((await saved(page)).steps).toEqual(before.steps);
+    await page.locator('#law-picker select').selectOption('po_a4_duplicate');
+    await expect(page).toHaveURL(/po_a4_duplicate/);
+    await expect(page.locator('#selected-reading-links')).toHaveCount(0);
+    await expect(page.locator('#dissector .selected-clause')).toHaveCount(0);
+  });
+}
+
+test('200 percent effective desktop viewport keeps editing and evidence accessible', async ({browser}) => {
+  // Native desktop zoom halves the CSS viewport. Render that layout at DPR 2;
+  // this checks reflow, not the browser chrome's zoom control.
+  const context = await browser.newContext({viewport: {width: 640, height: 400}, deviceScaleFactor: 2});
+  const page = await context.newPage();
+  try {
+    await open(page, 'po_exposure_retain');
+    await expect(page.locator('#selected-law-row')).toContainText('Rejects alternative');
+    await page.locator('#edit-candidate').click();
+    await page.locator('#alternative-counter input').fill('7');
+    await expect(page.locator('#validity-row')).toContainText('Accounting does not balance');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.locator('#alternative-counter input').focus();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#edit-candidate')).toBeFocused();
+    await page.locator('#proof-source-workspace .proof-source-stages button').nth(4).click();
+    await expect(page.locator('#selected-reading-links')).toBeVisible();
+    await page.screenshot({path: '../../../../tmp/acceptance_0711/zoom-200-effective.png', fullPage: true});
+  } finally {
+    await context.close();
+  }
+});

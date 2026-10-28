@@ -6,8 +6,8 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   import HoldLedgerReviewWeb.LeanComponents
   import HoldLedgerReviewWeb.ScrubberComponents
 
-  alias HoldLedgerReviewWeb.{Experiment, ReviewCopy}
   alias HoldLedgerReview.ProofReading.Links
+  alias HoldLedgerReviewWeb.{Experiment, ReviewCopy}
 
   alias HoldLedgerReview.{
     Canonical,
@@ -379,7 +379,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def handle_event("cancel_hunt", _, socket),
     do: {:noreply, socket |> cancel_async(:hunt) |> assign(hunt: %{status: "cancelled"})}
 
-  def handle_event("basis", %{"value" => value}, socket) when value in ~w(actual candidate),
+  def handle_event("basis", %{"basis" => value}, socket) when value in ~w(actual candidate),
     do: {:noreply, assign(socket, basis: value, helper: nil, selection: nil)}
 
   def handle_event("helper", params, socket) do
@@ -431,9 +431,19 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
          root when is_map(root) <- row[phase],
          {:ok, _node} <- observed_node(root, params["path"]) do
       path = params["path"]
-      selected = %{type: :clause, binding: n, phase: phase, path: path,
-                   basis: socket.assigns.basis, generation: socket.assigns.reading["source_generation"]}
-      links = Enum.filter(current_links(socket).links, &(&1["phase"] == phase and &1["path"] == path))
+
+      selected = %{
+        type: :clause,
+        binding: n,
+        phase: phase,
+        path: path,
+        basis: socket.assigns.basis,
+        generation: socket.assigns.reading["source_generation"]
+      }
+
+      links =
+        Enum.filter(current_links(socket).links, &(&1["phase"] == phase and &1["path"] == path))
+
       socket = assign(socket, selection: selected)
 
       case links do
@@ -443,25 +453,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
            |> assign(stage: hd(first["steps"]))
            |> push_event("focus_evidence", %{id: "proof-source-workspace"})}
 
-        _ -> {:noreply, socket}
+        _ ->
+          {:noreply, socket}
       end
     else
       _ -> {:noreply, error(socket, "Clause selection is stale or unavailable for these values.")}
     end
   end
-
-  defp current_links(socket),
-    do:
-      Links.project(
-        socket.assigns.reading,
-        socket.assigns.case_data,
-        socket.assigns.binding_index,
-        socket.assigns.basis
-      )
-
-  defp clause_id(link),
-    do:
-      "clause-#{link["binding"]}-#{link["phase"]}-#{if(link["path"] == "", do: "root", else: String.replace(link["path"], ".", "-"))}"
 
   def handle_event("lemma", %{"name" => name}, socket) do
     with ref when is_map(ref) <-
@@ -516,7 +514,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       _ ->
         {:noreply,
          socket
-         |> assign(invalid: true, case_data: nil, selection: nil)
+         |> assign(
+           invalid: true,
+           case_data: nil,
+           selection: nil,
+           json_form: to_form(%{"json" => json})
+         )
          |> repair_availability()
          |> error("Invalid typed output JSON.")}
     end
@@ -904,6 +907,19 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   @impl true
   def handle_info({:part3_updated, _}, socket), do: {:noreply, load_package(socket)}
 
+  defp current_links(socket),
+    do:
+      Links.project(
+        socket.assigns.reading,
+        socket.assigns.case_data,
+        socket.assigns.binding_index,
+        socket.assigns.basis
+      )
+
+  defp clause_id(link),
+    do:
+      "clause-#{link["binding"]}-#{link["phase"]}-#{if(link["path"] == "", do: "root", else: String.replace(link["path"], ".", "-"))}"
+
   defp candidate_input(socket, params) do
     case Contrast.parse_output(params) do
       {:ok, output} ->
@@ -937,6 +953,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           case_data: data,
           candidate: data["candidate"],
           candidate_form: to_form(Contrast.output_form(data["candidate"]), as: :output),
+          json_form: to_form(%{"json" => Jason.encode!(data["candidate"], pretty: true)}),
           invalid: false,
           helper: nil,
           selection: nil
@@ -949,6 +966,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           case_data: nil,
           candidate: nil,
           candidate_form: nil,
+          json_form: nil,
           invalid: false,
           helper: nil,
           selection: nil
@@ -1018,10 +1036,18 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           socket |> assign(package: package, delta: delta) |> repair_availability()
 
         _ ->
-          assign(socket, package: nil, delta: %{}, repair_status: %{status: "unavailable", reason: "Comparison unavailable"})
+          assign(socket,
+            package: nil,
+            delta: %{},
+            repair_status: %{status: "unavailable", reason: "Comparison unavailable"}
+          )
       end
     else
-      assign(socket, package: nil, delta: %{}, repair_status: %{status: "unavailable", reason: "No comparison evidence"})
+      assign(socket,
+        package: nil,
+        delta: %{},
+        repair_status: %{status: "unavailable", reason: "No comparison evidence"}
+      )
     end
   end
 
@@ -1033,34 +1059,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     package = socket.assigns.package
     case_data = socket.assigns.case_data
 
-    matching =
-      if is_map(package) and is_map(case_data) do
-        Enum.filter(package["evidence"], &matching_evidence?(&1, case_data))
-      else
-        []
-      end
+    matching = matching_evidence(package, case_data)
 
     evidence =
       Enum.find(matching, &(&1["id"] == socket.assigns.selected_evidence)) ||
-        if(is_nil(socket.assigns.selected_evidence), do: List.first(matching))
+        default_evidence(socket.assigns.selected_evidence, matching)
 
-    result =
-      cond do
-        is_nil(package) ->
-          %{status: "unavailable", reason: "No comparison evidence"}
-
-        not is_map(case_data) ->
-          %{status: "unavailable", reason: "No valid active case"}
-
-        is_nil(evidence) ->
-          %{status: "unavailable", reason: "No evidence for this exact input and alternative"}
-
-        true ->
-          case Part3RepairPacket.build(package, evidence["id"]) do
-            {:ok, _} -> %{status: "ready", id: evidence["id"]}
-            {:error, reason} -> %{status: "unavailable", reason: inspect(reason)}
-          end
-      end
+    result = repair_result(package, case_data, evidence)
 
     assign(socket,
       selected_evidence:
@@ -1070,6 +1075,26 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         ),
       repair_status: result
     )
+  end
+
+  defp matching_evidence(package, case_data) when is_map(package) and is_map(case_data),
+    do: Enum.filter(package["evidence"], &matching_evidence?(&1, case_data))
+
+  defp matching_evidence(_, _), do: []
+  defp default_evidence(nil, matching), do: List.first(matching)
+  defp default_evidence(_, _), do: nil
+
+  defp repair_result(nil, _, _), do: %{status: "unavailable", reason: "No comparison evidence"}
+  defp repair_result(_, nil, _), do: %{status: "unavailable", reason: "No valid active case"}
+
+  defp repair_result(_, _, nil),
+    do: %{status: "unavailable", reason: "No evidence for this exact input and alternative"}
+
+  defp repair_result(package, _, evidence) do
+    case Part3RepairPacket.build(package, evidence["id"]) do
+      {:ok, _} -> %{status: "ready", id: evidence["id"]}
+      {:error, reason} -> %{status: "unavailable", reason: inspect(reason)}
+    end
   end
 
   defp matching_evidence?(%{"input" => input}, case_data) when is_map(input) do
@@ -1227,24 +1252,48 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   defp exposure_event(_, event, _, _), do: TermCodec.encode_exposure_event({:local, event})
 
+  defp active_reading_links(assigns, reading_links) do
+    case assigns.selection do
+      %{type: :step, index: i} ->
+        Enum.filter(reading_links.links, &(i in &1["steps"]))
+
+      %{
+        type: :clause,
+        path: path,
+        phase: phase,
+        binding: binding,
+        basis: basis,
+        generation: generation
+      } ->
+        if basis == assigns.basis and
+             generation == get_in(assigns.reading || %{}, ["source_generation"]),
+           do:
+             Enum.filter(
+               reading_links.links,
+               &(&1["path"] == path and &1["phase"] == phase and &1["binding"] == binding)
+             ),
+           else: []
+
+      _ ->
+        []
+    end
+  end
+
   @impl true
   def render(assigns) do
-    reading_links = Links.project(assigns.reading || %{}, assigns.case_data,
-      assigns.binding_index, assigns.basis)
+    reading_links =
+      Links.project(
+        assigns.reading || %{},
+        assigns.case_data,
+        assigns.binding_index,
+        assigns.basis
+      )
 
-    active_links =
-      case assigns.selection do
-        %{type: :step, index: i} ->
-          Enum.filter(reading_links.links, &(i in &1["steps"]))
-        %{type: :clause, path: path, phase: phase, binding: binding, basis: basis,
-          generation: generation} ->
-          if basis == assigns.basis and generation == get_in(assigns.reading || %{}, ["source_generation"]),
-            do: Enum.filter(reading_links.links, &(&1["path"] == path and &1["phase"] == phase and &1["binding"] == binding)),
-            else: []
-        _ -> []
-      end
-
-    assigns = assign(assigns, reading_links: reading_links, active_links: active_links)
+    assigns =
+      assign(assigns,
+        reading_links: reading_links,
+        active_links: active_reading_links(assigns, reading_links)
+      )
 
     ~H"""
     <Layouts.app flash={@flash}>
@@ -1265,60 +1314,41 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           The source files changed. Reopen this rule to run it again.
         </p>
         <.comparison
-          reading={@reading} case={@case_data} step={selected(assigns)} package={@package}
-          delta={@delta} preview={@preview} compare_form={@compare_form}
-          snapshots={@snapshots} show_sources={@show_sources} doc={@doc}
+          reading={@reading}
+          case={@case_data}
+          step={selected(assigns)}
+          package={@package}
+          delta={@delta}
+          preview={@preview}
+          compare_form={@compare_form}
+          snapshots={@snapshots}
+          show_sources={@show_sources}
+          doc={@doc}
         />
         <div class="connected-experiment">
-          <section class="case-stage" aria-label="Experiment and outputs">
-            <.timeline doc={experiment_doc(assigns)} cursor={@cursor} preview={@preview} saved={@doc} />
-            <div class="active-case" id="active-case">
-              <h2>Active case</h2>
-              <.active_state doc={evaluation_doc(assigns)} cursor={@cursor} step={selected(assigns)} />
-              <.input_strip case={@case_data} preview={@preview} />
-              <p :if={@preview || @experiment} id="scratch-status" class="scratch-label">
-                Unsaved experiment <button phx-click="reset_experiment">Reset</button>
-              </p>
-              <.contrast case={@case_data} step={selected(assigns)} slug={@slug} invalid={@invalid} />
-            </div>
-          </section>
-          <section class="case-results" id="case-findings" aria-label="Active case checks">
-            <.verdict case={@case_data} slug={@slug} />
-            <.pair_results
-              case={@case_data} reading={@reading} step={selected(assigns)}
-              package={@package} preview={nil}
-            />
-            <section id="nearby-observation" aria-label="Observation and local repair">
-              <div class="section-heading">
-                <h3>Record what you noticed</h3>
-                <button id="add-observation" phx-click="toggle_note" aria-expanded={to_string(@note_open)}>
-                  {if @note_open, do: "Close observation", else: "Add observation"}
-                </button>
+          <div class="experiment-lane">
+            <section class="case-stage" aria-label="Experiment and outputs">
+              <.timeline
+                doc={experiment_doc(assigns)}
+                cursor={@cursor}
+                preview={@preview}
+                saved={@doc}
+              />
+              <div class="active-case" id="active-case">
+                <h2>Active case</h2>
+                <.active_state
+                  doc={evaluation_doc(assigns)}
+                  cursor={@cursor}
+                  step={selected(assigns)}
+                />
+                <.input_strip case={@case_data} preview={@preview} />
+                <p :if={@preview || @experiment} id="scratch-status" class="scratch-label">
+                  Unsaved experiment <button phx-click="reset_experiment">Reset</button>
+                </p>
+                <.contrast case={@case_data} step={selected(assigns)} slug={@slug} invalid={@invalid} />
               </div>
-              <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">
-                <.input field={@note_form[:text]} type="textarea" label="Your observation" />
-                <p class="scope-note">An unsaved experiment is identified in the note. This does not save pending events.</p>
-                <button type="submit">Record observation</button>
-              </.form>
-              <details id="disposition-options" class="disposition-more">
-                <summary>Review disposition options</summary>
-                <.disposition package={@package} doc={@doc} selected_evidence={@selected_evidence} />
-              </details>
-              <p :if={@repair_status.status == "ready"} class="repair-actions" id="repair-ready">
-                <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.json"}>
-                  Download local repair packet (JSON)
-                </a>
-                <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.md"}>
-                  Markdown
-                </a>
-              </p>
-              <p :if={@repair_status.status != "ready"} id="repair-unavailable" class="scope-note">
-                Repair download unavailable: {@repair_status.reason}.
-                A local alternative is not matching source-comparison evidence.
-              </p>
             </section>
-          </section>
-          <div class="case-editing">
+            <div class="case-editing">
               <section :if={@tools} id="case-tools" class="inline-tools" phx-hook="InlineTools">
                 <header>
                   <h3>
@@ -1361,6 +1391,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     :if={@advanced}
                     case={@case_data}
                     editor="candidate"
+                    json_form={@json_form}
                     candidate_form={@candidate_form}
                     initial_form={@initial_form}
                   />
@@ -1388,20 +1419,14 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   disabled={!@preview && !@experiment}
                 >Save experiment</button>
               </div>
-          </div>
-          <div class="case-reasoning">
-            <section id="clauses-panel">
-              <.dissector
-                reading={@reading} case={@case_data} basis={@basis} helper={@helper}
-                binding_index={@binding_index} links={@reading_links.links}
-                unavailable={@reading_links.unavailable} active_links={@active_links}
-                selection={@selection} generation={@reading["source_generation"]}
-              />
-            </section>
+            </div>
             <section id="proof-panel">
               <.proof_source
-                reading={@reading} stage={@stage} full={@proof_full}
-                active_links={@active_links} links={@reading_links.links}
+                reading={@reading}
+                stage={@stage}
+                full={@proof_full}
+                active_links={@active_links}
+                links={@reading_links.links}
               />
               <section :if={@inspected} id="inline-source" class="inline-source">
                 <header>
@@ -1409,6 +1434,69 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 </header><pre>{@inspected.bytes}</pre>
               </section>
             </section>
+          </div>
+          <div class="reasoning-lane">
+            <section class="case-results" id="case-findings" aria-label="Active case checks">
+              <.verdict case={@case_data} slug={@slug} />
+              <.pair_results
+                case={@case_data}
+                reading={@reading}
+                step={selected(assigns)}
+                package={@package}
+                preview={nil}
+              />
+              <section id="nearby-observation" aria-label="Observation and local repair">
+                <div class="section-heading">
+                  <h3>Record what you noticed</h3>
+                  <button
+                    id="add-observation"
+                    phx-click="toggle_note"
+                    aria-expanded={to_string(@note_open)}
+                  >
+                    {if @note_open, do: "Close observation", else: "Add observation"}
+                  </button>
+                </div>
+                <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">
+                  <.input field={@note_form[:text]} type="textarea" label="Your observation" />
+                  <p class="scope-note">
+                    An unsaved experiment is identified in the note. This does not save pending events.
+                  </p>
+                  <button type="submit">Record observation</button>
+                </.form>
+                <details id="disposition-options" class="disposition-more">
+                  <summary>Review disposition options</summary>
+                  <.disposition package={@package} doc={@doc} selected_evidence={@selected_evidence} />
+                </details>
+                <p :if={@repair_status.status == "ready"} class="repair-actions" id="repair-ready">
+                  <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.json"}>
+                    Download local repair packet (JSON)
+                  </a>
+                  <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.md"}>
+                    Markdown
+                  </a>
+                </p>
+                <p :if={@repair_status.status != "ready"} id="repair-unavailable" class="scope-note">
+                  Repair download unavailable: {@repair_status.reason}.
+                  A local alternative is not matching source-comparison evidence.
+                </p>
+              </section>
+            </section>
+            <div class="case-reasoning">
+              <section id="clauses-panel">
+                <.dissector
+                  reading={@reading}
+                  case={@case_data}
+                  basis={@basis}
+                  helper={@helper}
+                  binding_index={@binding_index}
+                  links={@reading_links.links}
+                  unavailable={@reading_links.unavailable}
+                  active_links={@active_links}
+                  selection={@selection}
+                  generation={@reading["source_generation"]}
+                />
+              </section>
+            </div>
           </div>
         </div>
         <nav class="evidence-links" id="inspector-tools">
@@ -1448,7 +1536,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         <section :if={@secondary == "record"} id="record-panel" class="secondary-panel">
           <h2>Review notes</h2><section id="session-record">
             <a href={~p"/sessions/#{@doc["id"]}/export"}>Download saved session</a>
-            <button phx-click="save_challenge" disabled={!@case_data || @preview != nil || @experiment != nil}>
+            <button
+              phx-click="save_challenge"
+              disabled={!@case_data || @preview != nil || @experiment != nil}
+            >
               Save this case for review
             </button>
             <span>{length(@doc["challenges"])} saved cases</span>

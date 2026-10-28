@@ -67,7 +67,10 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
        %{conn: conn} do
     {view, _} = open(conn, "po_a2")
     tab(view, "clauses")
-    element(view, "#dissector button[phx-click=helper]", "Definition") |> render_click()
+
+    element(view, "#dissector button[phx-click=helper][phx-value-path='']", "Definition")
+    |> render_click()
+
     assert has_element?(view, "#dissector", "100 ≤ 100")
     tab(view, "outputs")
     assert has_element?(view, "#ledger-output", "Accepted")
@@ -396,6 +399,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert length(saved["steps"]) == 3
     assert hd(saved["notes"])["text"] =~ "Unsaved experiment"
   end
+
   test "output differences are live, do not persist a draft, and clear on restore", %{conn: conn} do
     {view, original} = open(conn, "po_exposure_retain")
     assert has_element?(view, "#output-differences")
@@ -420,7 +424,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert has_element?(view, "#selected-reading-links")
 
     view
-    |> element("#dissector .connected-clause button[phx-click=select_clause]")
+    |> element("#clause-0-requires-root > .logic-line > button[phx-click=select_clause]")
     |> render_click()
 
     assert has_element?(view, "#dissector .selected-clause")
@@ -462,4 +466,17 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert has_element?(view, "#note-form") == false
   end
 
+  test "basis buttons bind the actual observed output and clear prior selection", %{conn: conn} do
+    {view, original} = open(conn, "po_exposure_retain")
+    view |> element("button[phx-click=basis][phx-value-basis=actual]") |> render_click()
+    assert has_element?(view, "#clause-0-actual-root")
+    refute has_element?(view, "#clause-0-candidate-root")
+    render_click(view, "proof_stage", %{"index" => "4"})
+    assert has_element?(view, "#clause-0-actual-root.connected-clause")
+    view |> element("button[phx-click=basis][phx-value-basis=candidate]") |> render_click()
+    assert has_element?(view, "#clause-0-candidate-root")
+    refute has_element?(view, "#clause-0-actual-root")
+    refute has_element?(view, "#selected-reading-links")
+    assert {:ok, ^original} = Trace.get(original["id"])
+  end
 end

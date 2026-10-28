@@ -60,7 +60,7 @@ test('99, 100 and 101 expose actual eligibility operands and outside-domain sile
     await event(page,'request','11',amount);
     await tab(page,'clauses');
     await page.locator('#dissector button[phx-click=helper]').first().click();
-    const clause=page.locator('#dissector .logic-leaf').filter({hasText:'amount <= amount_limit - used_amount'});
+    const clause=page.locator('#dissector .logic-leaf').filter({has:page.locator('button.clause-select', {hasText: /^amount <= amount_limit - used_amount$/})});
     await expect(clause).toContainText(amount+' ≤ 100');
     await expect(clause).toContainText(amount==='101'?'false':'true');
     await tab(page,'outputs');

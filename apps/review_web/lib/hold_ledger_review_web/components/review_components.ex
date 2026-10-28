@@ -46,8 +46,12 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <section id="selected-claim" class="selected-claim" aria-label="Selected source claim">
         <h2>Selected formal claim</h2>
         <dl :if={@reading["contract"]["status"] == "source_read"}>
-          <div><dt>Applies when</dt><dd><code>{@reading["contract"]["requires"]}</code></dd></div>
-          <div><dt>Requires of the result</dt><dd><code>{@reading["contract"]["expects"]}</code></dd></div>
+          <div>
+            <dt>Applies when</dt><dd><code>{@reading["contract"]["requires"]}</code></dd>
+          </div>
+          <div>
+            <dt>Requires of the result</dt><dd><code>{@reading["contract"]["expects"]}</code></dd>
+          </div>
         </dl>
         <p :if={@reading["contract"]["status"] == "native_statement_only"}>
           Native Lean claim: {Enum.join(@reading["law"]["theorems"] || [], ", ")}.
@@ -365,7 +369,9 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           do: "Show selected step",
           else: "Read full proof"}</button>
       </header>
-      <p class="scope-note">These are inspected source passages, not a live Lean debugger or a proof dependency graph.</p>
+      <p class="scope-note">
+        These are inspected source passages, not a live Lean debugger or a proof dependency graph.
+      </p>
       <p :if={@reading["proof_steps"] == []} class="scope-note" id="no-proof-steps">
         No reviewed step-by-step reading for this claim. Its declaration remains available below.
       </p>
@@ -391,10 +397,20 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <ul :if={@active_links != []} id="selected-reading-links" class="reading-links">
         <li :for={link <- @active_links}>
           <strong>{link["relation"]}</strong>
-          <span>{link["phase"]} · observed binding {link["binding"] + 1} · structural path {if link["path"] == "", do: "root", else: link["path"]}</span>
+          <span>{link["phase"]} · observed binding {link["binding"] + 1} · structural path {if link[
+                                                                                                 "path"
+                                                                                               ] == "",
+                                                                                               do:
+                                                                                                 "root",
+                                                                                               else:
+                                                                                                 link[
+                                                                                                   "path"
+                                                                                                 ]}</span>
         </li>
       </ul>
-      <p :if={@reading["connections"] == []} class="scope-note">No reviewed clause connection for this declaration.</p>
+      <p :if={@reading["connections"] == []} class="scope-note">
+        No reviewed clause connection for this declaration.
+      </p>
       <div id="lemma-links">
         <span :for={ref <- Enum.take(@reading["references"], 3)}><button
           class="text-button"

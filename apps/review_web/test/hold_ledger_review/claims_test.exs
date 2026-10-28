@@ -290,6 +290,15 @@ defmodule HoldLedgerReview.ClaimsTest do
 
     assert :ok = Claims.freshness(tmp)
 
+    reading_links =
+      Path.join(tmp, "apps/review_web/lib/hold_ledger_review/proof_reading/links.ex")
+
+    original_links = File.read!(reading_links)
+    File.write!(reading_links, original_links <> "\n# source-reading dependency drift\n")
+    assert {:error, :source_or_compiled_code_drift} = Claims.freshness(tmp)
+    File.write!(reading_links, original_links)
+    assert :ok = Claims.freshness(tmp)
+
     catalog = Path.join(tmp, "verification/laws.json")
     File.write!(catalog, File.read!(catalog) <> "\n")
     assert {:error, :source_or_compiled_code_drift} = Claims.freshness(tmp)
