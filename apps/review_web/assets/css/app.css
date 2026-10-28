@@ -294,3 +294,74 @@ td details summary { font-size: .7rem; }
   .primer > summary small { display: block; margin: .4rem 0 0; }
   .primer-body th, .primer-body td { padding: .5rem .25rem; font-size: .85rem; }
 }
+
+/* Part 3: one calm reading surface; decisions remain next to their evidence. */
+.part3-home, .part3-header, .part3-main {
+  max-width: 1660px; margin: 0 auto; padding: clamp(1.2rem, 3vw, 2.7rem);
+}
+.part3-home h1 { max-width: 920px; }
+.part3-home > p { max-width: 65rem; }
+.part3-create, .part3-fields, .part3-actions, .part3-presentation {
+  display: flex; flex-wrap: wrap; gap: .7rem; align-items: flex-end;
+}
+.part3-create { border-top: 1px solid var(--ink); padding: 1.2rem 0 2rem; }
+.part3-create > div { flex: 1 1 15rem; }
+.part3-home h2 { margin-top: 2.2rem; }
+.part3-header { border-bottom: 1px solid var(--ink); padding-bottom: 1.1rem; }
+.part3-header h1 { margin: .3rem 0 1.2rem; }
+.part3-header p { margin: .35rem 0; overflow-wrap: anywhere; }
+.part3-header nav { margin: 1rem 0; }
+.part3-presentation { margin-top: 1.3rem; }
+.part3-presentation button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.part3-main { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(260px, 1fr); gap: clamp(1.5rem, 3vw, 4rem); align-items: start; }
+.part3-primary { min-width: 0; }
+.part3-primary section { padding: 2rem 0; border-bottom: 1px solid var(--line); }
+.part3-primary h2 { margin-bottom: 1rem; }
+.part3-primary h3 { margin: 1rem 0 .7rem; }
+.part3-primary .part3-actions { margin: 1rem 0; }
+.part3-changes { padding-left: 1.4rem; max-height: 27rem; overflow-y: auto; border-top: 1px solid var(--ink); }
+.part3-changes li { border-bottom: 1px solid var(--line); padding-right: .4rem; }
+.part3-sources, .part3-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.part3-sides { padding: 1.15rem 0; margin-bottom: .8rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.part3-sides > div { min-width: 0; }
+.part3-sources h3 { font-size: .9rem; }
+.part3-sources pre { max-height: 21rem; }
+.part3-lens { border-top: 1px solid var(--line); padding: .8rem 0; margin: 0; }
+.part3-lens dt { margin-bottom: .25rem; }
+.part3-lens dd { margin: .2rem 0; }
+.part3-lens small { display: block; }
+.part3-judgment { display: grid; gap: .5rem; padding: 1rem 0 1.75rem; }
+.part3-judgment details label { display: block; margin: .5rem 0; }
+.part3-context { min-width: 0; border-left: 1px solid var(--ink); padding-left: clamp(1.1rem, 2.5vw, 2.8rem); }
+.part3-context > details { border-bottom: 1px solid var(--line); padding: .7rem 0; }
+.part3-context > details > summary { font-size: 1rem; }
+.part3-context h3 { font-size: .95rem; margin: 1.4rem 0 .7rem; }
+.part3-state { margin-bottom: 1rem; }
+.part3-fields > div { flex: 1 1 7rem; min-width: 0; }
+.part3-entry { display: flex; flex-wrap: wrap; gap: .7rem; padding: .9rem 0; align-items: flex-end; border-top: 1px solid var(--line); }
+.part3-entry > div { flex: 1 1 5rem; }
+.part3-entry button { flex: 0 0 auto; }
+.part3-fields label, .part3-entry label, .part3-create label, .part3-judgment label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .3rem; }
+.part3-context input:not([type="checkbox"]), .part3-primary input:not([type="checkbox"]),
+.part3-context textarea, .part3-primary textarea, .part3-context select,
+.part3-primary select, .part3-home select {
+  display: block; width: 100%; min-width: 0; border: 1px solid #a0a098;
+  background: var(--surface); color: var(--ink); padding: .5rem .65rem; border-radius: 0;
+}
+.part3-model-question { padding: .8rem 0; border-top: 1px solid var(--line); }
+.part3-model-question p { margin-bottom: .5rem; }
+.part3-home li, .part3-primary li, .part3-context li { overflow-wrap: anywhere; margin-bottom: .5rem; }
+.part3-home .review-list li { padding: .7rem 0; border-bottom: 1px solid var(--line); }
+.part3-home .review-list span { display: block; font-size: .75rem; color: var(--muted); }
+.part3-context pre { max-width: 100%; }
+@media (max-width: 1050px) {
+  .part3-main { grid-template-columns: 1fr; }
+  .part3-context { border-left: 0; border-top: 1px solid var(--ink); padding-left: 0; }
+}
+@media (max-width: 620px) {
+  .part3-home, .part3-header, .part3-main { padding: 1rem; }
+  .part3-sources, .part3-sides { grid-template-columns: 1fr; }
+  .part3-create { display: block; }
+  .part3-create > div { margin-bottom: 1rem; }
+  .part3-header h1 { font-size: 2.2rem; }
+}

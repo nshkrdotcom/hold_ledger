@@ -1,0 +1,115 @@
+const { test, expect, devices } = require('@playwright/test');
+
+const ids = {
+  baseline: process.env.PART3_TEST_BASELINE_ID,
+  proposal: process.env.PART3_TEST_PROPOSAL_ID,
+};
+const hasSnapshots = /^[0-9a-f]{64}$/.test(ids.baseline || '') &&
+  /^[0-9a-f]{64}$/.test(ids.proposal || '') && ids.baseline !== ids.proposal;
+
+async function connected(page) {
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+}
+
+async function create(page) {
+  await page.goto('/changes');
+  await connected(page);
+  await page.locator('#baseline-id').selectOption(ids.baseline);
+  await page.locator('#proposal-id').selectOption(ids.proposal);
+  await page.locator('#create-change-package button[type=submit]').click();
+  await expect(page).toHaveURL(/\/changes\/[A-Za-z0-9_-]{16,80}$/);
+  await expect(page.locator('#part3-comparison')).toBeVisible();
+  return page.url();
+}
+
+test('change review is discoverable; no snapshot means no fake runnable package', async ({page}) => {
+  await page.goto('/changes');
+  await connected(page);
+  await expect(page.locator('h1')).toContainText('Review a proposed change');
+  await expect(page.locator('#create-change-package')).toBeVisible();
+  await expect(page.locator('#create-change-package')).toContainText('Baseline content identity');
+  await expect(page.locator('#create-change-package')).toContainText('Proposal content identity');
+  await expect(page.locator('a[href="/workbench"]')).toBeVisible();
+});
+
+test('creation, review reopening, explicit pin and source evidence', async ({page}) => {
+  test.skip(!hasSnapshots, 'Provide two operator-staged local snapshot IDs for real Part 3 browser QC');
+  const url = await create(page);
+  await expect(page.locator('#part3-source-delta li').first()).toBeVisible();
+  await expect(page.locator('#part3-pin')).toBeEnabled();
+  await expect(page.locator('#part3-replay-attempts li')).toHaveCount(0);
+  await page.locator('#part3-pin').click();
+  await expect(page.locator('#part3-pins summary')).toContainText('1');
+  await expect(page.locator('#part3-replay-attempts li')).toHaveCount(0);
+  await page.reload();
+  await connected(page);
+  await expect(page).toHaveURL(url);
+  await expect(page.locator('#part3-pins summary')).toContainText('1');
+  await expect(page.locator('#part3-ai-consent')).not.toBeChecked();
+});
+
+test('structured inconsistent candidate is not silently repaired or pinned', async ({page}) => {
+  test.skip(!hasSnapshots, 'Requires staged local snapshot fixture');
+  await create(page);
+  await page.locator('#part3-structured-editor summary').click();
+  await page.locator('button[phx-value-action="add_entry"][phx-value-section="candidate"]').click();
+  await expect(page.locator('#candidate-0-status')).toHaveValue('reserved');
+  await expect(page.locator('#candidate-used_amount')).toHaveValue('0');
+  await expect(page.locator('#part3-pins summary')).toContainText('0');
+  await page.locator('button[phx-value-action="recalculate"][phx-value-section="candidate"]').click();
+  await expect(page.locator('#candidate-used_amount')).toHaveValue('1');
+  await expect(page.locator('#part3-pins summary')).toContainText('0');
+});
+
+test('learning reveal is explicit, expert is evidence first, AI consent is off after reload', async ({page}) => {
+  test.skip(!hasSnapshots, 'Requires staged local snapshot fixture');
+  await create(page);
+  await page.locator('button[phx-value-mode="learning"]').click();
+  await expect(page.locator('#part3-reveal')).toBeVisible();
+  await page.locator('#part3-reveal').click();
+  await expect(page.locator('#part3-missing-replay')).toBeVisible();
+  await page.locator('button[phx-value-mode="expert"]').click();
+  await expect(page.locator('#part3-missing-replay')).toBeVisible();
+  await page.locator('#part3-ai summary').click();
+  await expect(page.locator('#part3-ai-consent')).not.toBeChecked();
+  await page.reload();
+  await connected(page);
+  await page.locator('#part3-ai summary').click();
+  await expect(page.locator('#part3-ai-consent')).not.toBeChecked();
+  await expect(page.locator('#part3-ai-jobs li')).toHaveCount(0);
+});
+
+test('human finding survives reload and stale two-tab answer is not silently rebased', async ({page, context}) => {
+  test.skip(!hasSnapshots, 'Requires staged local snapshot fixture');
+  const url = await create(page);
+  const second = await context.newPage();
+  await second.goto(url);
+  await connected(second);
+  await page.locator('#part3-finding-scope').fill('One source-bound question');
+  await page.locator('#part3-finding-rationale').fill('The source edit is not a general semantic claim.');
+  await page.locator('#part3-finding button[type="submit"]').click();
+  await expect(page.locator('#part3-decision')).toContainText('revision 1');
+  await expect(second.locator('button[phx-click="refresh_human_revision"]')).toBeVisible();
+  await second.locator('#part3-finding-scope').fill('Stale scope');
+  await second.locator('#part3-finding-rationale').fill('This stale browser submission must not overwrite a finding.');
+  await second.locator('#part3-finding button[type="submit"]').click();
+  await expect(second.locator('[role="alert"]')).toContainText('Another tab');
+  await page.reload();
+  await connected(page);
+  await expect(page.locator('#part3-decision')).toContainText('The source edit is not a general semantic claim.');
+});
+
+test('mobile navigation, keyboard access and no default external send', async ({browser}) => {
+  test.skip(!hasSnapshots, 'Requires staged local snapshot fixture');
+  const context = await browser.newContext({...devices['iPhone 13']});
+  const page = await context.newPage();
+  try {
+    await create(page);
+    await page.locator('#part3-structured-editor summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#before-used_amount')).toBeVisible();
+    await page.locator('#part3-ai summary').click();
+    await expect(page.locator('#part3-ai-consent')).not.toBeChecked();
+    await expect(page.locator('#part3-ai-jobs li')).toHaveCount(0);
+  } finally { await context.close(); }
+});

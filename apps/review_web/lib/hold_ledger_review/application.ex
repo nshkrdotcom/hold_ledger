@@ -14,6 +14,8 @@ defmodule HoldLedgerReview.Application do
       HoldLedgerReview.Claims,
       {Task.Supervisor, name: HoldLedgerReview.AITaskSupervisor},
       HoldLedgerReview.ReviewStore,
+      HoldLedgerReview.Part3Store,
+      HoldLedgerReview.Part3Runner,
       HoldLedgerReviewWeb.Telemetry,
       {DNSCluster,
        query: Application.get_env(:hold_ledger_review_web, :dns_cluster_query) || :ignore},

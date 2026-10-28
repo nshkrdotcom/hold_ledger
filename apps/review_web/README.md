@@ -209,3 +209,65 @@ A development target is 4/6 properly surfaced, zero unchallenged false proof
 status claims, and one genuinely novel valid challenge. Preserve the actual
 run log, latency, redundancies, prediction conflicts, challenge novelty and
 human-adjudication record as **local C QC**, not as a fabricated first-half pass.
+
+## Versioned change-review workspace
+
+`/changes` is a separate, optional baseline-versus-proposal review route. The
+existing `/workbench`, strict codec, source-derived rule evaluator, human review
+CAS and formal acceptance workflow remain in place. This route reviews two
+**content-addressed, operator-staged local source trees** with policy anchors
+from the baseline source. Neither a branch label nor a source excerpt is an
+execution or proof identity.
+
+Prepare two trusted local Git worktrees (including an uncommitted proposal if
+necessary), each based on the same pinned dependencies and compatible evaluator
+and toolchain sources. From the repository root, stage each source tree using:
+
+```sh
+python3 apps/review_web/scripts/stage_part3_snapshot.py \
+  --source /absolute/path/to/selected/local/worktree \
+  --destination /absolute/path/to/hold_ledger/tmp/review_studio/snapshots
+```
+
+Open `/changes`, select the printed 64-character snapshot IDs, and create a
+package. A package freezes both source manifests, derived differences and the
+baseline specification-policy anchor. If the source changes, stage a **new**
+identity; the old findings cannot silently move to the new tree. The app allows
+only locally selected trusted snapshots. It refuses arbitrary uploaded code.
+
+Use the structured event/state/entry/effect editor or the advanced JSON importer
+(the same `TermCodec` validates both). Proposed totals are editable separately:
+only an explicit **Recalculate used totals** action changes them automatically.
+A starting ledger must be valid to pin/replay; a structurally representable
+wrong proposed output is useful and allowed. Pin, isolated replay, a scoped
+human finding, a model-question acceptance and conclusion are separate actions.
+An expert view exposes results directly; the learning view records when the
+reviewer chose to reveal results.
+
+Replay starts two **separate local BEAM processes** through
+`apps/review_web/scripts/part3_worker.py` and the pinned `scripts/local_run.py`.
+Each selected source compiles into its own isolated build directory. The worker
+uses the **existing** `Adversarial`, `ClaimProbe`, `Claims`, `Ledger`, `Spec` and
+`TermCodec` modules rather than a new evaluator. The wrapper uses no shell,
+network fetch or browser-controlled command arguments. Local dependencies must
+be provisioned explicitly and offline beforehand. The supervision boundary
+provides resource/time/cancellation handling but **is not a sandbox** for
+malicious executable projects; only operator-trusted worktrees may be staged.
+An unchanged source and an identified successful replay may be reused only
+under their exact package/input/dependency/codec/evaluator identities.
+
+The separate formal attempt uses the existing required-scope `run_laws.py` gate
+and retains source-matching checked-report status. Pointwise examples and
+syntactic differences do not constitute general contract implications or proof
+acceptance. Source, proof inventory, translations and checked artifacts are
+shown with their own provenance and missing state. The model adviser is
+optional, uses the pre-existing Inference ASM/Codex configuration, and sends
+nothing without an explicit new checkbox consent per request. No model owns a
+human answer or conclusion.
+
+Part 3 tests are in `test/hold_ledger_review/part3_test.exs`,
+`test/browser/part3.spec.cjs` and `scripts/test_part3_tools.py`. On a local
+machine provisioned through the root pinned wrapper, run the standard Phoenix
+and root gates plus the focused tests; the ZIP handoff's Part 3 docset has the
+full safety/verification matrix and local steps. Unrecognized prior record
+schemas are refused rather than migrated or silently given new meanings.

@@ -549,6 +549,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           </p>
           <.primer reviews={@reviews} />
           <nav class="help-links" aria-label="Getting started">
+            <.link navigate="/changes">Compare two identified source versions ↗</.link>
             <a
               href="https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/interactive_review.md"
               target="_blank"
@@ -636,6 +637,7 @@ defmodule HoldLedgerReviewWeb.WorkbenchLive do
           </div>
           <nav class="top-actions" aria-label="Workbench actions">
             <.link navigate="/workbench">Reviews</.link>
+            <.link navigate="/changes">Versioned changes</.link>
             <button
               id="map-toggle"
               title="Look up connections between policy, code, rules and proof-report evidence"

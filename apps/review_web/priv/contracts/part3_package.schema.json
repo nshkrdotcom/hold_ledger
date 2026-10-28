@@ -1,0 +1,1130 @@
+{
+  "$defs": {
+    "ai": {
+      "additionalProperties": false,
+      "properties": {
+        "context_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "created_at": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "error": {
+          "maxLength": 180,
+          "minLength": 0,
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "human_revision_at_request": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_-]{16,80}$",
+          "type": "string"
+        },
+        "input_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "prompt_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "running",
+            "succeeded",
+            "failed",
+            "interrupted",
+            "stale"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "context_digest",
+        "human_revision_at_request",
+        "prompt_sha256",
+        "input_digest",
+        "result",
+        "error",
+        "created_at",
+        "finished_at"
+      ],
+      "type": "object"
+    },
+    "anchor": {
+      "additionalProperties": false,
+      "properties": {
+        "authority": {
+          "const": "governing_repository_policy"
+        },
+        "authorized_change_id": {
+          "type": "null"
+        },
+        "id": {
+          "const": "policy.specification.v1"
+        },
+        "passage": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "path": {
+          "const": "guides/specification.md"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "authority",
+        "path",
+        "sha256",
+        "passage",
+        "authorized_change_id"
+      ],
+      "type": "object"
+    },
+    "artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 240,
+          "minLength": 1,
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "type": "object"
+    },
+    "attempt": {
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "items": {
+            "$ref": "#/$defs/artifact"
+          },
+          "maxItems": 40,
+          "type": "array"
+        },
+        "completion_digest": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "context_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "dependencies": {
+          "items": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "type": "array"
+        },
+        "diagnostics": {
+          "maxLength": 1200,
+          "minLength": 0,
+          "type": "string"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_-]{16,80}$",
+          "type": "string"
+        },
+        "input_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "source_extraction",
+            "pointwise_execution",
+            "elaboration",
+            "export",
+            "checker",
+            "acceptance",
+            "replay"
+          ]
+        },
+        "producer": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "queued_at": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scope": {
+          "maxLength": 180,
+          "minLength": 1,
+          "type": "string"
+        },
+        "snapshot_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "not_run",
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "interrupted"
+          ]
+        },
+        "witness": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/witness"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "snapshot_id",
+        "context_digest",
+        "scope",
+        "status",
+        "producer",
+        "queued_at",
+        "started_at",
+        "finished_at",
+        "input_digest",
+        "completion_digest",
+        "artifacts",
+        "diagnostics",
+        "dependencies",
+        "witness",
+        "result"
+      ],
+      "type": "object"
+    },
+    "change": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_excerpt": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "baseline_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "claim": {
+          "type": "object"
+        },
+        "evidence_level": {
+          "const": "structural_edit"
+        },
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "path": {
+          "maxLength": 240,
+          "minLength": 1,
+          "type": "string"
+        },
+        "proposal_excerpt": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "proposal_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "semantic_relation": {
+          "const": "unresolved"
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "kind",
+        "evidence_level",
+        "baseline_sha256",
+        "proposal_sha256",
+        "baseline_excerpt",
+        "proposal_excerpt",
+        "claim",
+        "semantic_relation"
+      ],
+      "type": "object"
+    },
+    "command": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "human_revision": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "finding",
+            "conclude",
+            "accept_question"
+          ]
+        },
+        "request_id": {
+          "pattern": "^[A-Za-z0-9_-]{16,80}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "digest",
+        "human_revision",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "conclusion": {
+      "additionalProperties": false,
+      "properties": {
+        "confirmed_at": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9_-]{16,80}$",
+            "type": "string"
+          },
+          "maxItems": 30,
+          "type": "array"
+        },
+        "human_revision": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": [
+            "meets_intent_in_reviewed_scope",
+            "needs_design_change",
+            "needs_policy_or_evidence"
+          ]
+        },
+        "rationale": {
+          "maxLength": 1200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "maxLength": 600,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome",
+        "scope",
+        "rationale",
+        "evidence_ids",
+        "confirmed_at",
+        "human_revision"
+      ],
+      "type": "object"
+    },
+    "effect": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "authorize",
+            "void"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "key",
+        "amount"
+      ],
+      "type": "object"
+    },
+    "event": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "request",
+            "dispatch",
+            "timeout",
+            "void"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "key",
+        "amount"
+      ],
+      "type": "object"
+    },
+    "evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "baseline_result": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bounds": {
+          "type": "object"
+        },
+        "context_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_-]{16,80}$",
+          "type": "string"
+        },
+        "input": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/witness"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "lost_domain_input",
+            "permitted_alternative_output",
+            "observed_behavioral_difference",
+            "pointwise_observation",
+            "formal_artifact"
+          ]
+        },
+        "level": {
+          "enum": [
+            "structural_edit",
+            "concrete_computation",
+            "independently_checked_artifact"
+          ]
+        },
+        "method": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 600,
+          "minLength": 0,
+          "type": "string"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/output"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "proposal_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "proposal_result": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 30,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "level",
+        "baseline_id",
+        "proposal_id",
+        "context_digest",
+        "method",
+        "bounds",
+        "input",
+        "output",
+        "baseline_result",
+        "proposal_result",
+        "source_ids",
+        "note"
+      ],
+      "type": "object"
+    },
+    "finding": {
+      "additionalProperties": false,
+      "properties": {
+        "change_ids": {
+          "items": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "created_at": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9_-]{16,80}$",
+            "type": "string"
+          },
+          "maxItems": 30,
+          "type": "array"
+        },
+        "human_revision": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_-]{16,80}$",
+          "type": "string"
+        },
+        "lens": {
+          "enum": [
+            "reading",
+            "alternative_behavior",
+            "evidence_scope",
+            "excluded_inputs",
+            "outside_assumptions"
+          ]
+        },
+        "presentation": {
+          "enum": [
+            "expert",
+            "learning"
+          ]
+        },
+        "rationale": {
+          "maxLength": 1200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "revealed_before_answer": {
+          "type": "boolean"
+        },
+        "scope": {
+          "maxLength": 600,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "addressed",
+            "not_applicable",
+            "unresolved"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "lens",
+        "status",
+        "rationale",
+        "scope",
+        "evidence_ids",
+        "change_ids",
+        "human_revision",
+        "created_at",
+        "presentation",
+        "revealed_before_answer"
+      ],
+      "type": "object"
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "$ref": "#/$defs/state"
+        },
+        "effects": {
+          "items": {
+            "$ref": "#/$defs/effect"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "result": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "after",
+        "result",
+        "effects"
+      ],
+      "type": "object"
+    },
+    "pin": {
+      "additionalProperties": false,
+      "properties": {
+        "context_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_-]{16,80}$",
+          "type": "string"
+        },
+        "input_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "pinned_at": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "witness": {
+          "$ref": "#/$defs/witness"
+        }
+      },
+      "required": [
+        "id",
+        "witness",
+        "input_digest",
+        "pinned_at",
+        "context_digest"
+      ],
+      "type": "object"
+    },
+    "question": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_at": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "human_revision": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^[A-Za-z0-9_-]{16,80}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "lost_domain_input",
+            "permitted_alternative_output",
+            "observed_behavioral_difference",
+            "review_question"
+          ]
+        },
+        "question": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_job_id": {
+          "pattern": "^[A-Za-z0-9_-]{16,80}$",
+          "type": "string"
+        },
+        "source_proposal_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "source_job_id",
+        "source_proposal_id",
+        "question",
+        "kind",
+        "human_revision",
+        "accepted_at"
+      ],
+      "type": "object"
+    },
+    "snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "codec_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "commit": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "minLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dependency_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "evaluator_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "manifest": {
+          "additionalProperties": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "maxProperties": 1500,
+          "minProperties": 1,
+          "propertyNames": {
+            "maxLength": 240,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "snapshot_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "toolchain_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "snapshot_id",
+        "commit",
+        "dirty",
+        "manifest",
+        "dependency_id",
+        "toolchain_id",
+        "evaluator_id",
+        "codec_id"
+      ],
+      "type": "object"
+    },
+    "state": {
+      "additionalProperties": false,
+      "properties": {
+        "amount_limit": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "entries": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "amount": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "key": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "reserved",
+                  "sent",
+                  "unknown",
+                  "authorized",
+                  "voiding",
+                  "declined",
+                  "voided"
+                ]
+              }
+            },
+            "required": [
+              "key",
+              "amount",
+              "status"
+            ],
+            "type": "object"
+          },
+          "maxItems": 8,
+          "type": "array"
+        },
+        "hold_limit": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "used_amount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "used_holds": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "amount_limit",
+        "hold_limit",
+        "used_amount",
+        "used_holds",
+        "entries"
+      ],
+      "type": "object"
+    },
+    "witness": {
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/state"
+        },
+        "event": {
+          "$ref": "#/$defs/event"
+        },
+        "follow_on": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/event"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output": {
+          "$ref": "#/$defs/output"
+        }
+      },
+      "required": [
+        "before",
+        "event",
+        "output",
+        "follow_on"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://hold-ledger.local/contracts/part3_package.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "accepted_questions": {
+      "items": {
+        "$ref": "#/$defs/question"
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "ai_history": {
+      "items": {
+        "$ref": "#/$defs/ai"
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "baseline": {
+      "$ref": "#/$defs/snapshot"
+    },
+    "conclusion": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/conclusion"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "context_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "created_at_utc": {
+      "maxLength": 40,
+      "minLength": 1,
+      "type": "string"
+    },
+    "document_revision": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/evidence"
+      },
+      "maxItems": 500,
+      "type": "array"
+    },
+    "human_commands": {
+      "items": {
+        "$ref": "#/$defs/command"
+      },
+      "maxItems": 500,
+      "type": "array"
+    },
+    "human_findings": {
+      "items": {
+        "$ref": "#/$defs/finding"
+      },
+      "maxItems": 500,
+      "type": "array"
+    },
+    "human_revision": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "id": {
+      "pattern": "^[A-Za-z0-9_-]{16,80}$",
+      "type": "string"
+    },
+    "pinned_examples": {
+      "items": {
+        "$ref": "#/$defs/pin"
+      },
+      "maxItems": 150,
+      "type": "array"
+    },
+    "policy_anchors": {
+      "items": {
+        "$ref": "#/$defs/anchor"
+      },
+      "maxItems": 1,
+      "type": "array"
+    },
+    "proposal": {
+      "$ref": "#/$defs/snapshot"
+    },
+    "replay_attempts": {
+      "items": {
+        "$ref": "#/$defs/attempt"
+      },
+      "maxItems": 150,
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "source_changes": {
+      "items": {
+        "$ref": "#/$defs/change"
+      },
+      "maxItems": 300,
+      "type": "array"
+    },
+    "updated_at_utc": {
+      "maxLength": 40,
+      "minLength": 1,
+      "type": "string"
+    },
+    "verification_attempts": {
+      "items": {
+        "$ref": "#/$defs/attempt"
+      },
+      "maxItems": 150,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "context_digest",
+    "baseline",
+    "proposal",
+    "policy_anchors",
+    "source_changes",
+    "evidence",
+    "verification_attempts",
+    "replay_attempts",
+    "human_findings",
+    "human_commands",
+    "ai_history",
+    "pinned_examples",
+    "accepted_questions",
+    "conclusion",
+    "document_revision",
+    "human_revision",
+    "created_at_utc",
+    "updated_at_utc"
+  ],
+  "title": "Hold Ledger Part 3 immutable review context and versioned human/evidence state",
+  "type": "object"
+}

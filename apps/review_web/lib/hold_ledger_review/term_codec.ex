@@ -13,6 +13,8 @@ defmodule HoldLedgerReview.TermCodec do
   @statuses ~w(reserved sent unknown authorized voiding declined voided)a
   @results ~w(admitted dispatched marked_unknown restarted retried authorized declined voided voiding duplicate conflict insufficient_holds insufficient_amount stale not_found malformed)a
 
+  def statuses, do: Enum.map(@statuses, &Atom.to_string/1)
+  def results, do: Enum.map(@results, &Atom.to_string/1)
   def limits, do: %{number: @max_number, entries: @max_entries, effects: @max_effects}
 
   def encode_event({:request, key, amount}) do

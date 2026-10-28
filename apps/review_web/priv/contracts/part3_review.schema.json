@@ -1,0 +1,506 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_kind",
+    "context_digest",
+    "proposals"
+  ],
+  "properties": {
+    "request_kind": {
+      "const": "part3_review"
+    },
+    "context_digest": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "proposals": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "proposal_id",
+          "kind",
+          "question",
+          "rationale",
+          "source_change_ids",
+          "witness"
+        ],
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 64
+          },
+          "kind": {
+            "enum": [
+              "lost_domain_input",
+              "permitted_alternative_output",
+              "observed_behavioral_difference",
+              "review_question"
+            ]
+          },
+          "question": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 800
+          },
+          "source_change_ids": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 100
+            }
+          },
+          "witness": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "before",
+                  "event",
+                  "output",
+                  "follow_on"
+                ],
+                "properties": {
+                  "before": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "amount_limit",
+                      "hold_limit",
+                      "used_amount",
+                      "used_holds",
+                      "entries"
+                    ],
+                    "properties": {
+                      "amount_limit": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      "hold_limit": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      "used_amount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      "used_holds": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      "entries": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "key",
+                            "amount",
+                            "status"
+                          ],
+                          "properties": {
+                            "key": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1000000
+                            },
+                            "amount": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1000000
+                            },
+                            "status": {
+                              "enum": [
+                                "reserved",
+                                "sent",
+                                "unknown",
+                                "authorized",
+                                "voiding",
+                                "declined",
+                                "voided"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "event": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "type",
+                          "key",
+                          "amount"
+                        ],
+                        "properties": {
+                          "type": {
+                            "const": "request"
+                          },
+                          "key": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "amount": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 1000000
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "type",
+                          "key",
+                          "amount"
+                        ],
+                        "properties": {
+                          "type": {
+                            "const": "dispatch"
+                          },
+                          "key": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "amount": {
+                            "type": "null"
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "type",
+                          "key",
+                          "amount"
+                        ],
+                        "properties": {
+                          "type": {
+                            "const": "timeout"
+                          },
+                          "key": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "amount": {
+                            "type": "null"
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "type",
+                          "key",
+                          "amount"
+                        ],
+                        "properties": {
+                          "type": {
+                            "const": "void"
+                          },
+                          "key": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "amount": {
+                            "type": "null"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "output": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "after",
+                      "result",
+                      "effects"
+                    ],
+                    "properties": {
+                      "after": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "amount_limit",
+                          "hold_limit",
+                          "used_amount",
+                          "used_holds",
+                          "entries"
+                        ],
+                        "properties": {
+                          "amount_limit": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "hold_limit": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "used_amount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "used_holds": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 1000000
+                          },
+                          "entries": {
+                            "type": "array",
+                            "maxItems": 8,
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "key",
+                                "amount",
+                                "status"
+                              ],
+                              "properties": {
+                                "key": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1000000
+                                },
+                                "amount": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1000000
+                                },
+                                "status": {
+                                  "enum": [
+                                    "reserved",
+                                    "sent",
+                                    "unknown",
+                                    "authorized",
+                                    "voiding",
+                                    "declined",
+                                    "voided"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "result": {
+                        "enum": [
+                          "admitted",
+                          "insufficient_holds",
+                          "insufficient_amount",
+                          "duplicate",
+                          "conflict",
+                          "dispatched",
+                          "marked_unknown",
+                          "restarted",
+                          "retried",
+                          "authorized",
+                          "declined",
+                          "voiding",
+                          "voided",
+                          "stale",
+                          "not_found",
+                          "malformed"
+                        ]
+                      },
+                      "effects": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "type",
+                                "key",
+                                "amount"
+                              ],
+                              "properties": {
+                                "type": {
+                                  "const": "void"
+                                },
+                                "key": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1000000
+                                },
+                                "amount": {
+                                  "type": "null"
+                                }
+                              }
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "type",
+                                "key",
+                                "amount"
+                              ],
+                              "properties": {
+                                "type": {
+                                  "const": "authorize"
+                                },
+                                "key": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1000000
+                                },
+                                "amount": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1000000
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "follow_on": {
+                    "anyOf": [
+                      {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "type",
+                              "key",
+                              "amount"
+                            ],
+                            "properties": {
+                              "type": {
+                                "const": "request"
+                              },
+                              "key": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000000
+                              },
+                              "amount": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1000000
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "type",
+                              "key",
+                              "amount"
+                            ],
+                            "properties": {
+                              "type": {
+                                "const": "dispatch"
+                              },
+                              "key": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000000
+                              },
+                              "amount": {
+                                "type": "null"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "type",
+                              "key",
+                              "amount"
+                            ],
+                            "properties": {
+                              "type": {
+                                "const": "timeout"
+                              },
+                              "key": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000000
+                              },
+                              "amount": {
+                                "type": "null"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "type",
+                              "key",
+                              "amount"
+                            ],
+                            "properties": {
+                              "type": {
+                                "const": "void"
+                              },
+                              "key": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1000000
+                              },
+                              "amount": {
+                                "type": "null"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}
