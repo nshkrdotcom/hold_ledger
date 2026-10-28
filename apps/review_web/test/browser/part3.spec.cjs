@@ -181,3 +181,52 @@ test('learning reveal history survives reconnect while consent resets and stale 
   await expect(page.locator('#part3-ai-jobs li')).toHaveCount(0);
   await expect(page.locator('#part3-decision')).toContainText('A recorded prediction context');
 });
+
+test('source file and independent proof panels are read-only and source-addressed', async ({page, request}) => {
+  test.skip(!hasSnapshots, 'Requires newly staged compatible source identities');
+  const url = await create(page);
+  const change = page.locator('#part3-source-delta li').first();
+  await change.locator('summary').click();
+  await expect(change).toContainText('structural source edit');
+  const fullFile = change.locator('a[href*="/source/proposal/"]').first();
+  await expect(fullFile).toBeVisible();
+  const response = await request.get(new URL(await fullFile.getAttribute('href'), url).toString());
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toContain('text/plain');
+  await page.locator('#part3-proof > summary').click();
+  await page.locator('#part3-inspect-proof').click();
+  await expect(page.locator('#part3-proof-inspection')).toContainText('49');
+  await expect(page.locator('.part3-proof-version')).toHaveCount(2);
+  await expect(page.locator('.part3-proof-version').first()).toContainText('not_run');
+  await expect(page.locator('#part3-ai-jobs li')).toHaveCount(0);
+});
+
+test('evidence docket action is attributed, export is local and conclusion is separate', async ({page, request}) => {
+  test.skip(!hasSnapshots, 'Requires controlled two-snapshot replay and fresh local setup');
+  test.setTimeout(190000);
+  const url = await create(page);
+  await page.locator('#run-isolated-replay').click();
+  await expect(page.locator('#part3-evidence-list article').first()).toBeVisible({timeout: 150000});
+  const card = page.locator('#part3-evidence-list article').first();
+  await expect(card).toContainText('actual Ledger output');
+  const jsonLink = card.locator('a[href$=".json"]');
+  const packetRes = await request.get(new URL(await jsonLink.getAttribute('href'), url).toString());
+  expect(packetRes.status()).toBe(200);
+  const packet = await packetRes.json();
+  expect(packet.schema_version).toBe(1);
+  expect(packet.content.human.policy_change_authorized).toBe(false);
+  expect(packet.content.distinction.kind).toMatch(/lost_domain_input|permitted_alternative_output|observed_behavioral_difference/);
+  expect(packet.content.package.human_revision).toBe(0);
+  await card.locator('button[phx-value-choice="policy"]').click();
+  await expect(page.locator('#part3-decision')).toContainText('needs policy/evidence decision');
+  await expect(card).toContainText('Latest human disposition: unresolved');
+  await expect(card.getByText('Immutable human finding history', {exact: false})).toBeVisible();
+  await expect(page.locator('#part3-finish')).toBeEnabled();
+  await expect(page.locator('#part3-ai-jobs li')).toHaveCount(0);
+  const packet2 = await request.get(new URL(await jsonLink.getAttribute('href'), url).toString());
+  expect(packet2.status()).toBe(200);
+  const revised = await packet2.json();
+  expect(revised.content.package.human_revision).toBe(1);
+  expect(revised.content.human.findings).toHaveLength(1);
+  expect(revised.content.human.conclusion).toBeNull();
+});

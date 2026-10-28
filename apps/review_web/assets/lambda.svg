@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-labelledby="lambda-title lambda-description">
+  <title id="lambda-title">Lambda</title>
+  <desc id="lambda-description">A clear, rounded lambda in muted purple on a transparent background.</desc>
+  <path d="M 45,27 C 52,27 56,34 60,42 L 89,99 M 63,48 L 35,99"
+        fill="none" stroke="#82778f" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

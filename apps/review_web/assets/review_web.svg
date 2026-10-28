@@ -1,83 +1,85 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Palette: 80% luminance gray tinted R×1.03/G×0.95/B×1.10,
+       blended with 20% of each original rainbow color. -->
   <defs>
     <!-- Background Radial Cosmic / Obsidian Field -->
     <radialGradient id="canvas-bg" cx="50%" cy="46%" r="68%">
-      <stop offset="0%" stop-color="#14182b"/>
-      <stop offset="42%" stop-color="#0c0e1b"/>
-      <stop offset="85%" stop-color="#070810"/>
-      <stop offset="100%" stop-color="#040407"/>
+      <stop offset="0%" stop-color="#18171e"/>
+      <stop offset="42%" stop-color="#0e0e12"/>
+      <stop offset="85%" stop-color="#08080b"/>
+      <stop offset="100%" stop-color="#040405"/>
     </radialGradient>
 
     <!-- Outer Armor Hexagon Bevel -->
     <linearGradient id="armor-rim" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#384166"/>
-      <stop offset="25%" stop-color="#1c2136"/>
-      <stop offset="50%" stop-color="#4d5782"/>
-      <stop offset="75%" stop-color="#181c2d"/>
-      <stop offset="100%" stop-color="#2d3552"/>
+      <stop offset="0%" stop-color="#413f4e"/>
+      <stop offset="25%" stop-color="#212028"/>
+      <stop offset="50%" stop-color="#585467"/>
+      <stop offset="75%" stop-color="#1c1b22"/>
+      <stop offset="100%" stop-color="#35333f"/>
     </linearGradient>
 
-    <!-- Edge Specular Highlight (Amber top to Cyan bottom) -->
+    <!-- Muted warm-to-cool edge highlight -->
     <linearGradient id="edge-specular" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.85"/>
-      <stop offset="20%" stop-color="#eb4b28" stop-opacity="0.3"/>
-      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.1"/>
-      <stop offset="85%" stop-color="#00f5ff" stop-opacity="0.5"/>
-      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.9"/>
+      <stop offset="0%" stop-color="#ba9e94" stop-opacity="0.85"/>
+      <stop offset="20%" stop-color="#876066" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#93a3c3" stop-opacity="0.1"/>
+      <stop offset="85%" stop-color="#a0c4dd" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#93a3c3" stop-opacity="0.9"/>
     </linearGradient>
 
     <!-- Isometric Vault Facets -->
     <!-- Top Face: Specification & Provability -->
     <linearGradient id="facet-top" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#0284c7" stop-opacity="0.95"/>
-      <stop offset="60%" stop-color="#0369a1" stop-opacity="0.85"/>
-      <stop offset="100%" stop-color="#075985" stop-opacity="0.9"/>
+      <stop offset="0%" stop-color="#5a6d88" stop-opacity="0.95"/>
+      <stop offset="60%" stop-color="#49576d" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#3f4b5c" stop-opacity="0.9"/>
     </linearGradient>
 
     <!-- Left Face: Immutable Synced Journal (HOLDJNL1) -->
     <linearGradient id="facet-left" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" stop-opacity="0.95"/>
-      <stop offset="50%" stop-color="#1e293b" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#0a0f1d" stop-opacity="0.95"/>
+      <stop offset="0%" stop-color="#16161c" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="#27272f" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0e0e13" stop-opacity="0.95"/>
     </linearGradient>
 
     <!-- Right Face: Active Hold Capacity (Escrow / Phoenix Flame) -->
     <linearGradient id="facet-right" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ff5722"/>
-      <stop offset="45%" stop-color="#eb4b28"/>
-      <stop offset="100%" stop-color="#991b1b"/>
+      <stop offset="0%" stop-color="#956c6f"/>
+      <stop offset="45%" stop-color="#876066"/>
+      <stop offset="100%" stop-color="#4b2e35"/>
     </linearGradient>
 
-    <!-- Golden Lock Shackle Gradient -->
+    <!-- Soft warm-metal shackle gradient -->
     <linearGradient id="gold-shackle" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fef08a"/>
-      <stop offset="30%" stop-color="#f59e0b"/>
-      <stop offset="70%" stop-color="#d97706"/>
-      <stop offset="100%" stop-color="#92400e"/>
+      <stop offset="0%" stop-color="#f5e3e8"/>
+      <stop offset="30%" stop-color="#ba9e94"/>
+      <stop offset="70%" stop-color="#987c75"/>
+      <stop offset="100%" stop-color="#5d4847"/>
     </linearGradient>
 
     <!-- Central Verification Aperture Ring -->
     <linearGradient id="aperture-ring" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f5ff"/>
-      <stop offset="35%" stop-color="#3b82f6"/>
-      <stop offset="70%" stop-color="#f59e0b"/>
-      <stop offset="100%" stop-color="#eb4b28"/>
+      <stop offset="0%" stop-color="#a0c4dd"/>
+      <stop offset="35%" stop-color="#71789e"/>
+      <stop offset="70%" stop-color="#ba9e94"/>
+      <stop offset="100%" stop-color="#876066"/>
     </linearGradient>
 
     <!-- Deep Aperture Glass -->
     <radialGradient id="aperture-lens" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#0e172a"/>
-      <stop offset="70%" stop-color="#060913"/>
-      <stop offset="100%" stop-color="#020307"/>
+      <stop offset="0%" stop-color="#15161c"/>
+      <stop offset="70%" stop-color="#09090c"/>
+      <stop offset="100%" stop-color="#030304"/>
     </radialGradient>
 
     <!-- Lifecycle Orbit Gradient -->
     <linearGradient id="lifecycle-orbit" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f5ff" stop-opacity="0.6"/>
-      <stop offset="25%" stop-color="#38bdf8" stop-opacity="0.5"/>
-      <stop offset="50%" stop-color="#f59e0b" stop-opacity="0.7"/>
-      <stop offset="75%" stop-color="#eb4b28" stop-opacity="0.8"/>
-      <stop offset="100%" stop-color="#a855f7" stop-opacity="0.6"/>
+      <stop offset="0%" stop-color="#a0c4dd" stop-opacity="0.6"/>
+      <stop offset="25%" stop-color="#93a3c3" stop-opacity="0.5"/>
+      <stop offset="50%" stop-color="#ba9e94" stop-opacity="0.7"/>
+      <stop offset="75%" stop-color="#876066" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#806896" stop-opacity="0.6"/>
     </linearGradient>
 
     <!-- Glow & Shadow Filters -->
@@ -105,7 +107,7 @@
   <!-- ==================== 1. OUTER HEXAGON STRUCTURE ==================== -->
   <!-- Ambient Backing Glow -->
   <path d="M 93.9,14.5 Q 100,11 106.1,14.5 L 171,52 Q 177.1,55.5 177.1,62.5 L 177.1,137.5 Q 177.1,144.5 171,148 L 106.1,185.5 Q 100,189 93.9,185.5 L 29,148 Q 22.9,144.5 22.9,137.5 L 22.9,62.5 Q 22.9,55.5 29,52 Z"
-        fill="none" stroke="#eb4b28" stroke-width="6" stroke-opacity="0.12" filter="url(#neon-glow)"/>
+        fill="none" stroke="#876066" stroke-width="6" stroke-opacity="0.12" filter="url(#neon-glow)"/>
 
   <!-- Outer Armor Rim -->
   <path d="M 93.9,14.5 Q 100,11 106.1,14.5 L 171,52 Q 177.1,55.5 177.1,62.5 L 177.1,137.5 Q 177.1,144.5 171,148 L 106.1,185.5 Q 100,189 93.9,185.5 L 29,148 Q 22.9,144.5 22.9,137.5 L 22.9,62.5 Q 22.9,55.5 29,52 Z"
@@ -113,14 +115,14 @@
 
   <!-- Inner Canvas Hexagon -->
   <path d="M 94.5,17.5 Q 100,14.5 105.5,17.5 L 168,53.5 Q 173.5,56.7 173.5,63 L 173.5,137 Q 173.5,143.3 168,146.5 L 105.5,182.5 Q 100,185.5 94.5,182.5 L 32,146.5 Q 26.5,143.3 26.5,137 L 26.5,63 Q 26.5,56.7 32,53.5 Z"
-        fill="url(#canvas-bg)" stroke="#1a2035" stroke-width="1"/>
+        fill="url(#canvas-bg)" stroke="#201f27" stroke-width="1"/>
 
   <!-- Inset Cyber Chamfer Guideline -->
   <path d="M 95.7,21.5 L 165.5,61.8 L 165.5,138.2 L 95.7,178.5 L 34.5,138.2 L 34.5,61.8 Z"
-        fill="none" stroke="#38bdf8" stroke-width="0.6" stroke-opacity="0.22" stroke-dasharray="2 4"/>
+        fill="none" stroke="#93a3c3" stroke-width="0.6" stroke-opacity="0.22" stroke-dasharray="2 4"/>
 
   <!-- ==================== 2. ISOMETRIC DRAFTING LATTICE ==================== -->
-  <g stroke="#38bdf8" stroke-width="0.5" stroke-opacity="0.09">
+  <g stroke="#93a3c3" stroke-width="0.5" stroke-opacity="0.09">
     <!-- Vertical Center & Spacing Lines -->
     <line x1="100" y1="22" x2="100" y2="178"/>
     <line x1="70.6" y1="44" x2="70.6" y2="156"/>
@@ -139,10 +141,10 @@
 
   <!-- ==================== 3. CIRCULAR RETICLE & COMPASS GAUGE ==================== -->
   <!-- Outer Radial Gauge -->
-  <circle cx="100" cy="100" r="70" fill="none" stroke="#64748b" stroke-width="0.6" stroke-opacity="0.22"/>
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#726e80" stroke-width="0.6" stroke-opacity="0.22"/>
 
   <!-- 12-Point Radial Micro-Ticks -->
-  <g stroke="#94a3b8" stroke-width="0.8" stroke-opacity="0.45">
+  <g stroke="#a39bb3" stroke-width="0.8" stroke-opacity="0.45">
     <line x1="100" y1="27.5" x2="100" y2="30.5"/>
     <line x1="100" y1="169.5" x2="100" y2="172.5"/>
     <line x1="27.5" y1="100" x2="30.5" y2="100"/>
@@ -163,7 +165,7 @@
            fill="none" stroke="url(#lifecycle-orbit)" stroke-width="1.3" stroke-dasharray="3 2" filter="url(#subtle-glow)"/>
 
   <!-- Inward Laser Spokes to Central Vault -->
-  <g stroke="#38bdf8" stroke-width="0.75" stroke-opacity="0.4">
+  <g stroke="#93a3c3" stroke-width="0.75" stroke-opacity="0.4">
     <line x1="100" y1="38" x2="100" y2="66" stroke-dasharray="2 2"/>
     <line x1="153.7" y1="69" x2="129.4" y2="83" stroke-dasharray="2 2"/>
     <line x1="153.7" y1="131" x2="129.4" y2="117" stroke-dasharray="2 2"/>
@@ -172,123 +174,100 @@
     <line x1="46.3" y1="69" x2="70.6" y2="83" stroke-dasharray="2 2"/>
   </g>
 
-  <!-- ==================== 5. THE 3D ISOMETRIC QUANTUM VAULT ==================== -->
+  <!-- ==================== 5. FRONT-FACING FACETED VAULT ==================== -->
+  <!-- A level mounting plate keeps the round verification seal off a cube corner. -->
   <g filter="url(#vault-shadow)">
-    <!-- Golden Padlock Shackle Anchored Into Top Face -->
-    <!-- Shackle Body -->
+    <!-- Shackle: authorization capacity remains held until release. -->
     <path d="M 89,76 L 89,55 C 89,42.5 111,42.5 111,55 L 111,76"
           fill="none" stroke="url(#gold-shackle)" stroke-width="4.8" stroke-linecap="round"/>
-    <!-- Shackle Specular Spine -->
     <path d="M 89,76 L 89,55 C 89,42.5 111,42.5 111,55 L 111,76"
-          fill="none" stroke="#fffbeb" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8"/>
+          fill="none" stroke="#fff1fb" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8"/>
 
-    <!-- Left Shackle Insertion Port -->
-    <ellipse cx="89" cy="76" rx="4.2" ry="2.2" fill="#090d16" stroke="#f59e0b" stroke-width="0.8"/>
-    <!-- Right Shackle Insertion Port -->
-    <ellipse cx="111" cy="76" rx="4.2" ry="2.2" fill="#090d16" stroke="#f59e0b" stroke-width="0.8"/>
+    <!-- Beveled shoulders and matched side rails frame a single flat face. -->
+    <path d="M 80,76 H 120 L 129.4,83 V 121 L 120,130 H 80 L 70.6,121 V 83 Z"
+          fill="url(#facet-left)" stroke="#babfdf" stroke-width="0.9"/>
+    <path d="M 80,76 H 120 L 129.4,83 H 70.6 Z"
+          fill="url(#facet-top)"/>
+    <path d="M 129.4,83 V 121 L 120,130 V 83 Z"
+          fill="url(#facet-right)" fill-opacity="0.5"/>
+    <path d="M 70.6,83 V 121 L 80,130 V 83 Z"
+          fill="url(#facet-top)" fill-opacity="0.3"/>
+    <path d="M 80,76 H 120 L 129.4,83 M 70.6,83 L 80,76"
+          fill="none" stroke="#f2e6ff" stroke-width="1.2" stroke-linejoin="round"/>
 
-    <!-- Vault Cube - Left Face: Immutable Journal (HOLDJNL1) -->
-    <polygon points="70.6,83 100,100 100,134 70.6,117"
-             fill="url(#facet-left)" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.45"/>
-
-    <!-- Hash-Chained Journal Frame Lines (Left Face) -->
-    <g stroke="#38bdf8" stroke-width="1.1" stroke-opacity="0.75" stroke-dasharray="3.5 2">
-      <line x1="75" y1="89" x2="96" y2="101"/>
-      <line x1="75" y1="97" x2="96" y2="109"/>
-      <line x1="75" y1="105" x2="96" y2="117"/>
-      <line x1="75" y1="113" x2="96" y2="125"/>
+    <!-- Quiet journal/capacity marks leave clear space around the aperture. -->
+    <g stroke="#93a3c3" stroke-width="1" stroke-linecap="round" stroke-opacity="0.55">
+      <path d="M 75,93 H 79 M 75,102 H 79 M 75,111 H 79"/>
     </g>
-
-    <!-- Vault Cube - Right Face: Reserved Capacity / Active Hold (Escrow) -->
-    <polygon points="100,100 129.4,83 129.4,117 100,134"
-             fill="url(#facet-right)" stroke="#f97316" stroke-width="0.8" stroke-opacity="0.5"/>
-
-    <!-- Capacity Level Meter Bars (Right Face) -->
-    <g stroke="#fef08a" stroke-width="1.2" stroke-opacity="0.8" stroke-dasharray="4 2">
-      <line x1="104" y1="103" x2="125" y2="91"/>
-      <line x1="104" y1="111" x2="125" y2="99"/>
-      <line x1="104" y1="119" x2="125" y2="107"/>
-      <line x1="104" y1="127" x2="125" y2="115"/>
+    <g stroke="#f5e3e8" stroke-width="1" stroke-linecap="round" stroke-opacity="0.55">
+      <path d="M 121,93 H 125 M 121,102 H 125 M 121,111 H 125"/>
     </g>
-
-    <!-- Vault Cube - Top Face: Reference Spec & Entailment Plane -->
-    <polygon points="100,66 129.4,83 100,100 70.6,83"
-             fill="url(#facet-top)" stroke="#7dd3fc" stroke-width="0.9"/>
-
-    <!-- Top Ridge Specular Highlight -->
-    <polyline points="70.6,83 100,66 129.4,83"
-              fill="none" stroke="#e0f2fe" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-
-    <!-- Formal Logic Entailment Symbol (⊢) on Top Face -->
-    <g stroke="#e0f2fe" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.85">
-      <line x1="97" y1="81" x2="97" y2="89"/>
-      <line x1="97" y1="85" x2="104" y2="85"/>
-    </g>
+    <path d="M 86,125 H 114" fill="none" stroke="#a39bb3" stroke-width="0.7" stroke-opacity="0.5"/>
   </g>
 
   <!-- ==================== 6. CENTRAL VERIFICATION EMBLEM (LAMBDA APERTURE) ==================== -->
   <g filter="url(#vault-shadow)">
     <!-- Aperture Outer Metal Collar -->
-    <circle cx="100" cy="102" r="16.5" fill="#0f172a" stroke="#475569" stroke-width="1"/>
+    <circle cx="100" cy="102" r="16.5" fill="#16161c" stroke="#53505e" stroke-width="1"/>
 
-    <!-- Radiant Color Separation Ring -->
+    <!-- Restrained spectral accent ring -->
     <circle cx="100" cy="102" r="14.5" fill="none" stroke="url(#aperture-ring)" stroke-width="1.6" filter="url(#subtle-glow)"/>
 
     <!-- Deep Protective Optical Glass -->
-    <circle cx="100" cy="102" r="12" fill="url(#aperture-lens)" stroke="#1e293b" stroke-width="0.8"/>
+    <circle cx="100" cy="102" r="12" fill="url(#aperture-lens)" stroke="#27272f" stroke-width="0.8"/>
 
     <!-- Inner Radial Scale Ticks -->
-    <circle cx="100" cy="102" r="9.5" fill="none" stroke="#38bdf8" stroke-width="0.5" stroke-dasharray="1 2.5" stroke-opacity="0.6"/>
+    <circle cx="100" cy="102" r="9.5" fill="none" stroke="#93a3c3" stroke-width="0.5" stroke-dasharray="1 2.5" stroke-opacity="0.6"/>
 
     <!-- Central Luminous Mathematical Lambda (λ) for Lean 4 & Lynx -->
     <!-- Ambient Neon Outer Stroke -->
     <path d="M 97.4,96 C 97.8,96 98.3,96.5 98.7,97.3 L 104.8,107.5 C 105.1,108 105.5,108.3 106.1,108.3 L 106.8,108.3 M 99.1,102.5 L 95.3,107.5 C 94.9,108 94.4,108.3 93.8,108.3"
-          fill="none" stroke="#00f5ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#neon-glow)"/>
+          fill="none" stroke="#a0c4dd" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#neon-glow)"/>
 
     <!-- Razor-Sharp Pure White Core -->
     <path d="M 97.4,96 C 97.8,96 98.3,96.5 98.7,97.3 L 104.8,107.5 C 105.1,108 105.5,108.3 106.1,108.3 L 106.8,108.3 M 99.1,102.5 L 95.3,107.5 C 94.9,108 94.4,108.3 93.8,108.3"
-          fill="none" stroke="#ffffff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          fill="none" stroke="#fff5ff" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 
   <!-- ==================== 7. 6-STATE LIFECYCLE PERIMETER NODES ==================== -->
   <!-- Node 0: Top (Admitted / Eligible) -->
   <g transform="translate(100, 38)" filter="url(#subtle-glow)">
-    <circle cx="0" cy="0" r="4.2" fill="#0f172a" stroke="#00f5ff" stroke-width="1.2"/>
-    <circle cx="0" cy="0" r="1.6" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="4.2" fill="#16161c" stroke="#a0c4dd" stroke-width="1.2"/>
+    <circle cx="0" cy="0" r="1.6" fill="#fff5ff"/>
   </g>
 
   <!-- Node 1: Upper Right (Dispatched / Sent) -->
   <g transform="translate(153.7, 69)" filter="url(#subtle-glow)">
-    <circle cx="0" cy="0" r="4.2" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2"/>
-    <circle cx="0" cy="0" r="1.6" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="4.2" fill="#16161c" stroke="#93a3c3" stroke-width="1.2"/>
+    <circle cx="0" cy="0" r="1.6" fill="#fff5ff"/>
   </g>
 
   <!-- Node 2: Lower Right (Unknown / In-Flight Timeout) -->
   <g transform="translate(153.7, 131)" filter="url(#subtle-glow)">
-    <circle cx="0" cy="0" r="4.2" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2"/>
-    <circle cx="0" cy="0" r="1.6" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="4.2" fill="#16161c" stroke="#ba9e94" stroke-width="1.2"/>
+    <circle cx="0" cy="0" r="1.6" fill="#fff5ff"/>
   </g>
 
   <!-- Node 3: Bottom (Authorized / Terminal Retained) -->
   <g transform="translate(100, 162)" filter="url(#subtle-glow)">
-    <circle cx="0" cy="0" r="4.2" fill="#0f172a" stroke="#eb4b28" stroke-width="1.2"/>
-    <circle cx="0" cy="0" r="1.6" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="4.2" fill="#16161c" stroke="#876066" stroke-width="1.2"/>
+    <circle cx="0" cy="0" r="1.6" fill="#fff5ff"/>
   </g>
 
   <!-- Node 4: Lower Left (Voiding / Escrow Pending) -->
   <g transform="translate(46.3, 131)" filter="url(#subtle-glow)">
-    <circle cx="0" cy="0" r="4.2" fill="#0f172a" stroke="#f43f5e" stroke-width="1.2"/>
-    <circle cx="0" cy="0" r="1.6" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="4.2" fill="#16161c" stroke="#865b6e" stroke-width="1.2"/>
+    <circle cx="0" cy="0" r="1.6" fill="#fff5ff"/>
   </g>
 
   <!-- Node 5: Upper Left (Voided / Fenced) -->
   <g transform="translate(46.3, 69)" filter="url(#subtle-glow)">
-    <circle cx="0" cy="0" r="4.2" fill="#0f172a" stroke="#a855f7" stroke-width="1.2"/>
-    <circle cx="0" cy="0" r="1.6" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="4.2" fill="#16161c" stroke="#806896" stroke-width="1.2"/>
+    <circle cx="0" cy="0" r="1.6" fill="#fff5ff"/>
   </g>
 
   <!-- ==================== 8. CHASSIS CORNER BRACKETS ==================== -->
-  <g stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.5">
+  <g stroke="#93a3c3" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.5">
     <!-- Top Apex Chevron -->
     <path d="M 95,20 L 100,16 L 105,20"/>
     <!-- Bottom Apex Chevron -->
@@ -304,10 +283,8 @@
   </g>
 
 
-
-
   <!-- Precision Datum Crosshairs -->
-  <g stroke="#38bdf8" stroke-width="0.6" stroke-opacity="0.35">
+  <g stroke="#93a3c3" stroke-width="0.6" stroke-opacity="0.35">
     <!-- Top Crosshair -->
     <line x1="98" y1="33" x2="102" y2="33"/>
     <line x1="100" y1="31" x2="100" y2="35"/>

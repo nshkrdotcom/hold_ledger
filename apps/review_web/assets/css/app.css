@@ -365,3 +365,16 @@ td details summary { font-size: .7rem; }
   .part3-create > div { margin-bottom: 1rem; }
   .part3-header h1 { font-size: 2.2rem; }
 }
+
+/* Evidence-first Part 4 presentation: semantics are named, not color-coded. */
+.part3-expression { border-top: 1px solid var(--line); padding: .8rem 0; }
+.part3-expression pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.part3-expression del { background: #ffe5e1; color: #6a1915; text-decoration: line-through; padding: 0 .1rem; }
+.part3-expression ins { background: #ddf6e3; color: #145329; text-decoration: underline; padding: 0 .1rem; }
+.part3-evidence-card { border: 1px solid var(--line); padding: 1.1rem; margin: 1rem 0 1.3rem; border-radius: .35rem; min-width: 0; }
+.part3-evidence-card > p, .part3-evidence-card small { overflow-wrap: anywhere; }
+.part3-evidence-card pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 23rem; }
+.part3-evidence-card h4, .part3-proof-version h4 { font-size: .88rem; margin: .9rem 0 .4rem; }
+.part3-evidence-card .part3-actions button { flex: 1 1 12rem; }
+.part3-proof-version, .part3-proof-export { border-top: 1px solid var(--line); padding: .7rem 0; }
+.part3-proof-export li { overflow-wrap: anywhere; }

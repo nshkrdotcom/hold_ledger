@@ -12,6 +12,9 @@ defmodule HoldLedgerReview.Part3Test do
     Part3BoundarySearch,
     Part3ContractDelta,
     Part3Diagnostics,
+    Part3Docket,
+    Part3ProofInspector,
+    Part3RepairPacket,
     Part3Editor,
     Part3Package,
     Part3Result,
@@ -101,6 +104,64 @@ defmodule HoldLedgerReview.Part3Test do
     {:ok, store} = start_supervised({Part3Store, name: nil, dir: dir})
     {:ok, p} = Part3Store.create(a, b, store)
     {:ok, package: p, store: store}
+  end
+
+  # Synthetic *projection* fixtures: no worker or checker run is claimed here.
+  defp evidence_package(p, witness, kind) do
+    binding = %{
+      "binding_id" => Canonical.digest(%{"key" => 3}),
+      "values" => %{"key" => 3},
+      "requires" => true,
+      "post_candidate" => false,
+      "post_actual" => true
+    }
+
+    a = %{
+      "evaluation" => %{"actual" => %{"result" => "admitted"}},
+      "claims" => %{"po_a2" => %{"bindings" => [binding]}}
+    }
+
+    b =
+      case kind do
+        "lost_domain_input" ->
+          put_in(a, ["claims", "po_a2", "bindings"], [%{binding | "requires" => false}])
+
+        "permitted_alternative_output" ->
+          put_in(a, ["claims", "po_a2", "bindings"], [
+            %{binding | "post_candidate" => true}
+          ])
+      end
+
+    [e] = Part3Diagnostics.compare(p, witness, a, b)
+    Map.put(p, "evidence", [e])
+  end
+
+  defp synthetic_receipt(p, witness, side) do
+    sid = p[side]["snapshot_id"]
+    now = Part3Package.now()
+
+    %{
+      "id" => fresh_id(),
+      "kind" => "replay",
+      "snapshot_id" => sid,
+      "context_digest" => p["context_digest"],
+      "scope" => "controlled_projection_only",
+      "status" => "succeeded",
+      "producer" => "controlled_fixture_not_actual_worker_evidence",
+      "queued_at" => now,
+      "started_at" => now,
+      "finished_at" => now,
+      "input_digest" => Canonical.digest(witness),
+      "completion_digest" => String.duplicate("b", 64),
+      "artifacts" => [],
+      "diagnostics" => "",
+      "dependencies" => [],
+      "witness" => witness,
+      "result" => %{
+        "completion_digest" => String.duplicate("b", 64),
+        "evaluation" => %{"actual" => %{"result" => "admitted"}}
+      }
+    }
   end
 
   test "strict versioned package survives JSON round trip, rejects unknown shape and shifted context",
@@ -615,5 +676,151 @@ defmodule HoldLedgerReview.Part3Test do
     {:ok, concluded, :ok} = Part3Store.get(p["id"])
     assert concluded["conclusion"]["outcome"] == "needs_policy_or_evidence"
     assert concluded["verification_attempts"] == []
+  end
+
+  test "source-verified normalized differences retain exact declaration span and changed helpers",
+       ctx do
+    source = Config.root()
+    {paths, 0} =
+      System.cmd("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        cd: source
+      )
+
+    files = String.split(paths, <<0>>, trim: true)
+    commit = System.cmd("git", ["rev-parse", "HEAD"], cd: source) |> elem(0) |> String.trim()
+    law_path = "test/laws/po_a2_test.exs"
+    original = File.read!(Path.join(source, law_path))
+    needle = "requires: Spec.request_eligible?(s, key, amount),"
+    baseline_bytes =
+      String.replace(original, needle,
+        "requires: Spec.request_eligible?(s, key, amount) and amount <= elem(s, 0) - elem(s, 2),"
+      )
+
+    proposal_bytes = String.replace(baseline_bytes, "amount <= elem(s, 0)", "amount < elem(s, 0)")
+    assert baseline_bytes != proposal_bytes
+    a = capture(files, commit, %{law_path => baseline_bytes})
+    b = capture(files, commit, %{law_path => proposal_bytes})
+    on_exit(fn ->
+      File.rm_rf!(Part3Snapshots.root(a))
+      File.rm_rf!(Part3Snapshots.root(b))
+    end)
+
+    assert {:ok, p} = Part3Package.new(fresh_id(), a, b)
+    [change] = Enum.filter(p["source_changes"], &(&1["path"] == law_path))
+    assert change["claim"]["analysis"] == "supported_structural_ast"
+    assert change["claim"]["changed"]["conditions"]
+    assert {:ok, projection} = Part3ContractDelta.presentation(p)
+    detail = projection[change["id"]]
+    assert detail["status"] == "source_hash_matched_structural_only"
+    assert Enum.map(detail["declarations"], & &1["side"]) == ~w(baseline proposal)
+    assert Enum.all?(detail["declarations"], &is_integer(&1["start_line"]))
+    [requires, _expects] = detail["expressions"]
+    assert requires["status"] == "normalized_changed"
+    assert Enum.any?(requires["baseline"], &(&1["kind"] == "del"))
+    assert Enum.any?(requires["proposal"], &(&1["kind"] == "ins"))
+    assert requires["baseline"] != requires["proposal"]
+    assert detail["baseline"]["start_line"] >= 1
+    assert detail["proposal"]["start_line"] >= 1
+
+    {:ok, helper} = Part3Snapshots.load(ctx.helper)
+    {:ok, base} = Part3Snapshots.load(ctx.baseline)
+    assert {:ok, helper_edits} = Part3ContractDelta.compare(base, helper)
+    assert Enum.any?(helper_edits, &(&1["kind"] == "called_definition_or_behavior"))
+  end
+
+  test "evidence docket links only registered declarations and prepares strict human commands", ctx do
+    {:ok, witness} = Adversarial.seed("P04")
+    p = evidence_package(ctx.package, witness, "lost_domain_input")
+    assert Part3Package.valid?(p, p["id"])
+    [card] = Part3Docket.cards(p)
+    assert card["kind"] == "lost_domain_input"
+    assert card["correspondence"] == "no_directly_matched_changed_declaration"
+    assert card["changes"] == []
+    assert card["receipts"]["baseline"]["actual"] == nil
+    assert card["latest"] == nil
+
+    assert {:ok, cmd} =
+             Part3Docket.decision(p, card["id"], "design", fresh_id(), 0, "expert", true)
+
+    assert cmd["lens"] == "excluded_inputs"
+    assert cmd["status"] == "unresolved"
+    assert cmd["evidence_ids"] == [card["id"]]
+    assert cmd["change_ids"] == []
+    assert cmd["expected_human_revision"] == 0
+    assert cmd["rationale"] =~ "Reviewer selected"
+    assert {:ok, policy} =
+             Part3Docket.decision(p, card["id"], "policy", fresh_id(), 0, "expert", true)
+
+    assert policy["status"] == "unresolved"
+    assert policy["rationale"] =~ "no policy change is authorized"
+    assert {:ok, considered} =
+             Part3Docket.decision(p, card["id"], "considered", fresh_id(), 0, "expert", true)
+
+    assert considered["status"] == "addressed"
+    assert considered["rationale"] =~ "not defect resolution"
+    assert {:error, :unknown_or_unmatched_evidence} =
+             Part3Docket.decision(p, fresh_id(), "design", fresh_id(), 0, "expert", true)
+
+    assert {:error, :unsupported_human_action} =
+             Part3Docket.decision(p, card["id"], "approve", fresh_id(), 0, "expert", true)
+
+    # Store still refuses a constructed command whose evidence was not admitted
+    # through its original worker-result path.
+    assert {:error, :invalid_finding} = Part3Store.finding(p["id"], cmd, ctx.store)
+    assert ctx.package["human_revision"] == 0
+  end
+
+  test "repair packets distinguish contract-only exclusion, candidate and actual output", ctx do
+    {:ok, witness} = Adversarial.seed("P04")
+
+    for kind <- ~w(lost_domain_input permitted_alternative_output) do
+      p = evidence_package(ctx.package, witness, kind)
+      p =
+        Map.put(p, "replay_attempts", [
+          synthetic_receipt(p, witness, "baseline"),
+          synthetic_receipt(p, witness, "proposal")
+        ])
+
+      assert Part3Package.valid?(p, p["id"])
+      [e] = p["evidence"]
+      assert {:ok, packet} = Part3RepairPacket.build(p, e["id"], "2026-10-27T00:00:00Z")
+      assert packet["content_sha256"] == Canonical.digest(packet["content"])
+      distinction = packet["content"]["distinction"]
+      assert distinction["kind"] == kind
+      assert distinction["baseline_actual_output"]["result"] == "admitted"
+      assert distinction["proposal_actual_output"]["result"] == "admitted"
+      assert distinction["baseline_replay"]["status"] == "admitted_succeeded_replay"
+      assert distinction["candidate_output_not_observed"] ==
+               if(kind == "permitted_alternative_output", do: witness["output"], else: nil)
+
+      assert packet["content"]["human"]["policy_change_authorized"] == false
+      assert packet["content"]["package"]["human_revision"] == 0
+      assert packet["content"]["formal"] |> length() == 2
+      assert String.contains?(Part3RepairPacket.markdown(packet), "not instructions")
+      assert Jason.decode!(Part3RepairPacket.json(packet)) == packet
+      assert {:ok, next} = Part3RepairPacket.build(p, e["id"], "2026-10-28T00:00:00Z")
+      assert next["content_sha256"] == packet["content_sha256"]
+      refute next["generated_at_utc"] == packet["generated_at_utc"]
+      assert {:error, :stale_invalid_or_unknown_repair_source} =
+               Part3RepairPacket.build(p, fresh_id())
+
+      assert {:error, :stale_invalid_or_unknown_repair_source} =
+               Part3RepairPacket.build(%{p | "context_digest" => String.duplicate("a", 64)}, e["id"])
+    end
+  end
+
+  test "original proof data stays independently scoped per snapshot, with missing still missing", ctx do
+    assert {:ok, inspection} = Part3ProofInspector.inspect(ctx.package)
+    assert Enum.map(inspection["versions"], & &1["side"]) == ~w(baseline proposal)
+    assert Enum.all?(inspection["versions"], &(&1["formal_acceptance"] == "not_run"))
+    assert Enum.all?(inspection["versions"], &(&1["report_reference"] == nil))
+    assert Enum.all?(inspection["versions"], &(&1["catalog_count"] == 49))
+    proposal = Enum.find(inspection["versions"], &(&1["side"] == "proposal"))
+    po = Enum.find(proposal["sources"], &(&1["slug"] == "po_a2"))
+    assert po["source"]["status"] == "source_hash_matched"
+    assert po["translated_statement"] == nil
+    assert po["proof_dependencies"] == nil
+    assert po["exports"] == []
+    assert po["lean_declarations"] == []
   end
 end
