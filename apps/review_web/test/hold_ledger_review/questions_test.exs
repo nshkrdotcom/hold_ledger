@@ -25,6 +25,38 @@ defmodule HoldLedgerReview.QuestionsTest do
     assert {:error, _} = QuestionContext.prepare("", context(), "operator")
   end
 
+  test "large Lean declarations fit the unchanged question budget with explicit source excerpts" do
+    for slug <- ~w(po_b2 po_b3) do
+      {:ok, doc} = Contrast.create(slug)
+      {:ok, data} = Contrast.case_for(doc, List.last(doc["steps"])["id"], slug)
+
+      context = %{
+        doc: doc,
+        case: data,
+        slug: slug,
+        basis: "candidate",
+        binding_index: 0,
+        selection: nil
+      }
+
+      assert {:ok, packet} = QuestionContext.prepare("Explain this rule", context, "operator")
+      assert byte_size(Canonical.json(packet["context"])) <= 98_304
+      assert :ok = QuestionContext.freshness(packet)
+      {:ok, reading} = HoldLedgerReview.ProofReading.document(slug)
+      declaration = hd(reading["declarations"])
+      source = Enum.find(packet["context"]["sources"], &(&1["path"] == declaration["path"]))
+      assert source["truncated"]
+      assert String.starts_with?(declaration["text"], source["text"])
+      assert source["excerpt_sha256"] == HoldLedgerReview.Anchor.sha(source["text"])
+      assert source["full_excerpt_sha256"] == HoldLedgerReview.Anchor.sha(declaration["text"])
+      refute Map.has_key?(hd(packet["context"]["declarations"]), "text")
+      spec = Enum.find(packet["context"]["sources"], &(&1["path"] == "lib/hold_ledger/spec.ex"))
+      assert spec["text"] == File.read!(Path.join(HoldLedgerReview.Config.root(), spec["path"]))
+    end
+
+    assert {:error, :empty_question} = QuestionContext.prepare(" ", context(), "operator")
+  end
+
   test "question profile does not replace historical client defaults" do
     assert AI.question_client().model == "gpt-6.1-terra"
     assert AI.question_client().defaults[:reasoning_effort] == :medium

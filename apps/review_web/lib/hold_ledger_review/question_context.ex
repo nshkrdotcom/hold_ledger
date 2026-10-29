@@ -2,6 +2,7 @@ defmodule HoldLedgerReview.QuestionContext do
   @moduledoc "Source-bound explanatory context. Never an evaluator or acceptance gate."
   alias HoldLedgerReview.{Anchor, Canonical, Claims, Config, ProofReading, Trace}
   @model "gpt-6.1-terra"
+  @proof_excerpt_bytes 16_384
   @build_root Path.expand("../../../..", __DIR__)
   @code_paths ~w(apps/review_web/lib/hold_ledger_review/question_context.ex apps/review_web/lib/hold_ledger_review/ai.ex apps/review_web/lib/hold_ledger_review/questions.ex)
   for path <- @code_paths, do: @external_resource(Path.join(@build_root, path))
@@ -27,15 +28,18 @@ defmodule HoldLedgerReview.QuestionContext do
   """
 
   def prepare(question, context, actor, history \\ []) do
-    with true <-
-           is_binary(question) and String.trim(question) != "" and byte_size(question) <= 4096,
-         true <- is_binary(actor) and byte_size(actor) in 1..128,
-         true <- Trace.current?(context.doc),
+    with :ok <- valid_question(question),
+         :ok <- require_context(is_binary(actor) and byte_size(actor) in 1..128, :invalid_actor),
+         :ok <- require_context(Trace.current?(context.doc), :stale_case_sources),
          {:ok, reading} <- ProofReading.document(context.slug),
          {:ok, identity} <- Trace.identity(),
          {:ok, sources} <- sources(reading),
          payload = payload(context, reading, sources, history),
-         true <- byte_size(Canonical.json(payload)) <= 98_304 do
+         :ok <-
+           require_context(
+             byte_size(Canonical.json(payload)) <= 98_304,
+             :question_context_too_large
+           ) do
       body = %{
         "version" => 1,
         "question" => String.trim(question),
@@ -59,9 +63,22 @@ defmodule HoldLedgerReview.QuestionContext do
 
       {:ok, Map.put(body, "digest", Canonical.digest(body))}
     else
+      {:error, reason} -> {:error, reason}
       _ -> {:error, :invalid_or_stale_question_context}
     end
   end
+
+  defp valid_question(question) when is_binary(question) do
+    cond do
+      String.trim(question) == "" -> {:error, :empty_question}
+      byte_size(question) > 4096 -> {:error, :question_too_long}
+      true -> :ok
+    end
+  end
+
+  defp valid_question(_), do: {:error, :empty_question}
+  defp require_context(true, _), do: :ok
+  defp require_context(_, reason), do: {:error, reason}
 
   def context_id(context) do
     Canonical.digest(%{
@@ -156,14 +173,14 @@ defmodule HoldLedgerReview.QuestionContext do
       "binding_index" => context[:binding_index],
       "selection" => inspect(context[:selection]),
       "proof_steps" => reading["proof_steps"],
-      "declarations" => reading["declarations"],
+      "declarations" => Enum.map(reading["declarations"], &Map.delete(&1, "text")),
       "formal" => reading["formal"],
       "focused" => reading["focused"],
       "comparison" => comparison(context[:package]),
       "sources" => sources,
       "prior_generated_answers" => Enum.take(history, -4),
       "omitted" =>
-        "Only registered active-claim and core policy sources are supplied. Other checkout files, private notes and unsupplied external evidence are absent."
+        "Only registered active-claim and core policy sources are supplied. Large Lean passages are explicitly marked truncated; omitted proof lines cannot be explained from this packet. Declaration metadata refers to source excerpts rather than duplicating them. Other checkout files, private notes and unsupplied external evidence are absent."
     }
   end
 
@@ -189,15 +206,36 @@ defmodule HoldLedgerReview.QuestionContext do
     declaration =
       Enum.find(reading["declarations"], &(&1["path"] == source["path"] and &1["text"] != ""))
 
-    text = if declaration, do: declaration["text"], else: bytes
+    full_text = if declaration, do: declaration["text"], else: bytes
+    text = if declaration, do: bounded_proof(full_text), else: full_text
     first = if declaration, do: declaration["line"], else: 1
 
     Map.merge(source, %{
       "text" => text,
       "start_line" => first,
       "end_line" => first + length(String.split(text, "\n")) - 1,
-      "excerpt_sha256" => Anchor.sha(text)
+      "excerpt_sha256" => Anchor.sha(text),
+      "truncated" => text != full_text,
+      "full_excerpt_sha256" => Anchor.sha(full_text),
+      "full_end_line" => first + length(String.split(full_text, "\n")) - 1
     })
+  end
+
+  defp bounded_proof(text) when byte_size(text) <= @proof_excerpt_bytes, do: text
+
+  defp bounded_proof(text) do
+    text
+    |> String.split("\n")
+    |> Enum.reduce_while({[], 0}, fn line, {lines, size} ->
+      next_size = size + byte_size(line) + if(lines == [], do: 0, else: 1)
+
+      if next_size <= @proof_excerpt_bytes,
+        do: {:cont, {[line | lines], next_size}},
+        else: {:halt, {lines, size}}
+    end)
+    |> elem(0)
+    |> Enum.reverse()
+    |> Enum.join("\n")
   end
 
   defp sources(reading) do

@@ -38,7 +38,7 @@ defmodule HoldLedgerReviewWeb.QuestionLiveTest do
     |> form("#panel-question-form", question: %{text: "Why?"})
     |> render_submit(question: %{context_id: "stale"})
 
-    assert has_element?(view, "#question-panel [role=alert]", "wasn't sent")
+    assert has_element?(view, "#question-panel [role=alert]", "case changed")
     assert Questions.list("", Questions, doc["id"]) == []
   end
 end

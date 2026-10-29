@@ -17,6 +17,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
        history_scope: "case",
        history_offset: 0,
        error: nil,
+       error_detail: nil,
        composing: true,
        clearing: false,
        previous: [],
@@ -90,12 +91,13 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
       {:ok, packet} ->
         {:noreply, assign(socket, packet: packet, open: true, history_open: false, error: nil)}
 
-      _ ->
+      {:error, reason} ->
         {:noreply,
          assign(socket,
            open: true,
            history_open: false,
-           error: "Type a question to inspect what will be shared."
+           error: context_error(reason),
+           error_detail: inspect(reason)
          )}
     end
   end
@@ -103,12 +105,14 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
   def handle_event("ask", %{"question" => %{"text" => text, "context_id" => context_id}}, socket) do
     context = socket.assigns.followup_context || socket.assigns.context
 
-    with true <- socket.assigns.composing and not running?(socket.assigns.active),
-         true <- context_id == QuestionContext.context_id(context),
-         {:ok, packet} <-
-           QuestionContext.prepare(text, context, socket.assigns.actor, socket.assigns.previous),
-         {:ok, row} <- Questions.prepare(packet),
-         :ok <- Questions.ask(row["id"], packet["digest"], true) do
+    with {:ready, true} <-
+           {:ready, socket.assigns.composing and not running?(socket.assigns.active)},
+         {:case, true} <- {:case, context_id == QuestionContext.context_id(context)},
+         {:packet, {:ok, packet}} <-
+           {:packet,
+            QuestionContext.prepare(text, context, socket.assigns.actor, socket.assigns.previous)},
+         {:log, {:ok, row}} <- {:log, Questions.prepare(packet)},
+         {:dispatch, :ok} <- {:dispatch, Questions.ask(row["id"], packet["digest"], true)} do
       {:noreply,
        assign(socket,
          text: text,
@@ -120,13 +124,13 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
          composing: false
        )}
     else
-      _ ->
+      failure ->
         {:noreply,
          assign(socket,
            text: text,
            open: true,
-           error:
-             "Your question wasn't sent. Check the question and current case, then try again."
+           error: submission_error(failure),
+           error_detail: inspect(failure)
          )}
     end
   end
@@ -225,6 +229,40 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
          assign(socket, error: "History couldn't be cleared while a question is running.")}
     end
   end
+
+  defp submission_error({:case, false}),
+    do:
+      "Your question wasn't sent because the case changed. Check this case and press Ask Codex again."
+
+  defp submission_error({:ready, false}),
+    do:
+      "Your question wasn't sent. Cancel the current request or choose Ask using current case to start another."
+
+  defp submission_error({:packet, {:error, reason}}), do: context_error(reason)
+
+  defp submission_error({:log, _}),
+    do:
+      "Your question wasn't sent because its local history could not be saved or its source packet is stale. See technical details."
+
+  defp submission_error({:dispatch, _}),
+    do:
+      "Your question wasn't sent. Another request may be running, or the prepared source packet is no longer current. See technical details."
+
+  defp context_error(:empty_question), do: "Enter a question before sending."
+
+  defp context_error(:question_too_long),
+    do: "The question exceeds 4,096 bytes. Shorten it before sending."
+
+  defp context_error(:question_context_too_large),
+    do:
+      "Nothing was sent: the included case and conversation exceed the 96 KiB context limit. Start a new question without earlier answers or use a smaller case."
+
+  defp context_error(:stale_case_sources),
+    do: "The source files changed since this case was opened. Reopen the rule before sending."
+
+  defp context_error(_),
+    do:
+      "The selected source context could not be read. Reopen the rule; nothing was sent. See technical details."
 
   defp load_history(socket) do
     conversation = if socket.assigns.history_scope == "case", do: socket.assigns.context.doc["id"]
@@ -370,6 +408,9 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           The local question log is unavailable. Questions won't be sent.
         </p>
         <p :if={@error} role="alert">{@error}</p>
+        <details :if={@error && @error_detail} id="question-error-details">
+          <summary>Technical details</summary><code>{@error_detail}</code>
+        </details>
         <div :if={@active && !@composing && !@history_open} id="question-answer">
           <h3>{@active["packet"]["question"]}</h3>
           <p :if={@earlier} id="question-earlier" class="scope-note">Answer to an earlier case</p>
@@ -446,6 +487,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           <p><code>{(@packet || @active["packet"])["digest"]}</code></p>
           <p :for={source <- (@packet || @active["packet"])["context"]["sources"]}>
             <strong>{source["path"]}</strong> <code>{source["sha256"]}</code>
+            <span :if={source["truncated"]}>Excerpt: lines {source["start_line"]}–{source["end_line"]}; later proof lines are omitted.</span>
           </p>
           <details>
             <summary>Exact application prompt</summary><pre>{Jason.encode!((@packet || @active["packet"])["messages"], pretty: true)}</pre>

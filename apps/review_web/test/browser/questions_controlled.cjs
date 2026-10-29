@@ -38,3 +38,27 @@ test('mobile composer sends once without preparation or a permission checkbox',a
  await send(page);await expect(page.locator('#question-answer')).toContainText('Controlled fixture:');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
+
+for(const slug of ['po_b2','po_b3'])test(`large proof context can be submitted for ${slug}`,async({page})=>{
+ await page.goto(`/claims/${slug}`);await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+ await ask(page,'Explain this rule and state what proof text is omitted');
+ await expect(page.locator('#question-answer')).toContainText('Controlled fixture:');
+ await expect(page.locator('#question-context')).toContainText('later proof lines are omitted');
+ const href=await page.getByRole('link',{name:'Export this question'}).getAttribute('href');const row=JSON.parse(decodeURIComponent(href.slice(href.indexOf(',')+1)));
+ expect(row.packet.context.sources.some(s=>s.truncated)).toBe(true);expect(row.status).toBe('succeeded');
+});
+
+test('blank questions and stale case forms show the rejection cause without dispatch',async({page})=>{
+ await open(page);await page.locator('#header-question-form').getByRole('button',{name:'Ask Codex',exact:true}).click();
+ await expect(page.locator('#question-panel [role=alert]')).toHaveText('Enter a question before sending.');
+ await page.locator('#question-close').click();
+ const before=await page.locator('#header-question-form input[type=hidden]').inputValue();
+ await page.locator('#header-question-form input[type=text]').fill('Explain the changed case');await page.locator('#review-amount').fill('99');
+ await expect(page.locator('#header-question-form input[type=hidden]')).not.toHaveValue(before);
+ await page.locator('#header-question-form input[type=hidden]').evaluate((e,value)=>{e.value=value},before);
+ await page.locator('#header-question-form').getByRole('button',{name:'Ask Codex',exact:true}).click();
+ await expect(page.locator('#question-panel [role=alert]')).toContainText('case changed');
+ await expect(page.locator('#question-answer')).toHaveCount(0);
+ await page.locator('#question-close').click();await page.locator('#question-history').click();
+ await expect(page.locator('#question-history-list')).not.toContainText('Explain the changed case');
+});
