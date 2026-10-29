@@ -1,0 +1,3 @@
+const {defineConfig,devices}=require('@playwright/test');
+const path=require('node:path');
+module.exports=defineConfig({testDir:'.',testMatch:'questions_controlled.cjs',timeout:45000,expect:{timeout:12000},workers:1,retries:0,reporter:[['list']],use:{baseURL:'http://127.0.0.1:4001',...devices['Desktop Chrome']},webServer:{command:'uv run --locked python scripts/local_run.py --cwd apps/review_web mix run --no-start --no-halt test/support/question_browser_server.exs',cwd:path.resolve(__dirname,'../../../..'),env:{MIX_ENV:'test'},url:'http://127.0.0.1:4001',reuseExistingServer:false,timeout:120000}});

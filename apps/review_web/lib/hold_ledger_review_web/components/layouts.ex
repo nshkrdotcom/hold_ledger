@@ -2,14 +2,21 @@ defmodule HoldLedgerReviewWeb.Layouts do
   use HoldLedgerReviewWeb, :html
   embed_templates "layouts/*"
   attr :flash, :map, required: true
+  slot :tools
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
     <a href="#workspace" class="skip-link">Skip to workspace</a>
     <header class="site-header">
-      <a href="/" class="brand"><img src="/images/lambda.svg" width="24" height="24" alt="" />
-      HOLD LEDGER <span>/ VERIFICATION</span></a>
+      <a href="/" class="brand" aria-label="Hold Ledger verification"><img
+        src="/images/lambda.svg"
+        width="24"
+        height="24"
+        alt=""
+      />
+      <span class="brand-name">HOLD LEDGER</span> <span class="brand-section">/ VERIFICATION</span></a>
+      {render_slot(@tools)}
     </header>
     <main id="workspace" class="workspace">{render_slot(@inner_block)}</main>
     <.flash_group flash={@flash} />

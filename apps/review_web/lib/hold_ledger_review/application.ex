@@ -13,6 +13,7 @@ defmodule HoldLedgerReview.Application do
     children = [
       HoldLedgerReview.Claims,
       {Task.Supervisor, name: HoldLedgerReview.AITaskSupervisor},
+      HoldLedgerReview.Questions,
       HoldLedgerReview.ReviewStore,
       {HoldLedgerReview.Part3Store,
        dir:

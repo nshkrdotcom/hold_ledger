@@ -90,7 +90,28 @@ Read three results separately: an input excluded by a rule, an alternative outpu
 
 When a selected real comparison has matching evidence and the original packet validator accepts it, **Download local repair packet** (JSON or Markdown) is available beside the result. Without such evidence, the page explains why no packet is available; it does not fabricate evidence, auto-run a comparison or auto-save. Download a saved session from **Review notes** to retain its history. Source drift still prevents stale computations and exports. An observation or exported packet is not policy authorization or formal acceptance.
 
-A local export grants no permission to send source or review content to a model. This interface makes no provider calls.
+A local export grants no permission to send source or review content to a model. Questions are sent only through the separate, explicitly consented question control described below.
+
+## Ask about the case
+
+Use **Ask** in the top bar to explain a rule, output or proof passage. Preparing a question is local. **Context** shows the exact application prompt and source material: the selected case and output basis, governing policy, core Ledger/Spec, runtime and processor documentation, and the active law and Lean declaration. Private review notes are not included. The source packet has a fixed size limit; an oversized or stale packet is refused.
+
+Check **Share this question, source and case with Codex**, then choose **Send to Codex**. Each prepared request requires fresh consent. This feature uses the existing Inference/ASM completion-only adapter with Codex, `gpt-6.1-terra`, medium reasoning. It has no editing or shell tools and does not change earlier suggestion profiles. Authentication and model access must already work in the operator's existing Codex setup; no fallback provider is used.
+
+An answer appears as a single-line preview in the same bar. Open it to read the explanation and source links. The floating panel does not move or disable the case; Escape and the Close button dismiss it. Explanations are generated answers, not formal evidence or recorded human conclusions. An answer to an older case is labeled accordingly. The response metadata, when supplied by the adapter, records what it reports; a requested model setting alone is not evidence that a provider ran it.
+
+**History** recalls local questions without a provider call. Search within this session or all questions, open an earlier answer, copy/export that question, or explicitly ask a follow-up using its historical case. **Ask using current case** starts from the present workspace instead. Reloading clears send consent. Preparing, answering, recalling and exporting never save pending events or alter review notes.
+
+Application prompts, selected context, visible answers, errors and request lifecycle events are written to ignored `tmp/review_studio/questions/<trace-id>/events.jsonl`, with owner-only permissions. Logs can contain source and question text; credentials and private provider reasoning are excluded. A log-write failure prevents dispatch, and a response-save failure is shown explicitly. Cancel, timeout and restart do not trigger automatic resends. **Clear history…** deletes only question logs after confirmation and refuses while a question is running.
+
+The controlled question browser suite starts and stops its own explicit local fixture on port 4001:
+
+```sh
+cd apps/review_web/test/browser
+npm run test:questions
+```
+
+It exercises actual UI, Inference request construction and local persistence with a controlled completion adapter. It makes no provider calls and does not measure live model quality. The ordinary `npm test` suite still requires the normal Phoenix server and real compatible snapshot IDs.
 
 ## Use the same operations from a command
 

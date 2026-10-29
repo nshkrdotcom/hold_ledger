@@ -913,6 +913,11 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   @impl true
+  def handle_info({:question_ready, id}, socket) do
+    send_update(HoldLedgerReviewWeb.QuestionComponent, id: "questions", request_id: id)
+    {:noreply, socket}
+  end
+
   def handle_info({:part3_updated, _}, socket), do: {:noreply, load_package(socket)}
 
   defp current_links(socket),
@@ -1374,6 +1379,23 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
     ~H"""
     <Layouts.app flash={@flash}>
+      <:tools :if={@doc && @reading}>
+        <.live_component
+          module={HoldLedgerReviewWeb.QuestionComponent}
+          id="questions"
+          context={
+            %{
+              doc: @doc,
+              case: @case_data,
+              slug: @slug,
+              basis: @basis,
+              binding_index: @binding_index,
+              selection: @selection,
+              package: @package
+            }
+          }
+        />
+      </:tools>
       <p :if={!@doc} role="status">Opening ledger…</p>
       <div :if={@doc && @reading} id="review-document">
         <p :if={!Trace.current?(@doc)} role="alert" id="stale-session">

@@ -102,7 +102,6 @@ ins {background: #ccebd7; text-decoration: none}
 .case-editing {grid-area: editing; min-width: 0}
 .case-reasoning {grid-area: reasoning; min-width: 0}
 .active-case {min-width: 0; padding: 10px 0 0}
-.active-case > h2 {margin-bottom: .6rem}
 #contrast {margin-top: 12px}
 #contrast > header {display: flex; align-items: center; gap: 8px; margin-bottom: 6px}
 #contrast > header h2 {margin: 0}
@@ -261,12 +260,6 @@ ins {background: #ccebd7; text-decoration: none}
 .source-comparison-attention summary {font-weight: 650; cursor: pointer}
 .source-comparison-attention ul {margin: .4rem 0; padding-left: 1rem}
 .source-comparison-attention code {overflow-wrap: anywhere}
-.predicate-focus {background: #f5f1f9; padding: .55rem .7rem; border: 1px solid #d5c7e2; border-left: 3px solid var(--accent); margin: .5rem 0}
-.predicate-heading {font-size: .72rem; color: var(--muted); font-weight: 650; margin-bottom: .4rem}
-.predicate-pair {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .5rem}
-.predicate-pair > div {min-width: 0; display: flex; flex-direction: column; gap: .16rem}
-.predicate-pair span {font-size: .73rem; color: var(--muted)}
-.predicate-pair strong {font-size: .88rem; font-weight: 700; overflow-wrap: anywhere}
 .logic-operator {background: #eae2f2; color: var(--accent); padding: .15rem .35rem; font-size: .72rem}
 .logic-children {border-left: 2px solid var(--line); padding-left: .55rem}
 .logic-leaf {display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .55rem; padding: .4rem .25rem; border-bottom: 1px solid #eeeaf2}
@@ -342,7 +335,6 @@ ins {background: #ccebd7; text-decoration: none}
   .logic-leaf {padding: .25rem}
   .source-chooser {padding: .65rem}
   .decision-actions button {font-size: .73rem}
-  .predicate-pair {grid-template-columns: minmax(0,1fr)}
   .check-scope {position: static}
 }
 @media (prefers-reduced-motion: reduce) {
@@ -354,13 +346,12 @@ ins {background: #ccebd7; text-decoration: none}
 .output-fields-detail summary {cursor: pointer; color: var(--muted)}
 #coverage-row {display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto; gap: 6px; align-items: baseline}
 #coverage-row dd {font-weight: 700}
-.boundary-input {display: flex; flex-wrap: wrap; gap: 8px; font-size: .75rem}
 @media(max-width:550px) {#coverage-row {grid-template-columns: minmax(0,1fr) auto}}
 
 #dissector > header {display: flex; align-items: center; gap: 8px; margin-bottom: 3px}
 #dissector > header h2 {margin: 0; font-size: .95rem}
-.reading-scope,.bound-values,.boundary-context {font-size: .75rem; color: var(--muted); margin: 3px 0}
-.reading-scope summary,.bound-values summary,.boundary-context summary {cursor: pointer}
+.reading-scope,.bound-values {font-size: .75rem; color: var(--muted); margin: 3px 0}
+.reading-scope summary,.bound-values summary {cursor: pointer}
 .single-binding {position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)}
 .segmented {margin: 6px 0}
 .binding {padding: 2px 0}
@@ -393,3 +384,49 @@ ins {background: #ccebd7; text-decoration: none}
 .clause-table > .condition-group[data-background=true] {order: 2}
 .clause-table > .condition-group[data-background=true][data-attention=true] {order: 0}
 .clause-table > .original-expression-tree {order: 3}
+
+/* The question instrument occupies the existing header row, never a new one. */
+.site-header {min-height: 44px; padding-top: 8px; padding-bottom: 8px; flex-wrap: nowrap}
+.brand {flex: 0 0 auto; white-space: nowrap}
+.brand .brand-name {color: var(--ink)}
+.question-assistant {flex: 0 1 560px; min-width: 0; margin-left: auto}
+.question-bar {display: flex; align-items: center; justify-content: flex-end; gap: 6px; height: 28px; min-width: 0}
+.question-bar button {height: 28px; flex: 0 0 auto; padding: 3px 8px; font-size: 12px; white-space: nowrap}
+#header-question-form {display: flex; gap: 5px; align-items: center; flex: 1; min-width: 0; margin: 0}
+#header-question-form .fieldset {flex: 1; min-width: 0; margin: 0}
+#header-question-form label {margin: 0}
+#header-question-form label > .label {position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)}
+#header-question-form input {height: 28px; padding: 3px 8px; font-size: 12px}
+.question-bar .question-preview {min-width: 0; flex: 1; justify-content: space-between; overflow: hidden; color: var(--accent); background: var(--accent-soft)}
+.question-preview > span:first-child {text-overflow: ellipsis; white-space: nowrap; overflow: hidden}
+.question-mobile-open {display: none}
+.question-panel {position: fixed; z-index: 50; top: 52px; right: 12px; width: min(520px,calc(100vw - 24px)); max-height: calc(100dvh - 64px); overflow: auto; background: #fff; border: 1px solid #bba9cd; border-radius: 9px; box-shadow: 0 10px 36px #30263f26; padding: 16px; color: var(--ink)}
+.question-panel > header {display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px}
+.question-panel > header h2 {margin: 0; font-size: 1rem}
+.question-panel h3 {font-size: .9rem}
+.question-panel button {font-size: .78rem}
+.question-panel textarea {min-height: 80px}
+.question-panel p {font-size: .84rem}
+.answer-body {border-left: 3px solid var(--accent); padding-left: 12px; margin: 10px 0}
+.answer-explanation {white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 8px}
+.answer-sources,.question-actions {display: flex; gap: 6px 10px; flex-wrap: wrap; align-items: center; font-size: .78rem; margin: 10px 0}
+#question-context {border-top: 1px solid var(--line); padding-top: 8px; margin: 12px 0; font-size: .78rem}
+#question-context summary {cursor: pointer}
+#question-context p {font-size: .75rem; overflow-wrap: anywhere}
+#question-context pre {font-size: 11px; max-height: 280px; overflow: auto}
+#question-consent-form {border-top: 1px solid var(--line); padding-top: 10px}
+#question-consent-form input[type=checkbox] {width: auto}
+#question-history-list ul {padding: 0; list-style: none}
+#question-history-list li {padding: 8px 0; border-bottom: 1px solid var(--line)}
+#question-history-list li button {text-align: left; justify-content: flex-start}
+#question-history-list li small {display: block; color: var(--muted); margin: 4px 0}
+#question-history-list li p {margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap}
+.clear-question-history {border-top: 1px solid var(--line); padding-top: 10px}
+@media(max-width:800px) {.brand-section {display: none}}
+@media(max-width:650px) {
+ #header-question-form {display: none}
+ .question-mobile-open {display: inline-flex}
+ .brand .brand-name {display: none}
+ .question-assistant {flex: 1; max-width: calc(100% - 38px)}
+ .question-preview {max-width: 160px}
+}

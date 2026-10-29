@@ -29,3 +29,7 @@ config :phoenix,
 # A test VM must not recover or interrupt development Part 3 workers/reviews.
 config :hold_ledger_review_web,
   part3_store_dir: Path.join(System.tmp_dir!(), "hold-ledger-part3-tests-#{System.pid()}")
+
+config :hold_ledger_review_web,
+  question_store_dir: Path.join(System.tmp_dir!(), "hold-ledger-question-tests-#{System.pid()}"),
+  question_runner: fn _ -> {:error, :test_provider_disabled} end
