@@ -51,15 +51,16 @@ th {font-weight: 650}
 .workspace {max-width: 1480px; margin: auto; padding: 0 clamp(.7rem, 2.3vw, 2.2rem) 3rem}
 /* The active rule is one compact, source-traceable orientation surface. */
 #review-comparison {display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 14px; margin: 10px 0 12px; min-width: 0; border: 1px solid var(--line); border-radius: 7px; background: white; padding: 10px 14px}
-.rule-ribbon {grid-column: 1/-1; display: grid; grid-template-columns: minmax(0,1fr) 230px auto; align-items: center; gap: 12px}
-#law-picker {min-width: 0}
+.rule-ribbon {grid-column: 1/-1; display: grid; grid-template-columns: minmax(0,1fr) clamp(230px,25vw,360px) auto; align-items: center; gap: 12px}
+#law-picker {min-width: 0; margin: 0}
+#law-picker .fieldset,#law-picker label {margin: 0}
 #law-picker label > .label {position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0}
-#law-picker select {font-size: .84rem; padding: .35rem .5rem}
+#law-picker select {font-size: .84rem; height: 34px; padding: .35rem .5rem}
 .rule-identity {min-width: 0; grid-column: 1; grid-row: 1}
 #law-picker {grid-column: 2; grid-row: 1}
 .rule-identity .eyebrow {display: none}
 .rule-identity h1 {font-size: clamp(1.08rem,1.5vw,1.35rem); line-height: 1.24; margin: .08rem 0 .15rem; overflow-wrap: anywhere}
-#choose-sources {white-space: nowrap; align-self: center}
+#choose-sources {grid-column: 3; grid-row: 1; white-space: nowrap; height: 34px; align-self: center}
 #policy-anchor {grid-column: 1/-1; font-size: .85rem; line-height: 1.4; margin: 0}
 #policy-source {margin: 0 .2rem; font-size: .78rem}
 .selected-claim {margin: .2rem 0; font-size: .77rem}
@@ -318,16 +319,23 @@ ins {background: #ccebd7; text-decoration: none}
   .experiment-lane,.reasoning-lane {display:contents}
   .case-results {padding: .8rem; margin-bottom: .2rem}
 }
+@media (max-width: 1000px) {
+  .rule-ribbon {grid-template-columns: minmax(0,1fr) auto; gap: 8px 12px}
+  .rule-identity {grid-column: 1/-1; grid-row: 1}
+  #law-picker {grid-column: 1; grid-row: 2}
+  #choose-sources {grid-column: 2; grid-row: 2}
+}
+@media (max-width: 480px) {
+  .rule-ribbon {grid-template-columns: minmax(0,1fr)}
+  #law-picker {grid-column: 1; grid-row: 2}
+  #choose-sources {grid-column: 1; grid-row: 3; justify-self: end}
+}
 @media (max-width: 600px) {
   .workspace {padding: 0 .7rem 2rem}
   .mode {display: none}
   #policy-anchor {font-size: .9rem}
   .selected-claim dl > div {grid-template-columns: minmax(0,1fr)}
   #review-comparison {grid-template-columns: minmax(0,1fr)}
-  .rule-ribbon {grid-template-columns: minmax(0,1fr) auto; align-items: end}
-  #law-picker {grid-column: 1/-1; grid-row: 2}
-  .rule-identity {grid-column: 1; grid-row: 1}
-  #choose-sources {grid-column: 2}
   .rule-identity h1 {font-size: 1.18rem}
   .output-pair,.diff-lines,.diff-expression {grid-template-columns: 1fr}
   .selected-input {padding: .55rem}
