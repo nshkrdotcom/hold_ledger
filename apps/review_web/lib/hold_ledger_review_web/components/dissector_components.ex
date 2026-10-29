@@ -2,6 +2,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
   @moduledoc false
   use HoldLedgerReviewWeb, :html
   alias HoldLedgerReview.ConditionOutline
+  alias HoldLedgerReviewWeb.ReviewCopy
 
   attr :case, :map, default: nil
   attr :reading, :map, required: true
@@ -89,7 +90,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         </p>
       </details>
       <div :if={@case}>
-        <p id="binding-count" class={length(@bindings) == 1 && "single-binding"}>
+        <p :if={@bindings != []} id="binding-count" class={length(@bindings) == 1 && "single-binding"}>
           {if length(@bindings) == 1,
             do: "Values used for this check",
             else: "#{length(@bindings)} combinations checked"}
@@ -115,7 +116,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             }
           />
         </.form>
-        <div class="segmented" aria-label="Output being inspected">
+        <div :if={@bindings != []} class="segmented" aria-label="Output being inspected">
           <button
             phx-click="basis"
             phx-value-basis="actual"
@@ -175,9 +176,15 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
           </div>
         </article>
         <p :if={@case["explanation"]["bindings"] == []} id="unavailable-binding">
-          {@case["explanation"]["reason"]}
+          <span
+            :if={@case["explanation"]["reason"] == ":outside_initial_probe_scope"}
+            class="probe-scope-label"
+          >{if @reading["slug"] == "l2_identity",
+            do: "Helper law · not a step check",
+            else: "Not a step check"}</span>
+          {ReviewCopy.probe_reason(@case["explanation"]["reason"], @reading["slug"])}
         </p>
-        <p class="scope-note">{@case["explanation"]["reason"]}</p>
+        <p :if={@bindings != []} class="scope-note">{@case["explanation"]["reason"]}</p>
       </div>
       <div :if={@helper} class="helper-definition" id="helper-definition">
         <div class="section-heading">

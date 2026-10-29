@@ -1607,7 +1607,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
             </div>
           </div>
         </div>
-        <nav class="evidence-links" id="inspector-tools">
+        <nav class="evidence-links" id="inspector-tools" aria-label="Evidence tools">
           <button
             :for={
               {view, label} <- [

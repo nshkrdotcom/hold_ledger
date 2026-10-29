@@ -221,7 +221,10 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
               <th scope="row">Does the rule apply?</th>
               <td colspan="2">{ReviewCopy.applicability(@case)}</td>
             </tr>
-            <tr id="selected-law-row">
+            <tr
+              id="selected-law-row"
+              class={ReviewCopy.output_check_unavailable?(@case) && "check-unavailable"}
+            >
               <th scope="row">Does the output satisfy the rule?</th>
               <td>{ReviewCopy.code_acceptance(@case)}</td>
               <td>{ReviewCopy.candidate_acceptance(@case)}</td>
@@ -254,7 +257,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         </table>
       </div>
       <p :if={@case && ReviewCopy.candidate_acceptance(@case) == "Unavailable"} class="scope-note">
-        Alternative check unavailable: {@case["law_reason"]}.
+        {ReviewCopy.probe_reason(@case["law_reason"], @slug)}
       </p>
       <p :if={!@case} id="checks-unavailable" role="status">
         Checks unavailable for the current input or alternative. Correct the editing error, or select an executable case.

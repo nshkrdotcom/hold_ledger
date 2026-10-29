@@ -134,6 +134,21 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
   def candidate_acceptance(%{"law_status" => "not_probed"}), do: "Not checked"
   def candidate_acceptance(_), do: "Unavailable"
 
+  def output_check_unavailable?(case_data) do
+    code_acceptance(case_data) == "Unavailable" and
+      candidate_acceptance(case_data) in ["Unavailable", "Not checked"]
+  end
+
+  def probe_reason(":outside_initial_probe_scope", "l2_identity"),
+    do:
+      "This law checks that set_status/3 preserves existing request IDs and amounts. " <>
+        "It is not evaluated as a Ledger.step/2 event."
+
+  def probe_reason(":outside_initial_probe_scope", _),
+    do: "This law is outside the event checks supported by the step probe. Read its source below."
+
+  def probe_reason(reason, _), do: reason
+
   def accounting(true), do: "Accounting balances"
   def accounting(false), do: "Accounting does not balance"
   def accounting(_), do: "Unavailable"

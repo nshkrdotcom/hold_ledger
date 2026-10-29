@@ -44,7 +44,7 @@ th {font-weight: 650}
 .no {color: #8a4435}
 .eyebrow {display: block; font-size: .68rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted)}
 .type-badge {font-size: .7rem; background: #f1edf6; padding: .2rem .5rem; border: 1px solid var(--line)}
-.site-header {display: flex; align-items: center; justify-content: space-between; gap: .8rem; background: white; padding: .6rem 2vw; border-bottom: 1px solid var(--line)}
+.site-header {display: flex; align-items: center; justify-content: space-between; gap: .8rem; background: white; padding: .6rem max(1rem, 2vw); border-bottom: 1px solid var(--line)}
 .brand {display: flex; gap: .65rem; align-items: center; text-decoration: none; color: var(--ink); font-weight: 700; font-size: .75rem}
 .brand span,.mode {color: var(--muted)}
 .mode {font-size: .72rem}
@@ -176,6 +176,9 @@ ins {background: #ccebd7; text-decoration: none}
 #verdict #contrast-matrix {margin: 5px 0}
 #contrast-matrix th,#contrast-matrix td {padding: 5px 6px}
 #selected-law-row {background: #f1ecf7; font-weight: 650}
+#selected-law-row.check-unavailable {background: transparent; color: var(--muted); font-weight: 400}
+.probe-scope-label {display: block; width: fit-content; margin-bottom: .4rem; padding: .15rem .45rem; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font-size: .75rem}
+#unavailable-binding {color: var(--muted); font-size: .8rem}
 #verdict h2 {font-size: .96rem; margin: 0 0 6px}
 #contrast-matrix th:first-child {width: 33%}
 #contrast-matrix th {font-size: .77rem}
@@ -297,8 +300,8 @@ ins {background: #ccebd7; text-decoration: none}
 #lemma-links,#generated-artifacts {display: flex; gap: .5rem; flex-wrap: wrap; overflow-wrap: anywhere; font-size: .73rem}
 .inline-source {border-top: 1px solid var(--line); padding-top: .8rem; margin-top: 1rem}
 .inline-source header {display: flex; flex-wrap: wrap; justify-content: space-between}
-.evidence-links {margin: 1.3rem 0; padding-top: .75rem; border-top: 1px solid var(--line)}
-.evidence-links button {background: transparent; border: none; color: var(--accent)}
+.evidence-links {margin: 1rem 0; padding: .65rem; border: 1px solid var(--line); border-radius: 6px; background: white}
+.evidence-links button {color: var(--accent)}
 .secondary-panel {background: white; padding: 1rem; margin: 1rem 0; border: 1px solid var(--line)}
 .evidence-status {display: grid; grid-template-columns: 1fr 1.2fr; gap: .5rem; font-size: .8rem}
 .evidence-status dd {margin: 0}

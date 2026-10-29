@@ -23,6 +23,17 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
 
   defp tab(_view, _name), do: :ok
 
+  test "helper law explains step-probe scope without exposing engine atoms", %{conn: conn} do
+    {view, _} = open(conn, "l2_identity")
+    assert has_element?(view, "#unavailable-binding", "set_status/3")
+    assert has_element?(view, "#unavailable-binding", "request IDs and amounts")
+    assert has_element?(view, "#selected-law-row.check-unavailable", "Unavailable")
+    refute has_element?(view, "#dissector", ":outside_initial_probe_scope")
+    refute has_element?(view, "#verdict", ":outside_initial_probe_scope")
+    assert has_element?(view, "#proof-source-workspace")
+    assert has_element?(view, "#inspector-tools[aria-label='Evidence tools']")
+  end
+
   test "landing has a visible comparison, scoped decisions and just one timeline", %{conn: conn} do
     {view, _} = open(conn, "po_a2")
 
