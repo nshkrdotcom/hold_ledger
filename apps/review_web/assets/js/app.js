@@ -20,6 +20,22 @@ const InlineTools = {
   },
 }
 
+const InlineAlternative = {
+  mounted() {
+    this.keydown = event => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      this.pushEvent("close_tools", {}, () => {
+        document.getElementById("edit-candidate")?.focus({preventScroll: true})
+      })
+    }
+    this.el.addEventListener("keydown", this.keydown)
+  },
+  destroyed() {
+    this.el.removeEventListener("keydown", this.keydown)
+  },
+}
+
 window.addEventListener("phx:focus_evidence", ({detail}) => {
   requestAnimationFrame(() => {
     const panel = document.getElementById(detail.id)
@@ -109,7 +125,7 @@ const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {InlineTools, QuestionPanel},
+  hooks: {InlineTools, InlineAlternative, QuestionPanel},
 })
 topbar.config({barColors: {0: "#635080"}, shadowColor: "rgba(37,35,48,.2)"})
 window.addEventListener("phx:page-loading-start", () => topbar.show(300))

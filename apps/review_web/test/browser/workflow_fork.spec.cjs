@@ -43,6 +43,7 @@ test('two real follow-on results stay visible in a fork and persist only on save
   await expect(page.locator('#scratch-status')).toBeVisible();
   expect((await saved(page)).steps).toEqual(initial.steps);
   await page.locator('#append-preview').click();
+  await expect(page.locator('#scratch-status')).toHaveCount(0);
   const after = await saved(page);
   expect(after.steps.length).toBe(initial.steps.length + 3);
   await expect(page.locator('#code-branch')).toContainText('Not enough available money');

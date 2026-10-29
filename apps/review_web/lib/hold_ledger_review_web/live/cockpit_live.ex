@@ -765,7 +765,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     else
       _ ->
         {:noreply,
-         error(socket, "A saved or unsaved alternative branch is required. Reset or save any amount preview before running both paths.")}
+         error(
+           socket,
+           "A saved or unsaved alternative branch is required. Reset or save any amount preview before running both paths."
+         )}
     end
   end
 
@@ -1457,8 +1460,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           }
         />
       </:tools>
-      <section :if={!@doc} id="workspace-loading" class="workspace-loading" role="status"
-        aria-label="Opening review workspace">
+      <section
+        :if={!@doc}
+        id="workspace-loading"
+        class="workspace-loading"
+        role="status"
+        aria-label="Opening review workspace"
+      >
         <p>Opening ledger…</p>
         <div class="loading-layout" aria-hidden="true">
           <div class="loading-panel"><span></span><span></span><span></span></div>
@@ -1570,7 +1578,11 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
             </div>
           </div>
           <div class="reasoning-lane">
-            <section class="case-results" id="case-findings" aria-label="Active case evidence and review">
+            <section
+              class="case-results"
+              id="case-findings"
+              aria-label="Active case evidence and review"
+            >
               <.verdict case={@case_data} slug={@slug} />
               <.pair_results
                 case={@case_data}
@@ -1579,41 +1591,41 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 package={@package}
                 preview={nil}
               />
-            <div class="case-reasoning">
-              <section id="clauses-panel">
-                <.dissector
-                  source_requested={@condition_source_requested}
-                  reading={@reading}
-                  case={@case_data}
-                  basis={@basis}
-                  helper={@helper}
-                  binding_index={@binding_index}
-                  links={@reading_links.links}
-                  unavailable={@reading_links.unavailable}
-                  active_links={@active_links}
-                  selection={@selection}
-                  generation={@reading["source_generation"]}
-                  stage={@stage}
-                  changed_sources={
-                    if(@package, do: Enum.map(@package["source_changes"], & &1["path"]), else: [])
-                  }
-                />
-              </section>
-              <section id="proof-panel">
-                <.proof_source
-                  reading={@reading}
-                  stage={@stage}
-                  full={@proof_full}
-                  active_links={@active_links}
-                  links={@reading_links.links}
-                />
-                <section :if={@inspected} id="inline-source" class="inline-source">
-                  <header>
-                    <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
-                  </header><pre>{@inspected.bytes}</pre>
+              <div class="case-reasoning">
+                <section id="clauses-panel">
+                  <.dissector
+                    source_requested={@condition_source_requested}
+                    reading={@reading}
+                    case={@case_data}
+                    basis={@basis}
+                    helper={@helper}
+                    binding_index={@binding_index}
+                    links={@reading_links.links}
+                    unavailable={@reading_links.unavailable}
+                    active_links={@active_links}
+                    selection={@selection}
+                    generation={@reading["source_generation"]}
+                    stage={@stage}
+                    changed_sources={
+                      if(@package, do: Enum.map(@package["source_changes"], & &1["path"]), else: [])
+                    }
+                  />
                 </section>
-              </section>
-            </div>
+                <section id="proof-panel">
+                  <.proof_source
+                    reading={@reading}
+                    stage={@stage}
+                    full={@proof_full}
+                    active_links={@active_links}
+                    links={@reading_links.links}
+                  />
+                  <section :if={@inspected} id="inline-source" class="inline-source">
+                    <header>
+                      <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
+                    </header><pre>{@inspected.bytes}</pre>
+                  </section>
+                </section>
+              </div>
               <section id="nearby-observation" aria-label="Observation and local repair">
                 <div class="section-heading">
                   <h3>Flag this case</h3>
@@ -1626,14 +1638,14 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   </button>
                 </div>
                 <p id="observation-target" class="review-target">
-                    <%= if @case_data do %>
-                      Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
-                        do: "unsaved experiment",
-                        else: "saved step"
-                      )}
-                    <% else %>
-                      Rule {@slug} · no currently checkable alternative
-                    <% end %>
+                  <%= if @case_data do %>
+                    Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
+                      do: "unsaved experiment",
+                      else: "saved step"
+                    )}
+                  <% else %>
+                    Rule {@slug} · no currently checkable alternative
+                  <% end %>
                 </p>
                 <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">
                   <.input field={@note_form[:text]} type="textarea" label="Your observation" />

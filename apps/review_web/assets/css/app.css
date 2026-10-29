@@ -50,7 +50,7 @@ th {font-weight: 650}
 .mode {font-size: .72rem}
 .workspace {max-width: 1480px; margin: auto; padding: 0 clamp(.7rem, 2.3vw, 2.2rem) 3rem}
 /* The active rule is one compact, source-traceable orientation surface. */
-#review-comparison {display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 14px; margin: 10px 0 12px; min-width: 0; border: 1px solid var(--line); border-radius: 7px; background: white; padding: 10px 14px}
+#review-comparison {display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1px 14px; margin: 10px 0 12px; min-width: 0; border: 1px solid var(--line); border-radius: 7px; background: white; padding: 4px 14px}
 .rule-ribbon {grid-column: 1/-1; display: grid; grid-template-columns: minmax(0,1fr) clamp(230px,25vw,360px) auto; align-items: center; gap: 12px}
 #law-picker {min-width: 0; margin: 0}
 #law-picker .fieldset,#law-picker label {margin: 0}
@@ -558,7 +558,7 @@ ins {background: #ccebd7; text-decoration: none}
 #proof-panel {margin-top:1rem}
 #clauses-panel,#proof-panel,.logic-node,.secondary-panel {scroll-margin-top:260px}
 #nearby-observation {scroll-margin-top:260px}
-.review-help {grid-column:1/-1; padding:.3rem .65rem; border-radius:5px; background:#f5f2f8; color:#514960; font-size:.78rem; margin:.2rem 0}
+.review-help {grid-column:1/-1; padding:.15rem .65rem; border-radius:5px; background:#f5f2f8; color:#514960; font-size:.78rem; margin:0}
 .review-help summary {cursor:pointer; font-weight:650; color:var(--accent)}
 .review-help p {margin:.6rem 0; max-width:95ch}
 #proof-script {font-size:.8rem}

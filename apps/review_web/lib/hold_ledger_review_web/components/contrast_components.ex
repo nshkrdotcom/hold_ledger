@@ -204,8 +204,13 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           {@slug} · {HoldLedgerReviewWeb.DissectorComponents.term(@case["event"])}
         </span>
       </div>
-      <div :if={@signal} id="verdict-signal" class={["verdict-signal", "verdict-" <> @signal.state]}
-        role="status" data-state={@signal.state}>
+      <div
+        :if={@signal}
+        id="verdict-signal"
+        class={["verdict-signal", "verdict-" <> @signal.state]}
+        role="status"
+        data-state={@signal.state}
+      >
         <strong>{@signal.title}</strong>
         <span>{@signal.detail}</span>
       </div>
@@ -318,16 +323,41 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           More edits
         </button>
       </div>
-      <div :if={@editable} class="quick-alternative" id="quick-alternative">
-        <.form for={to_form(%{"result" => @output["result"]})} id="alternative-result"
-          phx-change="alternative_result">
-          <.input id="alternative-result-select" name="result" value={@output["result"]} type="select" label="Result"
-            options={HoldLedgerReview.TermCodec.results()} />
+      <div
+        :if={@editable}
+        class="quick-alternative"
+        id="quick-alternative"
+        phx-hook="InlineAlternative"
+      >
+        <.form
+          for={to_form(%{"result" => @output["result"]})}
+          id="alternative-result"
+          phx-change="alternative_result"
+        >
+          <.input
+            id="alternative-result-select"
+            name="result"
+            value={@output["result"]}
+            type="select"
+            label="Result"
+            options={HoldLedgerReview.TermCodec.results()}
+          />
         </.form>
-        <.form for={to_form(%{"amount" => @output["after"]["used_amount"]})}
-          id="alternative-counter" phx-change="alternative_total">
-          <.input id="alternative-reserved-input" name="amount" value={@output["after"]["used_amount"]}
-            type="number" min="0" max="1000000" phx-debounce="300" label="Reserved (¢)" />
+        <.form
+          for={to_form(%{"amount" => @output["after"]["used_amount"]})}
+          id="alternative-counter"
+          phx-change="alternative_total"
+        >
+          <.input
+            id="alternative-reserved-input"
+            name="amount"
+            value={@output["after"]["used_amount"]}
+            type="number"
+            min="0"
+            max="1000000"
+            phx-debounce="300"
+            label="Reserved (¢)"
+          />
         </.form>
       </div>
       <div class="output-headline">
@@ -452,7 +482,11 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
 
     case case_data["law_status"] do
       "allows_here" when same? ->
-        %{state: "same", title: "Rule accepts this output", detail: "Alternative matches the code result."}
+        %{
+          state: "same",
+          title: "Rule accepts this output",
+          detail: "Alternative matches the code result."
+        }
 
       "allows_here" ->
         %{
@@ -462,16 +496,32 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         }
 
       "catches" ->
-        %{state: "rejects", title: "Rule rejects the alternative", detail: "The selected check detects this change."}
+        %{
+          state: "rejects",
+          title: "Rule rejects the alternative",
+          detail: "The selected check detects this change."
+        }
 
       "doesnt_apply" ->
-        %{state: "unavailable", title: "Rule does not apply", detail: "No acceptance result for this input."}
+        %{
+          state: "unavailable",
+          title: "Rule does not apply",
+          detail: "No acceptance result for this input."
+        }
 
       "not_probed" ->
-        %{state: "unavailable", title: "Not checked for this event", detail: "Read the source for its scope."}
+        %{
+          state: "unavailable",
+          title: "Not checked for this event",
+          detail: "Read the source for its scope."
+        }
 
       _ ->
-        %{state: "unavailable", title: "Check unavailable", detail: "No result should be inferred."}
+        %{
+          state: "unavailable",
+          title: "Check unavailable",
+          detail: "No result should be inferred."
+        }
     end
   end
 

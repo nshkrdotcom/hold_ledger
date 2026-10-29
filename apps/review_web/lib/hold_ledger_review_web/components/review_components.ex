@@ -276,14 +276,18 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <p :if={@package && @selected} class="scope-note" id="stored-decision-target">
         Stored comparison finding · <code>{@selected["id"]}</code>
       </p>
-      <p :if={!@package} id="local-decision-target" class="review-target">Active case · session note</p>
+      <p :if={!@package} id="local-decision-target" class="review-target">
+        Active case · session note
+      </p>
       <div :if={!@package || @selected} class="decision-actions">
         <button
-          :for={{action, label} <- [
-            {"design", "Flag concern"},
-            {"policy", "Open question"},
-            {"considered", "Mark reviewed"}
-          ]}
+          :for={
+            {action, label} <- [
+              {"design", "Flag concern"},
+              {"policy", "Open question"},
+              {"considered", "Mark reviewed"}
+            ]
+          }
           id={if action == "design", do: "request-repair"}
           phx-click="review_decision"
           phx-value-action={action}

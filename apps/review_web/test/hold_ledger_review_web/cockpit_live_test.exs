@@ -285,7 +285,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     render_click(view, "hunt", %{})
     render_click(view, "cancel_hunt", %{})
     render_async(view, 5_000)
-    assert has_element?(view, "#hunt-status", "cancelled")
+    assert has_element?(view, "#hunt-status", "Search stopped")
   end
 
   test "non-request input keeps disabled amount controls in place", %{conn: conn} do

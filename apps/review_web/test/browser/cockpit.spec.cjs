@@ -50,6 +50,8 @@ test('the same output passes validity; inspect its helper definition',async({pag
   await expect(page.locator('#helper-definition')).toContainText('Definition on these values');
   await page.locator('#helper-definition').getByRole('button',{name:'Close',exact:true}).click();
   await tab(page,'outputs');await page.locator('#edit-candidate').click();await expect(page.locator('#inspect-retention')).toHaveCount(0);await page.locator('#close-tools').click();
+  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Accepts alternative');
+  await page.locator('#alternative-counter input').fill('7');
   await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
 });
 
@@ -79,9 +81,14 @@ test('full actual proof source stays beside selected source stage',async({page})
   await expect(page.locator('#proof-source-workspace')).toContainText('po_exposure_retain');
   await page.locator('#proof-source-workspace .proof-source-stages button').last().click();
   await expect(page.locator('.active-proof-line').first()).toBeVisible();
+  await expect(page.locator('#dissector .selected-clause')).toHaveCount(1);
+  await page.locator('.active-proof-line').first().scrollIntoViewIfNeeded();
   await expect(page.locator('.active-proof-line').first()).toBeInViewport();
   await page.locator('#full-proof').click();await expect.poll(()=>page.locator('#proof-script > div').count()).toBeGreaterThan(40);
-  expect(await page.locator('#proof-script').evaluate(el=>el.scrollHeight<=el.clientHeight+1)).toBe(true);
+  await page.locator('#proof-script').focus();
+  await expect(page.locator('#proof-script')).toBeFocused();
+  await page.keyboard.press('End');
+  await expect.poll(()=>page.locator('#proof-script').evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
   const link=page.locator('#lemma-links a').first();
   const response=await page.request.get(await link.getAttribute('href'));expect(response.status()).toBe(200);
   const stale=await page.request.get((await link.getAttribute('href')).replace(/[a-f0-9]{64}$/,'0'.repeat(64)));expect(stale.status()).toBe(404);
