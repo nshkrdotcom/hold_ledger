@@ -36,6 +36,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
        advanced: false,
        secondary: nil,
        proof_full: false,
+       condition_source_requested: false,
        experiment: nil,
        binding_index: 0,
        selected_evidence: nil,
@@ -101,6 +102,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
             reading: reading,
             stage: 0,
             proof_full: false,
+            condition_source_requested: false,
             helper: nil,
             binding_index: 0,
             selection: nil
@@ -170,7 +172,15 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   def handle_event("inspect", %{"view" => view}, socket)
       when view in ~w(proof clauses premises record artifacts) do
     if view in ~w(proof clauses) do
-      {:noreply, push_event(socket, "focus_evidence", %{id: view <> "-panel"})}
+      socket =
+        if view == "proof",
+          do: assign(socket, proof_full: true),
+          else: assign(socket, condition_source_requested: true)
+
+      open_ids = if view == "clauses", do: ["condition-source"], else: []
+
+      {:noreply,
+       push_event(socket, "focus_evidence", %{id: view <> "-panel", open_ids: open_ids})}
     else
       {:noreply,
        socket
@@ -418,7 +428,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
               )
           }
 
-        socket = assign(socket, stage: i, selection: selection)
+        socket = assign(socket, stage: i, selection: selection, proof_full: false)
 
         if target do
           {:noreply, push_event(socket, "focus_evidence", %{id: clause_id(target, socket)})}
@@ -1574,6 +1584,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
             <div class="case-reasoning">
               <section id="clauses-panel">
                 <.dissector
+                  source_requested={@condition_source_requested}
                   reading={@reading}
                   case={@case_data}
                   basis={@basis}

@@ -4,6 +4,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
   alias HoldLedgerReview.ConditionOutline
   alias HoldLedgerReviewWeb.ReviewCopy
 
+  attr :source_requested, :boolean, default: false
   attr :case, :map, default: nil
   attr :reading, :map, required: true
   attr :basis, :string, default: "candidate"
@@ -48,6 +49,37 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
       <header>
         <span class="section-number">02</span><h2>Conditions and proof</h2>
       </header>
+      <details
+        :if={@source_requested || @bindings == []}
+        id="condition-source"
+        class="condition-source"
+        open={@bindings == []}
+      >
+        <summary>Assumptions and promise</summary>
+        <dl :if={@reading["contract"]["status"] == "source_read"}>
+          <div>
+            <dt>Assumptions · requires</dt>
+            <dd><code id="conditions-requires">{@reading["contract"]["requires"]}</code></dd>
+          </div>
+          <div>
+            <dt>Promise · expects</dt>
+            <dd><code id="conditions-expects">{@reading["contract"]["expects"]}</code></dd>
+          </div>
+        </dl>
+        <div :if={@reading["contract"]["status"] == "native_statement_only"}>
+          <p>Stated directly in Lean:</p>
+          <article :for={declaration <- @reading["declarations"]}>
+            <pre :if={declaration["header"] != ""}>{declaration["header"]}</pre>
+            <p :if={declaration["header"] == ""}>Statement source is missing or ambiguous.</p>
+          </article>
+        </div>
+        <p :if={@reading["contract"]["status"] not in ~w(source_read native_statement_only)}>
+          Conditions could not be read. Use the full law source below.
+        </p>
+        <p :if={@bindings == []} id="condition-source-status" class="scope-note">
+          Evaluation unavailable for this input.
+        </p>
+      </details>
       <p :if={@reading["kind"] == "native_lean"}>
         Native Lean statement. No executable Elixir counterpart.
       </p>

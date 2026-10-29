@@ -441,3 +441,14 @@ ins {background: #ccebd7; text-decoration: none}
  .question-assistant {flex: 1; max-width: calc(100% - 38px)}
  .question-preview {max-width: 160px}
 }
+
+/* Evidence navigation opens source and visibly identifies its destination. */
+#clauses-panel:focus,#proof-panel:focus {outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 4px}
+.condition-source {margin: .6rem 0; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 5px; background: white}
+.condition-source summary {cursor: pointer; font-size: .8rem; font-weight: 600}
+.condition-source dl {display: grid; gap: .7rem; margin: .6rem 0}
+.condition-source dt {font-size: .77rem; font-weight: 650; margin-bottom: .3rem}
+.condition-source dd {margin: 0; min-width: 0}
+.condition-source code {white-space: pre-wrap}
+.additional-proof {margin-top: 1rem; border-top: 1px solid var(--line); padding-top: .8rem}
+.additional-proof h3 {overflow-wrap: anywhere}

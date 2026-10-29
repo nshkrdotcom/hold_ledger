@@ -397,7 +397,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     <section id="proof-source-workspace">
       <header class="section-heading">
         <h2>Lean source reading</h2><button phx-click="full_proof" id="full-proof">{if @full,
-          do: "Show selected step",
+          do: if(@reading["proof_steps"] == [], do: "Show excerpt", else: "Show selected step"),
           else: "Read full proof"}</button>
       </header>
       <p class="scope-note">
@@ -416,7 +416,15 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           disabled={is_nil(step["line"])}
         >{index + 1}. {step["title"]}</button>
       </nav>
-      <div class="numbered-proof" id="proof-script">
+      <p :if={@declaration["text"] == ""} id="proof-source-unavailable">
+        This declaration's source is missing or ambiguous.
+      </p>
+      <div
+        class="numbered-proof"
+        id="proof-script"
+        data-source-view={if @full, do: "full", else: "excerpt"}
+        data-declaration={@declaration["name"]}
+      >
         <div
           :for={{line, n} <- @lines}
           class={if @selected && n == @selected["line"], do: "active-proof-line", else: ""}
@@ -424,6 +432,25 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           <span>{n}</span><code>{line}</code>
         </div>
       </div>
+      <article
+        :for={{declaration, index} <- Enum.with_index(Enum.drop(@reading["declarations"], 1), 1)}
+        :if={@full}
+        id={"proof-declaration-#{index}"}
+        class="additional-proof"
+        data-declaration={declaration["name"]}
+      >
+        <h3>{declaration["name"]}</h3>
+        <p class="scope-note">{declaration["path"]}:{declaration["line"]}</p>
+        <p :if={declaration["text"] == ""}>This declaration's source is missing or ambiguous.</p>
+        <div class="numbered-proof">
+          <div :for={
+            {line, n} <-
+              Enum.with_index(String.split(declaration["text"], "\n"), declaration["line"] || 1)
+          }>
+            <span>{n}</span><code>{line}</code>
+          </div>
+        </div>
+      </article>
       <p :if={@selected} class="proof-reading">{@selected["reason"]}</p>
       <ul :if={@active_links != []} id="selected-reading-links" class="reading-links">
         <li :for={link <- @active_links}>

@@ -24,6 +24,10 @@ window.addEventListener("phx:focus_evidence", ({detail}) => {
   requestAnimationFrame(() => {
     const panel = document.getElementById(detail.id)
     if (!panel) return
+    for (const id of detail.open_ids || []) {
+      const disclosure = document.getElementById(id)
+      if (disclosure?.tagName === "DETAILS") disclosure.open = true
+    }
     for (let ancestor = panel.parentElement; ancestor; ancestor = ancestor.parentElement) {
       if (ancestor.tagName === "DETAILS") ancestor.open = true
     }
