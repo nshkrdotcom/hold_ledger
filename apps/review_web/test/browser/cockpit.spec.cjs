@@ -49,7 +49,7 @@ test('the same output passes validity; inspect its helper definition',async({pag
   await page.locator('#dissector').getByRole('button',{name:'Definition',exact:true}).first().click();
   await expect(page.locator('#helper-definition')).toContainText('Definition on these values');
   await page.locator('#helper-definition').getByRole('button',{name:'Close',exact:true}).click();
-  await tab(page,'outputs');await page.locator('#edit-candidate').click();await page.locator('#inspect-retention').click();await page.locator('#close-tools').click();
+  await tab(page,'outputs');await page.locator('#edit-candidate').click();await expect(page.locator('#inspect-retention')).toHaveCount(0);await page.locator('#close-tools').click();
   await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
 });
 

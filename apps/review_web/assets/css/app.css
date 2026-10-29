@@ -456,3 +456,132 @@ ins {background: #ccebd7; text-decoration: none}
 #proof-script[data-source-view="full"],
 .additional-proof .numbered-proof {max-height: 380px; overflow-y: auto}
 .numbered-proof:focus-visible {outline: 2px solid var(--accent); outline-offset: 2px}
+
+/* A quiet layout skeleton avoids a jarring blank first paint. */
+.workspace-loading {padding:1rem 0;color:var(--muted)}
+.workspace-loading > p {font-weight:650;font-size:.95rem}
+.loading-layout {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.loading-panel {display:grid;gap:.9rem;padding:1.2rem;border:1px solid var(--line);border-radius:7px;background:#fff}
+.loading-panel span {display:block;height:1.25rem;background:#eeebf2;border-radius:3px}
+.loading-panel span:first-child {width:62%;height:1.75rem}
+.loading-panel span:last-child {width:83%;height:5rem}
+@media(max-width:600px) {.loading-layout {grid-template-columns:minmax(0,1fr)}}
+
+/* Workflow review: show the same event's actual and alternative continuations. */
+/* The legacy #timeline rule is horizontal flex; override by ID for fork mode. */
+#timeline.fork-timeline {display:grid; overflow-x:visible; padding:0}
+#timeline.fork-timeline button {flex:initial; white-space:normal}
+.timeline-heading {display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin:0 0 .45rem}
+.timeline-heading h2 {font-size:.88rem; margin:0; letter-spacing:.01em}
+#trace-revision {font-size:.75rem; color:var(--muted); font-weight:600}
+#trace-rail {padding:.65rem .3rem .8rem; border-bottom:1px solid var(--line)}
+.timeline-hint {margin:.55rem 0 0; color:var(--muted); font-size:.76rem}
+.fork-timeline {display:grid; gap:.6rem; min-width:0}
+.shared-history {display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; min-width:0}
+.shared-history > button {font-size:.76rem; padding:.35rem .65rem}
+.timeline-caption {color:var(--muted); text-transform:uppercase; font-size:.67rem; letter-spacing:.07em; font-weight:700}
+.fork-label {font-size:.76rem; color:var(--muted); margin:0; padding:.35rem .6rem; border-left:3px solid #9a8ab0; background:#f1edf7}
+.timeline-branches {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; position:relative; min-width:0; margin-top:.7rem}
+.timeline-branches::before {content:"";position:absolute;left:25%;right:25%;top:-.6rem;border-top:2px solid #a79cb3}
+.timeline-branches::after {content:"";position:absolute;left:50%;top:-1.1rem;height:.5rem;border-left:2px solid #a79cb3}
+.timeline-branch {position:relative}
+.timeline-branch::before {content:"";position:absolute;left:50%;top:-.6rem;height:.6rem;border-left:2px solid #a79cb3}
+.timeline-branch {min-width:0; border:1px solid #cbd8d1; border-top:3px solid #477f65; border-radius:8px; background:#f2f8f4; padding:.6rem}
+.timeline-branch.alternative-branch {border-color:#cbb5dc; border-top-color:#74559b; background:#f6f1fa}
+.timeline-branch h3 {display:flex; align-items:center; gap:.4rem; font-size:.86rem; margin:0 0 .6rem; color:#234d39}
+.timeline-branch.alternative-branch h3 {color:#533673}
+.branch-marker {display:inline-grid; place-items:center; border-radius:50%; width:1.35rem; height:1.35rem; background:#2c6c4f; color:#fff; font-size:.7rem}
+.alternative-branch .branch-marker {background:#644585}
+.branch-steps {display:flex; flex-direction:column; align-items:stretch; gap:.5rem; min-width:0}
+.timeline-step {display:grid; align-items:start; justify-content:stretch; text-align:left; gap:.22rem; padding:.6rem; width:100%; min-width:0; background:#fff; border:1px solid #d7d3de; border-radius:6px; box-shadow:0 1px 2px #302b390d; transition:border-color .15s,box-shadow .15s,transform .15s}
+.timeline-step:hover {border-color:#7e669d; box-shadow:0 2px 10px #47315a1a; transform:translateY(-1px)}
+#timeline .timeline-step[aria-current=step] {outline:2px solid var(--accent); outline-offset:0; color:var(--ink); background:#fff}
+#timeline .timeline-step[aria-current=step] .timeline-step-event {color:#4b4354}
+.timeline-step-event {font-size:.72rem; color:var(--muted); overflow-wrap:anywhere}
+.timeline-step-result {font-size:.81rem; line-height:1.3; overflow-wrap:anywhere}
+.timeline-step-amount {font-size:.75rem; color:#4f4a56; font-variant-numeric:tabular-nums}
+.timeline-step meter {width:100%; height:7px; margin:.1rem 0 0; accent-color:#477f65}
+.alternative-branch .timeline-step meter {accent-color:#74559b}
+.other-trace-steps {border-top:1px dashed #c8bbd4;padding:.55rem 0 .1rem}
+.other-trace-steps summary {cursor:pointer;color:var(--muted);font-size:.77rem;font-weight:650}
+.other-step-list {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem;margin-top:.6rem}
+.timeline-preview {border:1px dashed #8b739f; background:#f3eef8; color:#55386e; border-radius:5px; font-size:.77rem; padding:.65rem; display:grid; gap:.3rem}
+.linear-timeline {display:flex; gap:.35rem; overflow-x:auto; padding:.3rem 0}
+.linear-timeline button {flex:0 0 auto}
+.linear-timeline [aria-current=step],.shared-history [aria-current=step] {background:var(--accent); color:white}
+
+/* Output editing happens in the alternative itself; the detailed state editor is optional. */
+.output-heading {display:flex; justify-content:space-between; align-items:baseline; gap:.4rem}
+.output-heading h3 {font-size:.84rem; margin-bottom:.45rem}
+.output-heading #edit-candidate {padding:.2rem .3rem; font-weight:650; white-space:nowrap}
+.quick-alternative {display:grid; grid-template-columns:minmax(0,1fr) minmax(90px,1fr); gap:.5rem; border:1px solid #d5c4e4; padding:.55rem; margin-bottom:.65rem; border-radius:5px; background:#fff}
+.quick-alternative form {min-width:0; margin:0}
+.quick-alternative .fieldset {margin:0}
+.quick-alternative label {font-size:.75rem}
+.quick-alternative input,.quick-alternative select {font-size:.85rem; min-height:36px}
+.output p,.output li {font-size:.84rem}
+.output h3 {font-size:.85rem}
+.editor-live-status {font-size:.78rem; color:var(--muted); margin:.5rem 0}
+#quick-alternative:focus-within {border-color:#8167a0; box-shadow:0 0 0 2px #8167a01c}
+
+/* The verdict belongs to the entire reasoning lane, not a short results panel. */
+#case-findings {min-width:0}
+#verdict {position:sticky; top:8px; z-index:9; margin:0 0 1rem; padding:.65rem .7rem; background:#fff; border:1px solid #d4cedc; border-radius:7px; box-shadow:0 3px 12px #302b3918}
+.verdict-heading {display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:.3rem .7rem}
+#verdict .verdict-heading h2 {font-size:1rem; margin:0 0 .35rem}
+.verdict-event {font-size:.75rem; color:var(--muted); overflow-wrap:anywhere}
+.verdict-signal {display:grid; gap:.14rem; padding:.55rem .7rem; margin:.3rem 0 .6rem; border:1px solid #bdb6c6; border-left:5px solid #7a7484; border-radius:5px; font-size:.79rem; background:#f4f2f6; color:#4a4355}
+.verdict-signal strong {font-size:1.03rem; line-height:1.25; letter-spacing:-.015em}
+.verdict-permits {background:#fff0e7; color:#742d12; border-color:#dfa083; border-left-color:#ad4b25}
+.verdict-rejects {background:#edf7f0; color:#29523d; border-color:#a9cdb9; border-left-color:#367451}
+.verdict-same {background:#f1eff7; color:#4d435b; border-color:#d4ccdf; border-left-color:#77618f}
+.verdict-unavailable {background:#f4f3f5; color:#54505b; border-color:#d8d5db; border-left-color:#817a86}
+#selected-law-row .candidate-verdict {background:#f4f2f6; color:#4b4554; border-left:3px solid #bbb4c4}
+#selected-law-row .candidate-permits {background:#ffe4d5; color:#762f14; border-left:4px solid #b04c25}
+#selected-law-row .candidate-rejects {background:#e6f4eb; color:#23543b; border-left:4px solid #367451}
+#selected-law-row .candidate-unavailable {background:#f0eff1; color:#605b64; border-left:4px solid #99949e}
+#contrast-matrix th,#contrast-matrix td {font-size:.8rem; padding:.4rem .45rem}
+#verdict #contrast-matrix {margin:.25rem 0}
+#selected-law-row {background:transparent}
+#nearby-observation {display:block; margin-top:1rem; padding:1rem .1rem .2rem; border-top:2px solid #c5b5d6}
+#nearby-observation .section-heading {margin-bottom:.5rem}
+#nearby-observation .section-heading h3 {display:block; font-size:.98rem}
+#nearby-observation .section-heading button {font-size:.8rem; padding:.35rem .55rem}
+#nearby-observation .decision-docket {display:block; margin:.35rem 0}
+#nearby-observation .decision-actions {gap:.5rem}
+#nearby-observation .decision-actions button {padding:.55rem .8rem; font-size:.83rem; font-weight:650}
+#nearby-observation .decision-actions button:first-child {background:#5b426f; color:white; border-color:#5b426f}
+#nearby-observation .decision-actions button:first-child:hover {background:#453355}
+.review-target {font-size:.76rem; color:var(--muted); margin:0 0 .55rem; overflow-wrap:anywhere}
+#note-form {max-width:540px; margin:.65rem 0}
+#note-form button {background:var(--accent); color:#fff; border-color:var(--accent)}
+#proof-panel {margin-top:1rem}
+#clauses-panel,#proof-panel,.logic-node,.secondary-panel {scroll-margin-top:260px}
+#nearby-observation {scroll-margin-top:260px}
+.review-help {grid-column:1/-1; padding:.3rem .65rem; border-radius:5px; background:#f5f2f8; color:#514960; font-size:.78rem; margin:.2rem 0}
+.review-help summary {cursor:pointer; font-weight:650; color:var(--accent)}
+.review-help p {margin:.6rem 0; max-width:95ch}
+#proof-script {font-size:.8rem}
+.numbered-proof code,.linked-excerpt pre {font-size:.8rem; line-height:1.6}
+
+@media(max-width:950px) {
+  .connected-experiment {grid-template-areas:"case" "editing" "result";}
+  #verdict {position:static; box-shadow:0 1px 5px #302b390e}
+  #clauses-panel,#proof-panel,.logic-node,#nearby-observation,.secondary-panel {scroll-margin-top:1rem}
+}
+@media(max-width:600px) {
+  .timeline-branches {grid-template-columns:minmax(0,1fr); gap:.5rem; margin-top:.2rem}
+  .timeline-branches::before,.timeline-branches::after,.timeline-branch::before {display:none}
+  .other-step-list {grid-template-columns:minmax(0,1fr)}
+  .timeline-branch {padding:.55rem}
+  .quick-alternative {grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  #case-findings {padding:.7rem}
+  #verdict {padding:.55rem}
+  .verdict-signal strong {font-size:.96rem}
+  #contrast-matrix th,#contrast-matrix td {padding:.35rem .25rem; font-size:.73rem}
+  #contrast-matrix th:first-child {width:34%}
+  #nearby-observation .decision-actions button {flex:1 1 110px}
+}
+@media(prefers-reduced-motion:reduce) {
+  .timeline-step:hover {transform:none}
+}

@@ -68,7 +68,8 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     tab(view, "outputs")
     assert has_element?(view, "#selected-law-row td:last-child", "Accepts alternative")
     render_click(view, "edit_candidate", %{})
-    view |> element("#inspect-retention") |> render_click()
+    refute has_element?(view, "#inspect-retention")
+    render_click(view, "inspect_law", %{"slug" => "po_exposure_retain"})
     assert_patch(view, "/claims/po_exposure_retain/#{doc["id"]}")
     assert has_element?(view, "#selected-law-row td:last-child", "Rejects alternative")
     assert has_element?(view, "#hypothetical-output", "0¢ reserved")
@@ -96,6 +97,42 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert has_element?(view, "#ledger-output", "Not enough available money")
     tab(view, "clauses")
     assert has_element?(view, "#outside-domain")
+  end
+
+  test "paired event records both computed continuations only when saved", %{conn: conn} do
+    {view, doc} = open(conn)
+    render_click(view, "edit_candidate", %{})
+    render_click(view, "branch_candidate", %{})
+    assert has_element?(view, "#code-branch .timeline-step")
+    assert has_element?(view, "#alternative-branch .timeline-step")
+
+    render_click(view, "open_tools", %{"tool" => "events"})
+
+    form(view, "#next-event", event: %{type: "request", key: "77", amount: "100"})
+    |> render_change()
+
+    render_click(view, "apply_event_pair", %{})
+    assert has_element?(view, "#code-branch", "Not enough available money")
+    assert has_element?(view, "#alternative-branch", "Accepted")
+
+    {:ok, unsaved} = Trace.get(doc["id"])
+    assert unsaved["steps"] == doc["steps"]
+
+    render_click(view, "apply_preview", %{})
+    {:ok, saved} = Trace.get(doc["id"])
+    assert length(saved["steps"]) == length(doc["steps"]) + 3
+    assert has_element?(view, "#code-branch", "Not enough available money")
+    assert has_element?(view, "#alternative-branch", "Accepted")
+  end
+
+  test "alternative result edits are inline and do not write to the saved trace", %{conn: conn} do
+    {view, doc} = open(conn, "po_b1_void")
+    assert has_element?(view, "#verdict-signal[data-state=permits]")
+    render_change(view, "alternative_result", %{"result" => "insufficient_amount"})
+    assert has_element?(view, "#alternative-result-select")
+    refute has_element?(view, "#verdict-signal[data-state=same]")
+    {:ok, unchanged} = Trace.get(doc["id"])
+    assert unchanged == doc
   end
 
   test "hypothetical branch and original branch retain distinct executions", %{conn: conn} do
@@ -564,19 +601,19 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert has_element?(
              view,
              "#decision-docket button[phx-value-action=design]",
-             "Record concern"
+             "Flag concern"
            )
 
     assert has_element?(
              view,
              "#decision-docket button[phx-value-action=policy]",
-             "Record open question"
+             "Open question"
            )
 
     assert has_element?(
              view,
              "#decision-docket button[phx-value-action=considered]",
-             "Mark considered"
+             "Mark reviewed"
            )
 
     render_click(view, "review_decision", %{"action" => "policy"})

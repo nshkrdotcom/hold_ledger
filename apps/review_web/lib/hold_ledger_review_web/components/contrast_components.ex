@@ -41,6 +41,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             output={@case["candidate"]}
             id="hypothetical-output"
             differences={@differences}
+            editable={true}
           />
         </div>
         <p :if={@differences && @differences.same?} id="same-output" class="scope-note">
@@ -65,15 +66,10 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
               <span aria-label="changed to">→</span> {difference.after}{difference.delta}</span>
             </li>
           </ol>
-          <p class="scope-note">
-            A changed value is not a policy judgment. Repeated identities remain separate
-            occurrences; ambiguous rows are not silently paired. This alternative is unsaved.
-          </p>
         </details>
         <p :if={@invalid} id="invalid-candidate" role="alert">
           Enter a whole number or valid output JSON to check this alternative.
         </p>
-        <button id="edit-candidate" phx-click="edit_candidate">Edit alternative</button>
       </div>
       <p :if={@step && !@step["output"]}>Coupled model step. Remote records are shown below.</p>
     </section>
@@ -87,7 +83,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   def draft_tools(assigns) do
     ~H"""
     <section id="draft-tools">
-      <h3>Change the result</h3>
+      <h3>Alternative tools</h3>
       <div class="mutation-chips" id="candidate-mutations">
         <button phx-click="mutate_candidate" phx-value-kind="drop_effects">Remove requested actions</button>
         <button phx-click="mutate_candidate" phx-value-kind="zero_counters">Zero both totals</button>
@@ -95,14 +91,10 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         <button phx-click="candidate_recalculate" id="recalculate-inline">Recalculate totals</button>
       </div>
       <div class="action-row">
-        <button phx-click="early_release" id="early-release">Release the hold</button><button phx-click="restore_candidate">Reset to code result</button><button
+        <button phx-click="restore_candidate">Reset to code result</button><button
           phx-click="show_advanced"
           id="advanced-editor"
-        >Full state / JSON editor</button><button
-          phx-click="inspect_law"
-          phx-value-slug="po_exposure_retain"
-          id="inspect-retention"
-        >Inspect retention</button>
+        >Full state / JSON editor</button>
       </div>
       <div class="action-row">
         <button
@@ -132,7 +124,6 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           for={@candidate_form}
           id="candidate-form"
           phx-change="candidate_change"
-          phx-submit="check_candidate"
         >
           <.state_fields form={@candidate_form} />
           <.input
@@ -159,7 +150,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
               label="Amount (¢)"
             />
           </div>
-          <button class="primary" id="check-candidate">Check output</button>
+          <p class="editor-live-status" role="status">Fields check as you edit.</p>
         </.form>
         <div class="action-row">
           <button phx-click="candidate_recalculate" id="recalculate">Recalculate totals</button><button phx-click="candidate_add_entry">Add entry</button><button phx-click="candidate_add_effect">Add void effect</button><button phx-click="candidate_clear_effects">Clear effects</button>
@@ -202,13 +193,22 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   attr :slug, :string, required: true
 
   def verdict(assigns) do
+    signal = if assigns.case, do: verdict_signal(assigns.case)
+    assigns = assign(assigns, :signal, signal)
+
     ~H"""
     <section id="verdict" class="verdict-panel" aria-label="Checks for this case">
-      <h2>Checks for this case</h2>
-      <details class="check-scope">
-        <summary>About these checks</summary>
-        <p>Predicate outcomes describe the selected rule, not whether an alternative is desirable.</p>
-      </details>
+      <div class="verdict-heading">
+        <h2>Checks for this case</h2>
+        <span :if={@case} class="verdict-event" id="verdict-event">
+          {@slug} · {HoldLedgerReviewWeb.DissectorComponents.term(@case["event"])}
+        </span>
+      </div>
+      <div :if={@signal} id="verdict-signal" class={["verdict-signal", "verdict-" <> @signal.state]}
+        role="status" data-state={@signal.state}>
+        <strong>{@signal.title}</strong>
+        <span>{@signal.detail}</span>
+      </div>
       <div :if={@case} id="active-predicate-result" role="status">
         <table id="contrast-matrix">
           <thead>
@@ -227,7 +227,9 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             >
               <th scope="row">Does the output satisfy the rule?</th>
               <td>{ReviewCopy.code_acceptance(@case)}</td>
-              <td>{ReviewCopy.candidate_acceptance(@case)}</td>
+              <td class={["candidate-verdict", "candidate-" <> @signal.state]}>
+                <strong>{ReviewCopy.candidate_acceptance(@case)}</strong>
+              </td>
             </tr>
             <tr id="validity-row">
               <th scope="row">Is accounting internally valid?</th>
@@ -305,11 +307,29 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   attr :output, :map, required: true
   attr :id, :string, required: true
   attr :differences, :any, default: nil
+  attr :editable, :boolean, default: false
 
   def output(assigns) do
     ~H"""
     <article class="output" id={@id}>
-      <h3>{@title}</h3>
+      <div class="output-heading">
+        <h3>{@title}</h3>
+        <button :if={@editable} id="edit-candidate" phx-click="edit_candidate" class="text-button">
+          More edits
+        </button>
+      </div>
+      <div :if={@editable} class="quick-alternative" id="quick-alternative">
+        <.form for={to_form(%{"result" => @output["result"]})} id="alternative-result"
+          phx-change="alternative_result">
+          <.input id="alternative-result-select" name="result" value={@output["result"]} type="select" label="Result"
+            options={HoldLedgerReview.TermCodec.results()} />
+        </.form>
+        <.form for={to_form(%{"amount" => @output["after"]["used_amount"]})}
+          id="alternative-counter" phx-change="alternative_total">
+          <.input id="alternative-reserved-input" name="amount" value={@output["after"]["used_amount"]}
+            type="number" min="0" max="1000000" phx-debounce="300" label="Reserved (¢)" />
+        </.form>
+      </div>
       <div class="output-headline">
         <strong>{@output["after"]["used_amount"]}¢ reserved</strong>
         <.field_delta change={OutputDifferences.at(@differences, ["after", "used_amount"])} />
@@ -424,6 +444,35 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       {OutputDifferences.annotation(@change)}
     </small>
     """
+  end
+
+  defp verdict_signal(case_data) do
+    same? =
+      OutputDifferences.between(case_data["actual"], case_data["candidate"]).same?
+
+    case case_data["law_status"] do
+      "allows_here" when same? ->
+        %{state: "same", title: "Rule accepts this output", detail: "Alternative matches the code result."}
+
+      "allows_here" ->
+        %{
+          state: "permits",
+          title: "Rule permits the changed alternative",
+          detail: "Potential review gap · inspect which conditions still hold."
+        }
+
+      "catches" ->
+        %{state: "rejects", title: "Rule rejects the alternative", detail: "The selected check detects this change."}
+
+      "doesnt_apply" ->
+        %{state: "unavailable", title: "Rule does not apply", detail: "No acceptance result for this input."}
+
+      "not_probed" ->
+        %{state: "unavailable", title: "Not checked for this event", detail: "Read the source for its scope."}
+
+      _ ->
+        %{state: "unavailable", title: "Check unavailable", detail: "No result should be inferred."}
+    end
   end
 
   defp slot_count(1), do: "1 slot"

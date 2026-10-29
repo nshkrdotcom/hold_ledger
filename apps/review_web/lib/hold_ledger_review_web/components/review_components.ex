@@ -56,6 +56,16 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           phx-value-sha={@policy_source["sha256"]}
         >Read requirement source</button>
       </p>
+      <details id="review-help" class="review-help">
+        <summary>How to read this workspace</summary>
+        <p>Rule acceptance is a pointwise check, not a policy judgment or a formal proof.
+          An accepted changed output is worth investigating, not automatically a defect.
+          Unavailable never means false.</p>
+        <p id="connection-scope">Clause ↔ proof links are source-reading aids, not Lean goal
+          states, kernel dependencies or acceptance evidence.</p>
+        <p>Edits and follow-on events remain in an unsaved experiment until saved to the timeline.
+          Notes do not approve policy or save pending events.</p>
+      </details>
       <details id="selected-claim" class="selected-claim">
         <summary>Read full claim · requires / expects</summary>
         <dl :if={@reading["contract"]["status"] == "source_read"}>
@@ -266,28 +276,14 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <p :if={@package && @selected} class="scope-note" id="stored-decision-target">
         Stored comparison finding · <code>{@selected["id"]}</code>
       </p>
-      <details :if={!@package} class="decision-context">
-        <summary id="local-decision-target">Active case · session note</summary><p>
-          These actions record the active case without saving pending events or approving policy.
-        </p>
-      </details>
+      <p :if={!@package} id="local-decision-target" class="review-target">Active case · session note</p>
       <div :if={!@package || @selected} class="decision-actions">
         <button
-          :for={
-            {action, label} <-
-              if(@package,
-                do: [
-                  {"design", "Record design concern on stored finding"},
-                  {"policy", "Record policy question on stored finding"},
-                  {"considered", "Mark stored finding considered"}
-                ],
-                else: [
-                  {"design", "Record concern"},
-                  {"policy", "Record open question"},
-                  {"considered", "Mark considered"}
-                ]
-              )
-          }
+          :for={{action, label} <- [
+            {"design", "Flag concern"},
+            {"policy", "Open question"},
+            {"considered", "Mark reviewed"}
+          ]}
           id={if action == "design", do: "request-repair"}
           phx-click="review_decision"
           phx-value-action={action}
@@ -400,9 +396,6 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           do: if(@reading["proof_steps"] == [], do: "Show excerpt", else: "Show selected step"),
           else: "Read full proof"}</button>
       </header>
-      <p class="scope-note">
-        These are inspected source passages, not a live Lean debugger or a proof dependency graph.
-      </p>
       <p :if={@reading["proof_steps"] == []} class="scope-note" id="no-proof-steps">
         No reviewed step-by-step reading for this claim. Its declaration remains available below.
       </p>

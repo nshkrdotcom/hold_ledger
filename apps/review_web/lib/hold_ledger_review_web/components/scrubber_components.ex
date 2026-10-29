@@ -3,26 +3,49 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
   use HoldLedgerReviewWeb, :html
   import HoldLedgerReviewWeb.DissectorComponents, only: [term: 1]
   alias HoldLedgerReview.Trace
-  alias HoldLedgerReviewWeb.ReviewCopy
+  alias HoldLedgerReviewWeb.{ReviewCopy, TraceFork}
 
   attr :doc, :map, required: true
   attr :cursor, :string, required: true
   attr :preview, :any, default: nil
   attr :saved, :map, required: true
+  attr :fork, :any, default: nil
 
   def timeline(assigns) do
-    parent =
-      if assigns.preview,
-        do: Enum.find_index(assigns.doc["steps"], &(&1["id"] == assigns.preview["parent"]))
+    fork = assigns.fork || TraceFork.project(assigns.doc, assigns.cursor)
+
+    shown_ids =
+      if fork do
+        (fork.shared ++ fork.code ++ fork.alternative)
+        |> Enum.map(& &1["id"])
+        |> MapSet.new()
+      else
+        MapSet.new()
+      end
+
+    other_steps =
+      if fork,
+        do: Enum.reject(assigns.doc["steps"], &MapSet.member?(shown_ids, &1["id"])),
+        else: []
 
     assigns =
       assign(assigns,
-        parent_label: if(is_integer(parent), do: "step #{parent + 1}", else: "Start")
+        fork: fork,
+        other_steps: other_steps,
+        parent_label: preview_parent_label(assigns.doc, assigns.preview)
       )
 
     ~H"""
-    <section id="trace-rail" class="trace-rail">
-      <nav id="timeline" aria-label="Trace steps">
+    <section id="trace-rail" class="trace-rail" aria-label="Case timeline">
+      <header class="timeline-heading">
+        <h2>Case timeline</h2>
+        <span id="trace-revision" data-revision={@saved["revision"]}>
+          {if @preview || @doc["revision"] != @saved["revision"],
+            do: "Unsaved experiment",
+            else: "Saved history"}
+        </span>
+      </header>
+      <nav :if={!@fork} id="timeline" class="linear-timeline" aria-label="Trace steps">
         <button
           phx-click="select_step"
           phx-value-id="start"
@@ -33,18 +56,103 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           phx-click="select_step"
           phx-value-id={step["id"]}
           aria-current={if @cursor == step["id"] && !@preview, do: "step", else: "false"}
-        >
-          {index}. {event_label(step["event"])}{if step["origin"] != "computed", do: " · hypothetical"}
-        </button>
-        <span :if={@preview} id="transient-branch" aria-current="step">↳ {event_label(
-          @preview["event"]
-        )} · trying from {@parent_label}</span>
+        >{index}. {event_label(step["event"])}{if step["origin"] != "computed", do: " · alternative"}</button>
+        <span :if={@preview} id="transient-branch" aria-current="step">
+          ↳ {event_label(@preview["event"])} · trying from {@parent_label}
+        </span>
       </nav>
-      <p id="trace-revision" data-revision={@saved["revision"]} class="scope-note">
-        Choose a step to continue from it.
-      </p>
+      <div :if={@fork} id="timeline" class="fork-timeline" role="group" aria-label="Code and alternative timeline">
+        <div class="shared-history" aria-label="Shared history before the fork">
+          <span class="timeline-caption">Shared history</span>
+          <button phx-click="select_step" phx-value-id="start"
+            aria-current={if @cursor == "start" && !@preview, do: "step", else: "false"}>Start</button>
+          <.timeline_step :for={{step, index} <- Enum.with_index(@fork.shared, 1)}
+            step={step} index={index} cursor={@cursor} preview={@preview} />
+          <.timeline_preview :if={@preview && (@preview["parent"] == "start" ||
+            @preview["parent"] in Enum.map(@fork.shared, & &1["id"]))} step={@preview} />
+        </div>
+        <p class="fork-label" id="fork-origin">
+          Two recorded outcomes from the same event. Select any step to inspect its state and rule checks.
+        </p>
+        <div class="timeline-branches">
+          <section class="timeline-branch code-branch" id="code-branch" aria-label="Code path">
+            <h3><span class="branch-marker" aria-hidden="true">A</span> Code path</h3>
+            <div class="branch-steps">
+              <.timeline_step :for={{step, index} <- Enum.with_index(@fork.code, length(@fork.shared) + 1)}
+                step={step} index={index} cursor={@cursor} preview={@preview} />
+              <.timeline_preview :if={@preview && @preview["parent"] in Enum.map(@fork.code, & &1["id"])}
+                step={@preview} />
+            </div>
+          </section>
+          <section class="timeline-branch alternative-branch" id="alternative-branch" aria-label="Alternative path">
+            <h3><span class="branch-marker" aria-hidden="true">B</span> Alternative path</h3>
+            <div class="branch-steps">
+              <.timeline_step :for={{step, index} <- Enum.with_index(@fork.alternative, length(@fork.shared) + 1)}
+                step={step} index={index} cursor={@cursor} preview={@preview} />
+              <.timeline_preview :if={@preview && @preview["parent"] in Enum.map(@fork.alternative, & &1["id"])}
+                step={@preview} />
+            </div>
+          </section>
+        </div>
+        <details :if={@other_steps != []} id="other-trace-steps" class="other-trace-steps"
+          open={Enum.any?(@other_steps, &(&1["id"] == @cursor))}>
+          <summary>Other recorded steps · {length(@other_steps)}</summary>
+          <div class="other-step-list">
+            <.timeline_step :for={{step, index} <- Enum.with_index(@other_steps, 1)}
+              step={step} index={index} cursor={@cursor} preview={@preview} />
+          </div>
+        </details>
+      </div>
+      <p class="timeline-hint">Select a step to inspect it. New events run from the selected step; the other path stays visible.</p>
     </section>
     """
+  end
+
+  attr :step, :map, required: true
+  attr :index, :integer, required: true
+  attr :cursor, :string, required: true
+  attr :preview, :any, default: nil
+
+  defp timeline_step(assigns) do
+    output = assigns.step["output"]
+    after_state = if output, do: output["after"]
+
+    assigns = assign(assigns, output: output, after_state: after_state)
+
+    ~H"""
+    <button class="timeline-step" phx-click="select_step" phx-value-id={@step["id"]}
+      aria-current={if @cursor == @step["id"] && !@preview, do: "step", else: "false"}
+      data-origin={@step["origin"]}>
+      <span class="timeline-step-event">{@index}. {event_label(@step["event"])}</span>
+      <strong :if={@output} class="timeline-step-result">{ReviewCopy.result(@output["result"])}</strong>
+      <span :if={!@output} class="timeline-step-result">Coupled state updated</span>
+      <span :if={@after_state} class="timeline-step-amount">
+        {@after_state["used_amount"]}¢ reserved · {max(@after_state["amount_limit"] - @after_state["used_amount"], 0)}¢ available
+      </span>
+      <meter :if={@after_state} min="0" max={max(@after_state["amount_limit"], 1)}
+        value={@after_state["used_amount"]} aria-label="Reserved money after step"></meter>
+    </button>
+    """
+  end
+
+  attr :step, :map, required: true
+
+  defp timeline_preview(assigns) do
+    ~H"""
+    <span class="timeline-preview" id="transient-branch">
+      Trying {event_label(@step["event"])} · not saved
+      <strong :if={@step["output"]}>{ReviewCopy.result(@step["output"]["result"])}</strong>
+    </span>
+    """
+  end
+
+  defp preview_parent_label(_doc, nil), do: "Start"
+
+  defp preview_parent_label(doc, preview) do
+    case Enum.find_index(doc["steps"], &(&1["id"] == preview["parent"])) do
+      nil -> "Start"
+      index -> "step #{index + 1}"
+    end
   end
 
   attr :doc, :map, required: true
@@ -141,6 +249,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
   attr :preview, :any, default: nil
 
   attr :builder_open, :boolean, required: true
+  attr :fork, :any, default: nil
 
   def event_controls(assigns) do
     ~H"""
@@ -182,7 +291,11 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             label="Outcome"
             options={~w(approved declined)}
           />
-          <button class="primary" id="apply-event" disabled={!Trace.current?(@doc)}>Run event</button>
+          <button class="primary" id="apply-event" disabled={!Trace.current?(@doc)}>Run on selected path</button>
+          <button :if={@fork && @doc["mode"] == "ledger"} type="button" id="apply-event-pair"
+            phx-click="apply_event_pair" disabled={!Trace.current?(@doc)}>
+            Run on both paths
+          </button>
         </.form>
       </div>
       <button id="coupled-model" phx-click="coupled" class="text-button">Open coupled processor case</button>

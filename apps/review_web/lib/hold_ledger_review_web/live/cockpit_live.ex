@@ -7,7 +7,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   import HoldLedgerReviewWeb.ScrubberComponents
 
   alias HoldLedgerReview.ProofReading.Links
-  alias HoldLedgerReviewWeb.{Experiment, ReviewCopy}
+  alias HoldLedgerReviewWeb.{Experiment, TraceFork}
 
   alias HoldLedgerReview.{
     Canonical,
@@ -200,6 +200,14 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
      socket
      |> assign(experiment: nil, preview: nil, cursor: last_id(socket.assigns.doc))
      |> refresh_case(nil)}
+  end
+
+  def handle_event("alternative_result", %{"result" => result}, socket) do
+    if socket.assigns.candidate_form && result in TermCodec.results() do
+      candidate_input(socket, Map.put(socket.assigns.candidate_form.params, "result", result))
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("alternative_total", %{"amount" => amount}, socket) do
@@ -726,6 +734,38 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
       _ ->
         {:noreply, error(socket, "Enter a valid event, identity and amount.")}
+    end
+  end
+
+  def handle_event("apply_event_pair", _, socket) do
+    fork = TraceFork.project(experiment_doc(socket.assigns), socket.assigns.cursor)
+
+    with nil <- socket.assigns.preview,
+         %{} <- fork,
+         true <- socket.assigns.doc["mode"] == "ledger",
+         true <- Trace.current?(socket.assigns.doc),
+         {:ok, event} <- event_json("ledger", socket.assigns.event_form.params),
+         {:ok, exp} <- prepare_experiment(socket),
+         {:ok, code_exp} <-
+           Experiment.run(exp, %{
+             "kind" => "append",
+             "parent" => List.last(fork.code)["id"],
+             "event" => event
+           }),
+         {:ok, paired_exp} <-
+           Experiment.run(code_exp, %{
+             "kind" => "append",
+             "parent" => List.last(fork.alternative)["id"],
+             "event" => event
+           }) do
+      {:noreply,
+       socket
+       |> assign(experiment: paired_exp, cursor: paired_exp.cursor, hunt: %{status: "idle"})
+       |> refresh_case(nil)}
+    else
+      _ ->
+        {:noreply,
+         error(socket, "A saved or unsaved alternative branch is required. Reset or save any amount preview before running both paths.")}
     end
   end
 
@@ -1281,6 +1321,16 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   defp last_id(doc), do: if(doc["steps"] == [], do: "start", else: List.last(doc["steps"])["id"])
 
+  defp hunt_label(%{status: "idle"}), do: "Ready to try preset outputs"
+  defp hunt_label(%{status: "running"}), do: "Checking preset outputs…"
+  defp hunt_label(%{status: "found"}), do: "A candidate was found; inspect its checks"
+  defp hunt_label(%{status: "budget_exhausted"}), do: "No candidate found in this preset set"
+  defp hunt_label(%{status: "cancelled"}), do: "Search stopped"
+  defp hunt_label(%{status: "failed"}), do: "Could not check the presets"
+  defp hunt_label(%{status: "stale"}), do: "Results expired; run again"
+  defp hunt_label(%{status: "unavailable"}), do: "Select a checkable case first"
+  defp hunt_label(_), do: "No search result"
+
   defp error(socket, text), do: put_flash(socket, :error, text)
 
   defp event_form,
@@ -1384,7 +1434,8 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     assigns =
       assign(assigns,
         reading_links: reading_links,
-        active_links: active_reading_links(assigns, reading_links)
+        active_links: active_reading_links(assigns, reading_links),
+        fork: if(assigns.doc, do: TraceFork.project(experiment_doc(assigns), assigns.cursor))
       )
 
     ~H"""
@@ -1406,7 +1457,14 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           }
         />
       </:tools>
-      <p :if={!@doc} role="status">Opening ledger…</p>
+      <section :if={!@doc} id="workspace-loading" class="workspace-loading" role="status"
+        aria-label="Opening review workspace">
+        <p>Opening ledger…</p>
+        <div class="loading-layout" aria-hidden="true">
+          <div class="loading-panel"><span></span><span></span><span></span></div>
+          <div class="loading-panel"><span></span><span></span><span></span></div>
+        </div>
+      </section>
       <div :if={@doc && @reading} id="review-document">
         <p :if={!Trace.current?(@doc)} role="alert" id="stale-session">
           The source files changed. Reopen this rule to run it again.
@@ -1433,6 +1491,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 cursor={@cursor}
                 preview={@preview}
                 saved={@doc}
+                fork={@fork}
               />
               <div class="active-case" id="active-case">
                 <.active_state
@@ -1444,7 +1503,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 <p :if={@preview || @experiment} id="scratch-status" class="scratch-label">
                   Unsaved experiment <button phx-click="reset_experiment">Reset</button>
                 </p>
-                <.contrast case={@case_data} step={selected(assigns)} slug={@slug} invalid={@invalid} />
+                <.contrast
+                  case={@case_data}
+                  step={selected(assigns)}
+                  slug={@slug}
+                  invalid={@invalid}
+                  candidate_form={@candidate_form}
+                />
               </div>
             </section>
             <div class="case-editing">
@@ -1459,33 +1524,16 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   </h3><button id="close-tools" phx-click="close_tools">Done editing</button>
                 </header>
                 <div :if={@tools == "draft"}>
-                  <.draft_tools case={@case_data} step={selected(assigns)} preview={@preview} /><.form
-                    :if={@candidate_form}
-                    for={to_form(%{"amount" => @candidate_form.params["used_amount"]})}
-                    id="alternative-counter"
-                    phx-change="alternative_total"
-                  >
-                    <.input
-                      name="amount"
-                      value={@candidate_form.params["used_amount"]}
-                      type="number"
-                      label="Money reserved (¢)"
-                    />
-                    <p :if={@case_data} id="inline-checks">
-                      Accounting: {if @case_data["candidate_valid"],
-                        do: "balances",
-                        else: "does not balance"} · Rule: {ReviewCopy.check(@case_data["law_status"])}
-                    </p>
-                  </.form><div class="candidate-search">
+                  <.draft_tools case={@case_data} step={selected(assigns)} preview={@preview} />
+                  <div class="candidate-search">
                     <button
                       phx-click="hunt"
                       id="hunt-candidate"
                       disabled={!@case_data || @hunt.status == "running"}
-                    >Try six alternatives</button><button
+                    >Try six preset alternatives</button><button
                       :if={@hunt.status == "running"}
                       phx-click="cancel_hunt"
-                    >Stop search</button><output id="hunt-status">{@hunt.status}{if @hunt[:cases],
-                      do: " · #{@hunt.cases} cases · #{@hunt.elapsed_ms}ms · seed #{@hunt.seed}"}</output>
+                    >Stop search</button><output id="hunt-status">{hunt_label(@hunt)}</output>
                   </div><.editors
                     :if={@advanced}
                     case={@case_data}
@@ -1502,6 +1550,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   event_form={@event_form}
                   step={selected(assigns)}
                   preview={nil}
+                  fork={@fork}
                 />
                 <.editors
                   :if={@tools == "initial"}
@@ -1516,12 +1565,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   id="append-preview"
                   phx-click="apply_preview"
                   disabled={!@preview && !@experiment}
-                >Save experiment</button>
+                >Save to timeline</button>
               </div>
             </div>
           </div>
           <div class="reasoning-lane">
-            <section class="case-results" id="case-findings" aria-label="Active case checks">
+            <section class="case-results" id="case-findings" aria-label="Active case evidence and review">
               <.verdict case={@case_data} slug={@slug} />
               <.pair_results
                 case={@case_data}
@@ -1530,57 +1579,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 package={@package}
                 preview={nil}
               />
-              <section id="nearby-observation" aria-label="Observation and local repair">
-                <div class="section-heading">
-                  <h3>Record what you noticed</h3>
-                  <button
-                    id="add-observation"
-                    phx-click="toggle_note"
-                    aria-expanded={to_string(@note_open)}
-                  >
-                    {if @note_open, do: "Close observation", else: "Add observation"}
-                  </button>
-                </div>
-                <details class="observation-context">
-                  <summary>Case and recording scope</summary>
-                  <p id="observation-target" class="scope-note">
-                    <%= if @case_data do %>
-                      Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
-                        do: "unsaved experiment",
-                        else: "saved step"
-                      )}
-                    <% else %>
-                      Rule {@slug} · no currently checkable alternative
-                    <% end %>
-                  </p>
-                  <p class="scope-note">
-                    Notes do not approve code, change requirements or save pending events.
-                  </p>
-                </details>
-                <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">
-                  <.input field={@note_form[:text]} type="textarea" label="Your observation" />
-                  <p class="scope-note">
-                    An unsaved experiment is identified in the note. This does not save pending events.
-                  </p>
-                  <button type="submit">Record observation</button>
-                </.form>
-                <.disposition package={@package} doc={@doc} selected_evidence={@selected_evidence} />
-                <p :if={@repair_status.status == "ready"} class="repair-actions" id="repair-ready">
-                  <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.json"}>
-                    Download local repair packet (JSON)
-                  </a>
-                  <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.md"}>
-                    Markdown
-                  </a>
-                </p>
-                <details :if={@repair_status.status != "ready"} class="repair-context">
-                  <summary>Repair export</summary>
-                  <p id="repair-unavailable" class="scope-note">
-                    Repair download unavailable: {@repair_status.reason}.
-                  </p>
-                </details>
-              </section>
-            </section>
             <div class="case-reasoning">
               <section id="clauses-panel">
                 <.dissector
@@ -1616,6 +1614,48 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 </section>
               </section>
             </div>
+              <section id="nearby-observation" aria-label="Observation and local repair">
+                <div class="section-heading">
+                  <h3>Flag this case</h3>
+                  <button
+                    id="add-observation"
+                    phx-click="toggle_note"
+                    aria-expanded={to_string(@note_open)}
+                  >
+                    {if @note_open, do: "Close note", else: "Add context"}
+                  </button>
+                </div>
+                <p id="observation-target" class="review-target">
+                    <%= if @case_data do %>
+                      Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
+                        do: "unsaved experiment",
+                        else: "saved step"
+                      )}
+                    <% else %>
+                      Rule {@slug} · no currently checkable alternative
+                    <% end %>
+                </p>
+                <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">
+                  <.input field={@note_form[:text]} type="textarea" label="Your observation" />
+                  <button type="submit">Save note</button>
+                </.form>
+                <.disposition package={@package} doc={@doc} selected_evidence={@selected_evidence} />
+                <p :if={@repair_status.status == "ready"} class="repair-actions" id="repair-ready">
+                  <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.json"}>
+                    Download local repair packet (JSON)
+                  </a>
+                  <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.md"}>
+                    Markdown
+                  </a>
+                </p>
+                <details :if={@repair_status.status != "ready"} class="repair-context">
+                  <summary>Repair export</summary>
+                  <p id="repair-unavailable" class="scope-note">
+                    Repair download unavailable: {@repair_status.reason}.
+                  </p>
+                </details>
+              </section>
+            </section>
           </div>
         </div>
         <nav class="evidence-links" id="inspector-tools" aria-label="Evidence tools">
@@ -1654,7 +1694,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         </section>
         <section :if={@secondary == "record"} id="record-panel" class="secondary-panel">
           <h2>Review notes</h2><section id="session-record">
-            <a href={~p"/sessions/#{@doc["id"]}/export"}>Download saved session</a>
+            <a href={~p"/sessions/#{@doc["id"]}/export"}>Export session</a>
             <button
               phx-click="save_challenge"
               disabled={!@case_data || @preview != nil || @experiment != nil}

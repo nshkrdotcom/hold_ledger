@@ -56,7 +56,7 @@ test('applicability, code acceptance, alternative acceptance and accounting stay
   await expect(page.locator('#selected-law-row td').first()).toHaveText('Accepts code result');
   await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects alternative');
   await expect(page.locator('#validity-row td').last()).toHaveText('Accounting balances');
-  await expect(page.locator('#verdict')).toContainText('not whether an alternative is desirable');
+  await expect(page.locator('#review-help')).toContainText('not a policy judgment');
 });
 
 test('source-bound proof passage and observed clause select each other by keyboard', async ({page}) => {

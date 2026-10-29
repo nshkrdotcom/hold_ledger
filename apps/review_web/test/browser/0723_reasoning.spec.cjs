@@ -64,7 +64,7 @@ test('observed condition groups have exact truth counts and local validated proo
   await expect(page.locator('#selected-reading-links')).toBeVisible();
 });
 
-test('factual accepts and rejects have equal prominence and review actions keep their target', async ({page}) => {
+test('verdict highlights changed alternatives without changing the recorded review target', async ({page}) => {
   await open(page);
   const initial = await saved(page);
   const focus = page.locator('#active-predicate-result');

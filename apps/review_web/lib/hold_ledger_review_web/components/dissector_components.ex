@@ -83,12 +83,6 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
       <p :if={@reading["kind"] == "native_lean"}>
         Native Lean statement. No executable Elixir counterpart.
       </p>
-      <details class="reading-scope">
-        <summary>How to read this</summary><p class="scope-note" id="connection-scope">
-          Clause ↔ proof links are reviewed source-reading aids, not Lean goal states,
-          kernel dependencies or acceptance evidence. Groups count only the named observed conditions.
-        </p>
-      </details>
       <details
         :if={@changed_sources != []}
         open
