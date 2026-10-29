@@ -17,7 +17,7 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
   await page.locator('#inspector-tools [phx-value-view=record]').click();
   await expect(page.locator('.pair-evidence')).toContainText('lost_domain_input');
   await page.locator('#source-change-details summary').click();
-  const source=await page.getByRole('link',{name:'Read proposal source ↗'}).first().getAttribute('href');
+  const source=await page.getByRole('link',{name:'Read proposal source',exact:true}).first().getAttribute('href');
   const response=await page.request.get(source);expect(response.status()).toBe(200);expect(await response.text()).toContain('amount <');
   await page.locator('#inspector-tools [phx-value-view=artifacts]').click();await page.locator('#pair-proof').click();await expect(page.locator('#pair-proof-artifacts')).toContainText('missing');
   await page.locator('#inspector-tools [phx-value-view=artifacts]').click();

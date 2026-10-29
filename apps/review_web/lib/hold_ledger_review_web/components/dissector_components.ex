@@ -54,7 +54,12 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         Clause ↔ proof links are reviewed source-reading aids, not Lean goal states,
         kernel dependencies or acceptance evidence.
       </p>
-      <details :if={@changed_sources != []} open class="source-comparison-attention" id="compared-source-attention">
+      <details
+        :if={@changed_sources != []}
+        open
+        class="source-comparison-attention"
+        id="compared-source-attention"
+      >
         <summary>Compared sources changed · inspect source and affected conditions</summary>
         <ul>
           <li :for={path <- @changed_sources}><code>{path}</code></li>
@@ -213,7 +218,9 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     ~H"""
     <section class="clause-table" id={"outline-#{@binding}-#{@phase}"}>
       <h3>{@title} <.truth value={@node["value"]} /></h3>
-      <p class="scope-note">Groups count only the named, observed conditions. The original tree is available below.</p>
+      <p class="scope-note">
+        Groups count only the named, observed conditions. The original tree is available below.
+      </p>
       <.condition_group
         :for={group <- @groups}
         group={group}
@@ -276,17 +283,11 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         end)
       end)
 
-    selected_path =
-      case assigns.selection do
-        %{type: :clause, phase: phase, binding: binding, path: path}
-          when phase == assigns.phase and binding == assigns.binding -> path
-        %{type: :step, target: %{phase: phase, binding: binding, path: path}}
-          when phase == assigns.phase and binding == assigns.binding -> path
-        _ -> nil
-      end
+    selected_path = selection_path(assigns.selection, assigns.phase, assigns.binding)
 
-    selected_here = is_binary(selected_path) and
-      Enum.any?(assigns.group.observations, &(Enum.join(&1.path, ".") == selected_path))
+    selected_here =
+      is_binary(selected_path) and
+        Enum.any?(assigns.group.observations, &(Enum.join(&1.path, ".") == selected_path))
 
     assigns = assign(assigns, :open_group, !assigns.group.collapsed? || linked || selected_here)
 
@@ -304,21 +305,26 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         </small>
       </summary>
       <div class="condition-rows">
-        <.logic
-          :for={observation <- @group.observations}
-          node={observation.node}
-          root={@root}
-          phase={@phase}
-          binding={@binding}
-          path={observation.path}
-          links={@links}
-          selection={@selection}
-          active_links={@active_links}
-          generation={@generation}
-          mode="summary"
-          proof_steps={@proof_steps}
-          stage={@stage}
-        />
+        <div :for={observation <- @group.observations}>
+          <p :for={context <- Map.get(observation, :context, [])} class="condition-context">
+            Within {String.upcase(Atom.to_string(context.operator))} branch {context.branch + 1}:
+            <code>{context.expression}</code>
+          </p>
+          <.logic
+            node={observation.node}
+            root={@root}
+            phase={@phase}
+            binding={@binding}
+            path={observation.path}
+            links={@links}
+            selection={@selection}
+            active_links={@active_links}
+            generation={@generation}
+            mode="summary"
+            proof_steps={@proof_steps}
+            stage={@stage}
+          />
+        </div>
       </div>
     </details>
     """
@@ -367,38 +373,10 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     op = operator(assigns.node)
     address = Enum.join(assigns.path, ".")
 
-    related =
-      Enum.filter(assigns.links, fn link ->
-        link["phase"] == assigns.phase and link["path"] == address and
-          link["binding"] == assigns.binding
-      end)
-
-    active =
-      Enum.any?(assigns.active_links, fn link ->
-        link["phase"] == assigns.phase and link["path"] == address and
-          link["binding"] == assigns.binding
-      end)
-
-    selected =
-      case assigns.selection do
-        %{type: :clause, phase: phase, path: path, binding: binding} ->
-          phase == assigns.phase and path == address and binding == assigns.binding
-
-        %{type: :step, target: %{phase: phase, path: path, binding: binding}} ->
-          phase == assigns.phase and path == address and binding == assigns.binding
-
-        _ ->
-          false
-      end
-
-    excerpts =
-      for link <- related,
-          i <- link["steps"],
-          step = Enum.at(assigns.proof_steps, i),
-          step && is_integer(step["line"]),
-          do: %{index: i, step: step, relation: link["relation"]}
-
-    excerpts = Enum.uniq_by(excerpts, & &1.index)
+    related = Enum.filter(assigns.links, &matching_link?(&1, assigns, address))
+    active = Enum.any?(assigns.active_links, &matching_link?(&1, assigns, address))
+    selected = selection_path(assigns.selection, assigns.phase, assigns.binding) == address
+    excerpts = related_excerpts(related, assigns.proof_steps)
     chosen = Enum.find(excerpts, &(&1.index == assigns.stage)) || List.first(excerpts)
 
     children = Enum.with_index(assigns.node["children"] || [])
@@ -450,8 +428,17 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         <code :if={@phase == "helper"}>{@compact_label}</code>
         <span :if={@node["status"] == "not_evaluated"} class="unevaluated-value">Not evaluated</span>
         <span :if={@node["status"] in ["error", "unavailable"]} class="unevaluated-value">Unavailable</span>
-        <.truth :if={@node["status"] not in ["not_evaluated", "error", "unavailable"]} value={@node["value"]} />
-        <strong :if={@node["status"] not in ["not_evaluated", "error", "unavailable"] && inline_values(@node, @op)} class="inline-values">{inline_values(@node, @op)}</strong>
+        <.truth
+          :if={@node["status"] not in ["not_evaluated", "error", "unavailable"]}
+          value={@node["value"]}
+        />
+        <strong
+          :if={
+            @node["status"] not in ["not_evaluated", "error", "unavailable"] &&
+              inline_values(@node, @op)
+          }
+          class="inline-values"
+        >{inline_values(@node, @op)}</strong>
         <button
           :if={expandable?(@node) && @phase != "helper"}
           class="text-button"
@@ -463,7 +450,11 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         <small :if={@related != []} class="connection-marker">Related proof passage ({length(@related)})</small>
         <small :if={@selected && @related == []} class="scope-note">No reviewed proof passage for this condition</small>
       </div>
-      <section :if={@selected && @chosen} class="linked-excerpt" id={"reading-excerpt-#{@binding}-#{@phase}"}>
+      <section
+        :if={@selected && @chosen}
+        class="linked-excerpt"
+        id={"reading-excerpt-#{@binding}-#{@phase}"}
+      >
         <h4>Related Lean source reading</h4>
         <p>{@chosen.relation}</p>
         <nav aria-label="Related Lean passages" class="excerpt-stages">
@@ -474,9 +465,13 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             aria-pressed={to_string(passage.index == @chosen.index)}
           >{passage.index + 1}. {passage.step["title"]}</button>
         </nav>
-        <p class="excerpt-location">{@chosen.step["path"]}:{@chosen.step["line"]} · {@chosen.step["reason"]}</p>
+        <p class="excerpt-location">
+          {@chosen.step["path"]}:{@chosen.step["line"]} · {@chosen.step["reason"]}
+        </p>
         <pre><code>{@chosen.step["code"]}</code></pre>
-        <p class="scope-note">Reviewed source correspondence, not a proof of this clause in isolation.</p>
+        <p class="scope-note">
+          Reviewed source correspondence, not a proof of this clause in isolation.
+        </p>
       </section>
       <div :if={@children != [] && @expand_children} class="logic-children">
         <.logic
@@ -523,6 +518,41 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     """
   end
 
+  defp selection_path(
+         %{type: :clause, phase: phase, binding: binding, path: path},
+         phase,
+         binding
+       ),
+       do: path
+
+  defp selection_path(%{type: :step, target: target}, phase, binding),
+    do: target_path(target, phase, binding)
+
+  defp selection_path(_, _, _), do: nil
+  defp target_path(%{phase: phase, binding: binding, path: path}, phase, binding), do: path
+  defp target_path(_, _, _), do: nil
+
+  defp matching_link?(link, assigns, address),
+    do:
+      link["phase"] == assigns.phase and link["path"] == address and
+        link["binding"] == assigns.binding
+
+  defp related_excerpts(links, steps) do
+    links
+    |> Enum.flat_map(&link_excerpts(&1, steps))
+    |> Enum.uniq_by(& &1.index)
+  end
+
+  defp link_excerpts(link, steps) do
+    for i <- link["steps"],
+        step = Enum.at(steps, i),
+        valid_step?(step),
+        do: %{index: i, step: step, relation: link["relation"]}
+  end
+
+  defp valid_step?(%{"line" => line}), do: is_integer(line)
+  defp valid_step?(_), do: false
+
   defp node_label(%{"helper" => name}, _) when is_binary(name), do: name <> " definition"
   defp node_label(_, :and), do: "All conditions"
   defp node_label(_, :or), do: "Any condition"
@@ -543,19 +573,13 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
   defp selected_descendant?(assigns) do
     prefix = Enum.join(assigns.path, ".")
 
-    linked = Enum.any?(assigns.active_links, fn link ->
-      link["phase"] == assigns.phase and link["binding"] == assigns.binding and
-        descendant_path?(prefix, link["path"])
-    end)
+    linked =
+      Enum.any?(assigns.active_links, fn link ->
+        link["phase"] == assigns.phase and link["binding"] == assigns.binding and
+          descendant_path?(prefix, link["path"])
+      end)
 
-    selected_path =
-      case assigns.selection do
-        %{type: :clause, phase: phase, binding: binding, path: path}
-          when phase == assigns.phase and binding == assigns.binding -> path
-        %{type: :step, target: %{phase: phase, binding: binding, path: path}}
-          when phase == assigns.phase and binding == assigns.binding -> path
-        _ -> nil
-      end
+    selected_path = selection_path(assigns.selection, assigns.phase, assigns.binding)
 
     linked or (is_binary(selected_path) and descendant_path?(prefix, selected_path))
   end

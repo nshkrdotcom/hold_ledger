@@ -63,7 +63,15 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
   end
 
   def between(_, _),
-    do: %{same?: false, rows: [], fields: [], by_path: %{}, ghosts: [], field_count: 0, other_count: 0}
+    do: %{
+      same?: false,
+      rows: [],
+      fields: [],
+      by_path: %{},
+      ghosts: [],
+      field_count: 0,
+      other_count: 0
+    }
 
   @doc "Return the exact changed field at a structured output path, or nil."
   def at(%{by_path: fields}, path) when is_list(path), do: Map.get(fields, path)
@@ -110,6 +118,7 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
   end
 
   defp path_for_before(path, nil), do: path
+
   defp path_for_before(["after", "entries", _, field], %{before_index: index}),
     do: ["after", "entries", index, field]
 
@@ -204,11 +213,18 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
       |> Enum.with_index()
       |> Enum.reject(fn {item, _} -> identity.(item) in singles end)
       |> Enum.map(fn {item, i} ->
-        row(:removed, "Removed #{String.downcase(name)} at position #{i + 1}", display.(item), "—", [collection, i], %{
-          before_index: i,
-          identity: identity.(item),
-          value: item
-        })
+        row(
+          :removed,
+          "Removed #{String.downcase(name)} at position #{i + 1}",
+          display.(item),
+          "—",
+          [collection, i],
+          %{
+            before_index: i,
+            identity: identity.(item),
+            value: item
+          }
+        )
       end)
 
     added =
@@ -216,11 +232,18 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
       |> Enum.with_index()
       |> Enum.reject(fn {item, _} -> identity.(item) in singles end)
       |> Enum.map(fn {item, i} ->
-        row(:added, "Added #{String.downcase(name)} at position #{i + 1}", "—", display.(item), [collection, i], %{
-          after_index: i,
-          identity: identity.(item),
-          value: item
-        })
+        row(
+          :added,
+          "Added #{String.downcase(name)} at position #{i + 1}",
+          "—",
+          display.(item),
+          [collection, i],
+          %{
+            after_index: i,
+            identity: identity.(item),
+            value: item
+          }
+        )
       end)
 
     repeated? =
@@ -231,7 +254,16 @@ defmodule HoldLedgerReviewWeb.OutputDifferences do
 
     caution =
       if repeated?,
-        do: [row(:correspondence, "Correspondence", "Repeated identities", "Occurrences left unpaired", [collection], nil)],
+        do: [
+          row(
+            :correspondence,
+            "Correspondence",
+            "Repeated identities",
+            "Occurrences left unpaired",
+            [collection],
+            nil
+          )
+        ],
         else: []
 
     order ++ matched ++ removed ++ added ++ caution

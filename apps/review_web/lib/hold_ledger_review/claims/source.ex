@@ -22,6 +22,7 @@ defmodule HoldLedgerReview.Claims.Source do
     apps/review_web/lib/hold_ledger_review/claims/compiler.ex
     apps/review_web/lib/hold_ledger_review/claims/explanation.ex
     apps/review_web/lib/hold_ledger_review/proof_reading.ex
+    apps/review_web/lib/hold_ledger_review/condition_outline.ex
     apps/review_web/lib/hold_ledger_review/proof_reading/links.ex
     apps/review_web/lib/hold_ledger_review/contrast.ex
     apps/review_web/priv/claim_readings.json

@@ -61,10 +61,14 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         <summary>Read full claim · requires / expects</summary>
         <dl :if={@reading["contract"]["status"] == "source_read"}>
           <div>
-            <dt>Applies when</dt><dd><code id="requires-expression">{@reading["contract"]["requires"]}</code></dd>
+            <dt>Applies when</dt><dd>
+              <code id="requires-expression">{@reading["contract"]["requires"]}</code>
+            </dd>
           </div>
           <div>
-            <dt>Requires of the result</dt><dd><code id="expects-expression">{@reading["contract"]["expects"]}</code></dd>
+            <dt>Requires of the result</dt><dd>
+              <code id="expects-expression">{@reading["contract"]["expects"]}</code>
+            </dd>
           </div>
         </dl>
         <p :if={@reading["contract"]["status"] == "native_statement_only"}>
@@ -92,17 +96,28 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
             <span class="scope-note">(read all changes)</span>
           </summary>
           <p class="source-pair-label">
-            Baseline {@package["baseline"]["snapshot_id"]} · Proposal {@package["proposal"]["snapshot_id"]}
+            Baseline {@package["baseline"]["snapshot_id"]} · Proposal {@package["proposal"][
+              "snapshot_id"
+            ]}
           </p>
           <article :for={change <- @package["source_changes"]} class="source-change">
             <h4>{change["path"]}</h4>
-            <div :for={expression <- (@delta[change["id"]] || %{})["expressions"] || []} class="diff-expression">
+            <div
+              :for={expression <- (@delta[change["id"]] || %{})["expressions"] || []}
+              class="diff-expression"
+            >
               <small>{expression["field"]} · {expression["status"]}</small>
               <div class="removed">
-                <span>Baseline</span><code><span :for={chunk <- expression["baseline"]} class={chunk["kind"]}>{chunk["text"]}</span></code>
+                <span>Baseline</span><code><span
+                  :for={chunk <- expression["baseline"]}
+                  class={chunk["kind"]}
+                >{chunk["text"]}</span></code>
               </div>
               <div class="added">
-                <span>Proposal</span><code><span :for={chunk <- expression["proposal"]} class={chunk["kind"]}>{chunk["text"]}</span></code>
+                <span>Proposal</span><code><span
+                  :for={chunk <- expression["proposal"]}
+                  class={chunk["kind"]}
+                >{chunk["text"]}</span></code>
               </div>
             </div>
             <p :if={((@delta[change["id"]] || %{})["expressions"] || []) == []}>
@@ -122,8 +137,20 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <div :if={@show_sources} id="source-comparison" class="source-chooser">
         <p>Choose two trusted local versions to run this case in separate processes.</p>
         <.form for={@compare_form} id="compare-form" phx-submit="compare" class="form-row">
-          <.input field={@compare_form[:baseline]} type="select" label="Baseline" options={@snapshots} prompt="Choose version" />
-          <.input field={@compare_form[:proposal]} type="select" label="Proposal" options={@snapshots} prompt="Choose version" />
+          <.input
+            field={@compare_form[:baseline]}
+            type="select"
+            label="Baseline"
+            options={@snapshots}
+            prompt="Choose version"
+          />
+          <.input
+            field={@compare_form[:proposal]}
+            type="select"
+            label="Proposal"
+            options={@snapshots}
+            prompt="Choose version"
+          />
           <button>Compare</button>
         </.form>
       </div>
@@ -259,17 +286,19 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <div :if={!@package || @selected} class="decision-actions">
         <button
           :for={
-            {action, label} <- if(@package,
-              do: [
-                {"design", "Record design concern on stored finding"},
-                {"policy", "Record policy question on stored finding"},
-                {"considered", "Mark stored finding considered"}
-              ],
-              else: [
-                {"design", "Record concern"},
-                {"policy", "Record open question"},
-                {"considered", "Mark considered"}
-              ])
+            {action, label} <-
+              if(@package,
+                do: [
+                  {"design", "Record design concern on stored finding"},
+                  {"policy", "Record policy question on stored finding"},
+                  {"considered", "Mark stored finding considered"}
+                ],
+                else: [
+                  {"design", "Record concern"},
+                  {"policy", "Record open question"},
+                  {"considered", "Mark considered"}
+                ]
+              )
           }
           id={if action == "design", do: "request-repair"}
           phx-click="review_decision"

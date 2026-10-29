@@ -52,9 +52,9 @@ test('observed condition groups have exact truth counts and local validated proo
   await expect(page.locator('#group-0-requires-amount_domain')).toContainText('Positive amount domain');
   await expect(page.locator('#group-0-requires-eligibility')).toContainText('Admission eligibility');
   await expect(page.locator('#complete-tree-0-requires')).not.toHaveAttribute('open');
-  await page.locator('#complete-tree-0-requires summary').click();
+  await page.locator('#complete-tree-0-requires > summary').click();
   await expect(page.locator('#tree-clause-0-requires-root')).toBeVisible();
-  await page.locator('#complete-tree-0-requires summary').click();
+  await page.locator('#complete-tree-0-requires > summary').click();
   await page.locator('#proof-source-workspace .proof-source-stages button').nth(5).click();
   await expect(page.locator('#dissector .selected-clause')).toHaveCount(1);
   const excerpt = page.locator('#reading-excerpt-0-requires');
@@ -74,7 +74,10 @@ test('factual accepts and rejects have equal prominence and review actions keep 
   await expect(page.locator('#local-decision-target')).toContainText('session note');
   await expect(page.locator('#decision-docket button')).toHaveCount(3);
   await page.locator('#review-amount').fill('99');
+  const revision = await page.locator('#trace-revision').getAttribute('data-revision');
+  await expect(page.locator('#scratch-status')).toBeVisible();
   await page.locator('#request-repair').click();
+  await expect(page.locator('#trace-revision')).not.toHaveAttribute('data-revision', revision);
   const after = await saved(page);
   expect(after.steps).toEqual(initial.steps);
   expect(after.notes.length).toBe(initial.notes.length + 1);

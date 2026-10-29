@@ -39,7 +39,7 @@ test('processor assumption experiment is separate from saved history',async({pag
 });
 
 test('original observed conditions show the operands used for this input',async({page})=>{
- await open(page);await expect(page.locator('#dissector .condition-group').first()).toBeVisible();await expect(page.locator('.condition-rows .inline-values').filter({hasText:'100 ≤ 100'}).first()).toBeVisible();await page.locator('#dissector button[phx-click=helper]').first().click();await expect(page.locator('#helper-definition')).toBeVisible();
+ await open(page);await expect(page.locator('#dissector .condition-group').first()).toBeVisible();await expect(page.locator('.condition-rows .inline-values').filter({hasText:'100 ≤ 100'}).first()).toBeVisible();await page.locator('#complete-tree-0-requires > summary').click();await page.locator('#tree-clause-0-requires-root > .logic-line > button[phx-click=helper]').click();await expect(page.locator('#helper-definition')).toBeVisible();
 });
 
 test('events without an amount retain the same input layout',async({page})=>{
@@ -91,8 +91,8 @@ test('eight entries and their eight bindings remain inspectable without a giant 
   if(n)await page.getByRole('button',{name:'Add entry',exact:true}).click();
   await page.locator(`[name="initial[entries][${n}][key]"]`).fill(String(n+1));await page.locator(`[name="initial[entries][${n}][amount]"]`).fill('37');await page.locator(`[name="initial[entries][${n}][status]"]`).selectOption('authorized');
  }
- await page.getByRole('button',{name:'Recalculate totals',exact:true}).click();await page.locator('#save-starting').click();await expect(page.locator('#case-tools')).toHaveCount(0);
- await run(page,'void','1');await expect(page.locator('#entries tbody tr')).toHaveCount(8);await expect(page.locator('#ledger-output')).toContainText('296¢ reserved');await expect(page.locator('#ledger-output')).toContainText('Next action: Cancel hold 1');
+ await page.getByRole('button',{name:'Recalculate totals',exact:true}).click();await expect(page.locator('#initial_used_amount')).toHaveValue('296');await expect(page.locator('#initial_used_holds')).toHaveValue('8');await page.locator('#save-starting').click();await expect(page.locator('#case-tools')).toHaveCount(0);
+ await run(page,'void','1');await expect(page.locator('#entries tbody tr')).toHaveCount(8);await expect(page.locator('#ledger-output')).toContainText('296¢ reserved');await expect(page.locator('#ledger-output .effect-list')).toContainText('Cancel hold 1');
  await expect(page.locator('#binding-count')).toContainText('8 combinations checked');await page.locator('#binding-choice select').selectOption('7');await expect(page.locator('#binding-7')).toBeVisible();await expect(page.locator('#binding-0')).toHaveCount(0);
  expect(await page.locator('#proof-script > div').count()).toBeLessThan(15);await page.locator('#full-proof').click();await expect.poll(()=>page.locator('#proof-script > div').count()).toBeGreaterThan(40);
 });

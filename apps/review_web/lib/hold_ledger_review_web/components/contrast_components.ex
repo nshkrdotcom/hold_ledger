@@ -46,16 +46,23 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         <p :if={@differences && @differences.same?} id="same-output" class="scope-note">
           Same as code result.
         </p>
-        <details :if={@differences && !@differences.same?} id="output-differences" class="output-differences">
+        <details
+          :if={@differences && !@differences.same?}
+          id="output-differences"
+          class="output-differences"
+        >
           <summary>
-            Full differences · {@differences.field_count} changed fields,
-            {@differences.other_count} other rows
+            Full differences · {@differences.field_count} changed fields, {@differences.other_count} other rows
           </summary>
           <h3>Code result → editable alternative</h3>
           <ol>
-            <li :for={{difference, index} <- Enum.with_index(@differences.rows)} id={"difference-#{index}"}>
+            <li
+              :for={{difference, index} <- Enum.with_index(@differences.rows)}
+              id={"difference-#{index}"}
+            >
               <strong>{difference.label}</strong>
-              <span>{difference.before} <span aria-label="changed to">→</span> {difference.after}{difference.delta}</span>
+              <span>{difference.before}
+              <span aria-label="changed to">→</span> {difference.after}{difference.delta}</span>
             </li>
           </ol>
           <p class="scope-note">
@@ -205,7 +212,9 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         <div class="predicate-heading">Selected rule · output satisfaction</div>
         <div class="predicate-pair">
           <div><span>Code result</span><strong>{ReviewCopy.code_acceptance(@case)}</strong></div>
-          <div><span>Alternative (not executed)</span><strong>{ReviewCopy.candidate_acceptance(@case)}</strong></div>
+          <div>
+            <span>Alternative (not executed)</span><strong>{ReviewCopy.candidate_acceptance(@case)}</strong>
+          </div>
         </div>
       </div>
       <table :if={@case} id="contrast-matrix">
@@ -318,22 +327,26 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       </p>
       <dl class="output-fields">
         <div>
-          <dt>Amount limit</dt><dd>{@output["after"]["amount_limit"]}¢
+          <dt>Amount limit</dt><dd>
+            {@output["after"]["amount_limit"]}¢
             <.field_delta change={OutputDifferences.at(@differences, ["after", "amount_limit"])} />
           </dd>
         </div>
         <div>
-          <dt>Hold limit</dt><dd>{slot_count(@output["after"]["hold_limit"])}
+          <dt>Hold limit</dt><dd>
+            {slot_count(@output["after"]["hold_limit"])}
             <.field_delta change={OutputDifferences.at(@differences, ["after", "hold_limit"])} />
           </dd>
         </div>
         <div>
-          <dt>Used hold slots</dt><dd>{@output["after"]["used_holds"]}
+          <dt>Used hold slots</dt><dd>
+            {@output["after"]["used_holds"]}
             <.field_delta change={OutputDifferences.at(@differences, ["after", "used_holds"])} />
           </dd>
         </div>
         <div>
-          <dt>Result</dt><dd>{@output["result"]}
+          <dt>Result</dt><dd>
+            {@output["result"]}
             <.field_delta change={OutputDifferences.at(@differences, ["result"])} />
           </dd>
         </div>
@@ -341,7 +354,9 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       <ul class="output-entries">
         <li :for={{entry, index} <- Enum.with_index(@output["after"]["entries"])}>
           <span>{entry["key"]} · {entry["amount"]}¢</span>
-          <.field_delta change={OutputDifferences.at(@differences, ["after", "entries", index, "amount"])} />
+          <.field_delta change={
+            OutputDifferences.at(@differences, ["after", "entries", index, "amount"])
+          } />
           <button
             :if={@id == "hypothetical-output"}
             class="status-pill"
@@ -352,12 +367,20 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           <span :if={@id != "hypothetical-output"} class="status-pill" title={entry["status"]}>
             {ReviewCopy.state(entry["status"])}
           </span>
-          <.field_delta change={OutputDifferences.at(@differences, ["after", "entries", index, "status"])} />
+          <.field_delta change={
+            OutputDifferences.at(@differences, ["after", "entries", index, "status"])
+          } />
         </li>
       </ul>
-      <ul :if={@differences && @differences.ghosts != []} class="comparison-ghosts" aria-label="Entries absent from alternative">
+      <ul
+        :if={@differences && @differences.ghosts != []}
+        class="comparison-ghosts"
+        aria-label="Entries absent from alternative"
+      >
         <li :for={ghost <- @differences.ghosts} class="comparison-ghost">
-          <span>{ghost.entry["key"]} · {ghost.entry["amount"]}¢ · {ReviewCopy.state(ghost.entry["status"])}</span>
+          <span>{ghost.entry["key"]} · {ghost.entry["amount"]}¢ · {ReviewCopy.state(
+            ghost.entry["status"]
+          )}</span>
           <small>Absent from alternative · original position {ghost.before_index + 1}</small>
         </li>
       </ul>
@@ -370,7 +393,13 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             <.field_delta change={OutputDifferences.at(@differences, ["effects", index, "amount"])} />
           </li>
         </ul>
-        <small :if={@differences && Enum.any?(@differences.rows, &(&1.kind in [:added, :removed, :order_change] && hd(&1.path) == "effects"))}>
+        <small :if={
+          @differences &&
+            Enum.any?(
+              @differences.rows,
+              &(&1.kind in [:added, :removed, :order_change] && hd(&1.path) == "effects")
+            )
+        }>
           Action membership or order differs; see Full differences.
         </small>
       </div>

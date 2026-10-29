@@ -118,8 +118,10 @@ defmodule HoldLedgerReviewWeb.OutputDifferencesTest do
     assert %{before: "[11]", after: "[]"} =
              Enum.find(rows, &(&1.label == "Entry order / identities"))
   end
+
   test "one structured projection drives exact field markers, counts and typed IDs" do
     before = output([entry(11, 100, "voiding")])
+
     after_value =
       output([entry(11, 99, "voided")])
       |> put_in(["after", "used_amount"], 99)
@@ -130,17 +132,27 @@ defmodule HoldLedgerReviewWeb.OutputDifferencesTest do
     assert result.field_count == 5
     assert result.other_count == 0
     assert result.ghosts == []
-    assert %{kind: :field_change, before_value: 100, after_value: 99, signed: -1,
-             unit: :cents, path: ["after", "used_amount"]} =
+
+    assert %{
+             kind: :field_change,
+             before_value: 100,
+             after_value: 99,
+             signed: -1,
+             unit: :cents,
+             path: ["after", "used_amount"]
+           } =
              OutputDifferences.at(result, ["after", "used_amount"])
 
-    assert %{before_path: ["after", "entries", 0, "amount"],
+    assert %{
+             before_path: ["after", "entries", 0, "amount"],
              after_path: ["after", "entries", 0, "amount"],
-             occurrence: %{identity: 11, before_index: 0, after_index: 0}} =
+             occurrence: %{identity: 11, before_index: 0, after_index: 0}
+           } =
              OutputDifferences.at(result, ["after", "entries", 0, "amount"])
 
     assert OutputDifferences.annotation(OutputDifferences.at(result, ["result"])) ==
              "was Cancellation requested"
+
     assert OutputDifferences.at(result, ["after", "entries", 0, "key"]) == nil
   end
 
@@ -151,9 +163,12 @@ defmodule HoldLedgerReviewWeb.OutputDifferencesTest do
     after_value = output([%{b | "amount" => 55}, a])
     result = OutputDifferences.between(before, after_value)
 
-    assert %{before_path: ["after", "entries", 1, "amount"],
+    assert %{
+             before_path: ["after", "entries", 1, "amount"],
              after_path: ["after", "entries", 0, "amount"],
-             signed: -5} = OutputDifferences.at(result, ["after", "entries", 0, "amount"])
+             signed: -5
+           } = OutputDifferences.at(result, ["after", "entries", 0, "amount"])
+
     assert Enum.any?(result.rows, &(&1.kind == :order_change))
     assert result.field_count == 1
     assert result.other_count == 1
@@ -191,5 +206,4 @@ defmodule HoldLedgerReviewWeb.OutputDifferencesTest do
     assert Enum.count(result.rows, &(&1.kind == :added)) == 1
     assert Enum.any?(result.rows, &(&1.kind == :correspondence))
   end
-
 end

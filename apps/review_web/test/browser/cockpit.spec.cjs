@@ -34,7 +34,7 @@ test('early release: valid accounting is distinct from required retention',async
   await expect(page.locator('#validity-row td').nth(1)).toHaveText('Accounting balances');
   await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
   await tab(page,'clauses');
-  await page.locator('#dissector button[phx-click=helper]').last().click();
+  await page.locator('#clause-0-candidate-root > .logic-line > button[phx-click=helper]').click();
   await expect(page.locator('#helper-definition')).toContainText('voided');
   await expect(page.locator('#helper-definition')).toContainText(':sent, :unknown, :authorized, :voiding');
   await page.reload();await tab(page,'outputs');await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
@@ -59,8 +59,10 @@ test('99, 100 and 101 expose actual eligibility operands and outside-domain sile
     await page.locator('#timeline button').first().click();
     await event(page,'request','11',amount);
     await tab(page,'clauses');
-    await page.locator('#dissector button[phx-click=helper]').first().click();
-    const clause=page.locator('#dissector .logic-leaf').filter({has:page.locator('button.clause-select', {hasText: /^amount <= amount_limit - used_amount$/})});
+    if(!await page.locator('#complete-tree-0-requires').evaluate(el=>el.open)) await page.locator('#complete-tree-0-requires > summary').click();
+    await page.locator('#tree-clause-0-requires-root > .logic-line > button[phx-click=helper]').click();
+    await expect(page.locator('#helper-definition')).toBeVisible();
+    const clause=page.locator('#group-0-requires-eligibility .logic-leaf').filter({has:page.locator('button.clause-select', {hasText: /^amount <= amount_limit - used_amount$/})});
     await expect(clause).toContainText(amount+' ≤ 100');
     await expect(clause).toContainText(amount==='101'?'false':'true');
     await tab(page,'outputs');

@@ -412,7 +412,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           %{
             type: :step,
             index: i,
-            target: if(target, do: %{phase: target["phase"], path: target["path"], binding: target["binding"]})
+            target:
+              if(target,
+                do: %{phase: target["phase"], path: target["path"], binding: target["binding"]}
+              )
           }
 
         socket = assign(socket, stage: i, selection: selection)
@@ -925,15 +928,19 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     binding = link["binding"]
     phase = link["phase"]
     path = link["path"]
-    outlines = get_in(socket.assigns.case_data || %{}, ["explanation", "condition_outlines"]) || []
+
+    outlines =
+      get_in(socket.assigns.case_data || %{}, ["explanation", "condition_outlines"]) || []
+
     selected_outline = Enum.at(outlines, binding) || %{}
 
     grouped? =
       Enum.any?(selected_outline[phase] || [], fn group ->
-        Enum.any?(group.observations, &(Enum.join(&1.path, ".") == path))
+        Enum.any?(group["observations"], &(Enum.join(&1["path"], ".") == path))
       end)
 
     prefix = if grouped?, do: "clause", else: "tree-clause"
+
     "#{prefix}-#{binding}-#{phase}-#{if(path == "", do: "root", else: String.replace(path, ".", "-"))}"
   end
 
@@ -965,44 +972,45 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   defp retained_selection(nil, _, _, _), do: nil
 
   defp retained_selection(selection, assigns, data, previous_context) do
-    current = case_context(data)
-    same_context = previous_context == current or
-      (previous_context != nil and current != nil and
-         elem(previous_context, 1) == elem(current, 1) and
-         elem(previous_context, 2) == elem(current, 2) and
-         elem(current, 0) == "preview")
+    binding = Enum.at(data["explanation"]["bindings"], assigns.binding_index)
+    target = selection_target(selection, assigns, binding)
 
-    valid_source =
+    valid =
       selection[:generation] in [nil, assigns.reading["source_generation"]] and
-        same_context
+        compatible_context?(previous_context, case_context(data))
 
-    binding =
-      Enum.at(data["explanation"]["bindings"], assigns.binding_index)
+    if valid and addressable_target?(target), do: selection, else: nil
+  end
 
-    target =
-      case selection do
-        %{type: :clause, phase: phase, path: path, binding: i, basis: basis} ->
-          if i == assigns.binding_index and basis == assigns.basis and binding &&
-               phase in ["requires", assigns.basis],
-            do: {binding[phase], path},
-            else: nil
+  defp compatible_context?(context, context), do: true
+  defp compatible_context?({_, operation, origin}, {"preview", operation, origin}), do: true
+  defp compatible_context?(_, _), do: false
 
-        %{type: :step, target: %{phase: phase, path: path, binding: i}} ->
-          if i == assigns.binding_index and binding && phase in ["requires", assigns.basis],
-            do: {binding[phase], path},
-            else: nil
+  defp selection_target(
+         %{type: :clause, basis: basis} = selection,
+         %{basis: basis} = assigns,
+         binding
+       ),
+       do: bound_target(selection, assigns, binding)
 
-        %{type: :step, target: nil} ->
-          {binding && binding["requires"], ""}
+  defp selection_target(%{type: :step, target: nil}, _, binding),
+    do: {binding && binding["requires"], ""}
 
-        _ ->
-          nil
-      end
+  defp selection_target(%{type: :step, target: target}, assigns, binding),
+    do: bound_target(target, assigns, binding)
 
-    if valid_source and match?({%{}, _}, target) and match?({:ok, _}, observed_node(elem(target, 0), elem(target, 1))),
-      do: selection,
+  defp selection_target(_, _, _), do: nil
+
+  defp bound_target(%{binding: i, phase: phase, path: path}, assigns, binding) do
+    if i == assigns.binding_index and is_map(binding) and phase in ["requires", assigns.basis],
+      do: {binding[phase], path},
       else: nil
   end
+
+  defp addressable_target?({node, path}) when is_map(node),
+    do: match?({:ok, _}, observed_node(node, path))
+
+  defp addressable_target?(_), do: false
 
   defp refresh_case(socket, candidate) do
     original_context = case_context(socket.assigns.case_data)
@@ -1014,7 +1022,8 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
            candidate
          ) do
       {:ok, data} ->
-        selection = retained_selection(socket.assigns.selection, socket.assigns, data, original_context)
+        selection =
+          retained_selection(socket.assigns.selection, socket.assigns, data, original_context)
 
         socket
         |> assign(
@@ -1503,7 +1512,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 </div>
                 <p id="observation-target" class="scope-note">
                   <%= if @case_data do %>
-                    Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment, do: "unsaved experiment", else: "saved step")}
+                    Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
+                      do: "unsaved experiment",
+                      else: "saved step"
+                    )}
                   <% else %>
                     Rule {@slug} · no currently checkable alternative
                   <% end %>
@@ -1543,23 +1555,25 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   selection={@selection}
                   generation={@reading["source_generation"]}
                   stage={@stage}
-                  changed_sources={if(@package, do: Enum.map(@package["source_changes"], & &1["path"]), else: [])}
+                  changed_sources={
+                    if(@package, do: Enum.map(@package["source_changes"], & &1["path"]), else: [])
+                  }
                 />
               </section>
-            <section id="proof-panel">
-              <.proof_source
-                reading={@reading}
-                stage={@stage}
-                full={@proof_full}
-                active_links={@active_links}
-                links={@reading_links.links}
-              />
-              <section :if={@inspected} id="inline-source" class="inline-source">
-                <header>
-                  <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
-                </header><pre>{@inspected.bytes}</pre>
+              <section id="proof-panel">
+                <.proof_source
+                  reading={@reading}
+                  stage={@stage}
+                  full={@proof_full}
+                  active_links={@active_links}
+                  links={@reading_links.links}
+                />
+                <section :if={@inspected} id="inline-source" class="inline-source">
+                  <header>
+                    <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
+                  </header><pre>{@inspected.bytes}</pre>
+                </section>
               </section>
-            </section>
             </div>
           </div>
         </div>

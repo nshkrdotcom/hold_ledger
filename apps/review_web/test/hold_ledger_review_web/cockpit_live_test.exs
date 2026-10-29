@@ -30,7 +30,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
       assert has_element?(view, "##{id}")
     end
 
-    assert has_element?(view, "#example-provenance", "Example")
+    assert has_element?(view, "#example-provenance", "Illustrative example")
     assert has_element?(view, "#selected-claim", "Requires of the result")
     assert has_element?(view, "#output-differences")
     assert has_element?(view, "#nearby-observation")
@@ -69,8 +69,14 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     tab(view, "clauses")
 
     assert has_element?(view, "#dissector", "100 ≤ 100")
-    element(view, "#dissector button[phx-click=helper]", "Definition")
+
+    element(
+      view,
+      "#tree-clause-0-requires-root > .logic-line > button[phx-click=helper]",
+      "Definition"
+    )
     |> render_click()
+
     assert has_element?(view, "#helper-definition")
     tab(view, "outputs")
     assert has_element?(view, "#ledger-output", "Accepted")
@@ -479,6 +485,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     refute has_element?(view, "#selected-reading-links")
     assert {:ok, ^original} = Trace.get(original["id"])
   end
+
   test "opening rule ribbon retains source scope without rendering full contract by default", %{
     conn: conn
   } do
@@ -494,7 +501,9 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     refute has_element?(view, "#example-provenance")
   end
 
-  test "alternative cards and the full audit list share noninteractive exact deltas", %{conn: conn} do
+  test "alternative cards and the full audit list share noninteractive exact deltas", %{
+    conn: conn
+  } do
     {view, doc} = open(conn, "po_a2")
     assert has_element?(view, "#hypothetical-output .field-delta", "-100¢")
     assert has_element?(view, "#hypothetical-output .comparison-ghost", "Absent from alternative")
@@ -540,14 +549,29 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert has_element?(view, "#active-predicate-result", "Accepts code result")
     assert has_element?(view, "#active-predicate-result", "Rejects alternative")
     assert has_element?(view, "#local-decision-target", "session note")
-    assert has_element?(view, "#decision-docket button[phx-value-action=design]", "Record concern")
-    assert has_element?(view, "#decision-docket button[phx-value-action=policy]", "Record open question")
-    assert has_element?(view, "#decision-docket button[phx-value-action=considered]", "Mark considered")
+
+    assert has_element?(
+             view,
+             "#decision-docket button[phx-value-action=design]",
+             "Record concern"
+           )
+
+    assert has_element?(
+             view,
+             "#decision-docket button[phx-value-action=policy]",
+             "Record open question"
+           )
+
+    assert has_element?(
+             view,
+             "#decision-docket button[phx-value-action=considered]",
+             "Mark considered"
+           )
+
     render_click(view, "review_decision", %{"action" => "policy"})
     {:ok, saved} = Trace.get(doc["id"])
     assert length(saved["notes"]) == 1
     assert saved["steps"] == doc["steps"]
     assert hd(saved["notes"])["disposition"] == "needs_evidence"
   end
-
 end
