@@ -6,6 +6,8 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
   import HoldLedgerReviewWeb.DissectorComponents, only: [term: 1]
 
   attr :reading, :map, required: true
+  attr :catalog, :list, required: true
+  attr :slug, :string, required: true
   attr :case, :map, default: nil
   attr :step, :map, default: nil
   attr :package, :map, default: nil
@@ -27,11 +29,23 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     assigns = assign(assigns, example: example, policy_source: policy_source)
 
     ~H"""
-    <section id="review-comparison" class="rule-summary">
-      <div class="section-heading">
-        <span class="eyebrow">Rule</span><button phx-click="show_sources" id="choose-sources">Compare versions</button>
+    <section id="review-comparison" class="rule-summary" aria-label="Requirement and source scope">
+      <div class="rule-ribbon">
+        <.form for={to_form(%{"slug" => @slug})} id="law-picker" phx-change="law_change">
+          <.input
+            name="slug"
+            value={@slug}
+            type="select"
+            label="Rule to inspect"
+            options={Enum.map(@catalog, &{ReviewCopy.title(&1), &1["slug"]})}
+          />
+        </.form>
+        <div class="rule-identity">
+          <span class="eyebrow">{@slug} · Requirement summary</span>
+          <h1>{ReviewCopy.title(@reading)}</h1>
+        </div>
+        <button phx-click="show_sources" id="choose-sources">Compare versions</button>
       </div>
-      <h1>{ReviewCopy.title(@reading)}</h1>
       <p id="policy-anchor">
         {ReviewCopy.policy(@reading)}
         <button
@@ -41,92 +55,78 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           phx-click="inspect_registered_source"
           phx-value-id={@policy_source["id"]}
           phx-value-sha={@policy_source["sha256"]}
-        >Read requirement</button>
+        >Read requirement source</button>
       </p>
-      <section id="selected-claim" class="selected-claim" aria-label="Selected source claim">
-        <h2>Selected formal claim</h2>
+      <details id="selected-claim" class="selected-claim">
+        <summary>Read full claim · requires / expects</summary>
         <dl :if={@reading["contract"]["status"] == "source_read"}>
           <div>
-            <dt>Applies when</dt><dd><code>{@reading["contract"]["requires"]}</code></dd>
+            <dt>Applies when</dt><dd><code id="requires-expression">{@reading["contract"]["requires"]}</code></dd>
           </div>
           <div>
-            <dt>Requires of the result</dt><dd><code>{@reading["contract"]["expects"]}</code></dd>
+            <dt>Requires of the result</dt><dd><code id="expects-expression">{@reading["contract"]["expects"]}</code></dd>
           </div>
         </dl>
         <p :if={@reading["contract"]["status"] == "native_statement_only"}>
           Native Lean claim: {Enum.join(@reading["law"]["theorems"] || [], ", ")}.
-          No executable Elixir counterpart; read the declaration below.
+          No executable Elixir counterpart. The full declaration is in Lean source reading.
         </p>
         <p :if={@reading["contract"]["status"] not in ~w(source_read native_statement_only)}>
-          Executable claim source unavailable. Read the registered source for its scope.
+          Executable claim source unavailable. Read registered source for its scope.
         </p>
-      </section>
-      <div :if={@show_sources} id="source-comparison" class="source-chooser">
-        <p>Choose two trusted local versions to run the same case against each.</p><.form
-          for={@compare_form}
-          id="compare-form"
-          phx-submit="compare"
-          class="form-row"
-        >
-          <.input
-            field={@compare_form[:baseline]}
-            type="select"
-            label="Before"
-            options={@snapshots}
-            prompt="Choose version"
-          /><.input
-            field={@compare_form[:proposal]}
-            type="select"
-            label="After"
-            options={@snapshots}
-            prompt="Choose version"
-          /><button>Compare</button>
-        </.form><p :if={@package} class="source-pair-label">
-          Before {@package["baseline"]["snapshot_id"]} · After {@package["proposal"]["snapshot_id"]}
+      </details>
+      <div id="contract-diff" class="contract-context">
+        <p :if={!@package && @example} class="example-contract">
+          <span id="example-provenance" class="example-label">Illustrative example change</span>
+          <code>amount &lt;= remaining</code>
+          <span aria-label="changed to">→</span>
+          <code>amount &lt; remaining</code>
+          <small>Not a recorded source comparison</small>
         </p>
-      </div>
-      <section id="contract-diff">
-        <span :if={!@package && @example} id="example-provenance" class="example-label">Example change</span>
-        <div :if={!@package && @example} class="diff-lines">
-          <div class="removed"><span>Before</span><code>amount <del>&lt;=</del> remaining</code></div><div class="added">
-            <span>After</span><code>amount <ins>&lt;</ins> remaining</code>
-          </div>
-        </div>
-        <code :if={!@package && !@example}>{@reading["contract"]["requires"] || "Lean statement"}</code>
-        <article
-          :for={change <- if(@package, do: @package["source_changes"], else: [])}
-          class="source-change"
-        >
-          <h4>{change["path"]}</h4>
-          <div
-            :for={expression <- (@delta[change["id"]] || %{})["expressions"] || []}
-            class="diff-expression"
-          >
-            <small>{expression["field"]} · {expression["status"]}</small>
-            <div class="removed">
-              <span>−</span><code><span :for={chunk <- expression["baseline"]} class={chunk["kind"]}>{chunk[
-                "text"
-              ]}</span></code>
-            </div>
-            <div class="added">
-              <span>+</span><code><span :for={chunk <- expression["proposal"]} class={chunk["kind"]}>{chunk[
-                "text"
-              ]}</span></code>
-            </div>
-          </div>
-          <p :if={((@delta[change["id"]] || %{})["expressions"] || []) == []}>
-            No supported normalized claim comparison. Read the changed source.
+        <p :if={!@package && !@example} id="standalone-law-scope" class="scope-note">
+          Standalone rule review · no proposed source change
+        </p>
+        <details :if={@package} id="source-change-details" class="source-change-details">
+          <summary>
+            Actual source comparison · {length(@package["source_changes"])} changed source files
+            <span class="scope-note">(read all changes)</span>
+          </summary>
+          <p class="source-pair-label">
+            Baseline {@package["baseline"]["snapshot_id"]} · Proposal {@package["proposal"]["snapshot_id"]}
           </p>
-          <div class="source-links">
-            <a
-              :for={side <- ~w(baseline proposal)}
-              href={"/comparisons/#{@package["id"]}/source/#{side}/#{change["id"]}"}
-              target="_blank"
-              rel="noopener"
-            >Read {side} source ↗</a>
-          </div>
-        </article>
-      </section>
+          <article :for={change <- @package["source_changes"]} class="source-change">
+            <h4>{change["path"]}</h4>
+            <div :for={expression <- (@delta[change["id"]] || %{})["expressions"] || []} class="diff-expression">
+              <small>{expression["field"]} · {expression["status"]}</small>
+              <div class="removed">
+                <span>Baseline</span><code><span :for={chunk <- expression["baseline"]} class={chunk["kind"]}>{chunk["text"]}</span></code>
+              </div>
+              <div class="added">
+                <span>Proposal</span><code><span :for={chunk <- expression["proposal"]} class={chunk["kind"]}>{chunk["text"]}</span></code>
+              </div>
+            </div>
+            <p :if={((@delta[change["id"]] || %{})["expressions"] || []) == []}>
+              No supported normalized claim comparison. Read the complete changed source.
+            </p>
+            <div class="source-links">
+              <a
+                :for={side <- ~w(baseline proposal)}
+                href={"/comparisons/#{@package["id"]}/source/#{side}/#{change["id"]}"}
+                target="_blank"
+                rel="noopener"
+              >Read {side} source</a>
+            </div>
+          </article>
+        </details>
+      </div>
+      <div :if={@show_sources} id="source-comparison" class="source-chooser">
+        <p>Choose two trusted local versions to run this case in separate processes.</p>
+        <.form for={@compare_form} id="compare-form" phx-submit="compare" class="form-row">
+          <.input field={@compare_form[:baseline]} type="select" label="Baseline" options={@snapshots} prompt="Choose version" />
+          <.input field={@compare_form[:proposal]} type="select" label="Proposal" options={@snapshots} prompt="Choose version" />
+          <button>Compare</button>
+        </.form>
+      </div>
     </section>
     """
   end
@@ -248,14 +248,28 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           }
         />
       </.form>
+      <p :if={@package && @selected} class="scope-note" id="stored-decision-target">
+        The actions below update the stored comparison finding {@selected["id"]}.
+        They do not decide the active unsaved experiment or change source code.
+      </p>
+      <p :if={!@package} class="scope-note" id="local-decision-target">
+        These actions record a session note about the active rule/case. They do not
+        approve code, change the rule, or save pending events.
+      </p>
       <div :if={!@package || @selected} class="decision-actions">
         <button
           :for={
-            {action, label} <- [
-              {"design", "Note: needs a fix"},
-              {"policy", "Note: requirement is unclear"},
-              {"considered", "Note: reviewed"}
-            ]
+            {action, label} <- if(@package,
+              do: [
+                {"design", "Record design concern on stored finding"},
+                {"policy", "Record policy question on stored finding"},
+                {"considered", "Mark stored finding considered"}
+              ],
+              else: [
+                {"design", "Record concern"},
+                {"policy", "Record open question"},
+                {"considered", "Mark considered"}
+              ])
           }
           id={if action == "design", do: "request-repair"}
           phx-click="review_decision"

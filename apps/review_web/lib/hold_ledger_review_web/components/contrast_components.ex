@@ -33,37 +33,36 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             title="Code returned"
             output={if @case, do: @case["actual"], else: @step["output"]}
             id="ledger-output"
+            differences={nil}
           />
           <.output
             :if={@case}
             title="What if it returned…"
             output={@case["candidate"]}
             id="hypothetical-output"
+            differences={@differences}
           />
         </div>
-        <section
-          :if={@differences}
-          id="output-differences"
-          class="output-differences"
-          aria-live="polite"
-        >
+        <p :if={@differences && @differences.same?} id="same-output" class="scope-note">
+          Same as code result.
+        </p>
+        <details :if={@differences && !@differences.same?} id="output-differences" class="output-differences">
+          <summary>
+            Full differences · {@differences.field_count} changed fields,
+            {@differences.other_count} other rows
+          </summary>
           <h3>Code result → editable alternative</h3>
-          <p :if={@differences.same?} id="same-output">Same as code result.</p>
-          <ol :if={!@differences.same?}>
-            <li
-              :for={{difference, index} <- Enum.with_index(@differences.rows)}
-              id={"difference-#{index}"}
-            >
+          <ol>
+            <li :for={{difference, index} <- Enum.with_index(@differences.rows)} id={"difference-#{index}"}>
               <strong>{difference.label}</strong>
-              <span>{difference.before}
-              <span aria-label="changed to">→</span> {difference.after}{difference.delta}</span>
+              <span>{difference.before} <span aria-label="changed to">→</span> {difference.after}{difference.delta}</span>
             </li>
           </ol>
-          <p :if={!@differences.same?} class="scope-note">
-            Repeated identities are shown as occurrences, not presumed to be the same entry.
-            This is an unsaved alternative, not observed execution or a source-version comparison.
+          <p class="scope-note">
+            A changed value is not a policy judgment. Repeated identities remain separate
+            occurrences; ambiguous rows are not silently paired. This alternative is unsaved.
           </p>
-        </section>
+        </details>
         <p :if={@invalid} id="invalid-candidate" role="alert">
           Enter a whole number or valid output JSON to check this alternative.
         </p>
@@ -202,6 +201,13 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       <p class="scope-note">
         Predicate outcomes describe the selected rule, not whether an alternative is desirable.
       </p>
+      <div :if={@case} id="active-predicate-result" class="predicate-focus" role="status">
+        <div class="predicate-heading">Selected rule · output satisfaction</div>
+        <div class="predicate-pair">
+          <div><span>Code result</span><strong>{ReviewCopy.code_acceptance(@case)}</strong></div>
+          <div><span>Alternative (not executed)</span><strong>{ReviewCopy.candidate_acceptance(@case)}</strong></div>
+        </div>
+      </div>
       <table :if={@case} id="contrast-matrix">
         <thead>
           <tr>
@@ -288,36 +294,54 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   attr :title, :string, required: true
   attr :output, :map, required: true
   attr :id, :string, required: true
+  attr :differences, :any, default: nil
 
   def output(assigns) do
     ~H"""
     <article class="output" id={@id}>
-      <h3>{@title}</h3><strong>{@output["after"]["used_amount"]}¢ reserved</strong><meter
+      <h3>{@title}</h3>
+      <div class="output-headline">
+        <strong>{@output["after"]["used_amount"]}¢ reserved</strong>
+        <.field_delta change={OutputDifferences.at(@differences, ["after", "used_amount"])} />
+      </div>
+      <meter
         class="money-bar"
         min="0"
         max={max(@output["after"]["amount_limit"], 1)}
         value={@output["after"]["used_amount"]}
         aria-label={@title <> ": reserved money"}
-      ></meter><p>
-        {@output["after"]["used_holds"]} slots · {ReviewCopy.result(@output["result"])}
+      ></meter>
+      <p class="output-headline">
+        {slot_count(@output["after"]["used_holds"])} · {ReviewCopy.result(@output["result"])}
+        <.field_delta change={OutputDifferences.at(@differences, ["after", "used_holds"])} />
+        <.field_delta change={OutputDifferences.at(@differences, ["result"])} />
       </p>
       <dl class="output-fields">
         <div>
-          <dt>Amount limit</dt><dd>{@output["after"]["amount_limit"]}¢</dd>
+          <dt>Amount limit</dt><dd>{@output["after"]["amount_limit"]}¢
+            <.field_delta change={OutputDifferences.at(@differences, ["after", "amount_limit"])} />
+          </dd>
         </div>
         <div>
-          <dt>Hold limit</dt><dd>{@output["after"]["hold_limit"]} slots</dd>
+          <dt>Hold limit</dt><dd>{slot_count(@output["after"]["hold_limit"])}
+            <.field_delta change={OutputDifferences.at(@differences, ["after", "hold_limit"])} />
+          </dd>
         </div>
         <div>
-          <dt>Used hold slots</dt><dd>{@output["after"]["used_holds"]}</dd>
+          <dt>Used hold slots</dt><dd>{@output["after"]["used_holds"]}
+            <.field_delta change={OutputDifferences.at(@differences, ["after", "used_holds"])} />
+          </dd>
         </div>
         <div>
-          <dt>Result</dt><dd>{@output["result"]}</dd>
+          <dt>Result</dt><dd>{@output["result"]}
+            <.field_delta change={OutputDifferences.at(@differences, ["result"])} />
+          </dd>
         </div>
       </dl>
-      <ul>
+      <ul class="output-entries">
         <li :for={{entry, index} <- Enum.with_index(@output["after"]["entries"])}>
           <span>{entry["key"]} · {entry["amount"]}¢</span>
+          <.field_delta change={OutputDifferences.at(@differences, ["after", "entries", index, "amount"])} />
           <button
             :if={@id == "hypothetical-output"}
             class="status-pill"
@@ -325,18 +349,47 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             phx-value-index={index}
             title={entry["status"]}
           >{ReviewCopy.state(entry["status"])}</button>
-          <span :if={@id != "hypothetical-output"} class="status-pill" title={entry["status"]}>{ReviewCopy.state(
-            entry["status"]
-          )}</span>
+          <span :if={@id != "hypothetical-output"} class="status-pill" title={entry["status"]}>
+            {ReviewCopy.state(entry["status"])}
+          </span>
+          <.field_delta change={OutputDifferences.at(@differences, ["after", "entries", index, "status"])} />
         </li>
-      </ul><p class="effect-list">
-        Next action: {if @output["effects"] == [],
-          do: "none",
-          else: Enum.map_join(@output["effects"], ", ", &ReviewCopy.action/1)}
-      </p>
+      </ul>
+      <ul :if={@differences && @differences.ghosts != []} class="comparison-ghosts" aria-label="Entries absent from alternative">
+        <li :for={ghost <- @differences.ghosts} class="comparison-ghost">
+          <span>{ghost.entry["key"]} · {ghost.entry["amount"]}¢ · {ReviewCopy.state(ghost.entry["status"])}</span>
+          <small>Absent from alternative · original position {ghost.before_index + 1}</small>
+        </li>
+      </ul>
+      <div class="effect-list">
+        <strong>Next actions</strong>
+        <p :if={@output["effects"] == []}>none</p>
+        <ul :if={@output["effects"] != []}>
+          <li :for={{effect, index} <- Enum.with_index(@output["effects"])}>
+            {ReviewCopy.action(effect)}
+            <.field_delta change={OutputDifferences.at(@differences, ["effects", index, "amount"])} />
+          </li>
+        </ul>
+        <small :if={@differences && Enum.any?(@differences.rows, &(&1.kind in [:added, :removed, :order_change] && hd(&1.path) == "effects"))}>
+          Action membership or order differs; see Full differences.
+        </small>
+      </div>
     </article>
     """
   end
+
+  attr :change, :any, default: nil
+
+  def field_delta(assigns) do
+    ~H"""
+    <small :if={@change} class="field-delta" data-change-kind="field_change">
+      {OutputDifferences.annotation(@change)}
+    </small>
+    """
+  end
+
+  defp slot_count(1), do: "1 slot"
+  defp slot_count(value), do: "#{value} slots"
 
   defp nested_form(params, index, field, name),
     do: to_form(params, as: "#{name}[#{field}][#{index}]")

@@ -49,7 +49,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert has_element?(view, "#formal-status", "not_supplied")
     tab(view, "clauses")
     assert has_element?(view, "#dissector")
-    assert has_element?(view, ".logic-group")
+    assert has_element?(view, ".condition-group")
   end
 
   test "validity law permits the same candidate rejected by retention", %{conn: conn} do
@@ -68,10 +68,10 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     {view, _} = open(conn, "po_a2")
     tab(view, "clauses")
 
-    element(view, "#dissector button[phx-click=helper][phx-value-path='']", "Definition")
-    |> render_click()
-
     assert has_element?(view, "#dissector", "100 ≤ 100")
+    element(view, "#dissector button[phx-click=helper]", "Definition")
+    |> render_click()
+    assert has_element?(view, "#helper-definition")
     tab(view, "outputs")
     assert has_element?(view, "#ledger-output", "Accepted")
     render_click(view, "select_step", %{"id" => "start"})
@@ -214,7 +214,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     {:ok, saved} = Trace.get(doc["id"])
     assert length(saved["steps"]) == 1
     assert length(saved["notes"]) == 1
-    assert hd(saved["notes"])["text"] =~ "Example review"
+    assert hd(saved["notes"])["text"] =~ "Active rule review"
   end
 
   test "actual bounded search result is rechecked and cancellation stays explicit", %{conn: conn} do
@@ -424,7 +424,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     assert has_element?(view, "#selected-reading-links")
 
     view
-    |> element("#clause-0-requires-root > .logic-line > button[phx-click=select_clause]")
+    |> element("#dissector .selected-clause button[phx-click=select_clause]")
     |> render_click()
 
     assert has_element?(view, "#dissector .selected-clause")
@@ -469,14 +469,85 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   test "basis buttons bind the actual observed output and clear prior selection", %{conn: conn} do
     {view, original} = open(conn, "po_exposure_retain")
     view |> element("button[phx-click=basis][phx-value-basis=actual]") |> render_click()
-    assert has_element?(view, "#clause-0-actual-root")
-    refute has_element?(view, "#clause-0-candidate-root")
+    assert has_element?(view, "#tree-clause-0-actual-root")
+    refute has_element?(view, "#tree-clause-0-candidate-root")
     render_click(view, "proof_stage", %{"index" => "4"})
     assert has_element?(view, "#clause-0-actual-root.connected-clause")
     view |> element("button[phx-click=basis][phx-value-basis=candidate]") |> render_click()
-    assert has_element?(view, "#clause-0-candidate-root")
-    refute has_element?(view, "#clause-0-actual-root")
+    assert has_element?(view, "#tree-clause-0-candidate-root")
+    refute has_element?(view, "#tree-clause-0-actual-root")
     refute has_element?(view, "#selected-reading-links")
     assert {:ok, ^original} = Trace.get(original["id"])
   end
+  test "opening rule ribbon retains source scope without rendering full contract by default", %{
+    conn: conn
+  } do
+    {view, _} = open(conn, "po_a2")
+    assert has_element?(view, "#law-picker select")
+    assert has_element?(view, "#selected-claim summary", "Read full claim")
+    assert has_element?(view, "#policy-source", "Read requirement source")
+    assert has_element?(view, "#example-provenance", "Illustrative example")
+    refute has_element?(view, "#source-change-details")
+
+    render_click(view, "inspect_law", %{"slug" => "po_b1_void"})
+    assert has_element?(view, "#standalone-law-scope", "no proposed source change")
+    refute has_element?(view, "#example-provenance")
+  end
+
+  test "alternative cards and the full audit list share noninteractive exact deltas", %{conn: conn} do
+    {view, doc} = open(conn, "po_a2")
+    assert has_element?(view, "#hypothetical-output .field-delta", "-100¢")
+    assert has_element?(view, "#hypothetical-output .comparison-ghost", "Absent from alternative")
+    refute has_element?(view, "#hypothetical-output .comparison-ghost button")
+    assert has_element?(view, "#output-differences summary", "changed fields")
+    render_click(view, "restore_candidate", %{})
+    assert has_element?(view, "#same-output")
+    refute has_element?(view, "#hypothetical-output .field-delta")
+    assert {:ok, ^doc} = Trace.get(doc["id"])
+  end
+
+  test "source-linked conditions retain exact paths and local proof context", %{conn: conn} do
+    {view, doc} = open(conn, "po_a2")
+    assert has_element?(view, "#group-0-requires-amount_domain", "Positive amount domain")
+    assert has_element?(view, "#group-0-requires-eligibility", "Admission eligibility")
+    assert has_element?(view, "#complete-tree-0-requires")
+    assert has_element?(view, "#tree-clause-0-requires-root")
+
+    render_click(view, "proof_stage", %{"index" => "5"})
+    assert has_element?(view, "#dissector .selected-clause")
+    assert has_element?(view, "#reading-excerpt-0-requires", "Remaining arithmetic")
+    assert has_element?(view, "#reading-excerpt-0-requires", "not a proof of this clause")
+
+    {:ok, ^doc} = Trace.get(doc["id"])
+  end
+
+  test "compatible amount previews keep a selected condition but a new basis clears it", %{
+    conn: conn
+  } do
+    {view, _} = open(conn, "po_a2")
+    render_click(view, "proof_stage", %{"index" => "5"})
+    assert has_element?(view, "#dissector .selected-clause")
+    render_change(view, "preview_amount", %{"amount" => "99"})
+    assert has_element?(view, "#dissector .selected-clause")
+    render_click(view, "basis", %{"basis" => "actual"})
+    refute has_element?(view, "#dissector .selected-clause")
+  end
+
+  test "factual outcome and visible local note actions do not impersonate formal acceptance", %{
+    conn: conn
+  } do
+    {view, doc} = open(conn, "po_a2")
+    assert has_element?(view, "#active-predicate-result", "Accepts code result")
+    assert has_element?(view, "#active-predicate-result", "Rejects alternative")
+    assert has_element?(view, "#local-decision-target", "session note")
+    assert has_element?(view, "#decision-docket button[phx-value-action=design]", "Record concern")
+    assert has_element?(view, "#decision-docket button[phx-value-action=policy]", "Record open question")
+    assert has_element?(view, "#decision-docket button[phx-value-action=considered]", "Mark considered")
+    render_click(view, "review_decision", %{"action" => "policy"})
+    {:ok, saved} = Trace.get(doc["id"])
+    assert length(saved["notes"]) == 1
+    assert saved["steps"] == doc["steps"]
+    assert hd(saved["notes"])["disposition"] == "needs_evidence"
+  end
+
 end

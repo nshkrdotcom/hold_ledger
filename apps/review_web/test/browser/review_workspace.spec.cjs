@@ -12,7 +12,7 @@ async function saved(page){const id=new URL(page.url()).pathname.split('/').at(-
 test('opens with the rule, proof and experiment instead of sign-off controls',async({page})=>{
  await open(page);await expect(page.locator('h1')).toHaveText('Accept requests that fit available capacity');
  await expect(page.locator('#policy-anchor')).toContainText('all remaining capacity');await expect(page.locator('#proof-script')).toBeVisible();
- await expect(page.locator('#tool-drawer,[role=dialog],#review-document > details')).toHaveCount(0);await expect(page.locator('#disposition-options')).not.toHaveAttribute('open');
+ await expect(page.locator('#tool-drawer,[role=dialog],#review-document > details')).toHaveCount(0);await expect(page.locator('#decision-docket button')).toHaveCount(3);
  await expect(page.locator('#review-document')).not.toContainText('no policy approval');await expect(page.locator('#review-document')).not.toContainText('Exact-fit admission');
  await expect(page.locator('#ledger-output h3')).toHaveText('Code returned');await expect(page.locator('#hypothetical-output h3')).toHaveText('What if it returned…');
 });
@@ -27,7 +27,7 @@ test('nearby amounts update coverage and output without saving a trace',async({p
 });
 
 test('review notes follow analysis and preserve its active input',async({page})=>{
- await open(page);await page.locator('#review-amount').fill('99');await page.locator('#disposition-options summary').click();await page.locator('#request-repair').click();await inspect(page,'record');
+ await open(page);await page.locator('#review-amount').fill('99');await page.locator('#request-repair').click();await inspect(page,'record');
  await expect(page.locator('#review-amount')).toHaveValue('99');await expect(page.locator('#review-history')).toContainText('99');
  await expect(page.locator('#proof-script')).toBeVisible();
 });
@@ -39,7 +39,7 @@ test('processor assumption experiment is separate from saved history',async({pag
 });
 
 test('original observed conditions show the operands used for this input',async({page})=>{
- await open(page);await page.locator('#dissector button[phx-click=helper]').first().click();await expect(page.locator('.logic-group').first()).toContainText('AND');await expect(page.locator('.inline-values').filter({hasText:'100 ≤ 100'}).first()).toBeVisible();
+ await open(page);await expect(page.locator('#dissector .condition-group').first()).toBeVisible();await expect(page.locator('.condition-rows .inline-values').filter({hasText:'100 ≤ 100'}).first()).toBeVisible();await page.locator('#dissector button[phx-click=helper]').first().click();await expect(page.locator('#helper-definition')).toBeVisible();
 });
 
 test('events without an amount retain the same input layout',async({page})=>{

@@ -7,7 +7,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Explore payment-hold rules by running concrete cases. Read the requirement and its selected formal claim first, then change a request or its alternative output. The two-lane workspace puts checks beside the case, above the related clause and Lean source readings. The page scrolls normally; the editor does not block other controls.
+Explore payment-hold rules by running concrete cases. The compact rule header keeps a requirement summary, its exact source, and **Read full claim** together without making long expressions precede the input. Run a request, change an alternative output, and read its differences beside their fields. The experiment and checks occupy two natural-scrolling lanes; selected condition and Lean source excerpts share the reasoning lane. The editor does not block other controls.
 
 The Phoenix app uses the original Ledger, independent Spec and claim evaluator. It sends no payments.
 
@@ -27,15 +27,15 @@ Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `10
 
 ## Try a case
 
-Choose a rule. The requirement and source expressions appear first. For exact-fit admission, an explicitly labeled **example** compares `amount <= remaining` with `amount < remaining`: a request using all available capacity is covered by the first and excluded by the second. This is not a recorded baseline/proposal replay.
+Choose a rule. The header presents a source-linked requirement summary. **Read full claim** expands the actual `requires` and `expects`, or names a native Lean-only declaration. For exact-fit admission, an explicitly labeled **illustrative example** compares `amount <= remaining` with `amount < remaining`: a request using all available capacity is covered by the first and excluded by the second. Standalone law review has no fabricated source change; real baseline/proposal comparisons show their own full source-change list.
 
 Enter an amount or choose **1¢ less / All available / 1¢ more**. The page shows what the code returns and whether the rule covers this input. The opening comparison is labeled **Example change**; attach two source versions to replace it with actual isolated runs.
 
-**Code returned** is the computed Ledger result. **What if it returned…** is an editable, *unexecuted* alternative. The adjacent difference list identifies changes to limits, reserved totals, slot counts, result, entry identities/amounts/statuses, effects and list order. Duplicate identities remain distinct occurrences; ambiguous matches are never guessed. Select a status or **Edit alternative**, change money or effects, and see differences and checks update without saving, recalculating counters, or invoking another evaluator.
+**Code returned** is the computed Ledger result. **What if it returned…** is an editable, *unexecuted* alternative. Neutral change tokens sit beside the alternative's reserved money, slot count, limits, result, and unambiguously matched entry/effect fields. **Full differences** expands the complete structured audit list (including order, additions, deletions and ambiguous occurrence correspondence), with its changed-field count kept separate from other rows. An original entry absent from the candidate appears only as a noninteractive, explicitly labeled ghost; it is not in the candidate totals or passed to later events. Repeated identities/effects are never silently paired or re-keyed. Select a status or **Edit alternative**, change money or effects, and see markers and checks update without saving, recalculating counters, or invoking another evaluator.
 
 An alternative can have inconsistent counters. **Recalculate totals** corrects them only when requested. The full state and JSON editor provides the same bounded values: up to eight entries and integers up to 1,000,000.
 
-**Checks for this case** explicitly separate whether the rule applies, whether it accepts the executed result, whether it accepts the alternative, and whether each account balances. False preconditions are **not applicable**, and missing, unsupported or failed observations are **unavailable**, not false. Acceptance of a hypothetical alternative is not by itself a policy violation. A balanced account can still release a hold too early. Multi-binding checks retain their aggregate result when you select one binding to inspect. An invalid edit removes the current successful alternative check instead of showing an old verdict.
+**Checks for this case** emphasizes the selected rule's factual acceptance of each output with comparable, neutral prominence, then separately reports whether the rule applies and whether each account balances. False preconditions are **not applicable**, and missing, unsupported or failed observations are **unavailable**, not false. Acceptance of a hypothetical alternative is not by itself a policy violation. A balanced account can still release a hold too early. Multi-binding checks retain their aggregate result when you select one binding to inspect. An invalid edit removes the current successful alternative check instead of showing an old verdict.
 
 ## Follow what happens next
 
@@ -49,9 +49,9 @@ Select an earlier step to branch from there. **Reset** discards the experiment. 
 
 ## Read the proof and assumptions
 
-Conditions show the checks first. Expand a definition or its operand values for detail. Selecting a linked proof step reveals its matching condition. The proof appears alongside the conditions on wide screens and after them on narrow screens.
+Conditions first show short, source-reviewed groups with exact observed true/false/unavailable/not-evaluated counts. Positive-amount boundaries and starting-state invariants are not lumped into a generic green guard badge. Satisfied unchanged checks may be folded, while false, unavailable, skipped and compared-source changes retain explicit attention. **Complete observed expression tree** reveals the original structural paths, mixed operators, helper definitions and operands without replacing the primary view. Claims lacking reviewed grouping receive an honest generic outline. The complete proof remains in the reasoning region, after the condition view.
 
-**Why this check has that result** shows the observed clauses for the selected binding, with explicit true/false/not-evaluated values. In admission, timeout validity and exposure retention, reviewed links let you select a clause and highlight related Lean reading passages, or select a proof-reading step to highlight its related clauses. These many-to-many readings are validated against exact reviewed source digests, structural AST clauses and unique Lean anchors; stale, absent or ambiguous links are unavailable, not guessed. Other claims and unsupported links remain visible and unlinked. Keyboard and touch use the same buttons.
+**Why this check has that result** shows the observed clauses for one selected binding and one output basis without inventing a second evaluator. Selecting a linked clause shows one local Lean passage, its declaration location, line, relation and context; multiple reviewed passages have explicit selectors. Selecting a proof-reading step reveals its matching condition in reverse. These many-to-many source-reading aids are validated against exact reviewed digests, original structural AST paths and unique Lean anchors; stale, absent or ambiguous mappings are unavailable, never guessed. A proof passage is not automatically an isolated proof of its associated boolean. All 49 catalog claims retain the generic/full-source reading path. Keyboard and touch use the same controls; selection survives compatible input edits but not a changed event/basis/binding/source.
 
 **Read full proof** expands the actual Lean declaration. Lemma references open source alongside the case. Neither linked passages nor the displayed proof lines represent Lean goal states, kernel dependencies, translation correctness or formal acceptance.
 
@@ -84,7 +84,7 @@ Read three results separately: an input excluded by a rule, an alternative outpu
 
 ## Keep review notes
 
-**Add observation** is beside the active checks. Its compact inline form reuses the original revision-checked note command, without saving pending experiment events. An observation during unsaved exploration includes its experiment-context digest. Review disposition options are available nearby, while **Review notes** retains full saved history and challenges. Conflicted writes remain refused by the original CAS boundary.
+**Add observation** and the directly visible **Record concern**, **Record open question** and **Mark considered** controls appear after the active check. The target names the rule/event and saved or unsaved context; these session actions reuse the original revision-checked notes without saving pending experiment events. Unsaved exploration receives an experiment-context digest. When a real source comparison has selected stored evidence, disposition controls instead explicitly name that **stored comparison finding**, not the active scratch case. They use the original human-revision CAS. **Review notes** retains history and challenges; conflicted writes remain refused.
 
 When a selected real comparison has matching evidence and the original packet validator accepts it, **Download local repair packet** (JSON or Markdown) is available beside the result. Without such evidence, the page explains why no packet is available; it does not fabricate evidence, auto-run a comparison or auto-save. Download a saved session from **Review notes** to retain its history. Source drift still prevents stale computations and exports. An observation or exported packet is not policy authorization or formal acceptance.
 
@@ -109,7 +109,7 @@ Supported requests include:
 {"operation":"step","mode":"ledger","before":{"amount_limit":100,"hold_limit":2,"used_amount":0,"used_holds":0,"entries":[]},"event":{"type":"request","key":11,"amount":100}}
 ```
 
-For clause observations, send `{"operation":"explain_claim","slug":"po_a2","witness":{"before":...,"event":...,"output":...}}` with complete typed values. The command calls the same reading and evaluator operations as the screen, returns source identity, and opens no HTTP listener. Unsupported bindings remain unresolved.
+For clause observations, send `{"operation":"explain_claim","slug":"po_a2","witness":{"before":...,"event":...,"output":...}}` with complete typed values. The command calls the same source-bound reading and original evaluator operations as the screen, exposing `condition_outlines` per observed binding and phase as well as original nodes and paths. Unsupported groupings remain generic and missing links unresolved. No HTTP listener is opened.
 
 ## Check changes
 

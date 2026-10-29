@@ -75,6 +75,53 @@
         ],
         "relation": "The authored precondition invokes eligibility; this proof treats term representations and its assumptions."
       }
+    ],
+    "condition_groups": [
+      {
+        "id": "representation",
+        "title": "Identity and amount representation",
+        "phase": "requires",
+        "source_path": "lib/hold_ledger/spec.ex",
+        "collapse_satisfied": true,
+        "expressions": [
+          "is_integer(key)",
+          "is_integer(amount)"
+        ]
+      },
+      {
+        "id": "amount_domain",
+        "title": "Positive amount domain",
+        "phase": "requires",
+        "source_path": "lib/hold_ledger/spec.ex",
+        "expressions": [
+          "amount > 0"
+        ]
+      },
+      {
+        "id": "starting_state",
+        "title": "Starting-state invariants",
+        "phase": "requires",
+        "source_path": "lib/hold_ledger/spec.ex",
+        "collapse_satisfied": true,
+        "expressions": [
+          "valid?(state)",
+          "used_amount == hold_amount(entries)",
+          "used_holds == hold_count(entries)",
+          "used_amount <= amount_limit",
+          "used_holds <= hold_limit"
+        ]
+      },
+      {
+        "id": "eligibility",
+        "title": "Admission eligibility",
+        "phase": "requires",
+        "source_path": "lib/hold_ledger/spec.ex",
+        "expressions": [
+          "not has_key?(entries, key)",
+          "used_holds < hold_limit",
+          "amount <= amount_limit - used_amount"
+        ]
+      }
     ]
   },
   "po_exposure_retain": {
@@ -169,6 +216,49 @@
         ],
         "relation": "The authored result requires exposure; the cited Lean step invokes the retention lemma."
       }
+    ],
+    "condition_groups": [
+      {
+        "id": "representation",
+        "title": "Identity and amount representation",
+        "phase": "requires",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "collapse_satisfied": true,
+        "expressions": [
+          "is_integer(key)",
+          "is_integer(amount)"
+        ]
+      },
+      {
+        "id": "starting_state",
+        "title": "Starting-state invariants",
+        "phase": "requires",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "collapse_satisfied": true,
+        "expressions": [
+          "Spec.valid?(state)"
+        ]
+      },
+      {
+        "id": "retention",
+        "title": "Protected entry and release evidence",
+        "phase": "requires",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "expressions": [
+          "Spec.lookup(elem(state, 4), key) === {:ok, {key, amount, status}}",
+          "status in [:sent, :unknown, :authorized, :voiding]",
+          "not Spec.release_evidence?(event, key)"
+        ]
+      },
+      {
+        "id": "promise",
+        "title": "Continued exposure promised",
+        "phase": "expects",
+        "source_path": "test/laws/po_exposure_retain_test.exs",
+        "expressions": [
+          "Spec.exposed_entry?(elem(Ledger.step(state, event), 0), key, amount)"
+        ]
+      }
     ]
   },
   "po_b1_timeout": {
@@ -220,6 +310,26 @@
           2
         ],
         "relation": "The postcondition requires validity following timeout; the helper addresses status changes and case splits."
+      }
+    ],
+    "condition_groups": [
+      {
+        "id": "starting_state",
+        "title": "Starting-state validity",
+        "phase": "requires",
+        "source_path": "test/laws/po_b1_timeout_test.exs",
+        "expressions": [
+          "Spec.valid?(s)"
+        ]
+      },
+      {
+        "id": "promise",
+        "title": "Validity promised after timeout",
+        "phase": "expects",
+        "source_path": "test/laws/po_b1_timeout_test.exs",
+        "expressions": [
+          "Spec.valid?(elem(Ledger.timeout(s, key), 0))"
+        ]
       }
     ]
   },

@@ -49,20 +49,33 @@ th {font-weight: 650}
 .brand span,.mode {color: var(--muted)}
 .mode {font-size: .72rem}
 .workspace {max-width: 1480px; margin: auto; padding: 0 clamp(.7rem, 2.3vw, 2.2rem) 3rem}
-.review-bar {padding: .8rem 0 .3rem; margin-bottom: .4rem}
-#law-picker {max-width: 650px}
-#law-picker select {font-size: .9rem}
-#review-comparison {margin: .4rem 0 1.2rem; min-width: 0}
-.rule-summary h1 {max-width: 45ch; letter-spacing: -.02em; margin: .3rem 0 .65rem}
-#policy-anchor {max-width: 80ch; font-size: .98rem; line-height: 1.6; margin-bottom: .65rem}
-#policy-source {margin-left: .35rem}
-.selected-claim {max-width: 110ch; padding: .45rem 0 .55rem .75rem; border-left: 2px solid #cbbfd9; margin: .5rem 0 .85rem}
-.selected-claim h2 {font-size: .86rem; margin-bottom: .3rem}
-.selected-claim dl {display: grid; gap: .25rem; margin: 0}
-.selected-claim dl > div {display: grid; grid-template-columns: 150px minmax(0,1fr); column-gap: .75rem}
-.selected-claim dt {font-size: .75rem; color: var(--muted)}
+/* The active rule is one compact, source-traceable orientation surface. */
+#review-comparison {margin: .65rem 0 .9rem; min-width: 0; border-bottom: 1px solid var(--line); padding-bottom: .55rem}
+.rule-ribbon {display: grid; grid-template-columns: minmax(170px,230px) minmax(0,1fr) auto; align-items: center; gap: .5rem 1rem}
+#law-picker {min-width: 0}
+#law-picker label {margin: 0}
+#law-picker select {font-size: .84rem; padding: .35rem .5rem}
+.rule-identity {min-width: 0}
+.rule-identity .eyebrow {font-size: .64rem}
+.rule-identity h1 {font-size: clamp(1.08rem,1.5vw,1.35rem); line-height: 1.24; margin: .08rem 0 .15rem; overflow-wrap: anywhere}
+#choose-sources {white-space: nowrap; align-self: center}
+#policy-anchor {max-width: 110ch; font-size: .87rem; line-height: 1.4; margin: .42rem 0 .35rem}
+#policy-source {margin: 0 .2rem; font-size: .78rem}
+.selected-claim {margin: .2rem 0; font-size: .77rem}
+.selected-claim summary {font-weight: 600; cursor: pointer; color: var(--accent)}
+.selected-claim[open] {padding: .45rem .65rem .65rem; border-left: 2px solid #cbbfd9; background: white}
+.selected-claim dl {display: grid; gap: .35rem; margin: .5rem 0 0}
+.selected-claim dl > div {display: grid; grid-template-columns: minmax(115px,160px) minmax(0,1fr); gap: .55rem}
+.selected-claim dt {color: var(--muted)}
 .selected-claim dd {margin: 0; min-width: 0}
-.selected-claim code {font-size: .75rem}
+.selected-claim code {font-size: .75rem; overflow-wrap: anywhere}
+.contract-context {margin: .3rem 0}
+.example-contract {display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; font-size: .75rem; margin: 0}
+.example-contract .example-label {margin: 0}
+.example-contract code {font-size: .76rem}
+.example-contract small {color: var(--muted)}
+.source-change-details summary {font-size: .79rem; cursor: pointer}
+.source-change-details .scope-note {display: inline}
 .section-heading,.review-section-heading {display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .5rem; margin-bottom: .6rem}
 .section-heading h2,.section-heading h3 {margin: 0}
 .action-row,.experiment-actions,.boundary-buttons,.source-links,.evidence-links,.decision-actions {display: flex; gap: .5rem; align-items: center; flex-wrap: wrap}
@@ -115,7 +128,14 @@ ins {background: #ccebd7; text-decoration: none}
 .output {min-width: 0; padding: .75rem; background: white; border: 1px solid var(--line); border-radius: 4px}
 .output:last-child {background: #f7f3fb; border-color: #d6c6e3}
 .output h3 {font-size: .78rem; margin-bottom: .5rem}
-.output > strong {font-size: 1.06rem; font-variant-numeric: tabular-nums}
+.output-headline {display: flex; align-items: baseline; flex-wrap: wrap; gap: .1rem .4rem; margin: .35rem 0; font-variant-numeric: tabular-nums}
+.output-headline strong {font-size: 1.13rem; line-height: 1.4; font-weight: 700}
+.field-delta {display: inline-block; flex: 0 1 auto; font-size: .68rem; line-height: 1.45; color: #524869; font-weight: 600; padding: .06rem .28rem; border-radius: 3px; border: 1px solid #cfc4dc; background: #f3eff8; font-variant-numeric: tabular-nums; white-space: normal}
+.comparison-ghosts {border-top: 1px dashed var(--line); padding-top: .35rem !important}
+.comparison-ghost {color: #665e71; border-left: 2px dashed #a89bb8; padding-left: .35rem}
+.comparison-ghost span {text-decoration: line-through; opacity: .78}
+.comparison-ghost small {display: block; width: 100%; font-size: .7rem; text-decoration: none}
+
 .money-bar {display: block; width: 100%; height: 9px; accent-color: #806998; margin: .5rem 0}
 .output p,.output li {font-size: .78rem}
 .output ul {padding: 0; list-style: none}
@@ -145,8 +165,6 @@ ins {background: #ccebd7; text-decoration: none}
 #nearby-observation h3 {margin: 0}
 #note-form {margin: .6rem 0 1rem}
 .repair-actions {display: flex; flex-wrap: wrap; gap: .8rem; font-size: .8rem; margin: .5rem 0}
-.disposition-more {font-size: .8rem; margin: .7rem 0}
-.disposition-more summary {width: fit-content}
 .decision-docket {margin: .7rem 0}
 .decision-actions {margin: .5rem 0}
 #evidence-choice {max-width: 400px}
@@ -180,8 +198,36 @@ ins {background: #ccebd7; text-decoration: none}
 .segmented [aria-pressed=true] {background: var(--accent-soft); border-color: var(--accent)}
 .clause-table {margin: .8rem 0}
 .clause-table h3 {font-size: .85rem}
-.logic-group-heading {display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .45rem 0; font-size: .8rem}
-.logic-group-heading .truth {margin-left: auto}
+/* Short source-backed groups retain original addresses and an optional full tree. */
+.condition-group {margin: .4rem 0; padding: .12rem .42rem .25rem; border: 1px solid var(--line); border-radius: 4px; background: #fff}
+.condition-group > summary {display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .55rem; padding: .36rem .1rem; cursor: pointer; font-size: .79rem}
+.condition-group > summary strong {font-weight: 650}
+.group-counts {color: var(--muted); font-size: .74rem; font-variant-numeric: tabular-nums}
+.condition-attention {border-left: 3px solid #85709a}
+.condition-rows {padding-left: .25rem}
+.condition-rows .logic-leaf {padding: .26rem .16rem}
+.condition-rows .clause-select {flex: 1 1 45%; line-height: 1.35}
+.condition-rows .inline-values {flex: 0 1 auto !important}
+.original-expression-tree {margin: .5rem 0; border-top: 1px solid var(--line); font-size: .77rem; padding-top: .4rem}
+.original-expression-tree > summary {cursor: pointer; font-weight: 600; color: var(--accent)}
+.linked-excerpt {margin: .38rem .2rem .65rem; border: 1px solid #cbbfd9; border-left: 3px solid var(--accent); background: #f6f2f9; padding: .65rem; min-width: 0}
+.linked-excerpt h4 {font-size: .83rem; margin: 0 0 .25rem}
+.linked-excerpt p {font-size: .76rem; margin: .15rem 0 .4rem}
+.linked-excerpt .excerpt-location {overflow-wrap: anywhere; font-weight: 650}
+.linked-excerpt pre {white-space: pre-wrap; overflow-wrap: anywhere; padding: .5rem; margin: .4rem 0; max-width: 100%; font-size: .75rem; line-height: 1.6}
+.excerpt-stages {display: flex; flex-wrap: wrap; gap: .28rem}
+.excerpt-stages button {font-size: .73rem; padding: .2rem .35rem}
+.excerpt-stages [aria-pressed=true] {border-color: var(--accent); background: #eae1f2}
+.source-comparison-attention {border-left: 3px solid #89749b; padding: .45rem .7rem; background: #f6f2f9; margin: .5rem 0; font-size: .78rem}
+.source-comparison-attention summary {font-weight: 650; cursor: pointer}
+.source-comparison-attention ul {margin: .4rem 0; padding-left: 1rem}
+.source-comparison-attention code {overflow-wrap: anywhere}
+.predicate-focus {background: #f5f1f9; padding: .55rem .7rem; border: 1px solid #d5c7e2; border-left: 3px solid var(--accent); margin: .5rem 0}
+.predicate-heading {font-size: .72rem; color: var(--muted); font-weight: 650; margin-bottom: .4rem}
+.predicate-pair {display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .5rem}
+.predicate-pair > div {min-width: 0; display: flex; flex-direction: column; gap: .16rem}
+.predicate-pair span {font-size: .73rem; color: var(--muted)}
+.predicate-pair strong {font-size: .88rem; font-weight: 700; overflow-wrap: anywhere}
 .logic-operator {background: #eae2f2; color: var(--accent); padding: .15rem .35rem; font-size: .72rem}
 .logic-children {border-left: 2px solid var(--line); padding-left: .55rem}
 .logic-leaf {display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .55rem; padding: .4rem .25rem; border-bottom: 1px solid #eeeaf2}
@@ -196,16 +242,13 @@ ins {background: #ccebd7; text-decoration: none}
 .connected-clause,.selected-clause {background: #ede7f4; border-left: 3px solid #735791}
 .connection-marker {font-size: .7rem; color: var(--accent)}
 .connection-unavailable {padding: .15rem 0; border-left: 2px solid #b3a5bf; padding-left: .5rem}
-.nested-helper {font-size: .78rem; margin: .3rem 0 .35rem .5rem; border-left: 1px dotted #b3a3c4; padding-left: .35rem}
-.helper-source-node {margin-left: .25rem; border-left: 1px dotted #baaecc; padding-left: .4rem}
 .helper-definition {background: #f4f0f9; padding: .65rem; margin-top: .7rem}
 .helper-definition .section-heading {display: flex; gap: .5rem; justify-content: space-between}
 .not-evaluated {color: #6d6473}
 .text-button {border: 0; background: transparent; color: var(--accent); padding: .15rem .2rem; text-align: left; justify-content: start}
-.full-contract {margin: .7rem 0}
 .contract-source {display: flex; gap: .6rem; flex-wrap: wrap; margin: .45rem 0; font-size: .8rem}
 .contract-source span {color: var(--muted)}
-#proof-panel {grid-area:proof;border-top: 1px solid var(--line); padding-top: 1rem; min-width: 0}
+#proof-panel {border-top: 1px solid var(--line); padding-top: .8rem; margin-top: 1rem; min-width: 0}
 .proof-source-stages {display: flex; flex-wrap: wrap; gap: .35rem; margin: .55rem 0}
 .proof-source-stages button {font-size: .75rem}
 .proof-source-stages [aria-current=step] {border-color: var(--accent); background: var(--accent-soft)}
@@ -236,17 +279,20 @@ ins {background: #ccebd7; text-decoration: none}
 #proof-panel,#clauses-panel,.inline-source,#nearby-observation,.secondary-panel {scroll-margin-top: 1rem}
 
 @media (max-width: 1119px) {
-  .connected-experiment {grid-template-columns: minmax(0,1fr); grid-template-areas: "case" "result" "editing" "reasoning" "proof"; row-gap: .75rem}
+  .connected-experiment {grid-template-columns: minmax(0,1fr); grid-template-areas: "case" "editing" "result" "reasoning"; row-gap: .75rem}
   .experiment-lane,.reasoning-lane {display:contents}
   .case-results {padding: .8rem; margin-bottom: .2rem}
-  #proof-panel {margin-top: 1rem}
 }
 @media (max-width: 600px) {
   .workspace {padding: 0 .7rem 2rem}
   .mode {display: none}
   #policy-anchor {font-size: .9rem}
   .selected-claim dl > div {grid-template-columns: minmax(0,1fr)}
-  .rule-summary h1 {font-size: 1.35rem}
+  .rule-ribbon {grid-template-columns: minmax(0,1fr) auto; align-items: end}
+  #law-picker {grid-column: 1/-1}
+  .rule-identity {grid-column: 1}
+  #choose-sources {grid-column: 2}
+  .rule-identity h1 {font-size: 1.18rem}
   .output-pair,.diff-lines,.diff-expression {grid-template-columns: 1fr}
   .selected-input {padding: .55rem}
   .capacity-grid {gap: .5rem .8rem}
@@ -256,6 +302,7 @@ ins {background: #ccebd7; text-decoration: none}
   .logic-leaf {padding: .25rem}
   .source-chooser {padding: .65rem}
   .decision-actions button {font-size: .73rem}
+  .predicate-pair {grid-template-columns: minmax(0,1fr)}
 }
 @media (prefers-reduced-motion: reduce) {
   * {scroll-behavior: auto !important; transition: none !important; animation: none !important}

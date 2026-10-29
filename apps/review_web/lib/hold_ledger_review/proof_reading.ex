@@ -8,6 +8,7 @@ defmodule HoldLedgerReview.ProofReading do
     Canonical,
     ClaimProbe,
     Claims,
+    ConditionOutline,
     Config,
     ProofEvidence,
     TermCodec,
@@ -50,6 +51,10 @@ defmodule HoldLedgerReview.ProofReading do
 
       steps = if(guide_current, do: proof_steps(hd(declarations), guide["steps"]), else: [])
       connections = reading_connections(guide_current, guide, context, hd(declarations), steps)
+      groups =
+        if guide_current,
+          do: ConditionOutline.validate(guide["condition_groups"] || [], context.bytes, context.digests, guide["reviewed_source_sha256"]),
+          else: []
 
       {:ok,
        %{
@@ -62,6 +67,7 @@ defmodule HoldLedgerReview.ProofReading do
          "inline_proof" => inline,
          "proof_steps" => steps,
          "connections" => connections,
+         "condition_groups" => groups,
          "reading_current" => guide_current == true,
          "reading_status" => reading_status(guide, guide_current),
          "policy" =>
@@ -105,7 +111,17 @@ defmodule HoldLedgerReview.ProofReading do
     with {:ok, before} <- TermCodec.decode_state(before),
          {:ok, event} <- TermCodec.decode_event(event),
          {:ok, output} <- TermCodec.decode_output(output),
-         do: ClaimProbe.explain(slug, before, event, output)
+         {:ok, explanation} <- ClaimProbe.explain(slug, before, event, output),
+         {:ok, reading} <- document(slug) do
+      outlines =
+        Enum.map(explanation["bindings"], fn binding ->
+          Map.new(~w(requires actual candidate), fn phase ->
+            {phase, ConditionOutline.project(binding[phase], phase, reading["condition_groups"])}
+          end)
+        end)
+
+      {:ok, Map.put(explanation, "condition_outlines", outlines)}
+    end
   end
 
   def source(slug, id, sha) do

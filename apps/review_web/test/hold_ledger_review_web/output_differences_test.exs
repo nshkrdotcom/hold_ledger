@@ -118,4 +118,78 @@ defmodule HoldLedgerReviewWeb.OutputDifferencesTest do
     assert %{before: "[11]", after: "[]"} =
              Enum.find(rows, &(&1.label == "Entry order / identities"))
   end
+  test "one structured projection drives exact field markers, counts and typed IDs" do
+    before = output([entry(11, 100, "voiding")])
+    after_value =
+      output([entry(11, 99, "voided")])
+      |> put_in(["after", "used_amount"], 99)
+      |> put_in(["after", "used_holds"], 0)
+      |> Map.put("result", "voided")
+
+    result = OutputDifferences.between(before, after_value)
+    assert result.field_count == 5
+    assert result.other_count == 0
+    assert result.ghosts == []
+    assert %{kind: :field_change, before_value: 100, after_value: 99, signed: -1,
+             unit: :cents, path: ["after", "used_amount"]} =
+             OutputDifferences.at(result, ["after", "used_amount"])
+
+    assert %{before_path: ["after", "entries", 0, "amount"],
+             after_path: ["after", "entries", 0, "amount"],
+             occurrence: %{identity: 11, before_index: 0, after_index: 0}} =
+             OutputDifferences.at(result, ["after", "entries", 0, "amount"])
+
+    assert OutputDifferences.annotation(OutputDifferences.at(result, ["result"])) ==
+             "was Cancellation requested"
+    assert OutputDifferences.at(result, ["after", "entries", 0, "key"]) == nil
+  end
+
+  test "reordered unique identities use exact before and after occurrence indexes" do
+    a = entry(11, 40, "reserved")
+    b = entry(12, 60, "voiding")
+    before = output([a, b])
+    after_value = output([%{b | "amount" => 55}, a])
+    result = OutputDifferences.between(before, after_value)
+
+    assert %{before_path: ["after", "entries", 1, "amount"],
+             after_path: ["after", "entries", 0, "amount"],
+             signed: -5} = OutputDifferences.at(result, ["after", "entries", 0, "amount"])
+    assert Enum.any?(result.rows, &(&1.kind == :order_change))
+    assert result.field_count == 1
+    assert result.other_count == 1
+  end
+
+  test "a missing entry is an annotation only, never a proposed member or total" do
+    original = output([entry(11, 100, "voiding")])
+    next = output([], [], %{"used_amount" => 0, "used_holds" => 0})
+    result = OutputDifferences.between(original, next)
+
+    assert [%{entry: %{"key" => 11}, before_index: 0}] = result.ghosts
+    assert next["after"]["entries"] == []
+    assert Enum.any?(result.rows, &(&1.kind == :removed))
+    assert result.other_count == 2
+  end
+
+  test "repeated identities do not acquire an unsafe field-to-field annotation" do
+    actual = output([entry(11, 60, "reserved"), entry(11, 40, "voiding")])
+    candidate = output([entry(11, 100, "voided")])
+    result = OutputDifferences.between(actual, candidate)
+
+    assert result.field_count == 0
+    assert Enum.any?(result.rows, &(&1.kind == :correspondence))
+    assert OutputDifferences.at(result, ["after", "entries", 0, "status"]) == nil
+    assert result.ghosts == []
+    assert Enum.count(result.rows, &(&1.kind == :removed)) == 2
+    assert Enum.count(result.rows, &(&1.kind == :added)) == 1
+  end
+
+  test "effect multiplicity prevents claiming that duplicate actions are the same" do
+    action = %{"type" => "authorize", "key" => 12, "amount" => 50}
+    result = OutputDifferences.between(output([], [action, action]), output([], [action]))
+    assert result.field_count == 0
+    assert Enum.count(result.rows, &(&1.kind == :removed)) == 2
+    assert Enum.count(result.rows, &(&1.kind == :added)) == 1
+    assert Enum.any?(result.rows, &(&1.kind == :correspondence))
+  end
+
 end
