@@ -349,7 +349,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         <div :for={observation <- @group.observations}>
           <details :for={context <- Map.get(observation, :context, [])} class="condition-context">
             <summary>
-              Within {String.upcase(Atom.to_string(context.operator))} branch {context.branch + 1}
+              {context_label(context.operator)}
             </summary>
             <code>{context.expression}</code>
           </details>
@@ -595,6 +595,11 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
 
   defp valid_step?(%{"line" => line}), do: is_integer(line)
   defp valid_step?(_), do: false
+
+  defp context_label(:if), do: "Enclosing condition"
+  defp context_label(:case), do: "Enclosing pattern match"
+  defp context_label(:or), do: "Alternative conditions"
+  defp context_label(:not), do: "Negated condition"
 
   defp node_label(%{"helper" => name}, _) when is_binary(name), do: name <> " definition"
   defp node_label(_, :and), do: "All conditions"

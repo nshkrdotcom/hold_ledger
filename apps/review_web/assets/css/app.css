@@ -452,3 +452,7 @@ ins {background: #ccebd7; text-decoration: none}
 .condition-source code {white-space: pre-wrap}
 .additional-proof {margin-top: 1rem; border-top: 1px solid var(--line); padding-top: .8rem}
 .additional-proof h3 {overflow-wrap: anywhere}
+
+#proof-script[data-source-view="full"],
+.additional-proof .numbered-proof {max-height: 380px; overflow-y: auto}
+.numbered-proof:focus-visible {outline: 2px solid var(--accent); outline-offset: 2px}

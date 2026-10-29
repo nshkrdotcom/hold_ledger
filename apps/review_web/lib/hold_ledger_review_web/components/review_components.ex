@@ -422,6 +422,9 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <div
         class="numbered-proof"
         id="proof-script"
+        tabindex={if @full, do: "0"}
+        role={if @full, do: "region"}
+        aria-label={if @full, do: "Complete Lean source"}
         data-source-view={if @full, do: "full", else: "excerpt"}
         data-declaration={@declaration["name"]}
       >
@@ -442,7 +445,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         <h3>{declaration["name"]}</h3>
         <p class="scope-note">{declaration["path"]}:{declaration["line"]}</p>
         <p :if={declaration["text"] == ""}>This declaration's source is missing or ambiguous.</p>
-        <div class="numbered-proof">
+        <div class="numbered-proof" tabindex="0" role="region" aria-label={declaration["name"]}>
           <div :for={
             {line, n} <-
               Enum.with_index(String.split(declaration["text"], "\n"), declaration["line"] || 1)
