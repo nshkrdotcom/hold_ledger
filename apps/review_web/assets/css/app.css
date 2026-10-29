@@ -417,8 +417,8 @@ ins {background: #ccebd7; text-decoration: none}
 #question-context summary {cursor: pointer}
 #question-context p {font-size: .75rem; overflow-wrap: anywhere}
 #question-context pre {font-size: 11px; max-height: 280px; overflow: auto}
-#question-consent-form {border-top: 1px solid var(--line); padding-top: 10px}
-#question-consent-form input[type=checkbox] {width: auto}
+.question-bar .question-sharing {font-size: 10px; color: var(--muted); border: none; background: transparent; padding: 0 2px; white-space: nowrap}
+.question-sharing:hover {text-decoration: underline}
 #question-history-list ul {padding: 0; list-style: none}
 #question-history-list li {padding: 8px 0; border-bottom: 1px solid var(--line)}
 #question-history-list li button {text-align: left; justify-content: flex-start}

@@ -11,7 +11,6 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
        text: "",
        packet: nil,
        active: nil,
-       consent: false,
        query: "",
        history: [],
        history_open: false,
@@ -42,7 +41,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
     end
 
     socket = socket |> assign(assigns) |> assign(:ready, connected?(socket))
-    socket = if changed, do: assign(socket, packet: nil, consent: false), else: socket
+    socket = if changed, do: assign(socket, packet: nil), else: socket
     {:ok, socket}
   end
 
@@ -60,7 +59,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
     do: {:noreply, assign(socket, open: true, history_open: false)}
 
   def handle_event("close", _, socket),
-    do: {:noreply, assign(socket, open: false, consent: false, clearing: false)}
+    do: {:noreply, assign(socket, open: false, clearing: false)}
 
   def handle_event("new", _, socket),
     do:
@@ -71,77 +70,70 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
          history_open: false,
          text: "",
          packet: nil,
-         consent: false,
          previous: [],
          followup_context: nil,
          error: nil
        )}
 
   def handle_event("text", %{"question" => %{"text" => text}}, socket),
-    do: {:noreply, assign(socket, text: text, packet: nil, consent: false)}
+    do: {:noreply, assign(socket, text: text, packet: nil)}
 
-  def handle_event("prepare", %{"question" => %{"text" => text}}, socket) do
-    with {:ok, packet} <-
-           QuestionContext.prepare(
-             text,
-             socket.assigns.followup_context || socket.assigns.context,
-             socket.assigns.actor,
-             socket.assigns.previous
-           ),
-         {:ok, row} <- Questions.prepare(packet) do
-      {:noreply,
-       assign(socket,
-         text: text,
-         packet: packet,
-         active: row,
-         consent: false,
-         open: true,
-         history_open: false,
-         error: nil,
-         composing: true
-       )}
-    else
+  def handle_event("inspect_context", _, socket) do
+    context = socket.assigns.followup_context || socket.assigns.context
+
+    case QuestionContext.prepare(
+           socket.assigns.text,
+           context,
+           socket.assigns.actor,
+           socket.assigns.previous
+         ) do
+      {:ok, packet} ->
+        {:noreply, assign(socket, packet: packet, open: true, history_open: false, error: nil)}
+
       _ ->
         {:noreply,
          assign(socket,
            open: true,
-           error: "Couldn't prepare this question. Check the source context and local log."
+           history_open: false,
+           error: "Type a question to inspect what will be shared."
          )}
     end
   end
 
-  def handle_event("consent", %{"question" => values}, socket),
-    do: {:noreply, assign(socket, consent: values["consent"] == "true")}
+  def handle_event("ask", %{"question" => %{"text" => text, "context_id" => context_id}}, socket) do
+    context = socket.assigns.followup_context || socket.assigns.context
 
-  def handle_event("send", _, socket) do
-    packet = socket.assigns.packet
-
-    with true <- socket.assigns.consent and is_map(packet),
-         true <-
-           packet["context_id"] ==
-             QuestionContext.context_id(socket.assigns.followup_context || socket.assigns.context),
-         :ok <- Questions.ask(socket.assigns.active["id"], packet["digest"], true) do
+    with true <- socket.assigns.composing and not running?(socket.assigns.active),
+         true <- context_id == QuestionContext.context_id(context),
+         {:ok, packet} <-
+           QuestionContext.prepare(text, context, socket.assigns.actor, socket.assigns.previous),
+         {:ok, row} <- Questions.prepare(packet),
+         :ok <- Questions.ask(row["id"], packet["digest"], true) do
       {:noreply,
        assign(socket,
-         active: Questions.get(socket.assigns.active["id"]),
-         consent: false,
-         composing: false,
-         error: nil
+         text: text,
+         packet: packet,
+         active: Questions.get(row["id"]),
+         open: true,
+         history_open: false,
+         error: nil,
+         composing: false
        )}
     else
       _ ->
         {:noreply,
          assign(socket,
-           consent: false,
+           text: text,
+           open: true,
            error:
-             "This question wasn't sent. Prepare the current case and authorize that request."
+             "Your question wasn't sent. Check the question and current case, then try again."
          )}
     end
   end
 
   def handle_event("cancel", _, socket) do
     Questions.cancel(socket.assigns.active["id"])
-    {:noreply, assign(socket, active: Questions.get(socket.assigns.active["id"]), consent: false)}
+    {:noreply, assign(socket, active: Questions.get(socket.assigns.active["id"]))}
   end
 
   def handle_event("history", _, socket) do
@@ -178,7 +170,6 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
          active: Questions.get(id),
          packet: nil,
          composing: false,
-         consent: false,
          history_open: false,
          history: [],
          error: nil
@@ -208,7 +199,6 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
            text: "",
            packet: nil,
            composing: true,
-           consent: false,
            previous: previous,
            followup_context: context
          )}
@@ -226,7 +216,6 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
            history: [],
            active: nil,
            packet: nil,
-           consent: false,
            clearing: false,
            composing: true
          )}
@@ -271,7 +260,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
     end
   end
 
-  defp running?(row), do: row && row["status"] == "running"
+  defp running?(row), do: is_map(row) and row["status"] == "running"
   defp answer?(row), do: row && is_map(row["answer"])
 
   defp source_url(packet, source),
@@ -287,6 +276,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
     assigns =
       assign(assigns,
         health: Questions.health(),
+        send_context_id: QuestionContext.context_id(assigns.followup_context || assigns.context),
         earlier:
           assigns.active &&
             assigns.active["packet"]["context_id"] != QuestionContext.context_id(assigns.context)
@@ -315,7 +305,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           :if={@composing && !running?(@active)}
           for={to_form(%{}, as: :question)}
           id="header-question-form"
-          phx-submit="prepare"
+          phx-submit="ask"
           phx-change="text"
           phx-target={@myself}
         >
@@ -328,8 +318,22 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
             disabled={!@ready}
             maxlength="4096"
           />
-          <button type="submit" phx-disable-with="Preparing…">Ask</button>
+          <input type="hidden" name="question[context_id]" value={@send_context_id} />
+          <button
+            type="submit"
+            aria-describedby="question-sharing"
+            disabled={!@ready || @health != :ok}
+            phx-disable-with="Sending…"
+          >Ask Codex</button>
         </.form>
+        <button
+          :if={@composing}
+          id="question-sharing"
+          class="question-sharing"
+          phx-click="inspect_context"
+          phx-target={@myself}
+          title="Inspect the question, case and source sent to Codex"
+        >Shares case + source</button>
         <button class="question-mobile-open" phx-click="new" phx-target={@myself}>Ask</button>
         <button
           :if={!@composing && !running?(@active)}
@@ -408,7 +412,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           :if={@composing}
           for={to_form(%{}, as: :question)}
           id="panel-question-form"
-          phx-submit="prepare"
+          phx-submit="ask"
           phx-change="text"
           phx-target={@myself}
         >
@@ -422,7 +426,17 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           <p :if={@previous != []} class="scope-note">
             The selected earlier question and generated answer will be included, using that question’s case. Review Context before sending.
           </p>
-          <button type="submit">Prepare question</button>
+          <input type="hidden" name="question[context_id]" value={@send_context_id} />
+          <p class="scope-note">Sends this question, case and included source to Codex.</p>
+          <div class="question-actions">
+            <button
+              id="question-send"
+              type="submit"
+              disabled={!@ready || @health != :ok}
+              phx-disable-with="Sending…"
+            >Send to Codex</button>
+            <button type="button" phx-click="inspect_context" phx-target={@myself}>Inspect context</button>
+          </div>
         </.form>
         <details :if={(@packet || @active) && !@history_open} id="question-context">
           <summary>Context · {(@packet || @active["packet"])["model"]} · medium</summary>
@@ -440,29 +454,6 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
             Other repository sources, external attestations and private review notes are not included.
           </p>
         </details>
-        <.form
-          :if={@packet && @active && @active["status"] == "prepared" && !@history_open}
-          for={to_form(%{}, as: :question)}
-          id="question-consent-form"
-          phx-submit="send"
-          phx-change="consent"
-          phx-target={@myself}
-        >
-          <.input
-            type="checkbox"
-            id="question-consent"
-            name="question[consent]"
-            checked={@consent}
-            value="true"
-            label="Share this question, source and case with Codex"
-          />
-          <button
-            id="question-send"
-            type="submit"
-            disabled={!@consent || @health != :ok}
-            phx-disable-with="Sending…"
-          >Send to Codex</button>
-        </.form>
         <section :if={@history_open} id="question-history-list">
           <h3>Local history</h3>
           <nav class="question-actions" aria-label="History scope">

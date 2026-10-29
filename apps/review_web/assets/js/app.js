@@ -83,8 +83,11 @@ const QuestionPanel = {
       this.opener = document.activeElement
       this.restore = true
       ;(panel.querySelector('textarea') || panel).focus({preventScroll: true})
-    } else if (!panel && this.previousPanel && this.restore && this.opener?.isConnected) {
-      this.opener.focus({preventScroll: true})
+    } else if (!panel && this.previousPanel && this.restore) {
+      const target = this.opener?.isConnected && this.el.contains(this.opener)
+        ? this.opener
+        : this.el.querySelector('.question-preview, #question-history')
+      target?.focus({preventScroll: true})
     }
     this.previousPanel = panel
     this.position()
