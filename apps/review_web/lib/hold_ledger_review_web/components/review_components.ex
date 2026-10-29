@@ -3,7 +3,6 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
   use HoldLedgerReviewWeb, :html
   alias HoldLedgerReview.ReviewWorkspace
   alias HoldLedgerReviewWeb.ReviewCopy
-  import HoldLedgerReviewWeb.DissectorComponents, only: [term: 1]
 
   attr :reading, :map, required: true
   attr :catalog, :list, required: true
@@ -178,18 +177,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
 
     ~H"""
     <section :if={@package || @example} class="boundary-pane" id="boundary-fork">
-      <h3>
-        {cond do
-          @package -> "Compare versions"
-          @example -> "Example: changing ≤ to <"
-          true -> ""
-        end}
-      </h3>
-      <p :if={@case} class="boundary-input">
-        <strong>{term(@case["event"])}</strong><span>Before: {@case["before"]["used_amount"]}¢ reserved / {@case[
-          "before"
-        ]["amount_limit"]}¢ limit</span>
-      </p>
+      <h3 :if={@package}>Compare versions</h3>
       <dl id="source-coverage" class="coverage-list">
         <div :if={!@package && @example} id="coverage-row">
           <dt>Old rule covers this request</dt><dd id="coverage-baseline">
@@ -222,7 +210,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         class="boundary-callout"
         id="lost-guarantee"
       >
-        This illustrated stricter condition excludes the request. It is not a real proposal run.
+        This illustrated change excludes this input; no proposed code was executed.
       </p>
       <div class="action-row">
         <button :if={@package} id="replay-pair" phx-click="replay" disabled={!@case}>Run on both versions</button><button
@@ -276,13 +264,13 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         />
       </.form>
       <p :if={@package && @selected} class="scope-note" id="stored-decision-target">
-        The actions below update the stored comparison finding {@selected["id"]}.
-        They do not decide the active unsaved experiment or change source code.
+        Stored comparison finding · <code>{@selected["id"]}</code>
       </p>
-      <p :if={!@package} class="scope-note" id="local-decision-target">
-        These actions record a session note about the active rule/case. They do not
-        approve code, change the rule, or save pending events.
-      </p>
+      <details :if={!@package} class="decision-context">
+        <summary id="local-decision-target">Active case · session note</summary><p>
+          These actions record the active case without saving pending events or approving policy.
+        </p>
+      </details>
       <div :if={!@package || @selected} class="decision-actions">
         <button
           :for={

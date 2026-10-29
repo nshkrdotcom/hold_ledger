@@ -1403,7 +1403,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 saved={@doc}
               />
               <div class="active-case" id="active-case">
-                <h2>Active case</h2>
                 <.active_state
                   doc={evaluation_doc(assigns)}
                   cursor={@cursor}
@@ -1510,16 +1509,22 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     {if @note_open, do: "Close observation", else: "Add observation"}
                   </button>
                 </div>
-                <p id="observation-target" class="scope-note">
-                  <%= if @case_data do %>
-                    Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
-                      do: "unsaved experiment",
-                      else: "saved step"
-                    )}
-                  <% else %>
-                    Rule {@slug} · no currently checkable alternative
-                  <% end %>
-                </p>
+                <details class="observation-context">
+                  <summary>Case and recording scope</summary>
+                  <p id="observation-target" class="scope-note">
+                    <%= if @case_data do %>
+                      Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
+                        do: "unsaved experiment",
+                        else: "saved step"
+                      )}
+                    <% else %>
+                      Rule {@slug} · no currently checkable alternative
+                    <% end %>
+                  </p>
+                  <p class="scope-note">
+                    Notes do not approve code, change requirements or save pending events.
+                  </p>
+                </details>
                 <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">
                   <.input field={@note_form[:text]} type="textarea" label="Your observation" />
                   <p class="scope-note">
@@ -1536,9 +1541,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     Markdown
                   </a>
                 </p>
-                <p :if={@repair_status.status != "ready"} id="repair-unavailable" class="scope-note">
-                  Repair download unavailable: {@repair_status.reason}.
-                </p>
+                <details :if={@repair_status.status != "ready"} class="repair-context">
+                  <summary>Repair export</summary>
+                  <p id="repair-unavailable" class="scope-note">
+                    Repair download unavailable: {@repair_status.reason}.
+                  </p>
+                </details>
               </section>
             </section>
             <div class="case-reasoning">

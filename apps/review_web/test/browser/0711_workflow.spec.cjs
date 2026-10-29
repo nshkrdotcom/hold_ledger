@@ -123,7 +123,7 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
     expect(metrics.width).toBeLessThanOrEqual(width);
     expect(metrics.requirement.top).toBeLessThan(metrics.case.top);
     expect(metrics.proof.top).toBeGreaterThan(metrics.checks.top);
-    if (width >= 1120) {
+    if (width > 950) {
       expect(Math.abs(metrics.case.top - metrics.checks.top)).toBeLessThan(35);
       expect(metrics.checks.left).toBeGreaterThan(metrics.case.left);
     } else {

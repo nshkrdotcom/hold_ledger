@@ -45,15 +45,17 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     ~H"""
     <section class="instrument" id="dissector">
       <header>
-        <span class="section-number">02</span><h2>Why this check has that result</h2>
+        <span class="section-number">02</span><h2>Conditions and proof</h2>
       </header>
       <p :if={@reading["kind"] == "native_lean"}>
         Native Lean statement. No executable Elixir counterpart.
       </p>
-      <p class="scope-note" id="connection-scope">
-        Clause ↔ proof links are reviewed source-reading aids, not Lean goal states,
-        kernel dependencies or acceptance evidence.
-      </p>
+      <details class="reading-scope">
+        <summary>How to read this</summary><p class="scope-note" id="connection-scope">
+          Clause ↔ proof links are reviewed source-reading aids, not Lean goal states,
+          kernel dependencies or acceptance evidence. Groups count only the named observed conditions.
+        </p>
+      </details>
       <details
         :if={@changed_sources != []}
         open
@@ -87,7 +89,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         </p>
       </details>
       <div :if={@case}>
-        <p id="binding-count">
+        <p id="binding-count" class={length(@bindings) == 1 && "single-binding"}>
           {if length(@bindings) == 1,
             do: "Values used for this check",
             else: "#{length(@bindings)} combinations checked"}
@@ -131,12 +133,13 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
           class="binding"
           id={"binding-#{index}"}
         >
-          <h3>Values {index + 1}</h3>
-          <dl class="binding-values">
-            <div :for={{name, value} <- binding["values"]}>
-              <dt>{name}</dt><dd>{term(value)}</dd>
-            </div>
-          </dl>
+          <details class="bound-values">
+            <summary>Bound values {index + 1}</summary><dl class="binding-values">
+              <div :for={{name, value} <- binding["values"]}>
+                <dt>{name}</dt><dd>{term(value)}</dd>
+              </div>
+            </dl>
+          </details>
           <p :if={binding["error"]} role="alert">{binding["error"]}</p>
           <div :if={binding["requires"]}>
             <.clause_table
@@ -218,9 +221,6 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     ~H"""
     <section class="clause-table" id={"outline-#{@binding}-#{@phase}"}>
       <h3>{@title} <.truth value={@node["value"]} /></h3>
-      <p class="scope-note">
-        Groups count only the named, observed conditions. The original tree is available below.
-      </p>
       <.condition_group
         :for={group <- @groups}
         group={group}
@@ -295,6 +295,8 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     <details
       id={"group-#{@binding}-#{@phase}-#{@group.id}"}
       class={["condition-group", @group.attention? && "condition-attention"]}
+      data-background={to_string(@group.id in ["representation", "starting_state"])}
+      data-attention={to_string(@group.attention?)}
       open={@open_group}
     >
       <summary>
@@ -306,10 +308,12 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
       </summary>
       <div class="condition-rows">
         <div :for={observation <- @group.observations}>
-          <p :for={context <- Map.get(observation, :context, [])} class="condition-context">
-            Within {String.upcase(Atom.to_string(context.operator))} branch {context.branch + 1}:
+          <details :for={context <- Map.get(observation, :context, [])} class="condition-context">
+            <summary>
+              Within {String.upcase(Atom.to_string(context.operator))} branch {context.branch + 1}
+            </summary>
             <code>{context.expression}</code>
-          </p>
+          </details>
           <.logic
             node={observation.node}
             root={@root}

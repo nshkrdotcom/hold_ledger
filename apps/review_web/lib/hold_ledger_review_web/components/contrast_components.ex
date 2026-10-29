@@ -205,56 +205,54 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
     ~H"""
     <section id="verdict" class="verdict-panel" aria-label="Checks for this case">
       <h2>Checks for this case</h2>
-      <p class="scope-note">
-        Predicate outcomes describe the selected rule, not whether an alternative is desirable.
-      </p>
-      <div :if={@case} id="active-predicate-result" class="predicate-focus" role="status">
-        <div class="predicate-heading">Selected rule · output satisfaction</div>
-        <div class="predicate-pair">
-          <div><span>Code result</span><strong>{ReviewCopy.code_acceptance(@case)}</strong></div>
-          <div>
-            <span>Alternative (not executed)</span><strong>{ReviewCopy.candidate_acceptance(@case)}</strong>
-          </div>
-        </div>
+      <details class="check-scope">
+        <summary>About these checks</summary>
+        <p>Predicate outcomes describe the selected rule, not whether an alternative is desirable.</p>
+      </details>
+      <div :if={@case} id="active-predicate-result" role="status">
+        <table id="contrast-matrix">
+          <thead>
+            <tr>
+              <th>Question</th><th>Code result</th><th>Alternative (not executed)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="applicability-row">
+              <th scope="row">Does the rule apply?</th>
+              <td colspan="2">{ReviewCopy.applicability(@case)}</td>
+            </tr>
+            <tr id="selected-law-row">
+              <th scope="row">Does the output satisfy the rule?</th>
+              <td>{ReviewCopy.code_acceptance(@case)}</td>
+              <td>{ReviewCopy.candidate_acceptance(@case)}</td>
+            </tr>
+            <tr id="validity-row">
+              <th scope="row">Is accounting internally valid?</th>
+              <td>{ReviewCopy.accounting(@case["actual_valid"])}</td>
+              <td>{ReviewCopy.accounting(@case["candidate_valid"])}</td>
+            </tr>
+            <tr :if={@case["comparison_law"] != @slug && @case["comparison_status"] != "not_probed"}>
+              <th scope="row">
+                <button
+                  class="text-button"
+                  phx-click="inspect_law"
+                  phx-value-slug={@case["comparison_law"]}
+                >
+                  {ReviewCopy.title(%{"slug" => @case["comparison_law"]})}
+                </button>
+              </th>
+              <td>
+                {if @case["comparison_actual"] === true,
+                  do: "Accepts code result",
+                  else: "Unavailable"}
+              </td>
+              <td>
+                {ReviewCopy.candidate_acceptance(%{"law_status" => @case["comparison_status"]})}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <table :if={@case} id="contrast-matrix">
-        <thead>
-          <tr>
-            <th>Question</th><th>Code result</th><th>Alternative (not executed)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr id="applicability-row">
-            <th scope="row">Does the rule apply?</th>
-            <td colspan="2">{ReviewCopy.applicability(@case)}</td>
-          </tr>
-          <tr id="selected-law-row">
-            <th scope="row">Does the output satisfy the rule?</th>
-            <td>{ReviewCopy.code_acceptance(@case)}</td>
-            <td>{ReviewCopy.candidate_acceptance(@case)}</td>
-          </tr>
-          <tr id="validity-row">
-            <th scope="row">Is accounting internally valid?</th>
-            <td>{ReviewCopy.accounting(@case["actual_valid"])}</td>
-            <td>{ReviewCopy.accounting(@case["candidate_valid"])}</td>
-          </tr>
-          <tr :if={@case["comparison_law"] != @slug && @case["comparison_status"] != "not_probed"}>
-            <th scope="row">
-              <button
-                class="text-button"
-                phx-click="inspect_law"
-                phx-value-slug={@case["comparison_law"]}
-              >
-                {ReviewCopy.title(%{"slug" => @case["comparison_law"]})}
-              </button>
-            </th>
-            <td>
-              {if @case["comparison_actual"] === true, do: "Accepts code result", else: "Unavailable"}
-            </td>
-            <td>{ReviewCopy.candidate_acceptance(%{"law_status" => @case["comparison_status"]})}</td>
-          </tr>
-        </tbody>
-      </table>
       <p :if={@case && ReviewCopy.candidate_acceptance(@case) == "Unavailable"} class="scope-note">
         Alternative check unavailable: {@case["law_reason"]}.
       </p>
@@ -325,32 +323,40 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         <.field_delta change={OutputDifferences.at(@differences, ["after", "used_holds"])} />
         <.field_delta change={OutputDifferences.at(@differences, ["result"])} />
       </p>
-      <dl class="output-fields">
-        <div>
-          <dt>Amount limit</dt><dd>
-            {@output["after"]["amount_limit"]}¢
-            <.field_delta change={OutputDifferences.at(@differences, ["after", "amount_limit"])} />
-          </dd>
-        </div>
-        <div>
-          <dt>Hold limit</dt><dd>
-            {slot_count(@output["after"]["hold_limit"])}
-            <.field_delta change={OutputDifferences.at(@differences, ["after", "hold_limit"])} />
-          </dd>
-        </div>
-        <div>
-          <dt>Used hold slots</dt><dd>
-            {@output["after"]["used_holds"]}
-            <.field_delta change={OutputDifferences.at(@differences, ["after", "used_holds"])} />
-          </dd>
-        </div>
-        <div>
-          <dt>Result</dt><dd>
-            {@output["result"]}
-            <.field_delta change={OutputDifferences.at(@differences, ["result"])} />
-          </dd>
-        </div>
-      </dl>
+      <details
+        class="output-fields-detail"
+        open={
+          OutputDifferences.at(@differences, ["after", "amount_limit"]) != nil ||
+            OutputDifferences.at(@differences, ["after", "hold_limit"]) != nil
+        }
+      >
+        <summary>Output fields</summary><dl class="output-fields">
+          <div>
+            <dt>Amount limit</dt><dd>
+              {@output["after"]["amount_limit"]}¢
+              <.field_delta change={OutputDifferences.at(@differences, ["after", "amount_limit"])} />
+            </dd>
+          </div>
+          <div>
+            <dt>Hold limit</dt><dd>
+              {slot_count(@output["after"]["hold_limit"])}
+              <.field_delta change={OutputDifferences.at(@differences, ["after", "hold_limit"])} />
+            </dd>
+          </div>
+          <div>
+            <dt>Used hold slots</dt><dd>
+              {@output["after"]["used_holds"]}
+              <.field_delta change={OutputDifferences.at(@differences, ["after", "used_holds"])} />
+            </dd>
+          </div>
+          <div>
+            <dt>Result</dt><dd>
+              {@output["result"]}
+              <.field_delta change={OutputDifferences.at(@differences, ["result"])} />
+            </dd>
+          </div>
+        </dl>
+      </details>
       <ul class="output-entries">
         <li :for={{entry, index} <- Enum.with_index(@output["after"]["entries"])}>
           <span>{entry["key"]} · {entry["amount"]}¢</span>

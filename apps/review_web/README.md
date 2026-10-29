@@ -47,6 +47,8 @@ Select an earlier step to branch from there. **Reset** discards the experiment. 
 
 **Edit starting state** opens the account fields inline and creates a separate saved session. It never changes the governing payment policy.
 
+The output cards keep reserved money, result, entries and actions in view. **Output fields** reveals the complete scalar fields; changed limits open those details automatically. The compact check table keeps applicability, output satisfaction and accounting separate.
+
 ## Read the proof and assumptions
 
 Conditions first show short, source-reviewed groups with exact observed true/false/unavailable/not-evaluated counts. Positive-amount boundaries and starting-state invariants are not lumped into a generic green guard badge. Satisfied unchanged checks may be folded, while false, unavailable, skipped and compared-source changes retain explicit attention. **Complete observed expression tree** reveals the original structural paths, mixed operators, helper definitions and operands without replacing the primary view. Claims lacking reviewed grouping receive an honest generic outline. The complete proof remains in the reasoning region, after the condition view.
