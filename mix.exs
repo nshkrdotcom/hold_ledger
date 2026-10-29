@@ -31,8 +31,8 @@ defmodule HoldLedger.MixProject do
 
   defp deps do
     [
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: :dev, runtime: false},
+      {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4.8", only: :dev, runtime: false},
       {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
       {:lynx,
        git: "https://github.com/josevalim/lynx.git",

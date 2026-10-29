@@ -2,6 +2,11 @@
   "private": true,
   "name": "hold-ledger-deterministic-workbench-browser",
   "description": "Milestone B browser interactions against an explicitly running local Phoenix server",
-  "scripts": {"test": "playwright test", "test:questions": "playwright test --config questions.controlled.config.cjs"},
-  "devDependencies": {"@playwright/test": "^1.55.0"}
+  "scripts": {
+    "test": "playwright test",
+    "test:questions": "playwright test --config questions.controlled.config.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
 }

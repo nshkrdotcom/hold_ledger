@@ -70,20 +70,24 @@ defmodule HoldLedgerReview.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4.8", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.40.4", only: :dev, runtime: false},
       {:hold_ledger, path: "../.."},
+      # Keep transitive dependencies current beyond upstream minor-version constraints.
+      {:boundary, "~> 0.12.0", override: true, runtime: false},
+      {:erlexec, "~> 2.6.0", override: true},
+      {:gproc, "~> 1.3.0", override: true},
       {:inference, "~> 0.5.2"},
       {:agent_session_manager, "~> 0.17.4"},
       {:codex_sdk, "~> 0.21.4"},
       {:phoenix, "~> 1.8.16"},
-      {:phoenix_html, "~> 4.1"},
-      {:phoenix_live_reload, "~> 1.2", only: :dev},
-      {:phoenix_live_view, "~> 1.2.0"},
-      {:lazy_html, ">= 0.1.0", only: :test},
-      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
-      {:tailwind, "~> 0.5", runtime: Mix.env() == :dev},
+      {:phoenix_html, "~> 4.3.0"},
+      {:phoenix_live_reload, "~> 1.7.0", only: :dev},
+      {:phoenix_live_view, "~> 1.2.13"},
+      {:lazy_html, "~> 0.1.13", only: :test},
+      {:esbuild, "~> 0.10.1", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.5.2", runtime: Mix.env() == :dev},
       {:heroicons,
        github: "tailwindlabs/heroicons",
        tag: "v2.2.0",
@@ -91,11 +95,11 @@ defmodule HoldLedgerReview.MixProject do
        app: false,
        compile: false,
        depth: 1},
-      {:telemetry_metrics, "~> 1.0"},
-      {:telemetry_poller, "~> 1.0"},
-      {:jason, "~> 1.2"},
-      {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.14.0"}
+      {:telemetry_metrics, "~> 1.2.0"},
+      {:telemetry_poller, "~> 1.3.0"},
+      {:jason, "~> 1.4.5"},
+      {:dns_cluster, "~> 0.3.1"},
+      {:bandit, "~> 1.14.1"}
     ]
   end
 
