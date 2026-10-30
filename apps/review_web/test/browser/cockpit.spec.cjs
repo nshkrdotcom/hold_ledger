@@ -170,8 +170,9 @@ test('two tabs preserve CAS conflict and reconnect source identity',async({page,
   await expect(right.locator('#review-history')).toContainText('Check actual processor evidence.');
 });
 
-test('mobile stays within viewport and requests no provider',async({page})=>{
-  const requests=[];page.on('request',r=>{if(!/^https?:\/\/(localhost|127\.0\.0\.1):4000\//.test(r.url()))requests.push(r.url())});
+test('mobile stays within viewport and requests no provider',async({page,baseURL})=>{
+  const origin=new URL(baseURL);expect(['localhost','127.0.0.1']).toContain(origin.hostname);
+  const requests=[];page.on('request',r=>{if(new URL(r.url()).origin!==origin.origin)requests.push(r.url())});
   await page.setViewportSize({width:390,height:844});await open(page);
   await expect(page.locator('#contract-diff')).toBeVisible();await expect(page.locator('#ledger-output')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

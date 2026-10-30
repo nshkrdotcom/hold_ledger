@@ -13,7 +13,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     assert has_element?(view, "#lens-formal-status")
     assert has_element?(view, "#lens-gap", "Potential loss of required coverage")
     assert has_element?(view, "#lens-baseline-verdict", "Rejects this output")
-    assert has_element?(view, "#lens-hypothetical-verdict", "Outside the claim")
+    assert has_element?(view, "#lens-hypothetical-verdict", "Doesn't apply")
     assert has_element?(view, "#lens-observed-path")
     assert has_element?(view, "#lens-variation-strict[aria-pressed=true]")
     assert has_element?(view, "#lens-modes a[href='/claims/po_a2?compare=open']")
@@ -28,7 +28,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
 
     element(view, "#lens-witness-above") |> render_click()
     assert has_element?(view, "#lens-policy-verdict", "Policy permits this output")
-    assert has_element?(view, "#lens-baseline-verdict", "Outside the claim")
+    assert has_element?(view, "#lens-baseline-verdict", "Doesn't apply")
 
     element(view, "#lens-witness-exact") |> render_click()
     element(view, "#lens-variation-proof_only") |> render_click()
@@ -41,7 +41,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
   } do
     {:ok, view, _} = live(conn, "/lens/po_exposure_retain")
     assert has_element?(view, "#lens-policy-verdict", "Policy permits this output")
-    assert has_element?(view, "#lens-baseline-verdict", "Outside the claim")
+    assert has_element?(view, "#lens-baseline-verdict", "Doesn't apply")
     assert has_element?(view, "#lens-hypothetical-verdict", "Rejects this output")
     assert has_element?(view, "#lens-gap", "Potential overconstraint")
     assert has_element?(view, "#lens-proof-steps")
@@ -65,7 +65,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     render_click(view, "decision", %{"choice" => "approved_by_kernel"})
     assert has_element?(view, "#lens-decision-concern[aria-pressed=true]")
     element(view, "#lens-witness-below") |> render_click()
-    assert has_element?(view, "#lens-decision-unresolved[aria-pressed=true]")
+    refute has_element?(view, ".lens-decisions [aria-pressed=true]")
   end
 
   test "unregistered law lens never presents a made-up policy verdict", %{conn: conn} do
@@ -110,9 +110,110 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     form(view, "#lens-review-form", review: %{text: "Exact-fit concern"}) |> render_change()
 
     render_patch(view, "/lens/po_exposure_retain")
-    assert has_element?(view, "#lens-decision-unresolved[aria-pressed=true]")
+    refute has_element?(view, ".lens-decisions [aria-pressed=true]")
     refute has_element?(view, "#lens-review-form textarea", "Exact-fit concern")
     assert has_element?(view, "#lens-witness-confirmed[aria-pressed=true]")
+  end
+
+  test "Challenge omits feedback until an explicit initial answer is confirmed", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/lens/po_a2?mode=challenge")
+    assert has_element?(view, "#lens-feedback-withheld")
+    assert has_element?(view, "#lens-confirm[disabled]")
+    assert has_element?(view, "#lens-source-contract")
+    refute has_element?(view, ".lens-decisions [aria-pressed=true]")
+    refute has_element?(view, "#lens-policy-verdict")
+    refute has_element?(view, "#lens-gap")
+    refute has_element?(view, "#lens-coverage")
+    refute has_element?(view, "#lens-worked-challenge")
+    refute has_element?(view, "#lens-selected-clause")
+
+    render_submit(view, "reveal", %{"review" => %{"text" => "No answer chosen"}})
+    refute has_element?(view, "#lens-gap")
+    element(view, "#lens-decision-unresolved") |> render_click()
+    refute has_element?(view, "#lens-confirm[disabled]")
+    refute has_element?(view, "#lens-gap")
+    form(view, "#lens-review-form", review: %{text: "Need source review"}) |> render_submit()
+    assert has_element?(view, "#lens-initial-answer", "needs more evidence")
+    assert has_element?(view, "#lens-gap", "Potential loss of required coverage")
+    assert has_element?(view, "#lens-coverage-exact[data-change=removed]")
+    assert has_element?(view, "#lens-worked-challenge", "insufficient_amount")
+    assert has_element?(view, "#lens-decision-unresolved[disabled]")
+
+    render_click(view, "decision", %{"choice" => "concern"})
+    render_change(view, "review_note", %{"review" => %{"text" => "Changed after feedback"}})
+    render_submit(view, "reveal", %{"review" => %{"text" => "Changed after feedback"}})
+    assert has_element?(view, "#lens-initial-answer", "Need source review")
+    refute has_element?(view, "#lens-initial-answer", "Changed after feedback")
+    assert has_element?(view, "#lens-decision-unresolved[aria-pressed=true]")
+  end
+
+  test "Challenge attempts reset on witness, hypothesis, study, mode and try again", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/lens/po_a2?mode=challenge")
+
+    for selector <- ["#lens-witness-below", "#lens-variation-original", "#lens-try-again"] do
+      reveal_challenge(view)
+      element(view, selector) |> render_click()
+      refute has_element?(view, "#lens-gap")
+      refute has_element?(view, ".lens-decisions [aria-pressed=true]")
+      refute has_element?(view, "#lens-review-form textarea", "Initial answer")
+    end
+
+    reveal_challenge(view)
+    render_patch(view, "/lens/po_exposure_retain?mode=challenge")
+    refute has_element?(view, "#lens-gap")
+    refute has_element?(view, "#lens-initial-answer")
+    assert has_element?(view, "#lens-study-picker a[href='/lens/po_a2?mode=challenge']")
+    reveal_challenge(view)
+    render_patch(view, "/lens/po_exposure_retain")
+    assert has_element?(view, "#lens-gap")
+    refute has_element?(view, ".lens-decisions [aria-pressed=true]")
+    render_patch(view, "/lens/po_exposure_retain?mode=challenge")
+    refute has_element?(view, "#lens-gap")
+    assert has_element?(view, "#lens-confirm[disabled]")
+  end
+
+  test "source loss also refuses Challenge confirmation", %{conn: conn} do
+    root = HoldLedgerReview.Config.root()
+    on_exit(fn -> Application.put_env(:hold_ledger_review_web, :ledger_root, root) end)
+    {:ok, view, _} = live(conn, "/lens/po_a2?mode=challenge")
+    element(view, "#lens-decision-concern") |> render_click()
+    Application.put_env(:hold_ledger_review_web, :ledger_root, "/missing-ledger-checkout")
+    render_submit(view, "reveal", %{"review" => %{"text" => "Initial answer"}})
+    assert has_element?(view, "#lens-unavailable")
+    refute has_element?(view, "#lens-gap")
+    refute has_element?(view, "#lens-initial-answer")
+  end
+
+  test "semantic hypothetical selects its reviewed clause and evidence labels stay honest", %{
+    conn: conn
+  } do
+    {:ok, view, _} = live(conn, "/lens/po_a2")
+    element(view, "#lens-clause-capacity-slots") |> render_click()
+    element(view, "#lens-variation-strict") |> render_click()
+
+    assert has_element?(
+             view,
+             "#lens-clause-capacity-amount.lens-clause-edited[aria-pressed=true]"
+           )
+
+    assert has_element?(
+             view,
+             "#lens-hypothetical-verdict[data-applicability=excluded]",
+             "says nothing"
+           )
+
+    assert has_element?(view, "#lens-evidence-legend")
+    refute has_element?(view, "#lens-evidence-status", "missing_or_stale")
+    assert has_element?(view, "#lens-lean-reading", "Source text")
+    element(view, "#lens-variation-proof_only") |> render_click()
+    refute has_element?(view, ".lens-clause-edited")
+    assert has_element?(view, "#lens-proof-control", "Requires and expects are identical")
+  end
+
+  defp reveal_challenge(view) do
+    element(view, "#lens-decision-concern") |> render_click()
+    form(view, "#lens-review-form", review: %{text: "Initial answer"}) |> render_submit()
+    assert has_element?(view, "#lens-initial-answer")
   end
 
   test "case lab exposes direct navigation into claim lens", %{conn: conn} do

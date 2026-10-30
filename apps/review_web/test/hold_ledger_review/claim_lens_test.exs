@@ -81,6 +81,35 @@ defmodule HoldLedgerReview.ClaimLensTest do
              ClaimLens.policy_line(study, %{reading | "sources" => sources})
   end
 
+  test "coverage summarizes authored and hypothetical input domains without changing verdicts" do
+    # Policy: exact fit must be admitted; terminal confirmation may release exposure.
+    assert {:ok, admission} = ClaimLens.coverage("po_a2", "strict")
+
+    assert Enum.map(admission, &{&1.id, &1.original, &1.hypothetical}) ==
+             [{"below", true, true}, {"exact", true, false}, {"above", false, false}]
+
+    assert {:ok, retention} = ClaimLens.coverage("po_exposure_retain", "drop_release")
+
+    assert Enum.map(retention, &{&1.id, &1.original, &1.hypothetical}) ==
+             [{"void", true, true}, {"confirmed", false, true}, {"timeout", true, true}]
+
+    for study <- ClaimLens.studies(), variation <- ~w(original proof_only) do
+      assert {:ok, rows} = ClaimLens.coverage(study.slug, variation)
+      assert Enum.all?(rows, &(&1.original == &1.hypothetical))
+    end
+
+    assert {:error, :coverage_unavailable} = ClaimLens.coverage("po_a2", "fake")
+    assert {:error, :coverage_unavailable} = ClaimLens.coverage("l2_identity", "original")
+  end
+
+  test "coverage memoization never bypasses source availability checks" do
+    assert {:ok, _} = ClaimLens.coverage("po_a2", "strict")
+    root = HoldLedgerReview.Config.root()
+    on_exit(fn -> Application.put_env(:hold_ledger_review_web, :ledger_root, root) end)
+    Application.put_env(:hold_ledger_review_web, :ledger_root, "/missing-ledger-checkout")
+    assert {:error, :coverage_unavailable} = ClaimLens.coverage("po_a2", "strict")
+  end
+
   test "only reviewed hand-authored studies, witnesses and variations are selectable" do
     assert Enum.map(ClaimLens.studies(), & &1.slug) == ~w(po_a2 po_exposure_retain)
     assert {:error, :unknown_study} = ClaimLens.study("l2_identity")

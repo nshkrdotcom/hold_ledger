@@ -18,13 +18,13 @@ for (const width of [1280, 390]) {
     await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
     await expect(page.locator('#lens-gap')).toContainText('Potential loss of required coverage');
     await expect(page.locator('#lens-baseline-verdict')).toContainText('Rejects this output');
-    await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Outside the claim');
+    await expect(page.locator('#lens-hypothetical-verdict')).toContainText("Doesn't apply");
     await page.locator('#lens-witness-below').click();
     await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Rejects this output');
     await page.locator('#lens-witness-above').click();
     await expect(page.locator('#lens-policy-verdict')).toContainText('Policy permits');
-    await expect(page.locator('#lens-baseline-verdict')).toContainText('Outside the claim');
-    await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Outside the claim');
+    await expect(page.locator('#lens-baseline-verdict')).toContainText("Doesn't apply");
+    await expect(page.locator('#lens-hypothetical-verdict')).toContainText("Doesn't apply");
     await page.locator('#lens-witness-exact').click();
     await page.locator('#lens-variation-proof_only').click();
     await expect(page.locator('#lens-gap')).toContainText('No claim-level change');
@@ -36,8 +36,7 @@ for (const width of [1280, 390]) {
     const passage = page.locator('#lens-proof-steps pre').first();
     await passage.focus();
     await expect(passage).toBeFocused();
-    await passage.press('ArrowDown');
-    await expect.poll(() => passage.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    expect(await passage.evaluate(el => el.scrollHeight <= el.clientHeight)).toBe(true);
     await page.locator('#lens-pointwise-details summary').click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
@@ -49,7 +48,7 @@ test('retention lens distinguishes terminal evidence and source-linked statement
   await expect(page.locator('#lens-policy-verdict')).toContainText('Policy permits this output');
   await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Rejects this output');
   await expect(page.locator('#lens-proof-steps')).toBeVisible();
-  await expect(page.locator('#lens-baseline-verdict')).toContainText('Outside the claim');
+  await expect(page.locator('#lens-baseline-verdict')).toContainText("Doesn't apply");
   await page.locator('#lens-witness-timeout').click();
   await expect(page.locator('#lens-policy-verdict')).toContainText('Policy forbids');
   await expect(page.locator('#lens-baseline-verdict')).toContainText('Rejects this output');
@@ -100,7 +99,7 @@ test('keyboard decisions and drafts reset across study navigation and reload', a
   await page.locator('#lens-study-picker a[href="/lens/po_exposure_retain"]').click();
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(note).toHaveValue('');
-  await expect(page.locator('#lens-decision-unresolved')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.lens-decisions [aria-pressed=true]')).toHaveCount(0);
   await note.fill('Temporary retention note');
   await page.reload();
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);

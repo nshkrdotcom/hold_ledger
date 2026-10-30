@@ -45,6 +45,23 @@ witness, select a curated hypothetical precondition edit, and compare:
 - a transparently modeled *hypothetical* precondition with the existing
   promise. The UI never rewrites the law or claims the hypothetical was proved.
 
+**Explore** shows the comparison immediately. **Challenge** (also available at
+`/lens/po_a2?mode=challenge`) withholds the curated verdicts, coverage strip,
+worked explanation and review insight until you choose a classification and
+press **Confirm classification and reveal feedback**. No answer is preselected;
+**Need more evidence** is an explicit, neutral choice. Your initial answer is
+then fixed for that attempt. Changing the witness, hypothetical, study or mode,
+or choosing **Try again**, clears the attempt; reload discards it too. This is
+practice, not a blinded or scored assessment: Explore and prior feedback can
+already have exposed the answer.
+
+After feedback, the three-witness coverage strip shows authored versus
+hypothetical input applicability together. “Doesn't apply” means the claim says
+nothing about that input; exclusion alone does not establish a policy defect.
+The worked challenge includes exact before/event, computed and curated candidate
+values. Mutation paths remain references; the page does not execute those patches.
+Selecting a semantic hypothetical accents its existing reviewed source clause.
+
 Exact-fit admission demonstrates how adding `amount < remaining` to
 `po_a2`'s precondition excludes the 100¢ boundary even though the original
 claim rejects a mistaken `:insufficient_amount` output there. Retention shows

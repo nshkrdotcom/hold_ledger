@@ -10,7 +10,7 @@ defmodule HoldLedgerReview.ClaimLens do
   """
 
   alias HoldLedger.{Ledger, Spec}
-  alias HoldLedgerReview.{Anchor, ClaimProbe, Config, ProofReading, TermCodec}
+  alias HoldLedgerReview.{Anchor, ClaimProbe, Claims, Config, ProofReading, TermCodec}
 
   @studies [
     %{
@@ -202,6 +202,52 @@ defmodule HoldLedgerReview.ClaimLens do
     else
       _ -> {:error, :observation_unavailable}
     end
+  end
+
+  @doc "Input applicability across the three curated witnesses, never proof acceptance."
+  def coverage(slug, variation_id) do
+    result =
+      Claims.with_generation(Config.root(), fn _ -> current_coverage(slug, variation_id) end)
+
+    case result do
+      {:ok, rows} -> rows
+      _ -> {:error, :coverage_unavailable}
+    end
+  end
+
+  defp current_coverage(slug, variation_id) do
+    with {:ok, study} <- study(slug),
+         true <- Enum.any?(study.variations, &(&1.id == variation_id)),
+         {:ok, reading} <- ProofReading.document(slug),
+         true <- reading["reading_current"],
+         {:ok, _line} <- policy_line(study, reading) do
+      Claims.memoize(__MODULE__, {:coverage, slug, variation_id}, fn ->
+        coverage_rows(study, variation_id)
+      end)
+    else
+      _ -> {:error, :coverage_unavailable}
+    end
+  end
+
+  defp coverage_rows(study, variation_id) do
+    Enum.reduce_while(study.witnesses, {:ok, []}, fn witness, {:ok, rows} ->
+      {:ok, values} = witness_values(study.slug, witness.id)
+      baseline = ClaimProbe.probe(study.slug, values.before, values.event, values.candidate)
+      hypothetical = alternative(study.slug, variation_id, values, baseline)
+
+      if baseline.status == :cant_check or hypothetical.status == :cant_check do
+        {:halt, {:error, :coverage_unavailable}}
+      else
+        row = %{
+          id: witness.id,
+          title: witness.title,
+          original: baseline.status != :doesnt_apply,
+          hypothetical: hypothetical.status != :doesnt_apply
+        }
+
+        {:cont, {:ok, rows ++ [row]}}
+      end
+    end)
   end
 
   defp witness_values("po_a2", id) when id in ~w(below exact above) do

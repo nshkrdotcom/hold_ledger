@@ -650,7 +650,7 @@ ins {background: #ccebd7; text-decoration: none}
 .lens-human {border-top:4px solid #8c9a83}
 .lens-decisions {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:12px 0 16px}
 .lens-decisions button {font-size:.78rem; white-space:normal; min-height:43px; padding:8px}
-.lens-decisions button[aria-pressed=true] {background:#e5f0e9; border-color:#7da08b; box-shadow:inset 3px 0 #5f886d; font-weight:700}
+.lens-decisions button[aria-pressed=true] {background:#edf1f4; border-color:#6e8190; box-shadow:inset 3px 0 #6e8190; font-weight:700}
 .lens-human textarea {min-height:75px; resize:vertical}
 .lens-cta {display:inline-flex; padding:9px 12px; border-radius:6px; background:#344d63; color:white; text-decoration:none; font-weight:650; font-size:.79rem}
 .lens-cta:hover {background:#45677e; color:#fff}
@@ -700,4 +700,30 @@ ins {background: #ccebd7; text-decoration: none}
 }
 @media(prefers-reduced-motion:reduce) {
   .lens-choice,.lens-study-link {transition:none}
+}
+
+/* Exercise feedback is rendered only after an explicit Challenge answer. */
+.lens-exercise-modes {display:flex; flex-wrap:wrap; gap:8px; margin-top:18px}
+.lens-exercise-modes a {display:grid; gap:2px; border:1px solid #cbd6df; border-radius:7px; padding:8px 14px; background:white; text-decoration:none; font-weight:650}
+.lens-exercise-modes small {font-weight:400; color:#536272}
+.lens-exercise-modes a[aria-current=page] {border-color:#7e6a95; background:#f4f0f8; box-shadow:inset 0 -3px #89739f}
+.lens-feedback-withheld {padding:14px; border:1px dashed #9b8aaa; border-radius:7px; background:#faf8fc}
+.lens-verdict[data-applicability=excluded] {border:2px dashed #9b86b4; background:#faf8fc}
+.lens-coverage {margin-top:16px; border-top:1px solid #dde3e8; padding-top:10px}
+.lens-coverage-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:10px}
+.lens-coverage-grid button {display:grid; justify-content:stretch; text-align:left; align-content:start; gap:5px; padding:10px; overflow-wrap:anywhere; min-width:0}
+.lens-coverage-grid button[aria-pressed=true] {outline:2px solid #6e8190; outline-offset:1px}
+.lens-coverage-grid [data-change=removed] {border-style:dashed; border-color:#9b86b4; background:#faf8fc}
+.lens-coverage-grid [data-change=added] {border-color:#9b86b4; background:#faf8fc}
+.lens-coverage-grid small {color:#536272}
+.lens-clause.lens-clause-edited {outline:2px solid #9b86b4; outline-offset:1px; background:#f7f2fb}
+#lens-decision-concern:not(:disabled):hover,#lens-decision-concern[aria-pressed=true] {border-color:#b7791f; color:#744210; background:#fffaf0; box-shadow:inset 3px 0 #b7791f}
+#lens-initial-answer {padding:12px; background:#f4f0f8; border:1px solid #cbbdd9; border-radius:7px; margin:12px 0}
+#lens-initial-answer button {margin-left:8px}
+#lens-confirm {margin-top:10px}
+#claim-lens .lens-contract dd {max-height:none; overflow:visible}
+#claim-lens .lens-lean-decl pre,#claim-lens .lens-step-reading pre {max-height:none; overflow:visible; white-space:pre-wrap; overflow-wrap:anywhere}
+#lens-worked-challenge pre {overflow-wrap:anywhere; white-space:pre-wrap}
+@media(max-width:760px) {
+  .lens-coverage-grid {grid-template-columns:minmax(0,1fr)}
 }
