@@ -57,10 +57,9 @@ defmodule HoldLedgerReview.QuestionsTest do
     assert {:error, :empty_question} = QuestionContext.prepare(" ", context(), "operator")
   end
 
-  test "question profile does not replace historical client defaults" do
+  test "question profile selects the current model and effort" do
     assert AI.question_client().model == "gpt-6.1-terra"
     assert AI.question_client().defaults[:reasoning_effort] == :medium
-    assert AI.client().model == "gpt-6.1-sol"
   end
 
   setup do

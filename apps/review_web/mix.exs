@@ -51,7 +51,7 @@ defmodule HoldLedgerReview.MixProject do
   def application do
     [
       mod: {HoldLedgerReview.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger]
     ]
   end
 
@@ -95,10 +95,7 @@ defmodule HoldLedgerReview.MixProject do
        app: false,
        compile: false,
        depth: 1},
-      {:telemetry_metrics, "~> 1.2.0"},
-      {:telemetry_poller, "~> 1.3.0"},
       {:jason, "~> 1.4.5"},
-      {:dns_cluster, "~> 0.3.1"},
       {:bandit, "~> 1.14.1"}
     ]
   end

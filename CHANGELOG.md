@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retired the unmounted review-card and comparison-proposal workflows and their
+  isolated experiment tooling. Current questions, trace persistence, source
+  comparisons, payment behavior and formal obligations remain supported.
+
 - Built the one deterministic, source-anchored Phoenix human workbench for
   policy graphs, five kinds of cards, bounded P01–P08 counterfactuals,
   original-source law matrices and exact submitted-witness review decisions.

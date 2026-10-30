@@ -38,7 +38,7 @@ defmodule HoldLedger.MixProject do
        git: "https://github.com/josevalim/lynx.git",
        ref: "3b44de83fb63503e12b84233de70cf0647e7e63e",
        only: :test},
-      {:stream_data, "~> 1.4.0", only: [:dev, :test], runtime: false}
+      {:stream_data, "~> 1.4.0", only: :test, runtime: false}
     ]
   end
 

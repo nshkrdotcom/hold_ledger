@@ -23,9 +23,6 @@ defmodule HoldLedgerReview.Application do
            Path.join(HoldLedgerReview.Config.root(), "tmp/review_studio/packages")
          )},
       HoldLedgerReview.Part3Runner,
-      HoldLedgerReviewWeb.Telemetry,
-      {DNSCluster,
-       query: Application.get_env(:hold_ledger_review_web, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: HoldLedgerReview.PubSub},
       # Start to serve requests, typically the last entry
       HoldLedgerReviewWeb.Endpoint

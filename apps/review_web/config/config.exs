@@ -13,8 +13,7 @@ config :hold_ledger_review_web,
     adapter: Inference.Adapters.ASM,
     admitted_kinds: [:agent_session],
     provider: :codex,
-    model: "gpt-6.1-sol",
-    defaults: [reasoning_effort: :low, timeout: 110_000],
+    defaults: [timeout: 110_000],
     adapter_opts: [query_opts: [lane: :sdk]]
   ]
 

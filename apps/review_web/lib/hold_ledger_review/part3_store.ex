@@ -12,7 +12,6 @@ defmodule HoldLedgerReview.Part3Store do
     Canonical,
     Claims,
     Config,
-    Part3AI,
     Part3Diagnostics,
     Part3Package,
     Part3Result,
@@ -114,15 +113,6 @@ defmodule HoldLedgerReview.Part3Store do
 
   def pin(id, witness, server \\ __MODULE__), do: GenServer.call(server, {:pin, id, witness})
 
-  def begin_ai(id, revision, packet, server \\ __MODULE__),
-    do: GenServer.call(server, {:begin_ai, id, revision, packet})
-
-  def finish_ai(id, job_id, result, server \\ __MODULE__),
-    do: GenServer.call(server, {:finish_ai, id, job_id, result})
-
-  def accept_question(id, cmd, server \\ __MODULE__),
-    do: GenServer.call(server, {:human, id, "accept_question", cmd})
-
   def ingest_artifacts(id, relative, server \\ __MODULE__),
     do: GenServer.call(server, {:ingest_artifacts, id, relative}, 120_000)
 
@@ -191,50 +181,6 @@ defmodule HoldLedgerReview.Part3Store do
         pin_witness(state, p, witness)
       else
         _ -> {:error, :invalid_or_stale_pin}
-      end
-
-    {:reply, reply, state}
-  end
-
-  def handle_call({:begin_ai, id, revision, packet}, _from, state) do
-    reply =
-      with {:ok, p} <- read(state, id),
-           :ok <- freshness(p),
-           true <- revision == p["human_revision"] and is_nil(p["conclusion"]),
-           true <- not Enum.any?(p["ai_history"], &(&1["status"] == "running")),
-           true <- length(p["ai_history"]) < 100,
-           :ok <- Part3AI.fresh?(p, packet) do
-        job = %{
-          "id" => fresh_id(),
-          "status" => "running",
-          "context_digest" => p["context_digest"],
-          "human_revision_at_request" => revision,
-          "prompt_sha256" => packet.prompt_sha256,
-          "followup_context" => packet.followup_context,
-          "input_digest" => packet.input_digest,
-          "result" => nil,
-          "error" => "",
-          "created_at" => Part3Package.now(),
-          "finished_at" => nil
-        }
-
-        updated = Map.update!(p, "ai_history", &(&1 ++ [job])) |> bump(false)
-        with :ok <- persist(state, updated), do: {:ok, updated, job}
-      else
-        _ -> {:error, :consent_context_or_ai_busy}
-      end
-
-    {:reply, reply, state}
-  end
-
-  def handle_call({:finish_ai, id, job_id, result}, _from, state) do
-    reply =
-      with {:ok, p} <- read(state, id),
-           job when is_map(job) <- Enum.find(p["ai_history"], &(&1["id"] == job_id)),
-           true <- job["status"] == "running" do
-        finish_model_job(state, p, job, result, job_id)
-      else
-        _ -> {:error, :late_or_unknown_model_completion}
       end
 
     {:reply, reply, state}
@@ -554,33 +500,6 @@ defmodule HoldLedgerReview.Part3Store do
     end
   end
 
-  defp apply_human(p, "accept_question", cmd) do
-    required = ~w(request_id expected_human_revision job_id proposal_id)
-
-    with true <- Enum.sort(Map.keys(cmd)) == Enum.sort(required),
-         job when is_map(job) <-
-           Enum.find(
-             p["ai_history"],
-             &(&1["id"] == cmd["job_id"] and &1["status"] == "succeeded")
-           ),
-         proposal when is_map(proposal) <-
-           Enum.find(job["result"]["proposals"], &(&1["proposal_id"] == cmd["proposal_id"])) do
-      accepted = %{
-        "id" => fresh_id(),
-        "source_job_id" => job["id"],
-        "source_proposal_id" => proposal["proposal_id"],
-        "question" => proposal["question"],
-        "kind" => proposal["kind"],
-        "human_revision" => p["human_revision"] + 1,
-        "accepted_at" => Part3Package.now()
-      }
-
-      {:ok, Map.update!(p, "accepted_questions", &(&1 ++ [accepted]))}
-    else
-      _ -> {:error, :invalid_or_stale_proposed_question}
-    end
-  end
-
   defp apply_human(_, _, _), do: {:error, :unknown_human_command}
 
   defp positive_ready?(p, cmd) do
@@ -722,64 +641,6 @@ defmodule HoldLedgerReview.Part3Store do
 
       updated = Map.update!(p, "pinned_examples", &(&1 ++ [pin])) |> bump(false)
       with :ok <- persist(state, updated), do: {:ok, updated, pin}
-    end
-  end
-
-  defp finish_model_job(state, p, job, result, job_id) do
-    stale =
-      p["human_revision"] != job["human_revision_at_request"] or
-        freshness(p) != :ok or not is_nil(p["conclusion"])
-
-    checked = validate_model_result(result, p, job)
-
-    done =
-      case checked do
-        {:ok, output} ->
-          %{
-            job
-            | "status" => if(stale, do: "stale", else: "succeeded"),
-              "result" => output,
-              "finished_at" => Part3Package.now()
-          }
-
-        {:error, reason} ->
-          %{
-            job
-            | "status" => "failed",
-              "error" => inspect(reason) |> String.slice(0, 180),
-              "finished_at" => Part3Package.now()
-          }
-      end
-
-    updated =
-      Map.update!(
-        p,
-        "ai_history",
-        &Enum.map(&1, fn a -> if a["id"] == job_id, do: done, else: a end)
-      )
-      |> bump(false)
-
-    with :ok <- persist(state, updated), do: {:ok, updated}
-  end
-
-  defp validate_model_result(result, p, job) do
-    case result do
-      {:ok, output} when is_map(output) ->
-        with {:ok, packet} <- Part3AI.prepare(p, job["followup_context"]),
-             true <-
-               packet.input_digest == job["input_digest"] and
-                 packet.prompt_sha256 == job["prompt_sha256"],
-             :ok <- Part3AI.validate(output, packet) do
-          {:ok, output}
-        else
-          _ -> {:error, :unvalidated_or_stale_model_proposal}
-        end
-
-      {:error, reason} ->
-        {:error, reason}
-
-      _ ->
-        {:error, :invalid_model_completion}
     end
   end
 

@@ -1,31 +1,11 @@
 defmodule HoldLedgerReview.AI do
   @moduledoc """
   The sole configured Inference boundary for the workbench. No provider is
-  chosen here: the installed client/adapter and model come from application
-  configuration. Every outgoing request requires an explicit caller opt-in.
+  chosen here: the installed adapter comes from application configuration;
+  questions use the explicit model profile below. Every outgoing request requires an explicit caller opt-in.
   """
 
   @app :hold_ledger_review_web
-
-  def client do
-    options = Application.fetch_env!(@app, :inference_client_options)
-
-    options =
-      if model = Application.get_env(@app, :inference_model),
-        do: Keyword.put(options, :model, model),
-        else: options
-
-    options =
-      if effort = Application.get_env(@app, :inference_reasoning_effort) do
-        Keyword.update(options, :defaults, [reasoning_effort: effort], fn current ->
-          Keyword.put(current, :reasoning_effort, effort)
-        end)
-      else
-        options
-      end
-
-    Inference.Client.new!(options)
-  end
 
   @doc "The question profile uses the configured adapter with the explicit question model."
   def question_client do
@@ -109,9 +89,9 @@ defmodule HoldLedgerReview.AI do
       else: {:error, :invalid_answer}
   end
 
-  @doc "Fail closed if JSON-Schema capability is unsupported or unknown."
-  def available?(opts \\ []) do
-    client = Keyword.get_lazy(opts, :client, &client/0)
+  # Fail closed if JSON-Schema capability is unsupported or unknown.
+  defp available?(opts) do
+    client = Keyword.fetch!(opts, :client)
 
     supported =
       case Keyword.get(opts, :capability_check) do

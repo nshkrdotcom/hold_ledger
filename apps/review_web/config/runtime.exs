@@ -42,20 +42,3 @@ end
 config :hold_ledger_review_web,
        :ledger_root,
        System.get_env("HOLD_LEDGER_REVIEW_ROOT") || Path.expand("../../..", __DIR__)
-
-if model = System.get_env("HOLD_LEDGER_REVIEW_MODEL") do
-  config :hold_ledger_review_web, :inference_model, model
-end
-
-if effort = System.get_env("HOLD_LEDGER_REVIEW_REASONING_EFFORT") do
-  allowed = %{
-    "low" => :low,
-    "medium" => :medium,
-    "high" => :high,
-    "xhigh" => :xhigh,
-    "max" => :max,
-    "ultra" => :ultra
-  }
-
-  config :hold_ledger_review_web, :inference_reasoning_effort, Map.fetch!(allowed, effort)
-end

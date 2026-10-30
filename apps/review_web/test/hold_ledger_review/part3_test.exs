@@ -8,7 +8,6 @@ defmodule HoldLedgerReview.Part3Test do
     Adversarial,
     Canonical,
     Config,
-    Part3AI,
     Part3BoundarySearch,
     Part3ContractDelta,
     Part3Diagnostics,
@@ -342,42 +341,6 @@ defmodule HoldLedgerReview.Part3Test do
              )
   end
 
-  test "model consent, source packet and typed suggestion remain separate from human answer",
-       ctx do
-    assert {:ok, packet} = Part3AI.prepare(ctx.package)
-    assert packet.context_digest == ctx.package["context_digest"]
-    assert :ok = Part3AI.fresh?(ctx.package, packet)
-
-    assert {:error, :consent_required} =
-             Part3AI.run(packet, false, complete: fn _, _ -> flunk("no send") end)
-
-    assert {:error, :ai_unavailable} =
-             Part3AI.run(packet, true, capability_check: fn _ -> false end)
-
-    assert :ok =
-             Part3AI.validate(
-               %{
-                 "request_kind" => "part3_review",
-                 "context_digest" => packet.context_digest,
-                 "proposals" => []
-               },
-               packet
-             )
-
-    assert {:error, :invalid_model_proposal} =
-             Part3AI.validate(
-               %{
-                 "request_kind" => "part3_review",
-                 "context_digest" => String.duplicate("0", 64),
-                 "proposals" => []
-               },
-               packet
-             )
-
-    assert ctx.package["ai_history"] == []
-    assert ctx.package["human_findings"] == []
-  end
-
   test "search covers statuses, identities, wrong outputs and two-event histories", ctx do
     {:ok, p} = Part3Package.new(fresh_id(), ctx.baseline, ctx.helper)
     {:ok, witness} = Adversarial.seed("P04")
@@ -521,166 +484,12 @@ defmodule HoldLedgerReview.Part3Test do
     File.write!(lock, original)
   end
 
-  test "answer-aware follow-up is selected, attributed, source-bound and consented", ctx do
-    p = ctx.package
-    {:ok, packet} = Part3AI.prepare(p)
-    {:ok, _, job} = Part3Store.begin_ai(p["id"], 0, packet, ctx.store)
-
-    proposal = %{
-      "proposal_id" => "controlled-question",
-      "kind" => "review_question",
-      "question" => "Which policy covers this source change?",
-      "rationale" => "Inspect the identified baseline and proposal against the governing policy.",
-      "source_change_ids" => [hd(p["source_changes"])["id"]],
-      "witness" => nil
-    }
-
-    output = %{
-      "request_kind" => "part3_review",
-      "context_digest" => p["context_digest"],
-      "proposals" => [proposal]
-    }
-
-    assert {:ok, _} = Part3Store.finish_ai(p["id"], job["id"], {:ok, output}, ctx.store)
-
-    assert {:ok, accepted} =
-             Part3Store.accept_question(
-               p["id"],
-               %{
-                 "request_id" => fresh_id(),
-                 "expected_human_revision" => 0,
-                 "job_id" => job["id"],
-                 "proposal_id" => proposal["proposal_id"]
-               },
-               ctx.store
-             )
-
-    command = %{
-      "request_id" => fresh_id(),
-      "expected_human_revision" => 1,
-      "lens" => "reading",
-      "status" => "unresolved",
-      "scope" => "one controlled question",
-      "rationale" => "Recorded human reason for a follow-up, not independent discovery",
-      "evidence_ids" => [],
-      "change_ids" => [],
-      "presentation" => "learning",
-      "revealed_before_answer" => false
-    }
-
-    assert {:ok, answered} = Part3Store.finding(p["id"], command, ctx.store)
-
-    context = %{
-      "finding_id" => hd(answered["human_findings"])["id"],
-      "question_id" => hd(accepted["accepted_questions"])["id"]
-    }
-
-    assert {:ok, followup} = Part3AI.prepare(answered, context)
-    sent = Jason.decode!(followup.user)
-    assert sent["request_mode"] == "answer_aware_followup"
-    assert sent["followup"]["finding"]["rationale"] == command["rationale"]
-    assert sent["followup"]["provenance"] =~ "not_independent_discovery"
-    assert {:ok, discovery} = Part3AI.prepare(answered)
-    refute discovery.user =~ command["rationale"]
-
-    assert {:error, :consent_required} =
-             Part3AI.run(followup, false, complete: fn _, _ -> flunk("no send") end)
-
-    assert {:ok, _, followup_job} = Part3Store.begin_ai(p["id"], 2, followup, ctx.store)
-
-    assert {:ok, newer} =
-             Part3Store.finding(
-               p["id"],
-               %{command | "request_id" => fresh_id(), "expected_human_revision" => 2},
-               ctx.store
-             )
-
-    assert {:error, :source_prompt_or_context_drift} = Part3AI.fresh?(newer, followup)
-
-    assert {:ok, late} =
-             Part3Store.finish_ai(p["id"], followup_job["id"], {:ok, output}, ctx.store)
-
-    assert List.last(late["ai_history"])["status"] in ~w(stale failed)
-    assert length(late["human_findings"]) == 2
-    assert late["conclusion"] == nil
-  end
-
   test "removed archive routes cannot dispatch model requests", ctx do
     {:ok, p} = Part3Store.create(ctx.baseline, ctx.proposal)
     assert get(Phoenix.ConnTest.build_conn(), "/changes/" <> p["id"]).status == 404
     assert {:ok, unchanged, :ok} = Part3Store.get(p["id"])
     assert unchanged["human_findings"] == []
     assert unchanged["ai_history"] == []
-  end
-
-  test "controlled question acceptance, finding and conclusion remain separate commands", ctx do
-    {:ok, p} = Part3Store.create(ctx.baseline, ctx.proposal)
-    {:ok, packet} = Part3AI.prepare(p)
-    {:ok, _, job} = Part3Store.begin_ai(p["id"], 0, packet)
-
-    proposal = %{
-      "proposal_id" => "controlled-question",
-      "kind" => "review_question",
-      "question" => "Which policy covers this edit?",
-      "rationale" => "Controlled output only.",
-      "source_change_ids" => [hd(p["source_changes"])["id"]],
-      "witness" => nil
-    }
-
-    {:ok, _} =
-      Part3Store.finish_ai(
-        p["id"],
-        job["id"],
-        {:ok,
-         %{
-           "request_kind" => "part3_review",
-           "context_digest" => p["context_digest"],
-           "proposals" => [proposal]
-         }}
-      )
-
-    {:ok, accepted} =
-      Part3Store.accept_question(p["id"], %{
-        "request_id" => fresh_id(),
-        "expected_human_revision" => 0,
-        "job_id" => job["id"],
-        "proposal_id" => proposal["proposal_id"]
-      })
-
-    assert length(accepted["accepted_questions"]) == 1
-    assert accepted["human_findings"] == []
-    assert accepted["conclusion"] == nil
-
-    {:ok, answered} =
-      Part3Store.finding(p["id"], %{
-        "request_id" => fresh_id(),
-        "expected_human_revision" => 1,
-        "scope" => "Controlled question",
-        "rationale" => "Need policy evidence.",
-        "lens" => "reading",
-        "status" => "unresolved",
-        "evidence_ids" => [],
-        "change_ids" => [],
-        "presentation" => "expert",
-        "revealed_before_answer" => true
-      })
-
-    assert length(answered["human_findings"]) == 1
-    assert answered["conclusion"] == nil
-
-    {:ok, concluded} =
-      Part3Store.conclude(p["id"], %{
-        "request_id" => fresh_id(),
-        "expected_human_revision" => 2,
-        "scope" => "Controlled question",
-        "rationale" => "Missing evidence.",
-        "outcome" => "needs_policy_or_evidence",
-        "evidence_ids" => [],
-        "confirmed" => true
-      })
-
-    assert concluded["conclusion"]["outcome"] == "needs_policy_or_evidence"
-    assert concluded["verification_attempts"] == []
   end
 
   test "source-verified normalized differences retain exact declaration span and changed helpers",

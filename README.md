@@ -148,8 +148,8 @@ The optional [Phoenix claim workbench](apps/review_web/README.md) provides
 one source-anchored human review at `/` and `/workbench`. It reads policy and
 original law source, computes bounded what-if cases with one source-derived
 evaluator and strict codec, and persists human reviews with JSON/Markdown
-exports. Optional configured-model discovery, typed challenge proposals and
-answer-aware follow-ups require a fresh opt-in for each request. Computed
+exports. Optional source-bound questions and answer-aware follow-ups require a fresh
+opt-in for each request. Computed
 pointwise evidence remains separate from model interpretations, independent
 formal checking and the human conclusion. The app does not execute mutations
 or remote payment operations. The [manual exercise](guides/interactive_review.md)
