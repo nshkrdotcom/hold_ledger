@@ -93,7 +93,9 @@ defmodule HoldLedgerReviewWeb.Layouts do
         <p id="edu-help-description">Follow a request, then read the claims that describe it.</p>
         <div class="edu-help-callout">
           <strong>What this can't tell you</strong>
-          <p id="edu-help-limit">A walkthrough explains the model. Current proof results need a matching report.</p>
+          <p id="edu-help-limit">
+            A walkthrough explains the model. Current proof results need a matching report.
+          </p>
         </div><h3>Keep exploring</h3><div class="edu-help-links">
           <a href="/start">Follow a payment hold →</a><a href="/glossary">Look up a term →</a><a href="/assurance">Read the evidence guide →</a>
         </div>
@@ -130,8 +132,7 @@ defmodule HoldLedgerReviewWeb.Layouts do
         <p data-copy-status role="status" aria-live="polite"></p>
       </div>
     </aside>
-    <div id="copy-status" class="copy-status" role="status" aria-live="polite">
-    </div>
+    <div id="copy-status" class="copy-status" role="status" aria-live="polite"></div>
     <.flash_group flash={@flash} />
     """
   end

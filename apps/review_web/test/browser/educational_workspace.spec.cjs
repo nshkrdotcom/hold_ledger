@@ -53,7 +53,7 @@ test('help is available by click and keyboard, with glossary on real screens', a
 
 const destinations = ['/', '/start', '/system', '/guarantees', '/atlas',
   '/atlas/po_a2', '/atlas/po_composite_recovery', '/proofs', '/assurance',
-  '/repository', '/glossary', '/lab', '/claims/po_a2', '/lens/po_a2',
+  '/repository', '/glossary', '/lab', '/claims/po_a2', '/claims/po_b7', '/lens/po_a2',
   '/lens/po_exposure_retain'];
 
 for (const width of [390, 800, 1024, 1440]) {
@@ -160,4 +160,13 @@ test('ordinary glossary aliases lead to authored explanations and source paths',
   await page.locator('#term-pointwise summary').click();
   await expect(page.locator('#term-pointwise [data-source-path]')).toBeVisible();
   await expect(page.locator('#term-pointwise [data-source-path]')).not.toBeEmpty();
+});
+
+test('glossary finds authored aliases and shows an empty search honestly', async ({page}) => {
+  await page.goto('/glossary?q=semantic%20gap');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('#term-policy-gap')).toBeVisible();
+  await page.locator('#edu-term-query').fill('no-such-glossary-entry');
+  await expect(page.locator('#edu-glossary-results details')).toHaveCount(0);
+  await expect(page.locator('.edu-empty')).toContainText('No matching terms.');
 });

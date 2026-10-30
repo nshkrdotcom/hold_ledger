@@ -554,7 +554,13 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   } do
     {view, doc} = open(conn, "po_a2")
     assert has_element?(view, "#hypothetical-output .field-delta", "-100¢")
-    assert has_element?(view, "#hypothetical-output .comparison-ghost", "Absent from proposed output")
+
+    assert has_element?(
+             view,
+             "#hypothetical-output .comparison-ghost",
+             "Absent from proposed output"
+           )
+
     refute has_element?(view, "#hypothetical-output .comparison-ghost button")
     assert has_element?(view, "#output-differences summary", "changed fields")
     render_click(view, "restore_candidate", %{})

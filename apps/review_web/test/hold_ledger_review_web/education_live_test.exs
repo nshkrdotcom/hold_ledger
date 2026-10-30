@@ -150,4 +150,13 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     assert has_element?(view, "#term-pointwise")
     assert has_element?(view, "#term-pointwise [data-source-path]")
   end
+
+  test "glossary searches authored aliases and handles empty results", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/glossary?q=semantic%20gap")
+    assert has_element?(view, "#term-policy-gap")
+    refute has_element?(view, "#term-pointwise")
+    form(view, "#edu-glossary-filter", %{"q" => "no-such-glossary-entry"}) |> render_change()
+    refute has_element?(view, "#edu-glossary-results details")
+    assert has_element?(view, ".edu-empty h2", "No matching terms.")
+  end
 end

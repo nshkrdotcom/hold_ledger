@@ -522,7 +522,10 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     <p id="goal-state-status">Saved Lean hypotheses and goals: unavailable.</p>
     <section id="lean-bridge">
       <h3>Generated proof files</h3><p>
-        Focused elaboration: <span id="focused-status" data-status={@reading["focused"]["status"]}>{ReviewCopy.evidence_status(@reading["focused"]["status"])}</span>. Full verification: <span id="formal-status" data-status={@reading["formal"]["status"]}>{ReviewCopy.evidence_status(@reading["formal"]["status"])}</span>.
+        Focused elaboration: <span id="focused-status" data-status={@reading["focused"]["status"]}>{ReviewCopy.evidence_status(@reading["focused"]["status"])}</span>. Full verification: <span
+          id="formal-status"
+          data-status={@reading["formal"]["status"]}
+        >{ReviewCopy.evidence_status(@reading["formal"]["status"])}</span>.
       </p><ul id="generated-artifacts">
         <li :for={item <- @reading["focused"]["artifacts"] || []}>
           <button class="text-button" phx-click="inspect_artifact" phx-value-sha={item["sha256"]}>{Path.basename(

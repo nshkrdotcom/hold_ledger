@@ -89,7 +89,8 @@ defmodule HoldLedgerReview.ClaimLens do
           id: "original",
           title: "Authored claim",
           short: "No edit",
-          detail: "The original claim excludes events that provide evidence for releasing the hold."
+          detail:
+            "The original claim excludes events that provide evidence for releasing the hold."
         },
         %{
           id: "drop_release",

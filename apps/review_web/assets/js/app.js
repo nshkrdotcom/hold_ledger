@@ -355,7 +355,7 @@ document.addEventListener("pointerover", event => {
   if (eduUI.tooltip?.contains(event.target)) clearTimeout(eduCloseTimer)
   if (event.pointerType !== "touch") {
     const target = eduTarget(event)
-    if (target) eduShowTooltip(target)
+    if (target && !target.contains(event.relatedTarget)) eduShowTooltip(target)
   }
 })
 document.addEventListener("pointerout", event => {

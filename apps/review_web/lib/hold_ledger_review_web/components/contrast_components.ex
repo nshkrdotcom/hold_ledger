@@ -529,7 +529,8 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         %{
           state: "permits",
           title: "Claim would accept this output. Intended?",
-          detail: "Compare the output with the policy, then inspect the conditions that accepted it."
+          detail:
+            "Compare the output with the policy, then inspect the conditions that accepted it."
         }
 
       "catches" ->

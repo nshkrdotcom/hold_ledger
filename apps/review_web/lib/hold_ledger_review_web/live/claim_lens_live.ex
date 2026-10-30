@@ -494,9 +494,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   <span>Code returned</span><strong>{format_output(@observation.actual)}</strong>
                 </div>
                 <div>
-                  <span>Proposed output · not run</span><strong>{format_output(
-                    @observation.candidate
-                  )}</strong>
+                  <span>Proposed output · not run</span><strong>{format_output(@observation.candidate)}</strong>
                 </div>
               </div>
               <p class="lens-footnote">
@@ -695,10 +693,13 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 <span class="lens-step">07 / Feedback · after classification</span>
                 <span class="lens-evidence lens-provenance" data-kind="pointwise">Single-case check</span>
               </div>
-              <h2><button type="button" class="edu-term-button" data-edu-term="policy-gap">Compare the policy and the claim</button></h2>
+              <h2>
+                <button type="button" class="edu-term-button" data-edu-term="policy-gap">Compare the policy and the claim</button>
+              </h2>
 
               <p :if={!@feedback?} id="lens-feedback-withheld" class="lens-feedback-withheld">
-                <a href="#lens-review">Choose your answer above</a> to reveal the comparison and worked explanation.
+                <a href="#lens-review">Choose your answer above</a>
+                to reveal the comparison and worked explanation.
               </p>
               <%= if @feedback? do %>
                 <div class="lens-verdict-grid">

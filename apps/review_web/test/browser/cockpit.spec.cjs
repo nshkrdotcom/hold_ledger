@@ -123,7 +123,7 @@ test('structured candidate and JSON round trip keep inconsistent totals until re
 });
 
 test('adjusting initial state creates a separate session',async({page})=>{
-  const old=await open(page,'po_a2');await page.locator('#timeline button').first().click();await expect(page.locator('#entries')).toContainText('No entries');await page.locator('#edit-start').click();
+  const old=await open(page,'po_a2');await page.locator('#timeline button').first().click();await expect(page.locator('#entries')).toContainText('No holds recorded');await page.locator('#edit-start').click();
   await page.locator('#initial_amount_limit').fill('101');await page.locator('#save-starting').click();
   await expect(page).not.toHaveURL(old);
   await event(page,'request','11','101');await tab(page,'outputs');await expect(page.locator('#ledger-output')).toContainText('Accepted');

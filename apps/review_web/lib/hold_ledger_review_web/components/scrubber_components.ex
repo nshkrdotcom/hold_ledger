@@ -236,7 +236,8 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         >Edit starting state</button>
       </header>
       <p class="available-money">
-        <strong>{@ledger["amount_limit"] - @ledger["used_amount"]}¢</strong> available
+        <strong>{@ledger["amount_limit"] - @ledger["used_amount"]}¢</strong>
+        available
         <small>({ReviewCopy.dollar_gloss(@ledger["amount_limit"] - @ledger["used_amount"])})</small>
       </p><meter
         class="money-bar"

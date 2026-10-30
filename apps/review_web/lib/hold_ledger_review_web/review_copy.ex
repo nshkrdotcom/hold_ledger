@@ -137,8 +137,10 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
 
   def candidate_acceptance(%{"law_status" => "allows_here"}), do: "Accepts proposed output"
   def candidate_acceptance(%{"law_status" => "catches"}), do: "Rejects proposed output"
+
   def candidate_acceptance(%{"law_status" => "doesnt_apply"}),
     do: "Outside this claim's input"
+
   def candidate_acceptance(%{"law_status" => "not_probed"}), do: "Not checked"
   def candidate_acceptance(_), do: "Unavailable"
 

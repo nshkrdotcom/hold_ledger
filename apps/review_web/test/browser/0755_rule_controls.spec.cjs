@@ -1,6 +1,11 @@
 const {test,expect}=require('@playwright/test');
-for(const width of [1440,1280,1024,768,640,390])test(`rule controls align and remain usable at ${width}px`,async({page})=>{
+for(const width of [1440,1280,1024,800,768,640,390])test(`rule controls align and remain usable at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:900});await page.goto('/claims/po_a2');await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+ if(width>=768){
+  const summary=page.locator('#selected-claim > summary');
+  const metrics=await summary.evaluate(node=>({height:node.getBoundingClientRect().height,lineHeight:parseFloat(getComputedStyle(node).lineHeight)}));
+  expect(metrics.height).toBeLessThanOrEqual(metrics.lineHeight*2);
+ }
  const select=page.locator('#law-picker select'),compare=page.locator('#choose-sources');
  const s=await select.boundingBox(),c=await compare.boundingBox(),title=await page.locator('.rule-identity').boundingBox();
  expect(Math.abs(s.height-c.height)).toBeLessThanOrEqual(1);

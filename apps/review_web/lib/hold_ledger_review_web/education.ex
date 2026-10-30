@@ -72,16 +72,19 @@ defmodule HoldLedgerReviewWeb.Education do
       nutshell:
         "Fresh requests that fit the money and slot limits must be admitted, including an exact fit.",
       safe: "With 100¢ free and an open slot, a new request for 100¢ is admitted.",
-      unsafe: "Using < instead of <= rejects the exact fit. The remaining state can still be valid.",
+      unsafe:
+        "Using < instead of <= rejects the exact fit. The remaining state can still be valid.",
       slugs: ~w(po_a2 po_a4_duplicate po_a4_conflict po_i)
     },
     %{
       id: "uncertainty",
       number: "02",
       title: "Treat silence as uncertainty",
-      nutshell: "A missing reply leaves the authorization's outcome unknown. Its capacity stays held.",
+      nutshell:
+        "A missing reply leaves the authorization's outcome unknown. Its capacity stays held.",
       safe: "A 100¢ sent hold becomes unknown after a timeout and still uses 100¢ and one slot.",
-      unsafe: "The timeout frees 100¢, allowing another request while the first authorization may still be live.",
+      unsafe:
+        "The timeout frees 100¢, allowing another request while the first authorization may still be live.",
       slugs: ~w(po_b1_timeout po_b2 po_b7 po_exposure_retain)
     },
     %{
@@ -89,17 +92,21 @@ defmodule HoldLedgerReviewWeb.Education do
       number: "03",
       title: "Remember who requested what",
       nutshell: "The same key keeps its original amount, including after the hold has finished.",
-      safe: "Request 11 for 100¢ returns duplicate when repeated. The same key for 50¢ returns conflict.",
-      unsafe: "A repeated request creates a second hold, or a conflicting amount replaces the first one.",
+      safe:
+        "Request 11 for 100¢ returns duplicate when repeated. The same key for 50¢ returns conflict.",
+      unsafe:
+        "A repeated request creates a second hold, or a conflicting amount replaces the first one.",
       slugs: ~w(l2_identity po_b6 po_a4_duplicate po_a4_conflict)
     },
     %{
       id: "terminal",
       number: "04",
       title: "Make final results final",
-      nutshell: "The ledger keeps declined and voided records and ignores late results for those holds.",
+      nutshell:
+        "The ledger keeps declined and voided records and ignores late results for those holds.",
       safe: "A late approval for a locally voided key leaves its terminal record unchanged.",
-      unsafe: "The ledger revives the finished hold. Preventing revival at the processor also needs remote fencing.",
+      unsafe:
+        "The ledger revives the finished hold. Preventing revival at the processor also needs remote fencing.",
       slugs: ~w(po_b5_declined po_b5_voided po_terminal_fence)
     },
     %{
@@ -115,9 +122,9 @@ defmodule HoldLedgerReviewWeb.Education do
       id: "recovery",
       number: "06",
       title: "Recover state with pending work",
-      nutshell:
-        "Recovery must restore the ledger together with the void work it still owes.",
-      safe: "Replaying the committed prefix restores the corresponding ledger state and pending voids.",
+      nutshell: "Recovery must restore the ledger together with the void work it still owes.",
+      safe:
+        "Replaying the committed prefix restores the corresponding ledger state and pending voids.",
       unsafe: "Recovery restores a voiding hold but loses the record of the void still owed.",
       slugs: ~w(po_c2 po_composite_recovery po_composite_open po_composite_recovery_valid)
     }
@@ -245,7 +252,13 @@ defmodule HoldLedgerReviewWeb.Education do
     needle = query |> String.slice(0, 100) |> String.trim() |> String.downcase()
 
     Enum.filter(@terms, fn term ->
-      text = Enum.map_join(~w(id term short detail example), " ", &(term[&1] || ""))
+      text =
+        Enum.join(
+          Enum.map(~w(id term short detail example), &(term[&1] || "")) ++
+            (term["aliases"] || []),
+          " "
+        )
+
       String.contains?(String.downcase(text), needle)
     end)
   end

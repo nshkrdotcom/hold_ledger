@@ -1722,7 +1722,7 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
   #case-review-map small {display: block; margin-top: .15rem}
 }
 @media (max-width: 480px) {
-  #global-header .site-header-main {padding: .65rem .8rem}
+  #global-header .site-header-main {padding: .65rem 1rem}
   #global-header .global-nav a,#global-header .reference-nav summary {padding: .4rem .5rem; font-size: .74rem; min-height: 38px}
   #global-header .global-actions {gap: .3rem}
   #global-header .edu-guidance-label {display: none}
@@ -1741,4 +1741,30 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
 }
 @media (prefers-reduced-motion: reduce) {
   #global-header *,#review-document *,#claim-lens *,#edu-help-drawer *,#edu-term-dialog * {transition: none!important; animation: none!important; scroll-behavior: auto!important}
+}
+
+/* Keep the initial case check visible beside the input on desktop. */
+@media (min-width: 1101px) {
+  #global-header .site-header-main {padding-top: .6rem; padding-bottom: .6rem}
+  #review-steps {padding-top: .3rem; padding-bottom: .3rem; margin-bottom: .5rem}
+  #review-document .edu-workbench-intro {padding-bottom: .4rem}
+  #review-document .edu-workbench-intro > div {display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .7rem}
+  #review-document .edu-workbench-intro p {margin: 0}
+  #review-comparison {padding: .5rem .8rem; gap: .15rem .8rem; margin-top: .6rem; margin-bottom: .6rem}
+  #case-review-map {margin: .5rem 0 .6rem}
+  #case-review-map > div {padding: .5rem .7rem}
+  #case-review-map small {line-height: 1.35}
+  #verdict {padding: .7rem}
+  #verdict .verdict-heading {margin-bottom: .4rem}
+  #verdict-signal {padding: .5rem .7rem; line-height: 1.4}
+  #contrast-matrix th,#contrast-matrix td {padding: .4rem; line-height: 1.45}
+}
+
+#review-steps li {min-width: 0}
+#review-steps a {overflow-wrap: anywhere}
+#dissector .segmented {flex-wrap: wrap}
+#alternative-counter input {min-width: 0; max-width: 100%}
+
+@media (min-width: 651px) and (max-width: 1000px) {
+  #review-comparison {grid-template-columns: repeat(2, minmax(0, 1fr))}
 }
