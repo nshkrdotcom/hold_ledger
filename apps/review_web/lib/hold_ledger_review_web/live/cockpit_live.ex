@@ -120,12 +120,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     if connected?(socket) do
       case Contrast.create(socket.assigns.slug) do
         {:ok, doc} ->
-          target =
-            if socket.assigns.show_sources,
-              do: ~p"/claims/#{socket.assigns.slug}/#{doc["id"]}?compare=open",
-              else: ~p"/claims/#{socket.assigns.slug}/#{doc["id"]}"
-
-          {:noreply, push_navigate(socket, to: target)}
+          {:noreply, push_navigate(socket, to: initial_session_path(socket, doc))}
 
         _ ->
           {:noreply, put_flash(socket, :error, "Cannot create a source-matching case.")}
@@ -876,6 +871,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     {:noreply, assign(socket, hunt: %{status: status})}
   end
 
+  defp initial_session_path(socket, doc) do
+    if socket.assigns.show_sources,
+      do: ~p"/claims/#{socket.assigns.slug}/#{doc["id"]}?compare=open",
+      else: ~p"/claims/#{socket.assigns.slug}/#{doc["id"]}"
+  end
+
   defp observed_node(root, path) when is_binary(path) and byte_size(path) <= 300 do
     parts = if path == "", do: [], else: String.split(path, ".")
 
@@ -1450,6 +1451,16 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     ~H"""
     <Layouts.app flash={@flash}>
       <:tools :if={@doc && @reading}>
+        <nav class="lens-modes case-mode-nav" id="case-review-modes" aria-label="Review experiences">
+          <a href={~p"/claims/#{@slug}/#{@doc["id"]}"} aria-current="page">Case Lab</a>
+          <a :if={@slug in ~w(po_a2 po_exposure_retain)} href={~p"/lens/#{@slug}"}>Claim Lens</a>
+          <span
+            :if={@slug not in ~w(po_a2 po_exposure_retain)}
+            class="lens-mode-unavailable"
+            title="Curated for exact-fit and retention only"
+          >Claim Lens · two studies</span>
+          <a href={~p"/claims/#{@slug}/#{@doc["id"]}?compare=open"}>Compare versions</a>
+        </nav>
         <.live_component
           module={HoldLedgerReviewWeb.QuestionComponent}
           id="questions"
@@ -1480,13 +1491,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         </div>
       </section>
       <div :if={@doc && @reading} id="review-document">
-        <nav class="lens-modes case-mode-nav" id="case-review-modes" aria-label="Review experiences">
-          <a href={~p"/claims/#{@slug}/#{@doc["id"]}"} aria-current="page">Case Lab</a>
-          <a :if={@slug in ~w(po_a2 po_exposure_retain)} href={~p"/lens/#{@slug}"}>Claim Lens</a>
-          <span :if={@slug not in ~w(po_a2 po_exposure_retain)}
-            class="lens-mode-unavailable" title="Curated for exact-fit and retention only">Claim Lens · two studies</span>
-          <a href={~p"/claims/#{@slug}/#{@doc["id"]}?compare=open"}>Compare versions</a>
-        </nav>
         <p :if={!Trace.current?(@doc)} role="alert" id="stale-session">
           The source files changed. Reopen this rule to run it again.
         </p>

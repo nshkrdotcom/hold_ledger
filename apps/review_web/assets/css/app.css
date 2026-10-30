@@ -598,7 +598,8 @@ ins {background: #ccebd7; text-decoration: none}
 .lens-modes a:hover {background:#f0f3f6; color:#2c4e64}
 .lens-mode-unavailable {font-size:.74rem; color:#7b8790; padding:6px 11px; cursor:help}
 .lens-modes a[aria-current=page] {background:#344d63; color:#fff}
-.case-mode-nav {margin:9px 0 3px}
+.case-mode-nav {margin:0; flex-shrink:0; height:28px; padding:2px}
+.case-mode-nav a,.case-mode-nav .lens-mode-unavailable {padding:2px 8px; font-size:.72rem; line-height:16px}
 .lens-layout {display:grid; grid-template-columns:minmax(180px,.75fr) minmax(0,1.92fr) minmax(255px,1.18fr); gap:15px; align-items:start}
 .lens-rail,.lens-main,.lens-reading {min-width:0; display:grid; align-content:start; gap:15px}
 .lens-panel {background:#fff; border:1px solid var(--lens-border,#ddd); border-radius:11px; padding:18px; min-width:0; box-shadow:0 1px 2px #243a5010}
@@ -672,6 +673,8 @@ ins {background: #ccebd7; text-decoration: none}
 .lens-evidence-grid dd {margin:0; overflow-wrap:anywhere}
 #claim-lens .lens-panel a {text-underline-offset:3px}
 @media(max-width:1180px) {
+  .site-header:has(.case-mode-nav) {flex-wrap:wrap}
+  .case-mode-nav {order:2; flex-basis:100%; height:auto}
   .lens-layout {grid-template-columns:minmax(180px,.75fr) minmax(0,2fr)}
   .lens-reading {grid-column:2}
 }

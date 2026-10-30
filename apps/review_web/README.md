@@ -60,13 +60,13 @@ related Lean source excerpts. The panel distinctly labels live pointwise
 checks, Lean text, focused elaboration, and the actual full-gate provenance.
 It does **not** manufacture interactive tactic states, kernel dependencies,
 formal acceptance for edited claims, or independent policy approvals. The
-human-classification and explanation fields are ephemeral local drafts:
-**they are not saved, transmitted, or added to review notes**. The named mutant
+human-classification and explanation fields are ephemeral LiveView drafts:
+**they are not persisted, sent to a model, or added to review notes**. The named mutant
 patch and test paths are review references, not tests run by the browser.
 
-See `apps/review_web/docs/claim_lens_plan.md` for the scoped UI design,
-evidence contract, review tasks, known limitations, and QA checks. Both pages remain
-read-only with respect to Ledger, Spec, law sources, snapshots and formal reports.
+The studies are fixed illustrations, not a general editor or proof checker.
+Both pages remain read-only with respect to Ledger, Spec, law sources, snapshots
+and formal reports.
 
 ## Try a case
 

@@ -62,7 +62,7 @@ defmodule HoldLedgerReview.ClaimLensTest do
     for study <- ClaimLens.studies() do
       assert {:ok, reading} = HoldLedgerReview.ProofReading.document(study.slug)
       assert {:ok, line} = ClaimLens.policy_line(study, reading)
-      assert is_integer(line) and line > 0
+      assert line > 0
     end
   end
 

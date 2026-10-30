@@ -25,20 +25,49 @@ defmodule HoldLedgerReview.ClaimLens do
       connection: "capacity-amount",
       mutant: "mutants/04_exact_fit",
       variations: [
-        %{id: "original", title: "Authored claim", short: "No edit",
-          detail: "Use the source-bound eligibility precondition as authored."},
-        %{id: "strict", title: "Exclude exact fit", short: "Tighten requires",
-          detail: "Hypothetically add amount < remaining to requires. This narrows coverage; it does not change the source files."},
-        %{id: "proof_only", title: "Proof-body-only control", short: "No contract delta",
-          detail: "Assume only proof-body formatting changed. The claim remains identical; no proof was rerun."}
+        %{
+          id: "original",
+          title: "Authored claim",
+          short: "No edit",
+          detail: "Use the source-bound eligibility precondition as authored."
+        },
+        %{
+          id: "strict",
+          title: "Exclude exact fit",
+          short: "Tighten requires",
+          detail:
+            "Hypothetically add amount < remaining to requires. This narrows coverage; it does not change the source files."
+        },
+        %{
+          id: "proof_only",
+          title: "Proof-body-only control",
+          short: "No contract delta",
+          detail:
+            "Assume only proof-body formatting changed. The claim remains identical; no proof was rerun."
+        }
       ],
       witnesses: [
-        %{id: "below", title: "99¢ · below capacity", description: "One cent remains",
-          policy: :forbidden, reason: "An eligible fresh request must be admitted."},
-        %{id: "exact", title: "100¢ · exact fit", description: "Uses every available cent",
-          policy: :forbidden, reason: "The specification explicitly requires exact-fit admission."},
-        %{id: "above", title: "101¢ · over capacity", description: "Exceeds available amount",
-          policy: :allowed, reason: "Rejection is required when the amount exceeds capacity."}
+        %{
+          id: "below",
+          title: "99¢ · below capacity",
+          description: "One cent remains",
+          policy: :forbidden,
+          reason: "An eligible fresh request must be admitted."
+        },
+        %{
+          id: "exact",
+          title: "100¢ · exact fit",
+          description: "Uses every available cent",
+          policy: :forbidden,
+          reason: "The specification explicitly requires exact-fit admission."
+        },
+        %{
+          id: "above",
+          title: "101¢ · over capacity",
+          description: "Exceeds available amount",
+          policy: :allowed,
+          reason: "Rejection is required when the amount exceeds capacity."
+        }
       ],
       default_witness: "exact",
       default_variation: "strict"
@@ -48,27 +77,57 @@ defmodule HoldLedgerReview.ClaimLens do
       title: "Retention before terminal evidence",
       question: "Which events really must keep capacity reserved?",
       summary: "An excluded terminal event can be legitimate, not a loophole.",
-      policy: "An issued or potentially issued authorization continues consuming local capacity until reliable terminal evidence allows release.",
+      policy:
+        "An issued or potentially issued authorization continues consuming local capacity until reliable terminal evidence allows release.",
       policy_section: "Uncertain outcomes and identities",
       clause: "not Spec.release_evidence?(event, key)",
       changed_clause: "true (omit the release-evidence exclusion)",
       connection: "retain-release",
       mutant: "mutants/10_premature_void_release",
       variations: [
-        %{id: "original", title: "Authored claim", short: "No edit",
-          detail: "Terminal release evidence stays outside the retention obligation."},
-        %{id: "drop_release", title: "Remove the release exclusion", short: "Broaden requires",
-          detail: "Hypothetically remove not Spec.release_evidence?(event, key). The unchanged promise would then cover legitimate terminal release."},
-        %{id: "proof_only", title: "Proof-body-only control", short: "No contract delta",
-          detail: "Assume only proof-body formatting changed. The claim remains identical; no proof was rerun."}
+        %{
+          id: "original",
+          title: "Authored claim",
+          short: "No edit",
+          detail: "Terminal release evidence stays outside the retention obligation."
+        },
+        %{
+          id: "drop_release",
+          title: "Remove the release exclusion",
+          short: "Broaden requires",
+          detail:
+            "Hypothetically remove not Spec.release_evidence?(event, key). The unchanged promise would then cover legitimate terminal release."
+        },
+        %{
+          id: "proof_only",
+          title: "Proof-body-only control",
+          short: "No contract delta",
+          detail:
+            "Assume only proof-body formatting changed. The claim remains identical; no proof was rerun."
+        }
       ],
       witnesses: [
-        %{id: "void", title: "Authorized → void requested", description: "No terminal confirmation",
-          policy: :forbidden, reason: "A local void request cannot free an authorized hold."},
-        %{id: "confirmed", title: "Voiding → confirmed", description: "Terminal confirmation received",
-          policy: :allowed, reason: "Trusted terminal confirmation is sufficient to release capacity."},
-        %{id: "timeout", title: "Sent → timeout", description: "Processor outcome still unknown",
-          policy: :forbidden, reason: "Timeout alone is not terminal release evidence."}
+        %{
+          id: "void",
+          title: "Authorized → void requested",
+          description: "No terminal confirmation",
+          policy: :forbidden,
+          reason: "A local void request cannot free an authorized hold."
+        },
+        %{
+          id: "confirmed",
+          title: "Voiding → confirmed",
+          description: "Terminal confirmation received",
+          policy: :allowed,
+          reason: "Trusted terminal confirmation is sufficient to release capacity."
+        },
+        %{
+          id: "timeout",
+          title: "Sent → timeout",
+          description: "Processor outcome still unknown",
+          policy: :forbidden,
+          reason: "Timeout alone is not terminal release evidence."
+        }
       ],
       default_witness: "confirmed",
       default_variation: "drop_release"
@@ -105,6 +164,9 @@ defmodule HoldLedgerReview.ClaimLens do
   @doc "A small pointwise witness, using the original evaluator for its baseline."
   def observe(slug, witness_id, variation_id) do
     with {:ok, study} <- study(slug),
+         {:ok, reading} <- ProofReading.document(slug),
+         true <- reading["reading_current"],
+         {:ok, _line} <- policy_line(study, reading),
          %{id: ^witness_id} = witness <- Enum.find(study.witnesses, &(&1.id == witness_id)),
          %{id: ^variation_id} = variation <-
            Enum.find(study.variations, &(&1.id == variation_id)),
@@ -200,10 +262,7 @@ defmodule HoldLedgerReview.ClaimLens do
     {_, _, _, _, entries} = values.before
     [{key, amount, status}] = entries
 
-    applies? =
-      Spec.valid?(values.before) and is_integer(key) and is_integer(amount) and
-        Spec.lookup(entries, key) === {:ok, {key, amount, status}} and
-        status in [:sent, :unknown, :authorized, :voiding]
+    applies? = retention_domain?(values.before, entries, key, amount, status)
 
     status =
       cond do
@@ -222,6 +281,12 @@ defmodule HoldLedgerReview.ClaimLens do
   end
 
   defp alternative(_, _, _, baseline), do: altered_baseline(baseline, true)
+
+  defp retention_domain?(before, entries, key, amount, status) do
+    Spec.valid?(before) and is_integer(key) and is_integer(amount) and
+      Spec.lookup(entries, key) === {:ok, {key, amount, status}} and
+      status in [:sent, :unknown, :authorized, :voiding]
+  end
 
   defp altered_baseline(baseline, extra_guard?) do
     applies? = baseline.status != :doesnt_apply and extra_guard?
