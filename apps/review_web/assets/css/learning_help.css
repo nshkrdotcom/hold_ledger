@@ -1,0 +1,49 @@
+/* Supplemental help stays separate from the action it explains. */
+#global-header[data-learning-shell] .site-header-main {gap: 1.5rem; padding-top: .8rem; padding-bottom: .8rem}
+#global-header[data-learning-shell] .global-nav {justify-content: flex-start; gap: .25rem}
+#global-header[data-learning-shell] .global-actions {gap: .5rem; margin-left: auto}
+#global-header[data-learning-shell] .reference-nav > div {width: 280px; max-height: min(75dvh, 620px); overflow-y: auto}
+#global-header[data-learning-shell] .reference-nav > div a {padding: .6rem .7rem; color: #4a566a; font-size: .82rem; text-decoration: none; border-radius: 6px}
+#global-header[data-learning-shell] .reference-nav > div a:hover {background: #f2f1f8; color: #433776}
+#global-header[data-learning-shell] .site-tools {border-top: 1px solid #f0f1f5; padding-top: .5rem}
+#edu-help-drawer[role="dialog"] {width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); inset: 12px 12px auto auto}
+#edu-term-dialog[role="dialog"] {inset: auto; width: min(430px, calc(100vw - 24px)); max-height: min(650px, calc(100dvh - 24px)); overscroll-behavior: contain}
+#edu-help-drawer[role="dialog"] .edu-help-head,
+#edu-term-dialog[role="dialog"] .edu-help-head {position: sticky; top: 0; z-index: 1; background: #f6f7fa}
+#edu-help-drawer .edu-control-guide {margin-top: 1.5rem; padding-top: .25rem; border-top: 1px solid #e4e7ef}
+#edu-help-drawer .edu-control-guide > p {font-size: .82rem; margin: .35rem 0 .8rem}
+#edu-control-help {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem}
+#edu-control-help button {justify-content: flex-start; text-align: left; min-height: 44px; padding: .6rem .7rem; font-size: .8rem; line-height: 1.4}
+#edu-control-help > p {grid-column: 1 / -1}
+#edu-help-drawer .edu-guidance-setting {display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .35rem .7rem; margin-top: 1.5rem; padding-top: 1.2rem; border-top: 1px solid #e4e7ef}
+#edu-help-drawer .edu-guidance-setting label {font-size: .86rem; margin: 0}
+#edu-help-drawer .edu-guidance-setting select {min-width: 90px; min-height: 42px; width: auto; font-size: .85rem}
+#edu-help-drawer .edu-guidance-setting p {grid-column: 1 / -1; font-size: .8rem; margin: 0}
+#edu-help-drawer p.edu-shortcut {font-size: .78rem; margin: 1.4rem 0 0; color: #667085}
+#edu-help-drawer kbd {padding: .1rem .35rem; border: 1px solid #d9dce5; border-radius: 4px; background: #f8f9fb}
+#edu-term-dialog .edu-term-lookups {display: flex; flex-direction: column; gap: .6rem; margin-top: 1rem; font-size: .82rem}
+#edu-term-dialog [data-term-limit-section] {border-left: 3px solid #c9c0db; padding-left: .9rem; margin-top: 1rem}
+#edu-term-dialog [data-term-limit-section] h3 {margin-top: 0}
+#question-assistant .question-provider {font-size: .71rem; color: #606b7c; white-space: nowrap}
+#question-panel .question-local-help {font-size: .82rem; padding: .65rem .8rem; background: #f6f7fa; border-radius: 6px}
+#question-panel .question-local-help a {white-space: normal}
+@media (max-width: 800px) {
+  #global-header[data-learning-shell] .site-header-main {flex-wrap: wrap; gap: .35rem .8rem}
+  #global-header[data-learning-shell] .global-nav {order: 3; flex: 1 0 100%; flex-wrap: wrap}
+}
+@media (max-width: 650px) {
+  #global-header[data-learning-shell] .site-header-main {padding: .6rem 1rem}
+  #global-header[data-learning-shell] .brand-name {font-size: .72rem}
+  #global-header[data-learning-shell] .global-actions {gap: .25rem}
+  #global-header[data-learning-shell] .reference-nav summary,
+  #global-header[data-learning-shell] #edu-help-toggle {min-height: 44px; padding: .45rem .6rem}
+  #edu-term-dialog[role="dialog"] {inset: auto 12px 12px; width: auto; max-height: 65dvh; border-radius: 16px; box-shadow: 0 -10px 50px #25324a22}
+  #edu-help-drawer[role="dialog"] {inset: auto 12px 12px; width: auto; max-height: 80dvh}
+  #edu-term-dialog[role="dialog"] .edu-help-content,
+  #edu-help-drawer[role="dialog"] .edu-help-content {padding: 1rem}
+  #edu-term-dialog[role="dialog"] h2,
+  #edu-help-drawer[role="dialog"] h2 {font-size: 1.2rem}
+}
+@media (prefers-reduced-motion: reduce) {
+  #global-header[data-learning-shell] *, #edu-help-drawer *, #edu-term-dialog * {transition: none!important; animation: none!important}
+}

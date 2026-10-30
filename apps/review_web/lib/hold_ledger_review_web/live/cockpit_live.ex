@@ -31,7 +31,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
     {:ok,
      assign(socket,
-       page_title: "Hold Ledger · Contract review",
+       page_title: "Hold Ledger · Case Lab",
+       case_view: "guided",
+       conditions_open: false,
+       proof_open: false,
        tools: nil,
        advanced: false,
        secondary: nil,
@@ -157,6 +160,18 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   @impl true
+  def handle_event("case_view", %{"view" => view}, socket)
+      when view in ~w(guided inspector) do
+    {:noreply,
+     assign(socket,
+       case_view: view,
+       conditions_open: view == "inspector",
+       proof_open: view == "inspector"
+     )}
+  end
+
+  def handle_event("case_view", _, socket), do: {:noreply, socket}
+
   def handle_event("law_change", %{"slug" => slug}, %{assigns: %{slug: current}} = socket)
       when slug == current, do: {:noreply, socket}
 
@@ -175,8 +190,8 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     if view in ~w(proof clauses) do
       socket =
         if view == "proof",
-          do: assign(socket, proof_full: true),
-          else: assign(socket, condition_source_requested: true)
+          do: assign(socket, proof_full: true, proof_open: true),
+          else: assign(socket, condition_source_requested: true, conditions_open: true)
 
       open_ids = if view == "clauses", do: ["condition-source"], else: []
 
@@ -194,7 +209,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   end
 
   def handle_event("full_proof", _, socket),
-    do: {:noreply, assign(socket, proof_full: !socket.assigns.proof_full)}
+    do: {:noreply, assign(socket, proof_full: !socket.assigns.proof_full, proof_open: true)}
 
   def handle_event("reset_experiment", _, socket) do
     {:noreply,
@@ -440,7 +455,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         socket = assign(socket, stage: i, selection: selection, proof_full: false)
 
         if target do
-          {:noreply, push_event(socket, "focus_evidence", %{id: clause_id(target, socket)})}
+          {:noreply,
+           socket
+           |> assign(conditions_open: true)
+           |> push_event("focus_evidence", %{id: clause_id(target, socket)})}
         else
           {:noreply, socket}
         end
@@ -480,7 +498,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       socket = assign(socket, selection: selected)
 
       case links do
-        [first | _] -> {:noreply, assign(socket, stage: hd(first["steps"]))}
+        [first | _] -> {:noreply, assign(socket, stage: hd(first["steps"]), proof_open: true)}
         _ -> {:noreply, socket}
       end
     else
@@ -1129,7 +1147,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   defp inspect_source(socket, name, bytes, sha) do
     socket
-    |> assign(inspected: %{name: name, bytes: bytes, sha: sha})
+    |> assign(inspected: %{name: name, bytes: bytes, sha: sha}, proof_open: true)
     |> push_event("focus_evidence", %{id: "inline-source"})
   end
 
@@ -1457,7 +1475,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
     >
       <:tools :if={@doc && @reading}>
         <nav class="lens-modes case-mode-nav" id="case-review-modes" aria-label="Review experiences">
-          <a href={~p"/claims/#{@slug}/#{@doc["id"]}?compare=open"}>Compare versions</a>
+          <a href={~p"/claims/#{@slug}/#{@doc["id"]}?compare=open"}>Compare source versions</a>
         </nav>
         <.live_component
           module={HoldLedgerReviewWeb.QuestionComponent}
@@ -1488,15 +1506,40 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           <div class="loading-panel"><span></span><span></span><span></span></div>
         </div>
       </section>
-      <div :if={@doc && @reading} id="review-document">
+      <div :if={@doc && @reading} id="review-document" data-case-view={@case_view}>
         <div class="edu-workbench-intro" id="case-education-bridge">
           <div>
+            <span class="case-lab-label">Case Lab</span>
             <strong>Try an input. Propose a different output.</strong>
             <p>
               See what the claim accepts, then compare it with the payment requirement.
             </p>
           </div>
-          <a href="/proofs">Learn to read a claim →</a>
+          <div class="case-presentation">
+            <div id="case-presentation" role="group" aria-label="Case Lab presentation">
+              <button
+                id="case-view-guided"
+                type="button"
+                phx-click="case_view"
+                phx-value-view="guided"
+                aria-pressed={to_string(@case_view == "guided")}
+                aria-describedby="case-presentation-help"
+              >Guided</button>
+              <button
+                id="case-view-inspector"
+                type="button"
+                phx-click="case_view"
+                phx-value-view="inspector"
+                aria-pressed={to_string(@case_view == "inspector")}
+                aria-describedby="case-presentation-help"
+              >Inspector</button>
+            </div>
+            <p id="case-presentation-help">
+              {if @case_view == "guided",
+                do: "Follow the case, then open the source when you need it.",
+                else: "Read the case alongside its conditions and proof source."}
+            </p>
+          </div>
         </div>
         <p :if={!Trace.current?(@doc)} role="alert" id="stale-session">
           The source files changed. Reopen this claim to run it again.
@@ -1515,33 +1558,29 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           show_sources={@show_sources}
           doc={@doc}
         />
-        <section
+        <nav
           class="case-review-map"
           id="case-review-map"
-          aria-label="Three layers of review evidence"
+          aria-label="Read this case"
         >
-          <div class="case-map-cell">
-            <span>1. Read the requirement</span>
-            <strong>Start with the expected behavior.</strong>
-            <small>The policy source is linked above.</small>
-          </div>
-          <div class="case-map-cell">
-            <span>2. Try a case</span>
-            <strong>Compare the two outputs.</strong>
-            <small>The check covers the selected input and proposed output.</small>
-          </div>
-          <div class="case-map-cell">
-            <span>3. Make a judgment</span>
-            <strong>Explain what you found.</strong>
-            <small>Use the source and evidence to support your review note.</small>
-            <a :if={@slug in ~w(po_a2 po_exposure_retain)} href={~p"/lens/#{@slug}"}>
-              Make an initial classification
-            </a>
-          </div>
-        </section>
+          <a href="#review-comparison" phx-click={JS.focus(to: "#review-comparison")}>
+            <span>1</span> Read the requirement
+          </a>
+          <a href="#case-experiment" phx-click={JS.focus(to: "#case-experiment")}>
+            <span>2</span> Try a case
+          </a>
+          <a href="#case-findings" phx-click={JS.focus(to: "#case-findings")}>
+            <span>3</span> Read the result
+          </a>
+        </nav>
         <div class="connected-experiment">
           <div class="experiment-lane">
-            <section class="case-stage" aria-label="Experiment and outputs">
+            <section
+              id="case-experiment"
+              class="case-stage"
+              aria-label="Experiment and outputs"
+              tabindex="-1"
+            >
               <.timeline
                 doc={experiment_doc(assigns)}
                 cursor={@cursor}
@@ -1554,6 +1593,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   doc={evaluation_doc(assigns)}
                   cursor={@cursor}
                   step={selected(assigns)}
+                  inspector={@case_view == "inspector"}
                 />
                 <.input_strip case={@case_data} preview={@preview} />
                 <p :if={@preview || @experiment} id="scratch-status" class="scratch-label">
@@ -1632,7 +1672,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
               class="case-results"
               id="case-findings"
               aria-label="Active case evidence and review"
+              tabindex="-1"
             >
+              <.case_summary case={@case_data} step={selected(assigns)} invalid={@invalid} />
               <.verdict case={@case_data} slug={@slug} />
               <.pair_results
                 case={@case_data}
@@ -1646,7 +1688,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   <span class="eyebrow">Read the conditions and source</span>
                   <p>Follow the check into the statement when you need to understand its result.</p>
                 </div>
-                <details id="case-conditions-depth" class="case-depth" open>
+                <details id="case-conditions-depth" class="case-depth" open={@conditions_open}>
                   <summary>
                     <strong>Condition breakdown</strong><span>When the claim applies and what it promises</span>
                   </summary>
@@ -1670,7 +1712,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     />
                   </section>
                 </details>
-                <details id="case-proof-depth" class="case-depth" open>
+                <details id="case-proof-depth" class="case-depth" open={@proof_open}>
                   <summary>
                     <strong>Proof source and evidence</strong><span>Lean text and matching verification records</span>
                   </summary>
@@ -1701,6 +1743,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     {if @note_open, do: "Close note", else: "Add context"}
                   </button>
                 </div>
+                <p :if={@slug in ~w(po_a2 po_exposure_retain)} class="case-practice-link">
+                  Want to practice the judgment first?
+                  <a href={~p"/lens/#{@slug}"}>Open guided practice</a>
+                </p>
                 <p id="observation-target" class="review-target">
                   <%= if @case_data do %>
                     Active claim {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
@@ -1755,7 +1801,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
               type="button"
               class="edu-term-button"
               data-edu-term="assumption"
-              title="Explain this concept"
             >What the payment processor must guarantee</button>
           </h2><.premise
             case={@case_data}
@@ -1769,7 +1814,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
               type="button"
               class="edu-term-button"
               data-edu-term="source-identity"
-              title="Explain this concept"
             >Verification files</button>
           </h2><.verification_files reading={@reading} /><button
             :if={@package}
@@ -1788,7 +1832,6 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
               type="button"
               class="edu-term-button"
               data-edu-term="review"
-              title="Explain this concept"
             >Review notes</button>
           </h2><section id="session-record">
             <a href={~p"/sessions/#{@doc["id"]}/export"}>Export session</a>

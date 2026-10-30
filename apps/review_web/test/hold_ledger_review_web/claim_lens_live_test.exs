@@ -2,6 +2,20 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
   use HoldLedgerReviewWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
 
+  test "optional reasoning can stay closed when confirming a classification", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/lens/po_a2")
+    assert has_element?(view, "#lens-review-notes > summary", "Optional")
+    refute has_element?(view, "#lens-review-notes[open]")
+    assert has_element?(view, "#lens-see-explanation[href='/lens/po_a2?mode=explore']")
+    assert has_element?(view, "#lens-decisions-inputs")
+    assert has_element?(view, "#lens-decisions-outputs")
+    assert has_element?(view, "#lens-decisions-evidence")
+    element(view, "#lens-decision-concern") |> render_click()
+    form(view, "#lens-review-form", review: %{text: ""}) |> render_submit()
+    assert has_element?(view, "#lens-initial-answer", "possible guarantee loss")
+    assert has_element?(view, "#lens-policy-verdict")
+  end
+
   test "Review-first is the default and initial feedback remains gated", %{conn: conn} do
     {:ok, view, _} = live(conn, "/lens/po_a2")
     assert has_element?(view, "#lens-feedback-withheld")
@@ -271,7 +285,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
       end
 
       refute has_element?(view, "#review-steps")
-      assert has_element?(view, "#case-review-modes a[href$='compare=open']", "Compare versions")
+      assert has_element?(view, "#case-review-modes a[href$='compare=open']", "Compare source versions")
     end
   end
 end

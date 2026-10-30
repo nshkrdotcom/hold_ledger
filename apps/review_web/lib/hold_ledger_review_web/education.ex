@@ -247,6 +247,11 @@ defmodule HoldLedgerReviewWeb.Education do
   def components, do: @components
   def statuses, do: @statuses
   def glossary, do: @terms
+
+  def crash_course_url,
+    do:
+      "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+
   def title(slug), do: get_in(@meta_by_slug, [slug, "title"])
   def term(id), do: Enum.find(@terms, &(&1["id"] == id))
   def editorial_slugs, do: Map.keys(@meta_by_slug) |> Enum.sort()

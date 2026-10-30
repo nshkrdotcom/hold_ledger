@@ -28,7 +28,12 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     assigns = assign(assigns, example: example, policy_source: policy_source)
 
     ~H"""
-    <section id="review-comparison" class="rule-summary" aria-label="Requirement and source scope">
+    <section
+      id="review-comparison"
+      class="rule-summary"
+      aria-label="Requirement and source scope"
+      tabindex="-1"
+    >
       <div class="rule-ribbon">
         <.form for={to_form(%{"slug" => @slug})} id="law-picker" phx-change="law_change">
           <.input
@@ -46,15 +51,14 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
               type="button"
               class="edu-term-button"
               data-edu-term="claim"
-              title="Explain this concept"
             >{ReviewCopy.title(@reading)}</button>
           </h1>
         </div>
         <button
           phx-click="show_sources"
           id="choose-sources"
-          data-edu-hint="Select source-matching baseline and proposal snapshots; an illustrative diff is not a completed checker run."
-        >Compare versions</button>
+          data-edu-hint="Choose two saved source versions and run this input against each."
+        >Compare source versions</button>
       </div>
       <p id="policy-anchor">
         {ReviewCopy.policy(@reading)}
@@ -80,7 +84,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           Notes do not approve policy or save pending events.</p>
       </details>
       <details id="selected-claim" class="selected-claim">
-        <summary data-edu-hint="Expand the source-bound law precondition and postcondition; native Lean-only groups use theorem declarations instead.">
+        <summary data-edu-hint="Read which inputs the claim covers and what it requires from the output.">
           Read full claim · requires / expects
         </summary>
         <p :if={@slug == "po_exposure_retain"} id="retention-check-scope" class="scope-note">
@@ -94,7 +98,6 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
                 type="button"
                 class="edu-term-button"
                 data-edu-term="requires"
-                title="Explain this concept"
               >Applies when</button>
             </dt><dd>
               <code id="requires-expression">{@reading["contract"]["requires"]}</code>
@@ -106,7 +109,6 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
                 type="button"
                 class="edu-term-button"
                 data-edu-term="expects"
-                title="Explain this concept"
               >Promises for the output</button>
             </dt><dd>
               <code id="expects-expression">{@reading["contract"]["expects"]}</code>
@@ -224,7 +226,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
 
     ~H"""
     <section :if={@package || @example} class="boundary-pane" id="boundary-fork">
-      <h3 :if={@package}>Compare versions</h3>
+      <h3 :if={@package}>Compare source versions</h3>
       <dl id="source-coverage" class="coverage-list">
         <div :if={!@package && @example} id="coverage-row">
           <dt>Original claim covers this request</dt><dd id="coverage-baseline">
@@ -385,7 +387,8 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         <.input
           name="amount"
           id="review-amount"
-          data-edu-hint="Preview a request in integer cents without saving it. The selected law may exclude this input; exclusion does not mean the request violates policy."
+          data-edu-hint="Try an amount in whole cents. It stays unsaved until you save the experiment to the timeline."
+          aria-describedby="boundary-guide"
           value={@amount}
           type="number"
           min="1"
@@ -394,13 +397,19 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           disabled={!@request}
         />
       </.form>
-      <div class="boundary-buttons">
-        <button phx-click="boundary" phx-value-offset="-1" disabled={!@request}>1¢ less</button><button
+      <div class="boundary-buttons" role="group" aria-label="Try the available-capacity boundary">
+        <button id="boundary-less" phx-click="boundary" phx-value-offset="-1" disabled={!@request}>1¢ less</button><button
+          id="boundary-exact"
           phx-click="boundary"
           phx-value-offset="0"
           disabled={!@request}
-        >All available</button><button phx-click="boundary" phx-value-offset="1" disabled={!@request}>1¢ more</button>
+        >All available</button><button id="boundary-more" phx-click="boundary" phx-value-offset="1" disabled={!@request}>1¢ more</button>
       </div>
+      <p id="boundary-guide" class="boundary-guide">
+        {if @request,
+          do: "Try just below, exactly at, or just above the available amount. A new request also needs a free hold slot.",
+          else: "Use Run another event to choose a new request or continue this hold's history."}
+      </p>
     </div>
     """
   end

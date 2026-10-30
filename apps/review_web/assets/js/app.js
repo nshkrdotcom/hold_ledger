@@ -3,6 +3,7 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 import educationGlossary from "../../priv/education_glossary.json"
+import educationHelp from "../../priv/education_help.json"
 
 const InlineTools = {
   mounted() {
@@ -146,6 +147,8 @@ const CopyReview = {
 // workbenches are re-rendered by LiveView; no per-node hook needs to survive a
 // patch. The glossary is the same source as /glossary (not a parallel judge).
 const eduTerms = new Map(educationGlossary.terms.map(term => [term.id, term]))
+const eduControls = new Map(Object.entries(educationHelp.controls || {}))
+const eduRegisteredTargets = new WeakMap()
 const eduDialogTriggers = new WeakSet()
 const eduUI = {
   get tooltip() { return document.getElementById("edu-tooltip") },
@@ -161,26 +164,79 @@ let eduCloseTimer = null
 let eduPreviousDescription = null
 let eduRestoringFocus = false
 
-const pageHelp = [
-  [/^\/$/, ["Where should I start?", "Follow the 100¢ payment hold, learn to read a claim, or go straight to Case Lab. The page directory links to the rest of the material.", "Catalog counts describe the claims available to read. They do not report a fresh proof run."]],
-  [/^\/start/, ["Why keep money on hold after a timeout?", "Follow the four steps. Watch what stays reserved when a reply goes missing, then see why another 100¢ request cannot fit.", "This is a walkthrough of the model, not a transaction with a payment processor."]],
-  [/^\/system/, ["Which part of the system does this work?", "Choose a component or hold state to see its role, meaning and source. Follow a request from the pure ledger to the runtime and processor.", "The model describes processor and storage behavior. Real systems need separate evidence for those assumptions."]],
-  [/^\/guarantees/, ["What behavior does the policy require?", "Choose a requirement, compare the expected behavior with a mistake, then read the related claims.", "A policy summary helps you find the right claim. The complete statement determines which inputs and outputs it covers."]],
-  [/^\/atlas/, ["Which claim covers the behavior I care about?", "Browse the eight families or search for an event, example or claim name. Open a claim to read its promise, a possible mistake and the source behind the explanation.", "The families are a reading order. They do not describe proof dependencies or current checker results."]],
-  [/^\/proofs/, ["What does this claim actually promise?", "Follow exact-fit admission from the requirement to requires and expects. Expand the called predicates, then compare the statement with the input you need it to cover.", "Reading a theorem explains its scope. A matching verification report is needed to establish what the checkers accepted."]],
-  [/^\/assurance/, ["What does this evidence establish?", "Identify what produced the result, which source it covers and what remains assumed. Use the evidence guide when reading a report in Case Lab.", "A proof of the modeled behavior does not establish physical storage durability or a real processor's compliance."]],
-  [/^\/repository/, ["Where can I read the source?", "Choose the question you are investigating and follow its file path or claim link. The map separates policy, implementation, reference behavior and proof support.", "A file location is a starting point. Use the source identity shown in Case Lab when matching code to a report."]],
-  [/^\/glossary/, ["What does this term mean here?", "Search for a word, read its example and follow the link back to the relevant page. The same definitions appear in term guides throughout the app.", "A definition explains the term. The source statement supplies its exact conditions."]],
-  [/^\/lens/, ["Claim Lens: does the changed claim still cover the policy?", "Read the policy, input and proposed change. Record your judgment, then reveal the explanation. Choose Explore freely if you want to read the worked answer first.", "These are two practice reviews. Hypothetical edits are not checked by Lean, and your answer is a temporary draft."]],
-  [/^\/claims|^\/lab/, ["Case Lab: would the claim accept a wrong output?", "Run an input, propose a different output and inspect the conditions. Follow another event or read the source to investigate the result.", "A single-case check covers the selected input and output. Accepting your proposal does not mean the code produces it or that it violates policy."]],
-]
+function eduPageHelp() {
+  const path = location.pathname
+  const page = educationHelp.pages.find(item => path === item.path ||
+    (item.path !== "/" && path.startsWith(`${item.path}/`))) || educationHelp.pages[0]
+  if (path.startsWith("/lens") && new URLSearchParams(location.search).get("mode") === "explore") {
+    return {...page, detail: "The worked explanation is visible while you try the example. Compare the policy, proposed claim change and input; switch to Review first to make your judgment before seeing feedback."}
+  }
+  if (/^\/(claims|lab)(\/|$)/.test(path) &&
+      document.getElementById("review-document")?.dataset.caseView === "inspector") {
+    return {...page, detail: "Inspector opens the conditions and proof source. Follow the observed values into the statement, or return to Guided for the case's main reading order. Your case and unsaved edits stay the same."}
+  }
+  return page
+}
+
+// Selectors name authored controls; the client never guesses definitions from
+// their label text. Keep the registry separate from the glossary's concepts.
+function eduSyncControls() {
+  for (const target of document.querySelectorAll("[data-help]")) {
+    const assigned = eduRegisteredTargets.get(target)
+    if (assigned && !target.matches(eduControls.get(assigned)?.selector || ":not(*)")) {
+      target.removeAttribute("data-help")
+      eduRegisteredTargets.delete(target)
+    }
+  }
+  for (const [key, entry] of eduControls) {
+    for (const target of document.querySelectorAll(entry.selector)) {
+      if (target.closest("#edu-help-drawer, #edu-term-dialog, #edu-tooltip")) continue
+      if (!target.dataset.help) {
+        target.dataset.help = key
+        eduRegisteredTargets.set(target, key)
+      }
+    }
+  }
+}
+
+function eduVisible(target) {
+  return target.isConnected && !target.closest("[hidden], [aria-hidden='true']") &&
+    target.getClientRects().length > 0
+}
+
+function eduControlGuide() {
+  const list = document.getElementById("edu-control-help")
+  if (!list) return
+  list.replaceChildren()
+  const shown = new Set()
+  for (const target of document.querySelectorAll("[data-help]")) {
+    const key = target.dataset.help
+    const entry = eduControls.get(key)
+    if (!entry || shown.has(key) || !eduVisible(target)) continue
+    shown.add(key)
+    const button = document.createElement("button")
+    button.type = "button"
+    button.dataset.helpControl = key
+    button.textContent = entry.term
+    button.setAttribute("aria-haspopup", "dialog")
+    button.setAttribute("aria-controls", "edu-term-dialog")
+    list.append(button)
+  }
+  if (!shown.size) {
+    const note = document.createElement("p")
+    note.textContent = "The controls on this page use their visible labels. Look up unfamiliar terms in the glossary."
+    list.append(note)
+  }
+}
 
 function eduTarget(event) {
   const node = event.target instanceof Element ? event.target : null
-  return node?.closest("[data-edu-term], [data-edu-hint]") || null
+  return node?.closest("[data-edu-term], [data-edu-hint], [data-help]") || null
 }
 
 function eduExplain(target) {
+  const control = eduControls.get(target.dataset.help)
+  if (control) return {...control, id: target.dataset.help, kind: "control"}
   const term = eduTerms.get(target.dataset.eduTerm)
   if (term) return term
   if (!target.dataset.eduHint) return null
@@ -231,20 +287,48 @@ function eduShowTooltip(target) {
   eduPositionTooltip(target)
 }
 
+function eduRestoreFocus(target) {
+  eduRestoringFocus = true
+  if (target?.isConnected && eduVisible(target) && !target.matches(":disabled")) {
+    target.focus({preventScroll: true})
+  }
+  if (document.activeElement !== target) eduUI.helpButton?.focus({preventScroll: true})
+  eduRestoringFocus = false
+}
+
 function eduCloseTerm(restoreFocus = true) {
   const target = eduDialogTarget
   if (eduUI.dialog) eduUI.dialog.hidden = true
-  if (target) target.setAttribute("aria-expanded", "false")
+  if (target && eduDialogTriggers.has(target)) target.setAttribute("aria-expanded", "false")
   eduDialogTarget = null
-  if (restoreFocus && target?.isConnected) {
-    eduRestoringFocus = true
-    target.focus({preventScroll: true})
-    eduRestoringFocus = false
+  if (restoreFocus) eduRestoreFocus(target)
+}
+
+function eduOptionalText(dialog, selector, text, sectionSelector) {
+  const node = dialog.querySelector(selector)
+  if (!node) return
+  node.textContent = text || ""
+  const section = sectionSelector ? dialog.querySelector(sectionSelector) : node
+  if (section) section.hidden = !text
+}
+
+function eduPositionDialog(target) {
+  const dialog = eduUI.dialog
+  if (!dialog || dialog.hidden) return
+  if (innerWidth <= 650) {
+    dialog.style.top = ""
+    dialog.style.left = ""
+    return
   }
+  const box = target.getBoundingClientRect()
+  const left = Math.max(12, Math.min(innerWidth - dialog.offsetWidth - 12, box.left))
+  const top = Math.max(12, Math.min(innerHeight - dialog.offsetHeight - 12, box.bottom + 8))
+  dialog.style.left = `${left}px`
+  dialog.style.top = `${top}px`
 }
 
 function eduOpenTerm(target) {
-  const term = eduTerms.get(target.dataset.eduTerm)
+  const term = eduExplain(target)
   const dialog = eduUI.dialog
   if (!dialog || !term) return
   eduCloseTooltip()
@@ -253,22 +337,36 @@ function eduOpenTerm(target) {
   eduDialogTarget = target
   dialog.querySelector("#edu-term-title").textContent = term.term
   dialog.querySelector("[data-term-meaning]").textContent = term.short
-  dialog.querySelector("[data-term-detail]").textContent = term.detail
-  dialog.querySelector("[data-term-example]").textContent = term.example
-  dialog.querySelector("[data-term-source]").textContent = term.source_path || ""
-  dialog.querySelector("[data-term-link]").href = `/glossary#term-${term.id}`
+  eduOptionalText(dialog, "[data-term-detail]", term.detail)
+  eduOptionalText(dialog, "[data-term-example]", term.example, "[data-term-example-section]")
+  eduOptionalText(dialog, "[data-term-why]", term.why_it_matters, "[data-term-why-section]")
+  eduOptionalText(dialog, "[data-term-limit]", term.limit, "[data-term-limit-section]")
+  eduOptionalText(dialog, "[data-term-source]", term.source_path)
+  const link = dialog.querySelector("[data-term-link]")
+  link.href = term.kind === "control" ? term.link || "/glossary" : `/glossary#term-${term.id}`
+  link.textContent = term.kind === "control" ? "Read the related guide →" : "Read the glossary entry →"
+  const lookups = dialog.querySelector("[data-term-lookups]")
+  if (lookups) {
+    lookups.replaceChildren()
+    for (const item of term.lookup || []) {
+      if (!/^https:\/\//.test(item.url)) continue
+      const reference = document.createElement("a")
+      reference.href = item.url
+      reference.textContent = item.label
+      lookups.append(reference)
+    }
+  }
   dialog.querySelector("[data-copy-status]").textContent = ""
-  target.setAttribute("aria-expanded", "true")
-  target.setAttribute("aria-controls", "edu-term-dialog")
-  target.setAttribute("aria-haspopup", "dialog")
+  if (eduDialogTriggers.has(target)) target.setAttribute("aria-expanded", "true")
   dialog.hidden = false
+  eduPositionDialog(target)
   dialog.querySelector("[data-edu-term-close]").focus({preventScroll: true})
 }
 
 function eduCloseHelp(restoreFocus = true) {
   if (eduUI.drawer) eduUI.drawer.hidden = true
   eduUI.helpButton?.setAttribute("aria-expanded", "false")
-  if (restoreFocus && eduLastFocus?.isConnected) eduLastFocus.focus({preventScroll: true})
+  if (restoreFocus) eduRestoreFocus(eduLastFocus)
 }
 
 function eduOpenHelp() {
@@ -276,10 +374,12 @@ function eduOpenHelp() {
   eduCloseTooltip()
   eduCloseTerm(false)
   eduLastFocus = document.activeElement
-  const [title, action, limit] = (pageHelp.find(([re]) => re.test(location.pathname)) || pageHelp[0])[1]
-  eduUI.drawer.querySelector("#edu-help-title").textContent = title
-  eduUI.drawer.querySelector("#edu-help-description").textContent = action
-  eduUI.drawer.querySelector("#edu-help-limit").textContent = limit
+  const page = eduPageHelp()
+  eduUI.drawer.querySelector("#edu-help-title").textContent = page.title
+  eduUI.drawer.querySelector("#edu-help-description").textContent = page.detail
+  eduUI.drawer.querySelector("#edu-help-limit").textContent = page.limit
+  eduSyncControls()
+  eduControlGuide()
   eduUI.drawer.hidden = false
   eduUI.helpButton?.setAttribute("aria-expanded", "true")
   eduUI.drawer.querySelector("[data-edu-help-close]")?.focus({preventScroll: true})
@@ -296,7 +396,7 @@ async function eduCopy(text, status) {
 }
 
 function eduMarkNav() {
-  for (const a of document.querySelectorAll("[data-global-nav] [data-nav]")) {
+  for (const a of document.querySelectorAll("#global-header [data-nav]")) {
     const segment = a.dataset.nav
     const active = segment === "/" ? location.pathname === "/"
       : segment === "/lab" ? /^\/(lab|claims)(\/|$)/.test(location.pathname)
@@ -305,6 +405,7 @@ function eduMarkNav() {
     else a.removeAttribute("aria-current")
   }
   document.querySelectorAll("[data-edu-term]").forEach(eduSyncTerm)
+  eduSyncControls()
 }
 
 function eduSyncTerm(target) {
@@ -379,11 +480,19 @@ document.addEventListener("click", event => {
     else eduCloseHelp()
     return
   }
+  const controlHelp = node.closest("[data-help-control]")
+  if (controlHelp) {
+    const key = controlHelp.dataset.helpControl
+    const target = [...document.querySelectorAll("[data-help]")].find(item =>
+      item.dataset.help === key && eduVisible(item))
+    if (target) eduOpenTerm(target)
+    return
+  }
   if (node.closest("[data-edu-help-close]")) { eduCloseHelp(); return }
   if (node.closest("[data-edu-term-close]")) { eduCloseTerm(); return }
   if (node.closest("[data-copy-explanation]") && eduDialogTarget) {
-    const term = eduTerms.get(eduDialogTarget.dataset.eduTerm)
-    eduCopy([term.term, term.short, term.detail, term.example, term.source_path].filter(Boolean).join("\n\n"),
+    const term = eduExplain(eduDialogTarget)
+    eduCopy([term.term, term.short, term.detail, term.why_it_matters, term.limit, term.example, term.source_path].filter(Boolean).join("\n\n"),
       eduUI.dialog.querySelector("[data-copy-status]"))
     return
   }
@@ -402,6 +511,13 @@ document.addEventListener("click", event => {
   eduCloseTooltip()
 })
 document.addEventListener("keydown", event => {
+  const editing = event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable='true']")
+  if (event.key === "?" && !editing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    event.preventDefault()
+    if (eduUI.drawer?.hidden) eduOpenHelp()
+    else eduCloseHelp()
+    return
+  }
   if (event.key === "Escape") {
     const open = eduDialogTarget || (eduUI.drawer && !eduUI.drawer.hidden) || eduActiveTarget
     if (open) {
@@ -430,6 +546,7 @@ window.addEventListener("scroll", () => {
 }, {capture: true, passive: true})
 window.addEventListener("resize", () => {
   if (eduActiveTarget) eduPositionTooltip(eduActiveTarget)
+  if (eduDialogTarget) eduPositionDialog(eduDialogTarget)
 })
 window.addEventListener("phx:page-loading-stop", () => {
   eduCloseTooltip()
@@ -440,7 +557,7 @@ window.addEventListener("phx:page-loading-stop", () => {
 })
 new MutationObserver(records => {
   const affectsExplanation = record => record.type !== "attributes" ||
-    (["data-edu-term", "data-edu-hint", "phx-click"].includes(record.attributeName) &&
+    (["data-edu-term", "data-edu-hint", "data-help", "phx-click"].includes(record.attributeName) &&
       record.oldValue !== record.target.getAttribute(record.attributeName))
   const changed = target => target && (!target.isConnected ||
     records.some(record => target.contains(record.target) && affectsExplanation(record)))
@@ -449,9 +566,14 @@ new MutationObserver(records => {
   for (const record of records) {
     if (record.type === "attributes") eduSyncTerm(record.target)
   }
+  if (records.some(record => record.type === "attributes" &&
+      ["phx-click", "phx-value-tool", "phx-value-view", "id"].includes(record.attributeName))) {
+    eduSyncControls()
+  }
   if (records.some(record => record.type === "childList")) {
     document.querySelectorAll("[data-edu-term]").forEach(eduSyncTerm)
     eduSyncTerm(eduUI.helpButton)
+    eduSyncControls()
   }
 }).observe(document.body, {
   childList: true,
@@ -459,7 +581,7 @@ new MutationObserver(records => {
   subtree: true,
   attributes: true,
   attributeOldValue: true,
-  attributeFilter: ["data-edu-term", "data-edu-hint", "phx-click", "aria-haspopup", "aria-controls", "aria-expanded"],
+  attributeFilter: ["data-edu-term", "data-edu-hint", "data-help", "phx-click", "phx-value-tool", "phx-value-view", "id", "aria-haspopup", "aria-controls", "aria-expanded"],
 })
 window.addEventListener("popstate", eduMarkNav)
 eduMarkNav()

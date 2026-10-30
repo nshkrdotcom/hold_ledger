@@ -43,7 +43,10 @@ TERM_IDS = set(
     "induction axiom omega aesop cases sorry proof-status source-identity "
     "proof-dependency pointwise hypothetical assumption journal replay "
     "composite terminal-fence coverage vacuity effect-intent policy-gap review".split()
-) | {"attempt", "poison", "obligation", "oracle", "fold", "issued"}
+) | {
+    "attempt", "poison", "obligation", "oracle", "fold", "issued",
+    "binding", "clause", "helper", "basis", "source-generation", "coupled-model",
+}
 EXAMPLE_IDS = [f"M{number}" for number in range(1, 11)] + [
     f"P{number:02}" for number in range(1, 9)
 ]
@@ -53,6 +56,7 @@ EXAMPLE_COPY_FIELDS = (
 REFERENCE_ROUTES = {
     "/start", "/system", "/guarantees", "/proofs", "/assurance",
     "/atlas", "/repository", "/lens/po_a2", "/lens/po_exposure_retain",
+    "/how-it-fits", "/examples", "/translation",
 }
 
 

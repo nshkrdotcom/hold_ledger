@@ -1,7 +1,8 @@
 const {test,expect}=require('@playwright/test');
-async function open(page,slug='po_a2') {
+async function open(page,slug='po_a2',inspector=true) {
  await page.goto('/claims/'+slug);await expect(page).toHaveURL(new RegExp('/claims/'+slug+'/trace-'));
  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+ if(inspector)await page.locator('#case-view-inspector').click();
 }
 async function inspect(page,name){await page.locator('#inspector-tools [phx-value-view="'+name+'"]').click()}
 async function run(page,type,key='11'){
@@ -9,12 +10,46 @@ async function run(page,type,key='11'){
 }
 async function saved(page){const id=new URL(page.url()).pathname.split('/').at(-1);return (await (await page.request.get('/sessions/'+id+'/export')).json()).trace}
 
-test('opens with the rule, proof and experiment instead of sign-off controls',async({page})=>{
+test('Inspector keeps the rule, proof and experiment together',async({page})=>{
  await open(page);await expect(page.locator('h1')).toHaveText('Admit a request that fits exactly');
  await expect(page.locator('#policy-anchor')).toContainText('all remaining capacity');await expect(page.locator('#proof-script')).toBeVisible();
  await expect(page.locator('#tool-drawer,[role=dialog]:visible,#review-document > details')).toHaveCount(0);await expect(page.locator('#decision-docket button')).toHaveCount(3);
  await expect(page.locator('#review-document')).not.toContainText('no policy approval');await expect(page.locator('#review-document')).not.toContainText('Exact-fit admission');
  await expect(page.locator('#ledger-output h3')).toHaveText('Code returned');await expect(page.locator('#hypothetical-output h3')).toHaveText('Proposed output · not run');
+});
+
+for(const width of [1280,390])test(`Guided preserves an experiment while changing depth at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:900});await open(page,'po_a2',false);
+ await expect(page.locator('#review-document')).toHaveAttribute('data-case-view','guided');
+ await expect(page.locator('#case-conditions-depth')).not.toHaveAttribute('open');
+ await expect(page.locator('#case-proof-depth')).not.toHaveAttribute('open');
+ await expect(page.locator('#state-tuple')).not.toHaveAttribute('open');
+ const initial=await saved(page);
+ await page.locator('#review-amount').fill('99');
+ await expect(page.locator('#case-current-summary')).toContainText('99¢');
+ await page.locator('#edit-candidate').click();
+ await page.getByRole('button',{name:'Reset to code result',exact:true}).click();
+ await page.locator('#alternative-counter input').fill('0');
+ await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');
+ await page.locator('#case-view-inspector').click();
+ await expect(page.locator('#case-proof-depth')).toHaveJSProperty('open',true);
+ await expect(page.locator('#case-conditions-depth')).toHaveJSProperty('open',true);
+ await expect(page.locator('#state-tuple')).toHaveJSProperty('open',true);
+ await expect(page.locator('#review-amount')).toHaveValue('99');
+ await expect(page.locator('#hypothetical-output')).toContainText('0¢ reserved');
+ await page.locator('#case-view-guided').click();
+ await expect(page.locator('#case-proof-depth')).toHaveJSProperty('open',false);
+ await expect(page.locator('#review-amount')).toHaveValue('99');
+ await expect(page.locator('#scratch-status')).toContainText('Unsaved experiment');
+ expect((await saved(page)).steps).toEqual(initial.steps);
+ await inspect(page,'clauses');
+ await expect(page.locator('#case-conditions-depth')).toHaveJSProperty('open',true);
+ await expect(page.locator('#clauses-panel')).toBeFocused();
+ await expect(page.locator('#review-document')).toHaveAttribute('data-case-view','guided');
+ await inspect(page,'proof');
+ await expect(page.locator('#case-proof-depth')).toHaveJSProperty('open',true);
+ await expect(page.locator('#proof-panel')).toBeFocused();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
 });
 
 test('nearby amounts update coverage and output without saving a trace',async({page})=>{

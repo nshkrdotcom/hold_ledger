@@ -14,6 +14,9 @@ defmodule HoldLedgerReviewWeb.Router do
     pipe_through :browser
     live "/", EducationLive, :overview
     live "/start", EducationLive, :start
+    live "/how-it-fits", EducationLive, :how_it_fits
+    live "/examples", EducationLive, :examples
+    live "/translation", EducationLive, :translation
     live "/system", EducationLive, :system
     live "/guarantees", EducationLive, :guarantees
     live "/atlas", EducationLive, :atlas

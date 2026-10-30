@@ -1,0 +1,177 @@
+/* Shared account capacity: exact recorded values, with bounded decoration. */
+.capacity-view {
+  margin: 0;
+  min-width: 0;
+  color: #26374b;
+  font-variant-numeric: tabular-nums;
+}
+.capacity-view .capacity-title {
+  margin: 0 0 .85rem;
+  font-size: .82rem;
+  font-weight: 650;
+  color: #536378;
+}
+.capacity-view .capacity-dimensions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+.capacity-view .capacity-dimensions > section {min-width: 0}
+.capacity-view h3 {margin: 0 0 .65rem; font-size: .83rem; line-height: 1.4}
+.capacity-view .capacity-numbers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem;
+  margin: 0 0 .7rem;
+}
+.capacity-view .capacity-numbers > div {min-width: 0}
+.capacity-view .capacity-numbers dt {font-size: .76rem; color: #5a6879}
+.capacity-view .capacity-numbers dd {
+  margin: .12rem 0 0;
+  font-size: clamp(1.15rem, 2vw, 1.7rem);
+  font-weight: 730;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.capacity-view .capacity-track {
+  height: 14px;
+  overflow: hidden;
+  border: 1px solid #b7c4d2;
+  border-radius: 5px;
+  background: #f0f4f8;
+}
+.capacity-view .capacity-track > span {
+  display: block;
+  height: 100%;
+  background: #5d568c;
+}
+.capacity-view .capacity-rack {display: flex; gap: 5px; min-height: 14px}
+.capacity-view .capacity-slot {
+  flex: 1 1 0;
+  max-width: 38px;
+  height: 14px;
+  border: 1px dashed #8597ab;
+  border-radius: 4px;
+  background: #f0f4f8;
+}
+.capacity-view .capacity-slot-used {border-style: solid; border-color: #5d568c; background: #5d568c}
+.capacity-view .capacity-limit {margin: .5rem 0 0; font-size: .75rem; line-height: 1.55; color: #526276}
+.capacity-view .capacity-limit span {display: inline; margin-left: .2rem}
+.capacity-view .capacity-range-note {
+  margin: .65rem 0 0;
+  border-left: 3px solid #9a6421;
+  padding-left: .6rem;
+  color: #784912;
+  font-size: .77rem;
+  line-height: 1.5;
+}
+.capacity-view .capacity-active-records,.capacity-view .capacity-finished-records {
+  margin-top: 1rem;
+  padding-top: .85rem;
+  border-top: 1px solid #e0e6ee;
+}
+.capacity-view .capacity-records {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr));
+  gap: .55rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.capacity-view .capacity-record {
+  display: grid;
+  gap: .22rem;
+  min-width: 0;
+  padding: .7rem .8rem;
+  border: 1px solid #cdd6e1;
+  border-left: 3px solid #667b93;
+  border-radius: 7px;
+  background: #f6f8fb;
+  overflow-wrap: anywhere;
+}
+.capacity-view .capacity-record-identity {font-size: .73rem; color: #526276}
+.capacity-view .capacity-record strong {font-size: 1rem; line-height: 1.35}
+.capacity-view .capacity-record-status {font-size: .77rem; line-height: 1.45}
+.capacity-view .capacity-record-pending {background: #fff8eb; border-color: #e2ca9e; border-left-color: #a36e25; color: #704715}
+.capacity-view .capacity-record-authorized {background: #edf7f2; border-color: #b5d6c5; border-left-color: #387859; color: #285b43}
+.capacity-view .capacity-record-finished {background: #f4f5f7; border-color: #d8dce3; border-left-color: #8792a1; color: #505e70}
+.capacity-view .capacity-empty,.capacity-view .capacity-footnote {margin: .75rem 0 0; font-size: .74rem; line-height: 1.55; color: #596779}
+
+/* Guided is a complete vertical case. Inspector preserves the wide workspace. */
+#review-document[data-case-view] #case-education-bridge {align-items: center; gap: 1rem}
+#review-document[data-case-view] .case-lab-label {display: block; color: #5e4d80; font-size: .72rem; font-weight: 700; margin-bottom: .2rem}
+#review-document[data-case-view] .case-presentation {flex: 0 1 310px; min-width: 0}
+#review-document[data-case-view] #case-presentation {display: flex; flex-wrap: wrap; gap: .25rem; padding: .25rem; border: 1px solid #d3dbe5; background: #f5f7fa; border-radius: 9px; width: fit-content; max-width: 100%}
+#review-document[data-case-view] #case-presentation button {min-width: 0; max-width: 100%; min-height: 40px; padding: .4rem 1rem; border-color: transparent; background: transparent; font-size: .84rem; white-space: normal; overflow-wrap: anywhere}
+#review-document[data-case-view] #case-presentation button[aria-pressed=true] {background: white; border-color: #bcb2d2; color: #4e3d70; font-weight: 700; box-shadow: 0 1px 3px #26374b10}
+#review-document[data-case-view] #case-presentation-help {margin: .45rem 0 0; max-width: 40ch; font-size: .75rem; line-height: 1.5; color: #536378}
+#review-document[data-case-view] #choose-sources {max-width: 100%; min-height: 40px; height: auto; white-space: normal}
+#review-document[data-case-view] #case-review-map {display: flex; flex-wrap: wrap; gap: .45rem; margin: .75rem 0 1.15rem; padding: 0; background: transparent; border: 0}
+#review-document[data-case-view] #case-review-map a {display: inline-flex; align-items: center; gap: .5rem; min-height: 42px; border-radius: 7px; padding: .45rem .75rem; color: #4e4269; background: #f1eef7; font-size: .8rem; font-weight: 600; text-decoration: none}
+#review-document[data-case-view] #case-review-map a:hover {background: #e9e2f3}
+#review-document[data-case-view] #case-review-map a span {display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border: 1px solid #b8accf; border-radius: 50%; color: #574571; font-size: .72rem}
+#review-document[data-case-view] #review-comparison,#review-document[data-case-view] #case-experiment,#review-document[data-case-view] #case-findings {scroll-margin-top: 1rem}
+#review-document[data-case-view="guided"] .connected-experiment {display: block; max-width: 1050px; margin: 0 auto}
+#review-document[data-case-view="guided"] .experiment-lane,#review-document[data-case-view="guided"] .reasoning-lane {display: block}
+#review-document[data-case-view="guided"] .case-stage,#review-document[data-case-view="guided"] .case-editing {margin-bottom: 1rem}
+#review-document[data-case-view="guided"] #case-findings {border: 0; background: transparent; box-shadow: none; padding: 0}
+#review-document[data-case-view="guided"] #trace-rail {padding: .7rem 0; margin-bottom: .6rem; border: 0}
+#review-document[data-case-view] #active-state .capacity-view {margin-top: 1rem}
+#review-document[data-case-view] #active-state .capacity-title {margin-bottom: .7rem}
+#review-document[data-case-view] #state-records,#review-document[data-case-view] #state-tuple {border-top: 1px solid #e0e6ee; padding-top: .65rem; margin-top: .85rem; font-size: .79rem}
+#review-document[data-case-view] #state-records > summary,#review-document[data-case-view] #state-tuple > summary {color: #59477e; cursor: pointer; font-weight: 600; min-height: 30px; line-height: 1.6}
+#review-document[data-case-view] #state-records table {margin-top: .8rem}
+#review-document[data-case-view] #selected-input {padding: .9rem 1rem; gap: .65rem 1rem; border-radius: 9px; border-left-width: 3px}
+#review-document[data-case-view] #selected-input .boundary-buttons {gap: .35rem}
+#review-document[data-case-view] #selected-input .boundary-buttons button {min-height: 42px; padding: .5rem .7rem; font-weight: 650; font-size: .8rem}
+#review-document[data-case-view] #selected-input .boundary-guide {flex: 1 0 100%; width: 100%; max-width: 80ch; margin: 0; font-size: .76rem; line-height: 1.6; color: #526276}
+#review-document[data-case-view] .case-current-summary {margin: 0 0 1rem; padding: 1rem 1.15rem; border-left: 4px solid #447b78; border-radius: 8px; background: #edf5f4; color: #244943}
+#review-document[data-case-view] .case-current-summary h2 {font-size: .84rem; margin: 0 0 .5rem}
+#review-document[data-case-view] .case-current-summary p {display: flex; flex-wrap: wrap; gap: .3rem .65rem; margin: .35rem 0; font-size: .88rem; line-height: 1.6}
+#review-document[data-case-view] .case-current-summary small {font-size: .75rem; color: #435f5d; line-height: 1.5}
+#review-document[data-case-view] .case-current-summary .case-summary-check {font-weight: 650}
+#review-document[data-case-view] #verdict {position: static; box-shadow: none; margin-bottom: 1rem}
+#review-document[data-case-view] .case-depth > summary {min-height: 48px}
+#review-document[data-case-view] .case-depth-heading {padding-top: .8rem; border: 0}
+#review-document[data-case-view] .case-practice-link {font-size: .8rem; line-height: 1.6; color: #536378}
+#review-document[data-case-view] .experiment-actions button {min-height: 42px}
+#review-document[data-case-view] #inspector-tools {position: static; display: flex; flex-wrap: wrap; gap: .4rem; padding: .9rem 0; margin-top: 1rem; border-top: 1px solid #dce2eb; background: transparent}
+#review-document[data-case-view] #inspector-tools button {min-height: 42px; font-size: .8rem}
+
+/* Lens retains seven review judgments, with their differences explained. */
+#claim-lens[data-learning-mode] .lens-decisions {display: grid; grid-template-columns: minmax(0, 1fr); gap: .95rem; margin: 1rem 0}
+#claim-lens[data-learning-mode] .lens-decision-group {min-width: 0; margin: 0; padding: 0; border: 0}
+#claim-lens[data-learning-mode] .lens-decision-group legend {padding: 0; margin-bottom: .45rem; color: #40566a; font-size: .82rem; line-height: 1.5; font-weight: 650}
+#claim-lens[data-learning-mode] .lens-decision-group > div {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem}
+#claim-lens[data-learning-mode] .lens-decision-group button {min-width: 0; min-height: 72px; font-size: .83rem; padding: .8rem .85rem; line-height: 1.45}
+#claim-lens[data-learning-mode] .lens-decision-group button small {font-size: .75rem; line-height: 1.45; color: #536378}
+#claim-lens[data-learning-mode] .lens-worked-choice {display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; padding: .75rem .85rem; border-radius: 8px; background: #f1f0f8; font-size: .79rem; line-height: 1.6}
+#claim-lens[data-learning-mode] .lens-worked-choice a {display: inline-flex; align-items: center; min-height: 35px; color: #534078; font-weight: 700}
+#claim-lens[data-learning-mode] .lens-worked-choice span {color: #536378}
+#claim-lens[data-learning-mode] #lens-review-notes {margin: 1rem 0; padding: .8rem 1rem; border: 1px solid #d5dce7; border-radius: 9px; background: #f8f9fc}
+#claim-lens[data-learning-mode] #lens-review-notes > summary {min-height: 30px; cursor: pointer; color: #4f416b; font-size: .83rem; font-weight: 600; line-height: 1.6}
+#claim-lens[data-learning-mode] #lens-review-notes[open] > summary {margin-bottom: .6rem}
+#claim-lens[data-learning-mode] #lens-confirm {min-height: 44px; line-height: 1.5; white-space: normal}
+
+@media (max-width: 1000px) {
+  #review-document[data-case-view] .connected-experiment {display: block}
+  #review-document[data-case-view] .experiment-lane,#review-document[data-case-view] .reasoning-lane {display: block}
+  #review-document[data-case-view] .reasoning-lane {margin-top: 1.2rem}
+}
+@media (max-width: 640px) {
+  .capacity-view .capacity-dimensions {grid-template-columns: minmax(0, 1fr); gap: 1rem}
+  .capacity-view .capacity-holds {border-top: 1px solid #e0e6ee; padding-top: .85rem}
+  #review-document[data-case-view] #case-education-bridge {align-items: stretch}
+  #review-document[data-case-view] .case-presentation {flex-basis: auto; width: 100%}
+  #review-document[data-case-view] #case-review-map {display: grid; grid-template-columns: minmax(0, 1fr); gap: .35rem}
+  #review-document[data-case-view] #case-review-map a {width: 100%}
+  #review-document[data-case-view] #selected-input {align-items: flex-start}
+  #review-document[data-case-view] #selected-input .boundary-buttons {width: 100%}
+  #review-document[data-case-view] #selected-input .boundary-buttons button {flex: 1 1 auto; white-space: normal}
+  #review-document[data-case-view] #contrast .output-pair {grid-template-columns: minmax(0, 1fr)}
+  #claim-lens[data-learning-mode] .lens-decision-group > div {grid-template-columns: minmax(0, 1fr)}
+  #claim-lens[data-learning-mode] #lens-review-notes {padding: .7rem}
+}
+@media (prefers-reduced-motion: reduce) {
+  .capacity-view *,#review-document[data-case-view] *,#claim-lens[data-learning-mode] * {scroll-behavior: auto; animation: none; transition: none}
+}

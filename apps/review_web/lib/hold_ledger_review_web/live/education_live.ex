@@ -1,11 +1,15 @@
 defmodule HoldLedgerReviewWeb.EducationLive do
-  @moduledoc "An educational map of the repository; not a proof evaluator."
+  @moduledoc "Learning pages using existing model execution and source readers."
   use HoldLedgerReviewWeb, :live_view
-  alias HoldLedgerReviewWeb.Education
+  import HoldLedgerReviewWeb.ScrubberComponents, only: [capacity_view: 1]
+  alias HoldLedgerReviewWeb.{Education, Learning, ReviewCopy}
 
   @page_names %{
-    overview: "Overview",
+    overview: "Explore",
     start: "Follow a payment hold",
+    how_it_fits: "How the pieces fit",
+    examples: "Learn from deliberate faults",
+    translation: "Elixir to Lean with Lynx",
     system: "The hold system",
     guarantees: "Payment-hold requirements",
     atlas: "Find a claim",
@@ -75,8 +79,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
   @journeys [
     %{
-      title: "Understand the system",
-      tag: "Start with the example",
+      title: "I'm new to formal verification",
+      tag: "Start with one payment hold",
       description:
         "Follow a 100¢ request through dispatch and timeout. See why the amount stays held when the reply is missing.",
       path: "/start",
@@ -84,22 +88,22 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       destination: "Payment-hold walkthrough"
     },
     %{
-      title: "Read a claim",
-      tag: "Connect policy to source",
+      title: "I know Elixir",
+      tag: "Follow familiar code into Lean",
       description:
-        "Read the inputs a claim covers and the output it requires. Use exact fit to spot a statement that asks too little.",
-      path: "/proofs",
+        "Read an Elixir law, follow its translation and inspect the supplied theorem. See which part Lynx provides and which part the proof establishes.",
+      path: "/translation",
       number: "02",
-      destination: "Statement-reading guide"
+      destination: "Elixir → Lynx → Lean"
     },
     %{
-      title: "Practice a review",
-      tag: "Make your own judgment",
+      title: "I review proofs or agent changes",
+      tag: "Check meaning and evidence",
       description:
-        "Compare a changed claim with the policy, record your judgment, then open the explanation in Claim Lens.",
-      path: "/lens/po_a2",
+        "Follow policy, claims and evidence across the repository. Then practice spotting a change that leaves out a required case.",
+      path: "/how-it-fits",
       number: "03",
-      destination: "Exact-fit review exercise"
+      destination: "Reading map and review practice"
     }
   ]
 
@@ -124,7 +128,15 @@ defmodule HoldLedgerReviewWeb.EducationLive do
        glossary: Education.glossary(),
        journeys: @journeys,
        pipeline: @pipeline,
-       scenario_step: 1,
+       scenario_step: 0,
+       story_moments: nil,
+       story_issue: nil,
+       mutations: Learning.mutations(),
+       selected_mutation: nil,
+       mutation_issue: nil,
+       translation: nil,
+       translation_issue: nil,
+       source_counts: Learning.source_counts(),
        selected_component: "ledger",
        selected_status: "unknown",
        selected_guarantee: "uncertainty",
@@ -176,12 +188,60 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         socket
       end
 
+    socket =
+      case action do
+        page when page in [:overview, :start] ->
+          socket = load_story(socket)
+          value = params["moment"]
+          index = if value in ~w(0 1 2 3 4), do: String.to_integer(value), else: 0
+          assign(socket, :scenario_step, index)
+
+        :examples ->
+          case Learning.mutation(params["example"] || "M4") do
+            {:ok, selected} -> assign(socket, selected_mutation: selected, mutation_issue: nil)
+            {:error, _} -> assign(socket, selected_mutation: nil, mutation_issue: :unknown_mutation)
+          end
+
+        :translation ->
+          case Learning.translation() do
+            {:ok, source} -> assign(socket, translation: source, translation_issue: nil)
+            {:error, reason} -> assign(socket, translation: nil, translation_issue: reason)
+          end
+
+        _ ->
+          socket
+      end
+
     {:noreply, socket}
   end
 
   @impl true
-  def handle_event("scenario", %{"step" => value}, socket) when value in ~w(1 2 3 4) do
+  def handle_event("scenario", %{"step" => value}, socket) when value in ~w(0 1 2 3 4) do
     {:noreply, assign(socket, :scenario_step, String.to_integer(value))}
+  end
+
+  def handle_event("reload_story", _, socket),
+    do: {:noreply, socket |> assign(story_moments: nil) |> load_story()}
+
+  def handle_event("open_story", _, socket) do
+    if is_list(socket.assigns.story_moments) do
+      case Learning.open_moment(socket.assigns.scenario_step) do
+        {:ok, %{doc: doc, slug: slug}} ->
+          {:noreply, push_navigate(socket, to: ~p"/claims/#{slug}/#{doc["id"]}")}
+
+        {:error, _} ->
+          {:noreply,
+           put_flash(socket, :error, "Case Lab could not open this moment. The walkthrough is still here; you can try again.")}
+      end
+    else
+      {:noreply, put_flash(socket, :error, "The example is unavailable. Reload it before opening Case Lab.")}
+    end
+  end
+
+  def handle_event("select_mutation", %{"id" => id}, socket) do
+    if Enum.any?(socket.assigns.mutations, &(&1["id"] == id)),
+      do: {:noreply, push_patch(socket, to: ~p"/examples?example=#{id}")},
+      else: {:noreply, socket}
   end
 
   def handle_event("component", %{"id" => id}, socket) do
@@ -226,6 +286,16 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   end
 
   def handle_event(_, _, socket), do: {:noreply, socket}
+
+  defp load_story(%{assigns: %{story_moments: moments}} = socket) when is_list(moments),
+    do: socket
+
+  defp load_story(socket) do
+    case Learning.walkthrough() do
+      {:ok, moments} -> assign(socket, story_moments: moments, story_issue: nil)
+      {:error, reason} -> assign(socket, story_moments: nil, story_issue: reason)
+    end
+  end
 
   defp filter_claims(socket, filters) do
     q = filters |> Map.get("q", "") |> to_string() |> String.slice(0, 100)
@@ -279,7 +349,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         active_component: active_component(assigns),
         active_status: active_status(assigns),
         active_guarantee: active_guarantee(assigns),
-        active_pipeline: active_pipeline(assigns)
+        active_pipeline: active_pipeline(assigns),
+        story_moment: if(is_list(assigns.story_moments), do: Enum.at(assigns.story_moments, assigns.scenario_step))
       )
 
     ~H"""
@@ -296,9 +367,15 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <% end %>
         <%= case @live_action do %>
           <% :overview -> %>
-            <.overview inventory={@inventory} journeys={@journeys} />
+            <.overview inventory={@inventory} journeys={@journeys} moment={@story_moment} />
           <% :start -> %>
-            <.start step={@scenario_step} />
+            <.start moment={@story_moment} moments={@story_moments || []} />
+          <% :how_it_fits -> %>
+            <.how_it_fits inventory={@inventory} guarantees={@guarantees} counts={@source_counts} />
+          <% :examples -> %>
+            <.mutation_examples mutations={@mutations} selected={@selected_mutation} />
+          <% :translation -> %>
+            <.translation source={@translation} />
           <% :system -> %>
             <.system
               components={@components}
@@ -357,16 +434,18 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
   attr :inventory, :map, required: true
   attr :journeys, :list, required: true
+  attr :moment, :any, default: nil
 
   defp overview(assigns) do
     ~H"""
-    <section class="edu-home-hero" id="edu-overview">
+    <section class="edu-home-hero learning-home" id="edu-overview">
       <div class="edu-home-hero-content">
-        <p class="edu-eyebrow">Payment holds, explained</p>
-        <h1>Understand payment holds.<span>Read the claims behind them.</span></h1>
+        <p class="edu-eyebrow">Formal verification with Lynx and Lean</p>
+        <h1>Follow the code.<span>Understand the proof.</span></h1>
         <p class="edu-hero-sub">
-          A payment request can succeed even when its reply never arrives. Follow a 100¢ hold,
-          see what the ledger keeps reserved, and learn to check whether a claim covers the behavior you need.
+          A payment processor can approve a hold even when its reply never arrives.
+          Follow a 100¢ example, inspect the Elixir laws that describe it,
+          and see what the Lean proofs establish.
         </p>
         <div class="edu-hero-actions">
           <a class="edu-primary-button" href="/start">
@@ -374,32 +453,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           </a>
           <a class="edu-ghost-button" href="/lab">Open Case Lab</a>
         </div>
-        <p class="edu-home-caption">One account. A 100¢ limit. A reply that never arrives.</p>
+        <p class="edu-home-caption">One account · 100¢ ($1.00) · two hold slots</p>
       </div>
-      <figure
-        class="edu-hero-visual"
-        aria-label="Example: a 100-cent hold stays reserved while the processor outcome is unknown"
-      >
-        <figcaption class="edu-visual-top">
-          <span>Example · one account</span><span class="edu-visual-live">Reply missing</span>
-        </figcaption>
-        <div class="edu-visual-amount">100<span>¢</span></div>
-        <p class="edu-visual-amount-label">Still held <span>$1.00</span></p>
-        <div class="edu-visual-track" aria-hidden="true"><span></span></div>
-        <dl class="edu-visual-ledger">
-          <div>
-            <dt>Account limit</dt><dd>100¢</dd>
-          </div>
-          <div>
-            <dt>Available for a new hold</dt><dd>0¢</dd>
-          </div>
-        </dl>
-        <div class="edu-visual-boundary">
-          <div><span>Ledger record</span><strong>Unknown</strong></div>
-          <div><span>Processor outcome</span><strong>Unconfirmed</strong></div>
-        </div>
-        <p class="edu-visual-foot">A timeout leaves the capacity held.</p>
-      </figure>
+      <.home_example moment={@moment} />
     </section>
 
     <aside class="edu-overview-lesson" id="edu-overview-lesson">
@@ -457,12 +513,15 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </div>
         <div>
           <h3>Claims and evidence</h3>
+          <a href="/how-it-fits"><strong>How the pieces fit</strong><span>Policy, code, claims and evidence</span></a>
+          <a href="/translation"><strong>Elixir to Lean with Lynx</strong><span>Actual source and the supplied theorem</span></a>
           <a href="/proofs"><strong>Read a formal statement</strong><span>Input coverage, promises and assumptions</span></a>
           <a href="/atlas"><strong>Find a claim</strong><span>Browse the eight claim families</span></a>
           <a href="/assurance"><strong>Check the evidence</strong><span>Examples, checks, reports and their scope</span></a>
         </div>
         <div>
           <h3>Tools and reference</h3>
+          <a href="/examples"><strong>Learn from deliberate faults</strong><span>Ten source changes and what each challenges</span></a>
           <a href="/lab"><strong>Case Lab</strong><span>Try an input and propose an output</span></a>
           <a href="/repository"><strong>Repository map</strong><span>Find the source for your question</span></a>
           <a href="/glossary"><strong>Glossary</strong><span>Plain meanings and repository examples</span></a>
@@ -472,60 +531,204 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     """
   end
 
-  attr :step, :integer, required: true
+  attr :moment, :any, default: nil
+
+  defp home_example(assigns) do
+    ~H"""
+    <section
+      :if={@moment}
+      id="edu-home-example"
+      class="learning-home-example"
+      data-moment={@moment.index}
+      aria-label="Interactive payment example"
+    >
+      <header class="learning-example-heading">
+        <span class="edu-eyebrow">Try the payment example</span>
+        <span class="learning-step-count">{@moment.index} / 4 events</span>
+      </header>
+      <div class="learning-home-narration" aria-live="polite">
+        <h2>{@moment.title}</h2>
+        <p>{@moment.text}</p>
+      </div>
+      <.capacity_view id="edu-home-capacity" ledger={@moment.ledger} title="The account now" />
+      <p :if={@moment.output} id="edu-home-result" class="learning-home-result" role="status">
+        <span>Code returned</span>
+        <strong>{ReviewCopy.result(@moment.output["result"])}</strong>
+        <code>:{@moment.output["result"]}</code>
+      </p>
+      <div class="learning-home-actions">
+        <button
+          type="button"
+          id="edu-home-next"
+          class="edu-primary-button"
+          phx-click="scenario"
+          phx-value-step={if(@moment.index == 4, do: 0, else: @moment.index + 1)}
+        >{@moment.next_action} <span aria-hidden="true">→</span></button>
+        <button
+          :if={@moment.index > 0 && @moment.index < 4}
+          type="button"
+          id="edu-home-reset"
+          class="learning-text-button"
+          phx-click="scenario"
+          phx-value-step="0"
+        >Start again</button>
+      </div>
+      <p class="learning-home-scope">Computed by the ledger. No payment processor is contacted.</p>
+      <a class="learning-continuation" href={~p"/start?moment=#{@moment.index}"}>
+        See this moment before and after <span aria-hidden="true">↗</span>
+      </a>
+    </section>
+    <.story_unavailable :if={!@moment} />
+    """
+  end
+
+  defp story_unavailable(assigns) do
+    ~H"""
+    <section id="edu-story-unavailable" class="learning-unavailable" role="status">
+      <span class="edu-eyebrow">Example unavailable</span>
+      <h2>The model could not be evaluated for this source.</h2>
+      <p>Reload the example to try again. You can continue reading the policy and claims.</p>
+      <div class="learning-inline-actions">
+        <button type="button" id="edu-story-retry" phx-click="reload_story">Reload example</button>
+        <a href="/guarantees">Read the requirements →</a>
+      </div>
+    </section>
+    """
+  end
+
+  attr :moment, :any, default: nil
+  attr :moments, :list, required: true
 
   defp start(assigns) do
-    steps = [
-      %{
-        label: "Request",
-        title: "A new request needs 100¢.",
-        text:
-          "The empty account has 100¢ free and two open hold slots. Request 11 asks for exactly 100¢, so the ledger admits it and uses one slot.",
-        state: "Reserved",
-        result: "100¢ held for request 11",
-        claim: "po_a2",
-        link: "Read the exact-fit claim"
-      },
-      %{
-        label: "Dispatch",
-        title: "The ledger requests authorization.",
-        text:
-          "Dispatch records the hold as sent and asks the runtime to authorize 100¢ with the processor. Recording this request does not establish the remote outcome.",
-        state: "Sent",
-        result: "Authorization requested for key 11",
-        claim: "po_b3",
-        link: "Read the requested-effect claim"
-      },
-      %{
-        label: "Timeout",
-        title: "The reply never arrives.",
-        text:
-          "The processor may have approved the authorization before its reply was lost. The ledger marks the outcome unknown and keeps the 100¢ and its slot held.",
-        state: "Unknown",
-        result: "Capacity stays held",
-        claim: "po_b2",
-        link: "Read the capacity-retention claim"
-      },
-      %{
-        label: "Second request",
-        title: "The second request is refused.",
-        text:
-          "Request 12 asks for another 100¢. One slot is still free, but the first request uses the whole amount limit. With 0¢ available, the ledger returns insufficient_amount and leaves the account unchanged.",
-        state: "Unknown",
-        result: "No capacity for request 12",
-        claim: "po_a1",
-        link: "Read the request-validity claim"
-      }
-    ]
-
-    assigns = assign(assigns, selected: Enum.at(steps, assigns.step - 1), steps: steps)
-
     ~H"""
     <.intro
       eyebrow="Learn · the payment example"
       heading="A missing reply still leaves money on hold."
-      description="Start with one empty account, a 100¢ limit and two hold slots. Follow what happens when a payment authorization's reply goes missing."
+      description="Start with an empty account, a 100¢ ($1.00) limit and two hold slots. Run the events and watch what the ledger keeps reserved."
     />
+    <.story_unavailable :if={!@moment} />
+    <section
+      :if={@moment}
+      id="edu-story"
+      class="learning-story"
+      data-moment={@moment.index}
+      aria-label="Payment-hold walkthrough"
+    >
+      <header class="learning-story-top">
+        <p class="edu-eyebrow">Computed payment example</p>
+        <span>{@moment.index} of 4 events · one account</span>
+      </header>
+      <nav id="edu-story-steps" class="learning-story-steps" aria-label="Choose a story moment">
+        <button
+          :for={moment <- @moments}
+          type="button"
+          phx-click="scenario"
+          phx-value-step={moment.index}
+          class={if(@moment.index == moment.index, do: "active", else: "")}
+          aria-pressed={to_string(@moment.index == moment.index)}
+          aria-controls="edu-story-event"
+        >
+          <span class="learning-moment-number">{if(moment.index == 0, do: "○", else: moment.index)}</span>
+          <span>{moment.label}</span>
+        </button>
+      </nav>
+      <div id="edu-story-event" class="learning-story-event" aria-live="polite">
+        <div>
+          <p class="edu-eyebrow">{@moment.label}</p>
+          <h2>{@moment.title}</h2>
+          <p>{@moment.text}</p>
+        </div>
+        <div :if={@moment.event} class="learning-event-term">
+          <span>Input event</span><code>{inspect(@moment.native_event)}</code>
+        </div>
+      </div>
+      <div class={["learning-story-states", @moment.index == 0 && "learning-story-initial"]}>
+        <.capacity_view
+          :if={@moment.index == 0}
+          id="edu-story-initial"
+          ledger={@moment.ledger}
+          title="Starting account"
+        />
+        <.capacity_view
+          :if={@moment.index > 0}
+          id="edu-story-before"
+          ledger={@moment.before}
+          title="Before this event"
+        />
+        <.capacity_view
+          :if={@moment.index > 0}
+          id="edu-story-after"
+          ledger={@moment.ledger}
+          title="After this event"
+        />
+      </div>
+      <div :if={@moment.output} id="edu-story-result" class="learning-story-result" role="status">
+        <div>
+          <span>Code returned</span>
+          <strong>{ReviewCopy.result(@moment.output["result"])}</strong>
+          <code>:{@moment.output["result"]}</code>
+        </div>
+        <div>
+          <span>Requested outside work</span>
+          <p :if={@moment.output["effects"] == []}>None for this event.</p>
+          <p :for={effect <- @moment.output["effects"]}>{ReviewCopy.action(effect)}</p>
+        </div>
+      </div>
+      <div class="learning-story-controls">
+        <button
+          type="button"
+          id="edu-story-prev"
+          phx-click="scenario"
+          phx-value-step={@moment.index - 1}
+          disabled={@moment.index == 0}
+        >← Previous moment</button>
+        <button
+          type="button"
+          id="edu-story-next"
+          class="edu-primary-button"
+          phx-click="scenario"
+          phx-value-step={if(@moment.index == 4, do: 0, else: @moment.index + 1)}
+        >{@moment.next_action} <span aria-hidden="true">→</span></button>
+      </div>
+      <section class="learning-story-bridge" aria-labelledby="edu-open-moment-title">
+        <div>
+          <h3 id="edu-open-moment-title">Take this moment into Case Lab.</h3>
+          <p>Keep this account and its history. Try another event or propose an output to inspect.</p>
+        </div>
+        <button type="button" id="edu-open-moment" phx-click="open_story" phx-disable-with="Opening…">
+          Open this moment in Case Lab <span aria-hidden="true">↗</span>
+        </button>
+      </section>
+      <div class="learning-story-reading">
+        <a href={"/atlas/" <> @moment.claim}>{@moment.claim_label} →</a>
+        <p :if={@moment.index == 4} class="edu-micro-note">
+          PO-A1 checks the next state's validity. The payment policy specifies this rejection;
+          validity alone does not require this exact result.
+        </p>
+        <details id="edu-story-values" class="learning-source-disclosure">
+          <summary>See the Elixir values and source</summary>
+          <div class="learning-value-grid">
+            <section>
+              <h3>{if(@moment.index == 0, do: "Initial state", else: "State before the event")}</h3>
+              <pre tabindex="0" role="region" aria-label="Story starting state as Elixir"><code>{ReviewCopy.state_tuple(@moment.before)}</code></pre>
+            </section>
+            <section :if={@moment.output}>
+              <h3>Full output: next state, result, effects</h3>
+              <pre tabindex="0" role="region" aria-label="Computed output as Elixir"><code>{Learning.output_term(@moment.output)}</code></pre>
+            </section>
+          </div>
+          <p>
+            This event uses <code>{@moment.source_function}</code>
+            in <code>lib/hold_ledger/ledger.ex</code>.
+            <a href="/translation#translation-elixir">Read the code and its admission law →</a>
+          </p>
+        </details>
+      </div>
+      <p class="learning-scope-note">
+        The states and outputs come from the current ledger implementation. This example contacts no
+        processor and does not run a Lean proof.
+      </p>
+    </section>
     <.reading_note
       id="edu-hold-primer"
       title="What does a payment hold reserve?"
@@ -536,78 +739,280 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       <p>
         Read the opening explanation of
         <a href="https://docs.stripe.com/payments/place-a-hold-on-a-payment-method">Stripe's authorization holds</a>
-        and the difference between authorization and capture. Skip the API examples,
-        timing tables and capture options for this walkthrough.
+        and the difference between authorization and capture. API examples can wait.
+      </p>
+      <p>
+        For the Elixir-to-Lean lesson, read the repository's
+        <a href={Education.crash_course_url()}>formal verification crash course</a>.
       </p>
     </.reading_note>
-    <div class="edu-two-column edu-story-grid" id="edu-story">
-      <section class="edu-story-console" aria-label="Payment-hold walkthrough">
-        <div class="edu-console-top">
-          <span>Example walkthrough</span><span>Step {@step} of 4</span>
-        </div>
-        <div class="edu-story-progress" aria-hidden="true">
-          <span style={"width: #{@step * 25}%"}></span>
-        </div>
-        <div class="edu-story-steps" role="group" aria-label="Scenario step">
-          <button
-            :for={{step, index} <- Enum.with_index(@steps, 1)}
-            type="button"
-            phx-click="scenario"
-            phx-value-step={index}
-            class={if(@step == index, do: "active", else: "")}
-            aria-pressed={to_string(@step == index)}
-            aria-controls="edu-story-event"
-          >{index} <span>{step.label}</span></button>
-        </div>
-        <div class="edu-story-money">
-          <div><span>Held for request 11</span><strong>100<small>¢</small></strong></div>
-          <div><span>Available to new holds</span><strong>0<small>¢</small></strong></div>
-        </div>
-        <div class="edu-story-event" id="edu-story-event" aria-live="polite">
-          <span class="edu-pill">{@selected.state}</span>
-          <h2>{@selected.title}</h2>
-          <p>{@selected.text}</p>
-          <div class="edu-story-result">
-            <span>Result in this example</span><strong>{@selected.result}</strong>
-          </div>
-          <a class="edu-inline-link" href={"/atlas/" <> @selected.claim}>{@selected.link} →</a>
-          <p :if={@step == 4} class="edu-micro-note">
-            PO-A1 checks the resulting state's validity. The policy specifies this rejection; validity alone does not require this exact result.
-          </p>
-        </div>
-        <div class="edu-story-controls">
-          <button type="button" phx-click="scenario" phx-value-step={@step - 1} disabled={@step == 1}>← Previous</button>
-          <button type="button" phx-click="scenario" phx-value-step={@step + 1} disabled={@step == 4}>Next step →</button>
-        </div>
-        <p class="edu-micro-note">
-          Based on <code>guides/specification.md</code>. This example illustrates the model; it does not run a processor.
-        </p>
-      </section>
-      <aside class="edu-explainer-column">
-        <section class="edu-note-card">
-          <p class="edu-eyebrow">The payment lesson</p>
-          <h2>Silence leaves a question open.</h2>
-          <p>
-            The authorization might still be live. Holding the capacity prevents a new request from using the same 100¢.
-          </p>
-          <a href="/system">Explore the seven hold states →</a>
-        </section>
-        <section class="edu-note-card">
-          <p class="edu-eyebrow">The claim-reading lesson</p>
-          <h2>Correct totals can miss the wrong decision.</h2>
-          <p>
-            Rejecting an eligible request can leave a valid account. To catch that mistake, a claim must require admission when the request fits.
-          </p>
-          <a href="/atlas/po_a2">Read the exact-fit example →</a>
-        </section>
-      </aside>
-    </div>
     <.next_links
-      one="/system"
-      one_title="Follow the hold through the system"
-      two="/guarantees"
-      two_title="Read the six requirements"
+      one="/how-it-fits"
+      one_title="See how the code, claims and proofs fit"
+      two="/examples"
+      two_title="Learn from a deliberately broken implementation"
     />
+    """
+  end
+
+  attr :inventory, :map, required: true
+  attr :guarantees, :list, required: true
+  attr :counts, :map, required: true
+
+  defp how_it_fits(assigns) do
+    ~H"""
+    <section id="edu-how-it-fits" class="learning-page">
+      <.intro
+        eyebrow="Learn · the repository map"
+        heading="Follow the question from policy to proof."
+        description="Each part answers a different question. Use this map to move from required payment behavior to code, claims and evidence for the source you are reading."
+      />
+      <p id="edu-reading-map-scope" class="learning-map-caption">
+        <strong>Reading map, not proof dependencies.</strong>
+        The order below is a way into the repository. It does not describe which theorems depend on one another.
+      </p>
+      <ol class="learning-map" aria-label="From payment policy to matching evidence">
+        <li>
+          <span class="learning-map-number">01</span>
+          <h2>Begin with the payment policy.</h2>
+          <p>When must a request succeed? When may capacity be released? Decide what the system is required to do.</p>
+          <code>guides/specification.md</code>
+          <a href="/guarantees">Read the required behavior →</a>
+        </li>
+        <li>
+          <span class="learning-map-number">02</span>
+          <h2>Find a requirement to examine.</h2>
+          <p>{@guarantees |> length()} summaries connect the policy to concrete cases, including exact fit, missing replies and retained identities.</p>
+          <span class="learning-map-fact">Curated reading summaries</span>
+          <a href="/start">Follow the missing-reply example →</a>
+        </li>
+        <li>
+          <span class="learning-map-number">03</span>
+          <h2>Compare implementation and specification.</h2>
+          <p>Ledger handles an event. Spec independently describes the expected behavior. Both are pure Elixir modules.</p>
+          <code>lib/hold_ledger/ledger.ex · spec.ex</code>
+          <a href="/system">See their responsibilities →</a>
+        </li>
+        <li>
+          <span class="learning-map-number">04</span>
+          <h2>Read the claim's input and conclusion.</h2>
+          <p>The catalog registers {@inventory.total} claim groups: {@inventory.elixir} Elixir laws and {@inventory.lean} Lean-only claims. A group may contain several theorems.</p>
+          <code>verification/laws.json</code>
+          <a href="/atlas">Find a claim →</a>
+        </li>
+        <li>
+          <span class="learning-map-number">05</span>
+          <h2>Follow the translation and supplied proof.</h2>
+          <p>Lynx translates supported Elixir into Lean. The shared proof library has {@counts.shared_lean_files} source files, with definitions and proofs used across claims.</p>
+          <code>test/support/lean/*.lean</code>
+          <a href="/translation">Read Elixir and Lean together →</a>
+        </li>
+        <li>
+          <span class="learning-map-number">06</span>
+          <h2>Check evidence for these source bytes.</h2>
+          <p>A matching verification report records its scope, required checker results, exported statements and allowed axioms.</p>
+          <span class="learning-map-fact">Registration alone is not acceptance</span>
+          <a href="/assurance">Read the evidence and assumptions →</a>
+        </li>
+      </ol>
+      <aside class="learning-context-note">
+        <h2>Where does the outside world enter?</h2>
+        <p>The runtime records and delivers work. The processor contract states the assumptions about identities and terminal results. A proof about the ledger or coupled model covers its stated model and premises; it does not itself contact a payment processor.</p>
+        <a href="/system">Read the system boundary →</a>
+      </aside>
+      <div class="learning-reading-cards" aria-label="Continue learning">
+        <a href="/examples"><span>Practice reading a fault</span><strong>See what a deliberate code change breaks.</strong></a>
+        <a href="/lens/po_a2?mode=explore"><span>Practice reading a claim</span><strong>See how a changed premise can leave out exact fit.</strong></a>
+        <a href={Education.crash_course_url()}><span>Repository guide</span><strong>Read the formal verification crash course.</strong></a>
+      </div>
+    </section>
+    """
+  end
+
+  attr :mutations, :list, required: true
+  attr :selected, :any, default: nil
+
+  defp mutation_examples(assigns) do
+    ~H"""
+    <section id="edu-examples" class="learning-page">
+      <.intro
+        eyebrow="Learn · deliberate faults"
+        heading="See what one code change can break."
+        description="Choose a mutation, follow its concrete input and read the claim aimed at the fault. These examples make the required behavior easier to recognize."
+      />
+      <p id="edu-examples-scope" class="learning-scope-note">
+        Source examples from this repository. This page reads the existing patch and witness;
+        it does not run the mutation or report a new test result.
+      </p>
+      <div class="learning-example-layout">
+        <nav class="learning-example-picker" aria-label="Choose a deliberate mutation">
+          <button
+            :for={example <- @mutations}
+            type="button"
+            id={"edu-mutation-" <> example["id"]}
+            phx-click="select_mutation"
+            phx-value-id={example["id"]}
+            aria-pressed={to_string(@selected != nil && @selected.example["id"] == example["id"])}
+            aria-controls="edu-selected-mutation"
+          ><span>{example["id"]}</span><strong>{example["title"]}</strong></button>
+        </nav>
+        <article
+          :if={@selected}
+          id="edu-selected-mutation"
+          class="learning-example-detail"
+          data-example-id={@selected.example["id"]}
+          aria-live="polite"
+        >
+          <header>
+            <p class="edu-eyebrow">Mutation {@selected.example["id"]}</p>
+            <h2>{@selected.example["title"]}</h2>
+            <p>{@selected.example["summary"]}</p>
+          </header>
+          <dl class="learning-example-contrast">
+            <div><dt>Expected from the source</dt><dd>{@selected.example["expected_output"]}</dd></div>
+            <div><dt>What the mutation changes</dt><dd>{@selected.example["challenge"]}</dd></div>
+          </dl>
+          <section class="learning-example-witness" aria-labelledby="edu-mutation-witness-title">
+            <h3 id="edu-mutation-witness-title">A concrete input to examine</h3>
+            <div class="learning-value-grid">
+              <div><h4>Starting state</h4><pre tabindex="0" role="region" aria-label="Mutation witness starting state"><code>{@selected.example["before"]}</code></pre></div>
+              <div><h4>Event</h4><pre tabindex="0" role="region" aria-label="Mutation witness event"><code>{@selected.example["event"]}</code></pre></div>
+            </div>
+            <p>{@selected.example["lesson"]}</p>
+          </section>
+          <section class="learning-example-target">
+            <div><span>Claim aimed at this fault</span><h3>{Education.title(@selected.example["target_slug"])}</h3><code>{@selected.example["target_slug"]}</code></div>
+            <a id="edu-mutation-claim" href={"/atlas/" <> @selected.example["target_slug"]}>Read the claim →</a>
+          </section>
+          <section class="learning-patch" aria-labelledby="edu-mutation-patch-title">
+            <h3 id="edu-mutation-patch-title">The patch in the repository</h3>
+            <%= if @selected.patch do %>
+              <p class="edu-source-note"><code>{@selected.patch.path}</code></p>
+              <pre id="edu-mutation-patch" tabindex="0" role="region" aria-label="Mutation source patch"><code>{@selected.patch.text}</code></pre>
+            <% else %>
+              <p id="edu-mutation-patch-unavailable">The patch file is unavailable in this checkout. The authored example remains available above.</p>
+            <% end %>
+            <details class="learning-source-disclosure">
+              <summary>Source paths for this example</summary>
+              <ul><li :for={path <- @selected.example["source_paths"]}><code>{path}</code></li></ul>
+            </details>
+          </section>
+        </article>
+        <section :if={!@selected} id="edu-mutation-unavailable" class="learning-unavailable" role="status">
+          <h2>That mutation is not in this directory.</h2>
+          <p>Choose one of the ten listed examples to read its input and source patch.</p>
+        </section>
+      </div>
+      <aside class="learning-context-note">
+        <h2>Continue with a proposed output or claim.</h2>
+        <p>The full directory also has eight policy exercises, including P08's correct local cancellation. Claim Lens lets you inspect two authored claim changes.</p>
+        <div class="learning-inline-actions">
+          <a href="/repository#review-exercises">Read all policy exercises →</a>
+          <a href="/lens/po_a2?mode=explore">See a worked claim review →</a>
+        </div>
+      </aside>
+    </section>
+    """
+  end
+
+  attr :source, :any, default: nil
+
+  defp translation(assigns) do
+    assigns = assign(assigns, :reading, assigns.source && assigns.source.reading)
+
+    ~H"""
+    <section id="edu-translation" class="learning-page">
+      <.intro
+        eyebrow="Learn · Elixir to Lean with Lynx"
+        heading="Follow an Elixir law into its proof."
+        description="Use the exact-fit claim, PO-A2, to distinguish the code and law you write, the Lean definitions Lynx generates, and the theorem whose proof is supplied in the repository."
+      />
+      <section :if={!@source} id="translation-unavailable" class="learning-unavailable" role="status">
+        <h2>The matching source is unavailable.</h2>
+        <p>This page could not read PO-A2 from the configured checkout. The source panels will return when those files can be read together.</p>
+        <a href="/assurance">Read how source identity is checked →</a>
+      </section>
+      <%= if @source do %>
+        <div class="learning-translation-grid">
+          <section id="translation-elixir" class="learning-translation-panel">
+            <header><span class="learning-panel-number">01</span><p class="edu-eyebrow">Authored Elixir</p><h2>The law states when and what.</h2></header>
+            <p><button type="button" class="edu-term-button" data-edu-term="requires">requires</button> selects the inputs covered by this law. <button type="button" class="edu-term-button" data-edu-term="expects">expects</button> describes the required output.</p>
+            <h3>Input condition</h3>
+            <pre tabindex="0" role="region" aria-label="PO-A2 requires condition"><code>{@reading["contract"]["requires"]}</code></pre>
+            <h3>Required output</h3>
+            <pre tabindex="0" role="region" aria-label="PO-A2 expects condition"><code>{@reading["contract"]["expects"]}</code></pre>
+            <p class="edu-source-note"><code>test/laws/po_a2_test.exs</code> · line {@reading["contract"]["line"]}</p>
+            <a href={Learning.source_url(@reading, "test/laws/po_a2_test.exs")}>Read the complete Elixir law →</a>
+            <details id="translation-implementation" class="learning-source-disclosure">
+              <summary>Read the implementation and eligibility predicate</summary>
+              <%= for {label, excerpt} <- [{"Implementation", @source.implementation}, {"Independent input predicate", @source.eligibility}] do %>
+                <section :if={excerpt}>
+                  <h3>{label}</h3>
+                  <pre tabindex="0" role="region" aria-label={label <> " source excerpt"}><code>{excerpt.text}</code></pre>
+                  <p class="edu-source-note"><code>{excerpt.path}</code> · line {excerpt.line}</p>
+                  <a href={excerpt.url}>Read the complete source →</a>
+                </section>
+                <p :if={!excerpt}>{label} excerpt is unavailable for the current source.</p>
+              <% end %>
+            </details>
+          </section>
+          <section id="translation-generated" class="learning-translation-panel">
+            <header><span class="learning-panel-number">02</span><p class="edu-eyebrow">Generated by Lynx</p><h2>The code becomes Lean definitions.</h2></header>
+            <p>Lynx translates supported Elixir through Core Erlang into Lean. Its definitions represent the implementation and the law's input and output conditions.</p>
+            <%= if @source.generated do %>
+              <p>A matching generated definition excerpt:</p>
+              <pre id="translation-generated-source" tabindex="0" role="region" aria-label="Actual Lynx-generated definition"><code>{@source.generated.text}</code></pre>
+              <p class="edu-source-note"><code>{@source.generated.path}</code> · line {@source.generated.line}</p>
+              <a href={@source.generated.url}>Read the full generated source →</a>
+            <% else %>
+              <div id="translation-generated-unavailable" class="learning-source-empty">
+                <h3>No matching generated definition is available here.</h3>
+                <p>This checkout does not currently expose a readable generated definition for this example. The Elixir and supplied proof panels remain useful for reading.</p>
+                <p>Existing verification tooling produces the focused artifacts. This page does not generate them or substitute proof text for translated code.</p>
+              </div>
+            <% end %>
+            <p class="learning-source-status">Focused artifact status: <strong>{ReviewCopy.evidence_status(@reading["focused"]["status"])}</strong></p>
+            <details :if={@reading["focused"]["artifacts"] not in [nil, []]} class="learning-source-disclosure">
+              <summary>Available matching generated artifacts</summary>
+              <ul><li :for={artifact <- @reading["focused"]["artifacts"]}><a href={"/claims/po_a2/generated/" <> artifact["sha256"]}><code>{artifact["path"]}</code></a></li></ul>
+            </details>
+            <p class="learning-scope-note">A faithful translation and the supported language subset are part of the connection from Elixir to the checked theorem.</p>
+          </section>
+          <section id="translation-theorem" class="learning-translation-panel">
+            <header><span class="learning-panel-number">03</span><p class="edu-eyebrow">Supplied Lean theorem and proof</p><h2>The proof establishes this statement.</h2></header>
+            <p>The premise below uses the generated <code>requires</code> condition. The conclusion requires the generated <code>ensures</code> condition to return true; that condition comes from the law's <code>expects</code> clause.</p>
+            <div :for={declaration <- @reading["declarations"]}>
+              <p class="learning-source-status">{ReviewCopy.evidence_status(declaration["status"])}</p>
+              <pre id="translation-theorem-header" tabindex="0" role="region" aria-label="PO-A2 supplied theorem statement"><code>{declaration["header"]}</code></pre>
+              <p class="edu-source-note"><code>{declaration["path"]}</code> · line {declaration["line"]}</p>
+              <details id="translation-proof" class="learning-source-disclosure">
+                <summary>Read the supplied proof body</summary>
+                <pre tabindex="0" role="region" aria-label="PO-A2 supplied proof body"><code>{declaration["text"]}</code></pre>
+                <a href={Learning.source_url(@reading, declaration["path"])}>Read the complete Lean file →</a>
+              </details>
+            </div>
+            <details :if={@reading["inline_proof"]} class="learning-source-disclosure">
+              <summary>See how the Elixir law invokes this proof</summary>
+              <pre tabindex="0" role="region" aria-label="Proof supplied by the Elixir law"><code>{@reading["inline_proof"]["text"]}</code></pre>
+            </details>
+            <p class="learning-scope-note">These are checked-in source declarations. Reading them does not establish a current verification result.</p>
+          </section>
+        </div>
+        <section id="translation-evidence" class="learning-evidence-summary" aria-labelledby="translation-evidence-title">
+          <div>
+            <p class="edu-eyebrow">Source and evidence</p><h2 id="translation-evidence-title">Does a verification report match this checkout?</h2>
+            <p>Current report status: <strong>{ReviewCopy.evidence_status(@reading["formal"]["status"])}</strong></p>
+            <p>Focused elaboration is separate from full acceptance. Full acceptance also checks the required scope, exported statements, allowed axioms and exact source identity.</p>
+          </div>
+          <div class="learning-inline-actions"><a href="/claims/po_a2">Open this claim in Case Lab →</a><a href="/assurance">Understand evidence and assumptions →</a></div>
+        </section>
+      <% end %>
+      <div id="translation-reading" class="learning-reading-cards" aria-label="Continue learning">
+        <a href={Education.crash_course_url()}><span>Repository guide</span><strong>Read the formal verification crash course.</strong></a>
+        <a href="/start"><span>A concrete input</span><strong>Follow the 100¢ payment example.</strong></a>
+        <a href="/lens/po_a2?mode=explore"><span>A changed claim</span><strong>See why excluding exact fit leaves a policy gap.</strong></a>
+      </div>
+    </section>
     """
   end
 
@@ -1318,7 +1723,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         label: "Example",
         question: "What happens in this situation?",
         meaning:
-          "A concrete input or trace illustrates the behavior. A curated walkthrough explains a case without executing it.",
+          "The payment walkthrough executes the local ledger. The mutation and policy directories explain existing source examples without running them.",
         scope: "One example covers that situation, not every possible input."
       },
       %{
@@ -1663,15 +2068,25 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     <.reading_directory />
     <div class="edu-glossary-grid" id="edu-glossary-results">
       <article :for={term <- @terms} id={"term-" <> term["id"]} class="edu-term-card">
+        <span :if={term["level"]} class="learning-term-level">{String.capitalize(term["level"])}</span>
         <h2>{term["term"]}</h2>
         <p class="edu-term-meaning">{term["short"]}</p>
+        <div :if={term["why_it_matters"]} class="learning-term-purpose">
+          <h3>Why it matters</h3><p>{term["why_it_matters"]}</p>
+        </div>
         <div class="edu-term-example">
           <h3>In this repository</h3><p>{term["example"]}</p>
         </div>
         <details class="edu-term-detail">
           <summary>More context and source</summary>
           <p>{term["detail"]}</p>
+          <div :if={term["limit"]} class="learning-term-limit">
+            <h3>Keep its scope in view</h3><p>{term["limit"]}</p>
+          </div>
           <code data-source-path={term["source_path"]}>{term["source_path"]}</code>
+          <ul :if={term["lookup"] not in [nil, []]} class="learning-term-lookups" aria-label="Further reading">
+            <li :for={reference <- term["lookup"]}><a href={reference["url"]}>{reference["label"]} →</a></li>
+          </ul>
         </details>
         <a href={term["link"]} aria-label={"See " <> term["term"] <> " in context"}>See in context →</a>
       </article>
@@ -1713,7 +2128,12 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </article>
         <article>
           <h2>Formal statements</h2>
-          <p>Start with the <a href="/proofs">statement-reading guide</a>.</p>
+          <p>
+            Start with the <a href="/proofs">statement-reading guide</a>
+            or <a href="/translation">follow an Elixir law into Lean</a>.
+            The repository's <a href={Education.crash_course_url()}>formal verification crash course</a>
+            develops the same example at more depth.
+          </p>
           <p>
             Read sections 3.1–3.3 of
             <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/">Propositions and Proofs</a>

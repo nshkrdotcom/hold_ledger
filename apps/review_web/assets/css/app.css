@@ -1,5 +1,8 @@
 @import "tailwindcss" source(none);
 @import "phoenix-colocated/hold_ledger_review_web/colocated.css";
+@import "./learning_help.css";
+@import "./case_learning.css";
+@import "./learning_pages.css";
 @source "../css";
 @source "../js";
 @source "../../lib/hold_ledger_review_web";

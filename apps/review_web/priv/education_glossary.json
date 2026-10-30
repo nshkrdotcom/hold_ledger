@@ -8,7 +8,20 @@
       "detail": "A holding entry uses its amount and one slot. Even after release, its key and original amount remain recorded.",
       "example": "A reserved 100¢ hold uses all of a 100¢ account’s amount capacity, even before dispatch.",
       "link": "/start",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "A new request must leave enough room for holds that may still be active.",
+      "limit": "Reserving capacity locally does not establish that the processor received or approved the authorization.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Authorization and capture in Stripe",
+          "url": "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "capacity",
@@ -17,7 +30,16 @@
       "detail": "A fresh request must fit both limits. Used amount is the sum of holding entries; used holds is their count.",
       "example": "100¢ free is enough for a 100¢ request only if a hold slot is also free.",
       "link": "/guarantees",
-      "source_path": "lib/hold_ledger/spec.ex"
+      "source_path": "lib/hold_ledger/spec.ex",
+      "why_it_matters": "Admission depends on both the available amount and a free hold slot.",
+      "limit": "Matching totals alone do not show that the ledger made the correct admission or release decision.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "authorization",
@@ -26,7 +48,20 @@
       "detail": "The local ledger records that approval as authorized. This project models authorization holds; transferring or settling funds is outside its event model.",
       "example": "An approved result for a sent 100¢ hold changes its status to authorized and keeps the 100¢ counted.",
       "link": "/system",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "An approval leaves the amount counted until the hold can be released.",
+      "limit": "Capture, settlement, and authorization expiry are outside this model.",
+      "lookup": [
+        {
+          "label": "Authorization and capture in Stripe",
+          "url": "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"
+        },
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "processor",
@@ -35,7 +70,16 @@
       "detail": "The repository has a processor simulator and an adapter contract. A real processor must keep the promised identity and terminal-fencing behavior.",
       "example": "A cancellation request asks the processor to end key 11’s authorization; the request alone does not show it has done so.",
       "link": "/assurance",
-      "source_path": "guides/processors.md"
+      "source_path": "guides/processors.md",
+      "why_it_matters": "The ledger must account for an authorization even while the processor’s reply is missing.",
+      "limit": "The simulator implements the contract; a real service needs its own supporting evidence.",
+      "lookup": [
+        {
+          "label": "Processor requirements",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/processors.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "timeout",
@@ -44,16 +88,38 @@
       "detail": "A processor may approve before its reply is lost. The timeout event changes a sent hold to unknown while keeping its amount and slot counted.",
       "example": "A timed-out 100¢ hold still prevents another 100¢ request from fitting a 100¢ account.",
       "link": "/start",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "Releasing on timeout could let a second request reuse capacity the first authorization still needs.",
+      "limit": "A timeout establishes neither a decline nor a completed cancellation.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "unknown",
       "term": "Unknown state",
-      "short": "The authorization may have happened, but the ledger has no settled answer.",
+      "short": "The authorization may have happened, but the ledger has no confirmed outcome.",
       "detail": "Timeout and restart can leave a hold unknown. It keeps its amount and slot, and a retry reuses the same key and amount.",
       "example": "Key 11 stays a 100¢ hold after its reply disappears; retrying sends the original 100¢ authorization again.",
       "link": "/system",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "An uncertain hold must remain counted while retries preserve its original identity and amount.",
+      "limit": "Unknown does not mean failed, approved, or safe to release.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "reserved",
@@ -62,7 +128,20 @@
       "detail": "The entry already consumes capacity. Because this model has issued no authorization for it, a local cancellation can release it without requesting a remote void.",
       "example": "P08 cancels a reserved 100¢ hold, returns voided and requests no outside work.",
       "link": "/system",
-      "source_path": "guides/payment_hold_review_exercises.md"
+      "source_path": "guides/payment_hold_review_exercises.md",
+      "why_it_matters": "This state distinguishes a local reservation from an authorization that may already exist outside the ledger.",
+      "limit": "Immediate local release applies only before dispatch; issued holds need their own release evidence.",
+      "lookup": [
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        },
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "sent",
@@ -71,7 +150,16 @@
       "detail": "Dispatch changes reserved to sent and returns an authorization effect. The effect describes work to perform; it does not establish delivery.",
       "example": "A dispatched 100¢ hold remains counted even if the runtime receives only a transport acknowledgment.",
       "link": "/system",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "The amount must remain held once the ledger has requested authorization.",
+      "limit": "Sent records dispatch intent, not successful delivery or processor approval.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "authorized",
@@ -80,7 +168,20 @@
       "detail": "An approved result can move a sent or unknown entry to authorized. Starting cancellation moves it to voiding and keeps its capacity occupied.",
       "example": "Cancelling an authorized 100¢ hold still leaves 100¢ used until terminal confirmation.",
       "link": "/system",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "Even an approved authorization needs its amount and slot while cancellation is pending.",
+      "limit": "Authorized does not mean captured or settled.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Authorization and capture in Stripe",
+          "url": "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "voiding",
@@ -89,7 +190,20 @@
       "detail": "The ledger retains the amount and slot and requests the remote void. The composite state also records the outstanding void work.",
       "example": "In P02 the 100¢ stays counted, but the missing void effect still makes the proposed output wrong.",
       "link": "/system",
-      "source_path": "guides/payment_hold_review_exercises.md"
+      "source_path": "guides/payment_hold_review_exercises.md",
+      "why_it_matters": "Keeping the hold and requesting cancellation are separate requirements; the output must do both.",
+      "limit": "Requesting cancellation does not release an authorized hold.",
+      "lookup": [
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        },
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "voided",
@@ -98,7 +212,20 @@
       "detail": "A reserved hold can become voided locally before dispatch. An authorized hold first becomes voiding and needs trusted confirmation. Both paths keep the original key and amount.",
       "example": "P08 releases a never-dispatched 100¢ hold immediately; cancelling an authorized 100¢ hold must wait for confirmation.",
       "link": "/system",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "The ledger can release capacity while remembering the finished request’s identity.",
+      "limit": "A local voided record does not prove the external processor permanently fences that identity.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Processor requirements",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/processors.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "declined",
@@ -107,11 +234,20 @@
       "detail": "A decline releases a sent or unknown hold’s amount and slot. The terminal entry remains recorded, so a later event cannot turn it back into an active hold.",
       "example": "A trusted decline can release 100¢; silence from the processor cannot.",
       "link": "/system",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "A trusted decline is release evidence; a missing reply is not.",
+      "limit": "A decline applies to the identified hold and cannot release an unrelated request.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "request-id",
-      "term": "Request identity",
+      "term": "Request ID",
       "short": "The stable key that ties a request to its original amount and retries.",
       "detail": "Stored keys are integers. The same key and amount is a duplicate; the same key with a different positive amount is a conflict, even after the hold ends.",
       "example": "Key 11 for 100¢ repeated as 100¢ returns duplicate. Key 11 repeated as 50¢ returns conflict.",
@@ -119,8 +255,23 @@
       "source_path": "guides/specification.md",
       "aliases": [
         "request ID",
-        "request key"
-      ]
+        "request key",
+        "request identity",
+        "key"
+      ],
+      "why_it_matters": "The same ID prevents a retry or late result from becoming a different payment request.",
+      "limit": "A request ID identifies the hold; an attempt ID identifies one local try at outside work.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Stripe: idempotent requests",
+          "url": "https://docs.stripe.com/api/idempotent_requests"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "idempotency",
@@ -132,7 +283,20 @@
       "source_path": "test/laws/po_a4_duplicate_test.exs",
       "aliases": [
         "idempotency key"
-      ]
+      ],
+      "why_it_matters": "Retries can repeat delivery without allocating a second hold under the same request ID.",
+      "limit": "Local duplicate detection does not establish the processor’s deduplication or retention behavior.",
+      "lookup": [
+        {
+          "label": "Stripe: idempotent requests",
+          "url": "https://docs.stripe.com/api/idempotent_requests"
+        },
+        {
+          "label": "Processor requirements",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/processors.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "event",
@@ -141,7 +305,16 @@
       "detail": "Requests, dispatches, timeouts, processor results, cancellations and restart are events. Ledger.step returns a next state, result and requested effects.",
       "example": "The event {:timeout, 11} asks the ledger to handle the missing reply for key 11.",
       "link": "/system",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "The event determines which transition and claim you should inspect.",
+      "limit": "A local event describing a requested operation does not establish the remote outcome.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "effect",
@@ -154,7 +327,20 @@
       "aliases": [
         "effect",
         "effects"
-      ]
+      ],
+      "why_it_matters": "Correct counters can still hide missing or misaddressed outside work.",
+      "limit": "An effect records a request, not delivery or completion.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "pure-core",
@@ -163,7 +349,20 @@
       "detail": "Ledger.step takes a state and event and returns data. The runtime separately journals inputs and carries out requested effects.",
       "example": "Cancelling an authorized hold returns a void request; the pure function does not contact the processor.",
       "link": "/system",
-      "source_path": "guides/architecture.md"
+      "source_path": "guides/architecture.md",
+      "why_it_matters": "Separating calculation from I/O makes the transition’s inputs, outputs, and claims explicit.",
+      "limit": "A proof of the pure transition does not verify journal durability or network delivery.",
+      "lookup": [
+        {
+          "label": "How the ledger and runtime fit together",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/architecture.md"
+        },
+        {
+          "label": "Verification scope and acceptance",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "specification",
@@ -172,7 +371,20 @@
       "detail": "guides/specification.md states the behavior. HoldLedger.Spec implements an independent reference and predicates used by the claims.",
       "example": "The policy says a fresh 100¢ request must be admitted when 100¢ and a slot are available.",
       "link": "/guarantees",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "Reviewers need an independent requirement before deciding whether code or a claim is correct.",
+      "limit": "Agreement between Ledger and Spec cannot decide whether the policy itself is adequate.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "law",
@@ -184,7 +396,20 @@
       "source_path": "test/laws/po_a2_test.exs",
       "aliases": [
         "formal law"
-      ]
+      ],
+      "why_it_matters": "A law makes the covered inputs and required result available for testing and formal translation.",
+      "limit": "A registered law needs matching proof evidence before it can be described as formally checked.",
+      "lookup": [
+        {
+          "label": "Lynx project documentation",
+          "url": "https://github.com/josevalim/lynx"
+        },
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "requires",
@@ -197,7 +422,20 @@
       "aliases": [
         "precondition",
         "hypothesis"
-      ]
+      ],
+      "why_it_matters": "A narrower precondition can remove a required case without making the remaining theorem false.",
+      "limit": "An excluded input is outside this claim’s promise, not automatically an invalid payment request.",
+      "lookup": [
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        },
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "expects",
@@ -210,7 +448,20 @@
       "aliases": [
         "postcondition",
         "conclusion"
-      ]
+      ],
+      "why_it_matters": "The result must express every part of the intended promise, including required outside work.",
+      "limit": "A weak postcondition can accept a wrong decision while preserving valid counters.",
+      "lookup": [
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        },
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "invariant",
@@ -219,7 +470,20 @@
       "detail": "Ledger validity requires the stored counters to equal the holding entries’ totals and stay within both limits. A valid start and preserved steps extend this to finite histories.",
       "example": "An unknown 100¢ entry with zero used amount breaks the accounting invariant.",
       "link": "/guarantees",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "It catches states whose entries, counters, or limits disagree after an event.",
+      "limit": "Preserving validity alone would allow a ledger that rejects every new request.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "witness",
@@ -228,7 +492,20 @@
       "detail": "A witness shows the claim has at least one input to cover and helps you read its promise. It does not establish that every required case is covered.",
       "example": "An empty 100¢ account with one slot and a fresh 100¢ request is a witness for PO-A2.",
       "link": "/proofs",
-      "source_path": "guides/agentic_verification.md"
+      "source_path": "guides/agentic_verification.md",
+      "why_it_matters": "A witness lets you check that a precondition is achievable and read the promise with real values.",
+      "limit": "One witness does not show that the claim includes all required inputs.",
+      "lookup": [
+        {
+          "label": "Challenging a claim with examples",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/agentic_verification.md"
+        },
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "counterexample",
@@ -237,7 +514,20 @@
       "detail": "Reproduce the case and name the claim it contradicts. A timeout or failed proof tactic supplies no such input by itself.",
       "example": "If an eligible 100¢ exact-fit request returned insufficient_amount, it would contradict PO-A2’s admission promise.",
       "link": "/proofs",
-      "source_path": "guides/agentic_verification.md"
+      "source_path": "guides/agentic_verification.md",
+      "why_it_matters": "A reproduced counterexample identifies a concrete conflict between the claim and the observed result.",
+      "limit": "A proof failure or timeout is not a counterexample without a corresponding input and result.",
+      "lookup": [
+        {
+          "label": "Challenging a claim with examples",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/agentic_verification.md"
+        },
+        {
+          "label": "Tests and deliberate code faults",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/testing.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "mutation",
@@ -250,7 +540,16 @@
       "aliases": [
         "mutant",
         "mutation testing"
-      ]
+      ],
+      "why_it_matters": "A deliberate fault shows whether a check is sensitive to a specific incorrect behavior.",
+      "limit": "Detecting one mutation does not establish that the checks detect every possible fault.",
+      "lookup": [
+        {
+          "label": "Tests and deliberate code faults",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/testing.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "claim",
@@ -263,7 +562,20 @@
       "aliases": [
         "proof obligation",
         "group"
-      ]
+      ],
+      "why_it_matters": "Its precise statement determines what a successful proof can establish.",
+      "limit": "Catalog registration records a review subject, not a current proof result.",
+      "lookup": [
+        {
+          "label": "Verification scope and acceptance",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md"
+        },
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "theorem",
@@ -272,7 +584,20 @@
       "detail": "Read its inputs, assumptions and conclusion before its proof body. Kernel checking establishes the stated proposition under its dependencies; policy review asks whether it is the right proposition.",
       "example": "retained_history states what happens to a protected key over a finite history without its release evidence.",
       "link": "/proofs",
-      "source_path": "test/support/lean/ExposureTrace.lean"
+      "source_path": "test/support/lean/ExposureTrace.lean",
+      "why_it_matters": "The theorem’s assumptions and conclusion define the promise you are reviewing.",
+      "limit": "Checking its proof does not establish that the statement covers the intended payment policy.",
+      "lookup": [
+        {
+          "label": "Lean: propositions and proofs",
+          "url": "https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/"
+        },
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "lemma",
@@ -281,7 +606,20 @@
       "detail": "A helper can cover lookup, list structure or accounting. Its usefulness comes from its exact statement, not from the label lemma.",
       "example": "L3 describes how one status replacement changes the calculated amount and count.",
       "link": "/atlas",
-      "source_path": "test/laws/l3_accounting_test.exs"
+      "source_path": "test/laws/l3_accounting_test.exs",
+      "why_it_matters": "Shared results make larger proofs easier to build and help reviewers find the facts they depend on.",
+      "limit": "A lemma’s name does not reveal its assumptions; read the complete statement.",
+      "lookup": [
+        {
+          "label": "Reading deeper proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_deeper_proofs.md"
+        },
+        {
+          "label": "Lean: propositions and proofs",
+          "url": "https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "lean",
@@ -290,7 +628,20 @@
       "detail": "Lynx produces Lean definitions for supported Elixir code. Native Lean files also state claims about histories, recovery and the processor model.",
       "example": "Recovery.lean states that replaying committed modeled events reconstructs the same composite state.",
       "link": "/proofs",
-      "source_path": "guides/formal_verification_crash_course.md"
+      "source_path": "guides/formal_verification_crash_course.md",
+      "why_it_matters": "Lean can check a supplied proof against a precise statement and its declared dependencies.",
+      "limit": "That check does not by itself establish the Elixir-to-Lean translation’s faithfulness.",
+      "lookup": [
+        {
+          "label": "Theorem Proving in Lean 4",
+          "url": "https://lean-lang.org/theorem_proving_in_lean4/"
+        },
+        {
+          "label": "Lean: validating a proof",
+          "url": "https://lean-lang.org/doc/reference/latest/ValidatingProofs/"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "lynx",
@@ -299,7 +650,20 @@
       "detail": "Lynx translates compiled Elixir through Core Erlang into Lean definitions and generates statements from the laws. The correspondence between source and translated model is a trust boundary.",
       "example": "The PO-A2 law connects Ledger.request with Spec.request_eligible? and the exact expected result.",
       "link": "/proofs",
-      "source_path": "guides/formal_verification_crash_course.md"
+      "source_path": "guides/formal_verification_crash_course.md",
+      "why_it_matters": "It connects familiar Elixir functions and laws to definitions and statements that Lean can check.",
+      "limit": "Translation produces the proof target; supplied Lean proofs and matching check results are still required.",
+      "lookup": [
+        {
+          "label": "Lynx project documentation",
+          "url": "https://github.com/josevalim/lynx"
+        },
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "elixir",
@@ -308,7 +672,20 @@
       "detail": "Ledger and Spec are separate modules. The proof work focuses on the supported pure-code subset; runtime processes, storage and networking have additional responsibilities.",
       "example": "lib/hold_ledger/ledger.ex contains the request, timeout, retry and cancellation transitions.",
       "link": "/repository",
-      "source_path": "guides/architecture.md"
+      "source_path": "guides/architecture.md",
+      "why_it_matters": "You can begin with the ledger’s functions and laws before learning Lean’s proof syntax.",
+      "limit": "This project’s proof scope does not include every Elixir feature or the complete OTP runtime.",
+      "lookup": [
+        {
+          "label": "Introduction to Elixir",
+          "url": "https://elixir.hexdocs.pm/introduction.html"
+        },
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "phoenix",
@@ -317,7 +694,16 @@
       "detail": "LiveViews update the case, claim and explanation panels as you work. The app displays source and evaluates supported cases; the browser is not a payment processor.",
       "example": "Claim Lens lets you classify a proposed claim change before revealing its teaching notes.",
       "link": "/repository",
-      "source_path": "apps/review_web/lib/hold_ledger_review_web/live/claim_lens_live.ex"
+      "source_path": "apps/review_web/lib/hold_ledger_review_web/live/claim_lens_live.ex",
+      "why_it_matters": "The interface keeps the selected case and its explanations together while you inspect them.",
+      "limit": "A browser interaction is not a new formal verification run unless a supported check is explicitly performed.",
+      "lookup": [
+        {
+          "label": "Phoenix LiveView documentation",
+          "url": "https://phoenix-live-view.hexdocs.pm/Phoenix.LiveView.html"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "induction",
@@ -326,7 +712,20 @@
       "detail": "For a finite event list, the proof handles the empty list and shows how to extend the result by one event. That covers arbitrary finite lengths within the theorem’s assumptions.",
       "example": "PO-C1 starts with a valid state and establishes validity after a proper finite event list.",
       "link": "/proofs",
-      "source_path": "test/laws/po_c1_test.exs"
+      "source_path": "test/laws/po_c1_test.exs",
+      "why_it_matters": "It extends a one-step result to all finite histories covered by the theorem.",
+      "limit": "A finite-list induction does not establish eventual delivery or cover infinite executions.",
+      "lookup": [
+        {
+          "label": "Reading deeper proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_deeper_proofs.md"
+        },
+        {
+          "label": "Lean: inductive types",
+          "url": "https://lean-lang.org/theorem_proving_in_lean4/Inductive-Types/"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "axiom",
@@ -335,7 +734,20 @@
       "detail": "Full acceptance audits exported dependencies. This repository permits propext, Quot.sound and Classical.choice, and forbids admissions and custom axioms.",
       "example": "Finding no placeholder in one source file does not establish that all of its imported proof dependencies are permitted.",
       "link": "/assurance",
-      "source_path": "guides/verification.md"
+      "source_path": "guides/verification.md",
+      "why_it_matters": "A proof’s foundational assumptions are part of the evidence that must be reviewed.",
+      "limit": "A placeholder-free source excerpt does not rule out forbidden axioms in dependencies.",
+      "lookup": [
+        {
+          "label": "Lean: validating a proof",
+          "url": "https://lean-lang.org/doc/reference/latest/ValidatingProofs/"
+        },
+        {
+          "label": "Verification scope and acceptance",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "omega",
@@ -344,7 +756,20 @@
       "detail": "It helps discharge arithmetic after the relevant integer assumptions are visible. It builds a proof term for checking; it does not choose the payment policy.",
       "example": "The crash-course example uses omega to establish that amount ≤ remaining rules out remaining < amount.",
       "link": "/proofs",
-      "source_path": "guides/formal_verification_crash_course.md"
+      "source_path": "guides/formal_verification_crash_course.md",
+      "why_it_matters": "It can establish the arithmetic fact behind an admission boundary once the relevant assumptions are available.",
+      "limit": "It proves suitable arithmetic goals; it does not enumerate all states or validate the payment requirement.",
+      "lookup": [
+        {
+          "label": "Lean tactic reference",
+          "url": "https://lean-lang.org/doc/reference/latest/Tactic-Proofs/Tactic-Reference/"
+        },
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "aesop",
@@ -353,7 +778,20 @@
       "detail": "It can automate parts of a proof body. When reviewing the guarantee, begin with the statement and definitions that the tactic is trying to prove.",
       "example": "Replacing a tactic in an unchanged proof body is a different review task from weakening the claim’s precondition.",
       "link": "/proofs",
-      "source_path": "guides/human_review.md"
+      "source_path": "guides/human_review.md",
+      "why_it_matters": "Automated proof search can change the proof body while preserving the statement being proved.",
+      "limit": "Success says nothing about whether a precondition excludes a case the policy requires.",
+      "lookup": [
+        {
+          "label": "Reading deeper proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_deeper_proofs.md"
+        },
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "cases",
@@ -362,7 +800,20 @@
       "detail": "Each resulting branch must establish its goal. A constructor split follows the modeled type; it does not automatically mean a split into valid and invalid payments.",
       "example": "A proof can handle the empty event list separately from a list with a first event and a remaining tail.",
       "link": "/proofs",
-      "source_path": "guides/formal_verification_crash_course.md"
+      "source_path": "guides/formal_verification_crash_course.md",
+      "why_it_matters": "Each branch exposes the facts available for that constructor or alternative.",
+      "limit": "Splitting a modeled value does not add real-world cases that the model leaves out.",
+      "lookup": [
+        {
+          "label": "Lean tactic reference",
+          "url": "https://lean-lang.org/doc/reference/latest/Tactic-Proofs/Tactic-Reference/"
+        },
+        {
+          "label": "Lean: inductive types",
+          "url": "https://lean-lang.org/theorem_proving_in_lean4/Inductive-Types/"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "sorry",
@@ -371,7 +822,20 @@
       "detail": "A dependent theorem can then rely on the admission. This repository’s source scan rejects sorry, and its exported-dependency audit forbids sorryAx.",
       "example": "Replacing a difficult proof with sorry does not repair it; the required acceptance checks reject that shortcut.",
       "link": "/assurance",
-      "source_path": "guides/formal_verification_crash_course.md"
+      "source_path": "guides/formal_verification_crash_course.md",
+      "why_it_matters": "An admission can let later theorems rely on a result whose proof is missing.",
+      "limit": "A successful local elaboration can still depend on an admission imported from another file.",
+      "lookup": [
+        {
+          "label": "Lean: validating a proof",
+          "url": "https://lean-lang.org/doc/reference/latest/ValidatingProofs/"
+        },
+        {
+          "label": "Verification scope and acceptance",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "proof-status",
@@ -380,7 +844,20 @@
       "detail": "Registration, a single-case check, a focused proof run and full acceptance answer different questions. Read the report’s selected claims, stages, source identity and unresolved results.",
       "example": "A catalog entry marked supported tells you the claim is registered for the tooling, not that it was freshly checked.",
       "link": "/assurance",
-      "source_path": "guides/verification.md"
+      "source_path": "guides/verification.md",
+      "why_it_matters": "It tells you whether evidence applies to the claim and source you are currently reviewing.",
+      "limit": "Supported, selected-scope checked, and full required-scope acceptance are different statuses.",
+      "lookup": [
+        {
+          "label": "Verification scope and acceptance",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md"
+        },
+        {
+          "label": "Reading review evidence",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_review_evidence.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "source-identity",
@@ -393,20 +870,46 @@
       "aliases": [
         "source digest",
         "source hash"
-      ]
+      ],
+      "why_it_matters": "Matching hashes prevent a result for old files from being presented as evidence for edited source.",
+      "limit": "A matching hash establishes file identity, not source correctness or proof acceptance.",
+      "lookup": [
+        {
+          "label": "Reading review evidence",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_review_evidence.md"
+        },
+        {
+          "label": "Verification scope and acceptance",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "proof-dependency",
       "term": "Proof dependency",
       "short": "A definition or theorem that another proof relies on.",
-      "detail": "An unchanged theorem can mean something different when a called definition changes. The Atlas groups claims for reading; those families do not describe measured proof dependencies.",
+      "detail": "An unchanged theorem can mean something different when a called definition changes. The claim catalog groups claims for reading; those families do not describe measured proof dependencies.",
       "example": "If valid stops requiring used amount ≤ limit, claims that conclude valid become weaker even when their theorem text stays unchanged.",
       "link": "/atlas",
-      "source_path": "guides/human_review.md"
+      "source_path": "guides/human_review.md",
+      "why_it_matters": "Changing a called definition can change a claim’s meaning even when its theorem text stays the same.",
+      "limit": "A reading map or catalog family is not an extracted proof dependency graph.",
+      "lookup": [
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        },
+        {
+          "label": "Reading deeper proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_deeper_proofs.md"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "pointwise",
-      "term": "Single-case check",
+      "term": "Case check",
       "short": "Evaluate a claim on one concrete input and output.",
       "detail": "The check can show whether the precondition holds and whether the claim accepts that output. A permitted proposed output may reveal a policy gap; it is not evidence that the code produced it.",
       "example": "P04 asks whether a 100¢ exact-fit request may return insufficient_amount under the selected claim.",
@@ -414,8 +917,23 @@
       "source_path": "guides/payment_hold_review_exercises.md",
       "aliases": [
         "pointwise",
-        "pointwise evaluation"
-      ]
+        "pointwise evaluation",
+        "single-case check",
+        "pointwise check"
+      ],
+      "why_it_matters": "A concrete case helps you see which condition permits or rejects an output.",
+      "limit": "A case check is not a proof for every input, and a proposed output is not an execution result.",
+      "lookup": [
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        },
+        {
+          "label": "Challenging a claim with examples",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/agentic_verification.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "hypothetical",
@@ -431,7 +949,16 @@
         "candidate",
         "alternative",
         "proposed output"
-      ]
+      ],
+      "why_it_matters": "Trying an alternative answer helps reveal whether a claim rejects behavior the policy forbids.",
+      "limit": "Acceptance of a proposed output does not show that the implementation can produce it.",
+      "lookup": [
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "level": "beginner"
     },
     {
       "id": "assumption",
@@ -440,7 +967,20 @@
       "detail": "Processor truthfulness, permanent fencing and journal durability cross different trust boundaries. Name the assumption and look for the evidence appropriate to that boundary.",
       "example": "The remote-exposure bound assumes repeated authorization identities do not create independent live authorizations.",
       "link": "/assurance",
-      "source_path": "guides/verification.md"
+      "source_path": "guides/verification.md",
+      "why_it_matters": "The conclusion only applies when the conditions it relies on are met.",
+      "limit": "Stating a processor or storage assumption does not establish it for a deployed system.",
+      "lookup": [
+        {
+          "label": "Processor requirements",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/processors.md"
+        },
+        {
+          "label": "Verification scope and acceptance",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "journal",
@@ -449,7 +989,20 @@
       "detail": "The runtime must sync an input before applying its state change or requested effects. The formal replay model describes folding records, while storage durability needs separate evidence.",
       "example": "A committed void request must preserve both the 100¢ voiding hold and the record of its pending remote work.",
       "link": "/repository",
-      "source_path": "guides/architecture.md"
+      "source_path": "guides/architecture.md",
+      "why_it_matters": "Committed inputs allow recovery to reconstruct both state and unfinished work after a restart.",
+      "limit": "A proof of replay does not establish that physical storage retained a synced record.",
+      "lookup": [
+        {
+          "label": "Runtime and recovery",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/runtime.md"
+        },
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "replay",
@@ -458,7 +1011,20 @@
       "detail": "Ledger.run folds a proper finite event list and discards effects. Runtime startup applies a new restart event after replay so recovered sent entries become unknown.",
       "example": "Replaying a dispatch reconstructs its sent state; it does not execute the historical authorization request again.",
       "link": "/repository",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "Recovery must rebuild the state that follows from the recorded input sequence.",
+      "limit": "Replaying events does not resend their historical authorization effects.",
+      "lookup": [
+        {
+          "label": "Runtime and recovery",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/runtime.md"
+        },
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "composite",
@@ -467,7 +1033,20 @@
       "detail": "Each voiding key has exactly one matching obligation. Starting a remote void creates that record; trusted confirmation releases the hold and removes the record in one transition.",
       "example": "A voiding 100¢ entry with no pending void obligation is an invalid composite state even if the ledger totals are correct.",
       "link": "/system",
-      "source_path": "guides/specification.md"
+      "source_path": "guides/specification.md",
+      "why_it_matters": "A correct ledger state still needs a durable record of cancellation work that remains unfinished.",
+      "limit": "Ledger validity alone does not check the correspondence between voiding holds and pending work.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Runtime and recovery",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/runtime.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "terminal-fence",
@@ -476,7 +1055,20 @@
       "detail": "The contract includes a void arriving before its authorization and delayed delivery after ordinary deduplication records expire. Ignoring a late reply in the local ledger is a separate protection.",
       "example": "The processor receives void for key 11 first, then a delayed authorize for 100¢. The model keeps the key voided and returns declined.",
       "link": "/assurance",
-      "source_path": "guides/processors.md"
+      "source_path": "guides/processors.md",
+      "why_it_matters": "Delayed authorization must not revive an identity after its remote cancellation became final.",
+      "limit": "Ordinary deduplication windows or local suppression of late replies do not establish permanent remote fencing.",
+      "lookup": [
+        {
+          "label": "Processor requirements",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/processors.md"
+        }
+      ],
+      "level": "expert",
+      "aliases": [
+        "fencing",
+        "terminal fencing"
+      ]
     },
     {
       "id": "coverage",
@@ -485,7 +1077,20 @@
       "detail": "A stronger precondition can exclude a required case; a weaker postcondition can permit an unwanted output. Compare the statement with independently justified policy examples.",
       "example": "Changing amount ≤ available to amount < available removes a 100¢ exact-fit request from the admission promise.",
       "link": "/guarantees",
-      "source_path": "guides/human_review.md"
+      "source_path": "guides/human_review.md",
+      "why_it_matters": "A proof can remain valid while a changed statement stops covering required behavior.",
+      "limit": "Sampling additional cases does not establish that two claims cover the same complete domain.",
+      "lookup": [
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        },
+        {
+          "label": "Challenging a claim with examples",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/agentic_verification.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "vacuity",
@@ -494,7 +1099,20 @@
       "detail": "Start by finding a real witness for requires. A witness rules out an impossible precondition, but you still need to inspect which other required cases it excludes.",
       "example": "A proposed precondition asking for a positive amount that is also less than zero covers no 100¢ request—or any other positive amount.",
       "link": "/proofs",
-      "source_path": "guides/agentic_verification.md"
+      "source_path": "guides/agentic_verification.md",
+      "why_it_matters": "An impossible precondition can make a conditional claim true without promising any useful behavior.",
+      "limit": "Finding one applicable input rules out total vacuity, but not other gaps in coverage.",
+      "lookup": [
+        {
+          "label": "Challenging a claim with examples",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/agentic_verification.md"
+        },
+        {
+          "label": "Lean: propositions and proofs",
+          "url": "https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "effect-intent",
@@ -506,7 +1124,20 @@
       "source_path": "guides/payment_hold_review_exercises.md",
       "aliases": [
         "requested effect"
-      ]
+      ],
+      "why_it_matters": "The requested work must name the correct hold and preserve its original authorization amount.",
+      "limit": "An intent does not establish that a network call or remote operation completed.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "policy-gap",
@@ -518,7 +1149,20 @@
       "source_path": "guides/human_review.md",
       "aliases": [
         "semantic gap"
-      ]
+      ],
+      "why_it_matters": "The statement may need stronger or broader requirements even when its proof is correct.",
+      "limit": "A suspected gap needs a policy-grounded case; an unfamiliar output is not enough by itself.",
+      "lookup": [
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        },
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "review",
@@ -527,7 +1171,20 @@
       "detail": "Cite the policy, exact statement, useful example and evidence scope. Existing authority may cover a repair; a new policy or processor assumption may need an owner’s decision.",
       "example": "For a proposed timeout-release change, explain what terminal evidence is missing and which retention requirement the change would alter.",
       "link": "/lens/po_exposure_retain",
-      "source_path": "guides/human_review.md"
+      "source_path": "guides/human_review.md",
+      "why_it_matters": "Human judgment connects the requirement, the exact change, and the evidence available for it.",
+      "limit": "Saving a review note does not rerun a proof or approve an unrecorded policy change.",
+      "lookup": [
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        },
+        {
+          "label": "Reading review evidence",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_review_evidence.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "attempt",
@@ -540,7 +1197,16 @@
       "aliases": [
         "attempt ID",
         "worker attempt"
-      ]
+      ],
+      "why_it_matters": "Attempt IDs keep late messages for retired work from changing a newer try.",
+      "limit": "Retiring a local attempt does not establish that the processor’s authorization was cancelled.",
+      "lookup": [
+        {
+          "label": "Runtime and recovery",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/runtime.md"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "poison",
@@ -553,7 +1219,16 @@
       "aliases": [
         "poison",
         "poisoned lifecycle"
-      ]
+      ],
+      "why_it_matters": "The runtime must stop trusting its normal commit sequence after an ambiguous persistence failure.",
+      "limit": "No active workers does not mean a poisoned lifecycle is ready to accept new work.",
+      "lookup": [
+        {
+          "label": "Runtime and recovery",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/runtime.md"
+        }
+      ],
+      "level": "expert"
     },
     {
       "id": "obligation",
@@ -567,7 +1242,20 @@
         "obligation",
         "pending void work",
         "pending cancellation"
-      ]
+      ],
+      "why_it_matters": "Recovery needs to remember a cancellation that remains outstanding after a crash or timeout.",
+      "limit": "Recording the obligation does not guarantee that the processor will eventually become reachable.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Runtime and recovery",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/runtime.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "oracle",
@@ -580,7 +1268,20 @@
       "aliases": [
         "oracle",
         "independent reference"
-      ]
+      ],
+      "why_it_matters": "Comparing the complete result can catch mistakes that a validity check leaves undetected.",
+      "limit": "An independently written reference can still share a misunderstanding of the policy.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Tests and deliberate code faults",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/testing.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "fold",
@@ -589,7 +1290,20 @@
       "detail": "A history fold repeats the single-step operation through a finite list. Ledger.run returns the final state and discards effect descriptions; replay does not execute old authorization requests again.",
       "example": "Request hold 11, dispatch it, then time out: the final hold is unknown and its capacity remains occupied.",
       "link": "/system",
-      "source_path": "lib/hold_ledger/ledger.ex"
+      "source_path": "lib/hold_ledger/ledger.ex",
+      "why_it_matters": "It explains how one transition becomes the meaning of an entire recorded history.",
+      "limit": "This fold describes a finite sequence and does not perform the effects it encounters.",
+      "lookup": [
+        {
+          "label": "State and event rules",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/specification.md"
+        },
+        {
+          "label": "Reading deeper proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_deeper_proofs.md"
+        }
+      ],
+      "level": "practitioner"
     },
     {
       "id": "issued",
@@ -602,6 +1316,161 @@
       "aliases": [
         "issued identity",
         "issued authorization"
+      ],
+      "why_it_matters": "The model records possible remote exposure before a processor decision is delivered or observed.",
+      "limit": "Issued belongs to the processor environment; it is not an eighth ordinary ledger status.",
+      "lookup": [
+        {
+          "label": "Processor requirements",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/processors.md"
+        },
+        {
+          "label": "How the ledger and runtime fit together",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/architecture.md"
+        }
+      ],
+      "level": "practitioner"
+    },
+    {
+      "id": "binding",
+      "term": "Binding",
+      "short": "The values assigned to a claim’s variables for one case check.",
+      "detail": "The evaluator takes these values from the selected state, event, and source-defined lookup conditions. Some claims need several combinations, which the condition panel lets you inspect separately.",
+      "example": "For an exact-fit request, the values include the empty account, request ID 11, and amount 100. A retention claim may also bind the stored hold amount.",
+      "link": "/proofs",
+      "source_path": "apps/review_web/lib/hold_ledger_review/claim_probe.ex",
+      "why_it_matters": "A condition’s result only makes sense when you know which values were used.",
+      "limit": "An incomplete set of required bindings leaves the check unavailable; one successful combination cannot stand in for the rest.",
+      "lookup": [
+        {
+          "label": "Challenging a claim with examples",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/agentic_verification.md"
+        },
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        }
+      ],
+      "level": "practitioner",
+      "aliases": [
+        "bound values"
+      ]
+    },
+    {
+      "id": "clause",
+      "term": "Clause",
+      "short": "One part of the input conditions or required result in a claim.",
+      "detail": "A claim can combine several checks, such as a fresh request ID, available capacity, and the required output. The condition view breaks the expression into parts so you can inspect their values.",
+      "example": "PO-A2 calls request_eligible? in requires and checks the exact admitted output in expects. Following the eligibility helper reveals the exact-fit comparison.",
+      "link": "/proofs",
+      "source_path": "apps/review_web/lib/hold_ledger_review/condition_outline.ex",
+      "why_it_matters": "A rejected output may fail one specific condition while satisfying the others.",
+      "limit": "A highlighted clause-to-proof connection is a reviewed source link, not an extracted kernel dependency.",
+      "lookup": [
+        {
+          "label": "Formal verification crash course",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md"
+        },
+        {
+          "label": "Reviewing changes to claims and proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md"
+        }
+      ],
+      "level": "practitioner"
+    },
+    {
+      "id": "helper",
+      "term": "Helper",
+      "short": "A named function or lemma used inside a larger calculation or proof.",
+      "detail": "An Elixir helper may decide eligibility or calculate a total. A Lean helper may establish a reusable fact. Read its definition or statement when the surrounding claim depends on it.",
+      "example": "Spec.request_eligible? contains the amount and slot checks used by the exact-fit admission law.",
+      "link": "/proofs",
+      "source_path": "lib/hold_ledger/spec.ex",
+      "why_it_matters": "A small change inside a helper can change the meaning of several claims.",
+      "limit": "An unchanged law call does not mean the claim is unchanged if a helper’s definition was edited.",
+      "lookup": [
+        {
+          "label": "Reading deeper proofs",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_deeper_proofs.md"
+        },
+        {
+          "label": "Lean: functions and definitions",
+          "url": "https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Functions-and-Definitions/"
+        }
+      ],
+      "level": "practitioner"
+    },
+    {
+      "id": "basis",
+      "term": "Inspection basis",
+      "short": "The output selected for the condition view: the code result or your proposed output.",
+      "detail": "The input conditions stay tied to the same case. Switching the basis changes which output is substituted into the required-result expression.",
+      "example": "Choose the proposed output to inspect a rejected exact-fit request, then choose the code result to inspect the admitted request.",
+      "link": "/proofs",
+      "source_path": "apps/review_web/lib/hold_ledger_review_web/components/dissector_components.ex",
+      "why_it_matters": "It explains why the same claim can accept the code result and reject your alternative.",
+      "limit": "Switching the view does not edit the output, run another event, or change the claim.",
+      "lookup": [
+        {
+          "label": "Payment-hold review exercises",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "level": "practitioner",
+      "aliases": [
+        "output basis"
+      ]
+    },
+    {
+      "id": "source-generation",
+      "term": "Source generation",
+      "short": "The fixed source snapshot and compiled claim evaluator used by this run of the review app.",
+      "detail": "The app builds an evaluator from the registered laws at startup and checks the source and loaded-code fingerprints before new case checks. Relevant source changes require a controlled rebuild and restart.",
+      "example": "Editing request_eligible? after startup makes the previous evaluator out of date; the app cannot reuse its old case result as current evidence.",
+      "link": "/assurance",
+      "source_path": "apps/review_web/lib/hold_ledger_review/claims.ex",
+      "why_it_matters": "The displayed conditions and computed values must describe the same source version.",
+      "limit": "This term identifies the app’s evaluator generation, not Lynx-generated Lean or a completed proof check.",
+      "lookup": [
+        {
+          "label": "Reading review evidence",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/reading_review_evidence.md"
+        },
+        {
+          "label": "Verification scope and acceptance",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md"
+        }
+      ],
+      "level": "expert",
+      "aliases": [
+        "generation",
+        "evaluator generation"
+      ]
+    },
+    {
+      "id": "coupled-model",
+      "term": "Coupled model",
+      "short": "A model that tracks the local ledger and the processor’s state together.",
+      "detail": "The exposure model combines the ledger and pending cancellation work with a processor environment. Issuing a request, delivering a processor decision, and observing that decision locally are separate events.",
+      "example": "The processor can approve hold 11 while the local ledger still records its outcome as unknown. The 100¢ remains held.",
+      "link": "/system",
+      "source_path": "lib/hold_ledger/exposure.ex",
+      "why_it_matters": "The model shows why local uncertainty must still account for an authorization that may exist remotely.",
+      "limit": "It assumes the modeled processor behavior; it does not verify a live service, network delivery, or eventual release.",
+      "lookup": [
+        {
+          "label": "How the ledger and runtime fit together",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/architecture.md"
+        },
+        {
+          "label": "Processor requirements",
+          "url": "https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/processors.md"
+        }
+      ],
+      "level": "expert",
+      "aliases": [
+        "coupled",
+        "processor model"
       ]
     }
   ]

@@ -79,7 +79,7 @@ test('retention lens distinguishes terminal evidence and source-linked statement
 
 test('compare mode deeplink opens trusted version picker without staging anything', async ({page}) => {
   await page.goto('/lens/po_a2?mode=explore');
-  await page.locator('#lens-modes a').filter({hasText: 'Compare versions'}).click();
+  await page.locator('#lens-modes a').filter({hasText: 'Compare source versions'}).click();
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(page.locator('#source-comparison')).toBeVisible();
   await expect(page.locator('#compare-form')).toBeVisible();
@@ -88,18 +88,20 @@ test('compare mode deeplink opens trusted version picker without staging anythin
 test('keyboard decisions and drafts reset across study navigation and reload', async ({page}) => {
   await page.goto('/lens/po_a2?mode=explore');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  const decision = page.getByRole('button', {name: /Excludes valid input/});
+  const decision = page.getByRole('button', {name: /Leaves out a required input/});
   await decision.focus();
   await expect(decision).toBeFocused();
   await expect(decision).toHaveCSS('outline-style', 'solid');
   await decision.press('Enter');
   await expect(decision).toHaveAttribute('aria-pressed', 'true');
-  const note = page.getByRole('textbox', {name: 'Your explanation'});
+  await page.locator('#lens-review-notes > summary').click();
+  const note = page.locator('#lens-review-form textarea');
   await note.fill('Check the exact-fit boundary');
   await page.locator('#lens-study-picker a[href="/lens/po_exposure_retain?mode=explore"]').click();
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(note).toHaveValue('');
   await expect(page.locator('.lens-decisions [aria-pressed=true]')).toHaveCount(0);
+  await page.locator('#lens-review-notes > summary').click();
   await note.fill('Temporary retention note');
   await page.reload();
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
@@ -109,12 +111,33 @@ test('keyboard decisions and drafts reset across study navigation and reload', a
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(page.locator('#claim-navigation a[href^="/lens/"]')).toHaveCount(0);
   await expect(page.locator('#decision-docket')).toContainText('Mark reviewed');
-  await page.getByRole('navigation', {name: 'Main navigation'}).getByRole('link', {name: 'Practice a review'}).click();
+  await page.locator('#reference-nav > summary').click();
+  await page.locator('#reference-nav').getByRole('link', {name: 'Practice a review'}).click();
+  await expect(page).toHaveURL(/\/lens\/po_a2\?mode=explore$/);
+  await expect(page.locator('#lens-policy-verdict')).toBeVisible();
+  await page.locator('#lens-exercise-modes a').filter({hasText: 'Review first'}).click();
   await expect(page).toHaveURL(/\/lens\/po_a2$/);
   await expect(page.locator('#lens-demo-scope')).toContainText('Two reviews to practice');
   await page.locator('#lens-demo-scope a[href="/lens/po_exposure_retain"]').click();
   await expect(page).toHaveURL(/\/lens\/po_exposure_retain$/);
   await expect(page.locator('#lens-feedback-withheld')).toBeVisible();
+});
+
+test('Review first permits empty notes and exposes an explicit worked-explanation path', async ({page}) => {
+  await page.goto('/lens/po_a2');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('#lens-review-notes')).toHaveJSProperty('open', false);
+  await expect(page.locator('#lens-confirm')).toBeDisabled();
+  await page.locator('#lens-decision-concern').click();
+  await page.locator('#lens-confirm').click();
+  await expect(page.locator('#lens-initial-answer')).toContainText('possible guarantee loss');
+  await expect(page.locator('#lens-policy-verdict')).toBeVisible();
+  await page.locator('#lens-try-again').click();
+  await expect(page.locator('#lens-policy-verdict')).toHaveCount(0);
+  await page.locator('#lens-see-explanation').click();
+  await expect(page).toHaveURL(/mode=explore$/);
+  await expect(page.locator('#lens-policy-verdict')).toBeVisible();
+  await expect(page.locator('#lens-initial-answer')).toHaveCount(0);
 });
 
 async function expectReadable(locator) {

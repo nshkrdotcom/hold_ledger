@@ -1,0 +1,225 @@
+/* Learning pages use the shared account view and the existing source readers. */
+#edu-overview.learning-home {
+  grid-template-columns: minmax(0, 1fr) minmax(330px, .95fr);
+  align-items: start;
+  gap: clamp(1.5rem, 3vw, 3rem);
+  padding: clamp(1.6rem, 3.5vw, 3rem);
+}
+#edu-overview.learning-home .edu-home-hero-content {padding-top: .7rem; min-width: 0}
+#edu-overview.learning-home h1 {font-size: clamp(2.2rem, 3.5vw, 3.5rem); max-width: 17ch}
+#edu-home-example.learning-home-example {
+  min-width: 0;
+  border: 1px solid #b8d0d1;
+  border-radius: 13px;
+  background: #fff;
+  color: #26374b;
+  padding: 1.4rem;
+  box-shadow: 0 12px 25px #091e2b1c;
+}
+#edu-home-example .edu-eyebrow {color: #426d71; margin-bottom: .45rem}
+#edu-home-example .learning-example-heading {display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem .8rem; margin-bottom: .65rem}
+#edu-home-example .learning-step-count {font-size: .72rem; color: #637584}
+#edu-home-example h2 {color: #26374b; font-size: 1.25rem; margin: 0 0 .65rem}
+#edu-home-example .learning-home-narration p {color: #526276; font-size: .83rem; line-height: 1.65; margin: 0 0 1.2rem}
+#edu-home-example .capacity-view {border-top: 1px solid #dfe8e9; padding-top: 1rem}
+#edu-home-example .capacity-title {color: #536378; font-size: .78rem}
+#edu-home-example .capacity-view h3 {color: #26374b; font-size: .8rem; margin-bottom: .5rem}
+#edu-home-example .capacity-numbers {margin-bottom: .7rem}
+#edu-home-example .capacity-numbers dd {font-size: 1.45rem}
+#edu-home-example .capacity-limit,#edu-home-example .capacity-footnote,#edu-home-example .capacity-empty {color: #596779; font-size: .74rem; margin: .55rem 0 0}
+#edu-home-example .learning-home-result {display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .65rem; margin-top: 1rem; padding: .75rem; background: #eff5f3; border-radius: 7px}
+#edu-home-example .learning-home-result span {font-size: .73rem; color: #536378}
+#edu-home-example .learning-home-result strong {font-size: .83rem; color: #2f6158}
+#edu-home-example .learning-home-result code {font-size: .7rem}
+#edu-home-example .learning-home-actions {display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 1rem 0 .7rem}
+#edu-home-example .edu-primary-button {background: #256c68; border-color: #256c68; color: white; font-size: .82rem; width: 100%; gap: .6rem}
+#edu-home-example .edu-primary-button:hover {background: #195852}
+#edu-home-example .learning-text-button {color: #3c6b70; border: 0; background: transparent; min-height: 40px; padding: .4rem 0; font-size: .78rem}
+#edu-home-example .learning-home-scope {font-size: .72rem; color: #596779; margin: 0 0 .7rem}
+#edu-home-example .learning-continuation {font-size: .78rem; color: #285d65; display: inline-block}
+
+.edu-root .learning-page {min-width: 0}
+.edu-root .learning-page p,.edu-root .learning-story p {overflow-wrap: anywhere}
+.edu-root .learning-inline-actions {display: flex; flex-wrap: wrap; align-items: center; gap: .7rem 1.2rem}
+.edu-root .learning-inline-actions a {font-size: .84rem; font-weight: 650}
+.edu-root .learning-unavailable {min-width: 0; padding: 1.6rem; border: 1px solid #d5c5a9; border-radius: 11px; background: #fffbf3; color: #60491f}
+.edu-root .learning-unavailable h2 {color: #60491f; font-size: 1.35rem; margin: 0 0 .7rem}
+.edu-root .learning-unavailable p {color: #6d6049; font-size: .9rem}
+.edu-root .learning-unavailable button {min-height: 44px; padding: .55rem .85rem}
+.edu-root .learning-scope-note {font-size: .79rem; line-height: 1.65; color: #5e6c7d; margin: 1rem 0}
+.edu-root .learning-source-disclosure {margin: 1rem 0 0; min-width: 0; border-top: 1px solid #dce4e8; padding-top: .9rem}
+.edu-root .learning-source-disclosure > summary {cursor: pointer; color: #3a686b; font-size: .83rem; font-weight: 650; line-height: 1.55; padding: .2rem 0}
+.edu-root .learning-source-disclosure[open] > summary {margin-bottom: 1rem}
+.edu-root .learning-source-disclosure > p,.edu-root .learning-source-disclosure > ul {font-size: .82rem; margin: .8rem 0}
+.edu-root .learning-source-disclosure ul {list-style: disc; padding-left: 1.2rem}
+.edu-root .learning-source-disclosure li {margin: .5rem 0; overflow-wrap: anywhere}
+.edu-root .learning-value-grid {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; min-width: 0}
+.edu-root .learning-value-grid > * {min-width: 0}
+.edu-root .learning-value-grid h3,.edu-root .learning-value-grid h4 {font-size: .81rem; margin: 0 0 .5rem; letter-spacing: 0}
+.edu-root .learning-value-grid pre {margin: 0; min-width: 0; font-size: .77rem}
+
+#edu-story.learning-story {background: #fff; border: 1px solid #d5e1e4; border-radius: 14px; padding: clamp(1.2rem, 2.5vw, 2.2rem); min-width: 0}
+#edu-story .learning-story-top {display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: 1rem}
+#edu-story .learning-story-top .edu-eyebrow {margin: 0}
+#edu-story .learning-story-top > span {font-size: .76rem; color: #637584}
+#edu-story .learning-story-steps {display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .5rem; margin: 0 0 1.6rem}
+#edu-story .learning-story-steps button {display: flex; justify-content: flex-start; gap: .55rem; padding: .7rem .8rem; min-height: 50px; border: 1px solid #d6e0e4; border-radius: 8px; font-size: .83rem; color: #536779; background: #f9fbfc; line-height: 1.4; text-align: left}
+#edu-story .learning-story-steps button.active {background: #eaf4f0; border-color: #6f9d90; color: #245e54; font-weight: 700}
+#edu-story .learning-story-steps button:hover {border-color: #72958d; background: #f0f6f3}
+#edu-story .learning-moment-number {display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; flex: 0 0 1.6rem; border-radius: 50%; background: #e5edef; font-size: .72rem; font-weight: 700}
+#edu-story .active .learning-moment-number {background: #2e6d61; color: #fff}
+#edu-story .learning-story-event {display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; padding-bottom: 1.25rem}
+#edu-story .learning-story-event > div {min-width: 0}
+#edu-story .learning-story-event h2 {font-size: clamp(1.4rem, 2.2vw, 1.9rem); margin: 0 0 .7rem}
+#edu-story .learning-story-event p:not(.edu-eyebrow) {font-size: .93rem; max-width: 76ch; margin: 0}
+#edu-story .learning-event-term {padding: .7rem .85rem; background: #f3f6f8; border: 1px solid #e0e6e9; border-radius: 8px; flex: 0 1 290px}
+#edu-story .learning-event-term span {display: block; color: #647580; font-size: .72rem; margin-bottom: .3rem}
+#edu-story .learning-event-term code {font-size: .74rem; background: transparent; padding: 0}
+#edu-story .learning-story-states {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem}
+#edu-story .learning-story-states .capacity-view {padding: 1.2rem; border: 1px solid #d9e3e7; border-radius: 10px; background: #fbfcfd}
+#edu-story .learning-story-states #edu-story-after {border-color: #b9d1c9; background: #f9fcfa}
+#edu-story .learning-story-initial {grid-template-columns: minmax(0, 1fr)}
+#edu-story .learning-story-initial .capacity-dimensions {max-width: 760px}
+#edu-story .learning-story-result {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 1rem 1.2rem; margin-top: 1rem; border-radius: 9px; background: #eef5f3}
+#edu-story .learning-story-result > div {min-width: 0}
+#edu-story .learning-story-result span {display: block; font-size: .73rem; color: #526f68; margin-bottom: .3rem}
+#edu-story .learning-story-result strong {display: inline-block; color: #245b50; font-size: .94rem; margin-right: .5rem}
+#edu-story .learning-story-result p {margin: .15rem 0 0; color: #365f55; font-size: .86rem}
+#edu-story .learning-story-result code {font-size: .73rem; background: #dfece6; color: #315b50}
+#edu-story .learning-story-controls {display: flex; justify-content: space-between; flex-wrap: wrap; gap: .7rem; padding: 1.2rem 0; border-bottom: 1px solid #dfe7e9}
+#edu-story .learning-story-controls button {min-height: 46px; font-size: .82rem; padding: .65rem 1rem; border-radius: 8px}
+#edu-story .learning-story-bridge {display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1.35rem 0}
+#edu-story .learning-story-bridge h3 {font-size: 1rem; margin: 0 0 .35rem}
+#edu-story .learning-story-bridge p {font-size: .84rem; margin: 0; max-width: 66ch}
+#edu-story .learning-story-bridge button {min-height: 46px; flex-shrink: 0; color: #285f5c; background: #f1f7f4; border-color: #b1ccc2; font-size: .82rem; font-weight: 650; padding: .7rem .9rem; border-radius: 8px}
+#edu-story .learning-story-reading > a {font-size: .85rem; font-weight: 650}
+#edu-story .learning-story-reading .edu-micro-note {margin-top: .65rem; max-width: 85ch}
+#edu-story > .learning-scope-note {margin-bottom: 0}
+
+.edu-root .learning-map-caption {padding: 1rem 1.2rem; border-left: 3px solid #72958d; background: #eff4f2; font-size: .86rem; border-radius: 0 8px 8px 0; margin: 0 0 1.5rem}
+.edu-root .learning-map-caption strong {display: block; color: #355c55; margin-bottom: .25rem}
+.edu-root .learning-map {list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem}
+.edu-root .learning-map > li {display: flex; flex-direction: column; min-width: 0; padding: 1.5rem; border: 1px solid #d8e2e6; border-radius: 11px; background: #fff}
+.edu-root .learning-map-number {color: #6b8a88; font-size: .75rem; font-weight: 750; margin-bottom: 1rem; letter-spacing: .06em}
+.edu-root .learning-map h2 {font-size: 1.3rem; margin: 0 0 .85rem}
+.edu-root .learning-map p {font-size: .88rem; margin: 0 0 1rem; flex: 1}
+.edu-root .learning-map code,.edu-root .learning-map-fact {font-size: .72rem; color: #60717f; margin-bottom: 1.05rem}
+.edu-root .learning-map > li > a {font-size: .82rem; font-weight: 650}
+.edu-root .learning-context-note {margin: 1.5rem 0; border: 1px solid #d7e1e7; border-radius: 10px; padding: 1.5rem; background: #f3f7fa}
+.edu-root .learning-context-note h2 {font-size: 1.2rem; margin: 0 0 .6rem}
+.edu-root .learning-context-note p {font-size: .89rem; max-width: 96ch; margin: 0 0 .9rem}
+.edu-root .learning-context-note > a {font-size: .84rem; font-weight: 650}
+.edu-root .learning-reading-cards {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; margin: 1.5rem 0}
+.edu-root .learning-reading-cards > a {padding: 1.2rem; border: 1px solid #d2dfe1; border-radius: 9px; background: white; min-width: 0; text-decoration: none}
+.edu-root .learning-reading-cards > a:hover {border-color: #799f95; background: #f5faf7}
+.edu-root .learning-reading-cards span {display: block; color: #687d86; font-size: .73rem; margin-bottom: .5rem}
+.edu-root .learning-reading-cards strong {display: block; font-size: .93rem; line-height: 1.55; font-weight: 650}
+
+.edu-root .learning-example-layout {display: grid; grid-template-columns: minmax(200px, .65fr) minmax(0, 2fr); gap: 1.4rem; align-items: start}
+.edu-root .learning-example-picker {display: grid; gap: .4rem; min-width: 0}
+.edu-root .learning-example-picker button {display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); gap: .5rem; align-items: start; text-align: left; min-height: 52px; padding: .8rem; color: #4c6172; background: #fff; border: 1px solid #dbe2e7; border-radius: 8px; line-height: 1.45}
+.edu-root .learning-example-picker button > span {font-size: .73rem; font-weight: 700; color: #67828d; padding-top: .1rem}
+.edu-root .learning-example-picker button > strong {font-size: .83rem; font-weight: 600; overflow-wrap: anywhere}
+.edu-root .learning-example-picker button[aria-pressed=true] {background: #edf6f1; border-color: #7fa69a; color: #285e50}
+.edu-root .learning-example-picker button[aria-pressed=true] > span {color: #285e50}
+.edu-root .learning-example-detail {min-width: 0; border: 1px solid #d7e1e5; border-radius: 12px; background: white; padding: clamp(1.25rem, 2.5vw, 2rem)}
+.edu-root .learning-example-detail h2 {font-size: 1.65rem; margin: 0 0 .75rem}
+.edu-root .learning-example-detail > header > p:last-child {font-size: .92rem; margin: 0 0 1.4rem}
+.edu-root .learning-example-contrast {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 0 0 1.3rem}
+.edu-root .learning-example-contrast > div {background: #eff6f2; border: 1px solid #d7e7dd; border-radius: 8px; padding: 1rem; min-width: 0}
+.edu-root .learning-example-contrast > div:last-child {background: #fff8ee; border-color: #ebdcc5}
+.edu-root .learning-example-contrast dt {font-size: .77rem; font-weight: 700; color: #405f55; margin-bottom: .5rem}
+.edu-root .learning-example-contrast > div:last-child dt {color: #7b5e2d}
+.edu-root .learning-example-contrast dd {font-size: .86rem; line-height: 1.65; margin: 0; color: #4e626c; overflow-wrap: anywhere}
+.edu-root .learning-example-witness {border-top: 1px solid #e0e7e9; padding-top: 1.2rem}
+.edu-root .learning-example-witness h3 {font-size: 1rem; margin-bottom: .9rem}
+.edu-root .learning-example-witness > p {font-size: .88rem; margin: 1rem 0}
+.edu-root .learning-example-target {display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .9rem; padding: 1rem 1.1rem; border: 1px solid #cfdddf; border-radius: 8px; background: #f5f9fa; margin: 1.2rem 0}
+.edu-root .learning-example-target span {font-size: .73rem; color: #647b85}
+.edu-root .learning-example-target h3 {font-size: .97rem; margin: .3rem 0}
+.edu-root .learning-example-target a {font-size: .83rem; font-weight: 700}
+.edu-root .learning-patch {padding-top: .4rem; min-width: 0}
+.edu-root .learning-patch h3 {font-size: 1rem; margin-bottom: .6rem}
+.edu-root .learning-patch pre {max-height: 26rem; overflow: auto; font-size: .76rem; line-height: 1.8; margin: .6rem 0 1rem; scrollbar-gutter: stable}
+
+.edu-root .learning-translation-grid {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: start}
+.edu-root .learning-translation-panel {min-width: 0; padding: 1.4rem; border: 1px solid #d6e0e4; border-radius: 11px; background: white; overflow-wrap: anywhere}
+.edu-root .learning-translation-panel > header {position: relative; padding-top: .25rem; padding-right: 2.2rem; min-height: 7rem}
+.edu-root .learning-panel-number {position: absolute; top: 0; right: 0; display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border: 1px solid #d0e0dd; border-radius: 50%; color: #4c8277; font-size: .67rem; font-weight: 700}
+.edu-root .learning-translation-panel .edu-eyebrow {font-size: .63rem; letter-spacing: .065em; margin: 0 0 .65rem}
+.edu-root .learning-translation-panel h2 {font-size: 1.3rem; margin: 0 0 1rem}
+.edu-root .learning-translation-panel h3 {font-size: .85rem; margin: 1rem 0 .55rem}
+.edu-root .learning-translation-panel p {font-size: .84rem; line-height: 1.7; margin: 0 0 .9rem}
+.edu-root .learning-translation-panel pre {font-size: .73rem; line-height: 1.85; padding: 1rem; max-height: 26rem; overflow: auto; scrollbar-gutter: stable; margin: .6rem 0 1rem}
+.edu-root .learning-translation-panel .edu-source-note {font-size: .72rem}
+.edu-root .learning-translation-panel > a,.edu-root .learning-translation-panel details a {font-size: .78rem; font-weight: 650}
+.edu-root .learning-translation-panel .learning-source-status {font-size: .74rem; padding: .65rem .75rem; background: #f0f4f7; border-radius: 6px; margin: .9rem 0}
+.edu-root .learning-source-empty {border: 1px dashed #b9c6cd; border-radius: 8px; padding: 1rem; background: #f7fafb; margin: 1.1rem 0}
+.edu-root .learning-source-empty h3 {font-size: 1rem; color: #465e6d; margin: 0 0 .7rem}
+.edu-root .learning-source-empty p {font-size: .81rem; color: #627580}
+.edu-root .learning-source-empty p:last-child {margin-bottom: 0}
+.edu-root .learning-evidence-summary {display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem 2rem; margin: 1.4rem 0; padding: 1.5rem; background: #edf4f1; border: 1px solid #c9ddd4; border-radius: 11px}
+.edu-root .learning-evidence-summary > div:first-child {flex: 1 1 580px; min-width: 0}
+.edu-root .learning-evidence-summary h2 {font-size: 1.25rem; margin: 0 0 .8rem}
+.edu-root .learning-evidence-summary p {font-size: .86rem; margin: 0 0 .65rem}
+.edu-root .learning-evidence-summary > .learning-inline-actions {flex: 0 1 260px}
+
+#edu-glossary-results .learning-term-level {width: fit-content; padding: .15rem .55rem; margin-bottom: .8rem; border-radius: 20px; background: #f0f4f5; color: #61747d; font-size: .66rem; font-weight: 600; letter-spacing: .025em}
+#edu-glossary-results .learning-term-purpose {margin-bottom: .9rem}
+#edu-glossary-results .learning-term-purpose h3,#edu-glossary-results .learning-term-limit h3 {font-size: .76rem; letter-spacing: 0; margin: 0 0 .35rem; color: #48696d}
+#edu-glossary-results .learning-term-purpose p,#edu-glossary-results .learning-term-limit p {font-size: .83rem; line-height: 1.65; margin: 0}
+#edu-glossary-results .learning-term-limit {padding: .8rem 0; margin: .4rem 0 .8rem; border-top: 1px solid #e1e9eb; border-bottom: 1px solid #e1e9eb}
+#edu-glossary-results .learning-term-lookups {padding-left: 1rem; margin: .9rem 0 .2rem; list-style: disc}
+#edu-glossary-results .learning-term-lookups li {font-size: .78rem; line-height: 1.65; margin: .5rem 0}
+
+@media (max-width: 1100px) {
+  #edu-overview.learning-home {grid-template-columns: minmax(0, 1fr) minmax(300px, 1fr); gap: 1.5rem; padding: 1.7rem}
+  #edu-overview.learning-home h1 {font-size: 2.65rem}
+  .edu-root .learning-translation-grid {grid-template-columns: minmax(0, 1fr)}
+  .edu-root .learning-translation-panel > header {min-height: 0}
+  .edu-root .learning-translation-panel pre {font-size: .8rem}
+  #edu-story .capacity-dimensions {grid-template-columns: minmax(0, 1fr); gap: 1rem}
+  #edu-story .learning-story-initial .capacity-dimensions {grid-template-columns: repeat(2, minmax(0, 1fr))}
+  #edu-story .learning-story-bridge {align-items: flex-start; flex-direction: column; gap: .85rem}
+}
+@media (max-width: 800px) {
+  #edu-overview.learning-home {grid-template-columns: minmax(0, 1fr); gap: 1.6rem; padding: 1.6rem}
+  #edu-overview.learning-home .edu-home-hero-content {padding: 0}
+  #edu-overview.learning-home h1 {max-width: 23ch; font-size: clamp(2.2rem, 5.2vw, 3.1rem)}
+  #edu-home-example.learning-home-example {padding: 1.3rem}
+  #edu-story .learning-story-event {flex-direction: column; gap: .9rem}
+  #edu-story .learning-event-term {flex: auto; width: 100%}
+  #edu-story .learning-story-steps {grid-template-columns: repeat(3, minmax(0, 1fr))}
+  .edu-root .learning-map {grid-template-columns: repeat(2, minmax(0, 1fr))}
+  .edu-root .learning-example-layout {grid-template-columns: minmax(0, 1fr)}
+  .edu-root .learning-example-picker {grid-template-columns: repeat(2, minmax(0, 1fr))}
+  .edu-root .learning-example-picker button {min-height: 60px}
+  .edu-root .learning-reading-cards {grid-template-columns: minmax(0, 1fr)}
+}
+@media (max-width: 560px) {
+  #edu-overview.learning-home {padding: 1.25rem; gap: 1.4rem}
+  #edu-overview.learning-home h1 {font-size: 2.25rem}
+  #edu-home-example.learning-home-example {padding: 1rem}
+  #edu-home-example .capacity-dimensions {grid-template-columns: minmax(0, 1fr); gap: 1rem}
+  #edu-home-example .capacity-numbers dd {font-size: 1.7rem}
+  #edu-story.learning-story {padding: 1rem; border-radius: 10px}
+  #edu-story .learning-story-steps {grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem}
+  #edu-story .learning-story-steps button {min-height: 46px; padding: .6rem; font-size: .78rem}
+  #edu-story .learning-story-states,#edu-story .learning-story-result {grid-template-columns: minmax(0, 1fr)}
+  #edu-story .learning-story-initial .capacity-dimensions {grid-template-columns: minmax(0, 1fr)}
+  #edu-story .learning-story-states .capacity-view {padding: 1rem}
+  #edu-story .learning-story-controls {flex-direction: column-reverse; align-items: stretch}
+  #edu-story .learning-story-bridge button {width: 100%; min-width: 0; flex-shrink: 1; line-height: 1.5}
+  .edu-root .learning-value-grid,.edu-root .learning-map,.edu-root .learning-example-contrast {grid-template-columns: minmax(0, 1fr)}
+  .edu-root .learning-map > li {padding: 1.2rem}
+  .edu-root .learning-example-picker button {grid-template-columns: minmax(0, 1fr); gap: .2rem; padding: .7rem}
+  .edu-root .learning-example-picker button > strong {font-size: .76rem}
+  .edu-root .learning-example-detail {padding: 1.15rem}
+  .edu-root .learning-example-detail h2 {font-size: 1.4rem}
+  .edu-root .learning-translation-panel {padding: 1.15rem}
+  .edu-root .learning-translation-panel pre {font-size: .74rem}
+  .edu-root .learning-context-note,.edu-root .learning-evidence-summary {padding: 1.2rem}
+}
+@media (prefers-reduced-motion: reduce) {
+  #edu-home-example button,#edu-story button,.edu-root .learning-reading-cards a {transition: none; transform: none}
+}

@@ -1,7 +1,7 @@
 const {test,expect}=require('@playwright/test');
 const fs=require('node:fs'),path=require('node:path');
 async function open(page){await page.goto('/claims/po_a2');await expect(page).toHaveURL(/trace-/);await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/)}
-async function ask(page,text){await page.locator('#header-question-form input[type=text]').fill(text);await expect(page.locator('#question-sharing')).toHaveText('Shares case + source');await page.locator('#header-question-form').getByRole('button',{name:'Ask Codex',exact:true}).click()}
+async function ask(page,text){await page.locator('#header-question-form input[type=text]').fill(text);await expect(page.locator('#question-sharing')).toHaveText('Shares case + source');await page.locator('#header-question-form').getByRole('button',{name:'Ask an assistant',exact:true}).click()}
 async function send(page){await page.locator('#question-send').click()}
 
 test('controlled completion, compact preview, durable history and earlier-case follow-up',async({page})=>{
@@ -49,14 +49,14 @@ for(const slug of ['po_b2','po_b3'])test(`large proof context can be submitted f
 });
 
 test('blank questions and stale case forms show the rejection cause without dispatch',async({page})=>{
- await open(page);await page.locator('#header-question-form').getByRole('button',{name:'Ask Codex',exact:true}).click();
+ await open(page);await page.locator('#header-question-form').getByRole('button',{name:'Ask an assistant',exact:true}).click();
  await expect(page.locator('#question-panel [role=alert]')).toHaveText('Enter a question before sending.');
  await page.locator('#question-close').click();
  const before=await page.locator('#header-question-form input[type=hidden]').inputValue();
  await page.locator('#header-question-form input[type=text]').fill('Explain the changed case');await page.locator('#review-amount').fill('99');
  await expect(page.locator('#header-question-form input[type=hidden]')).not.toHaveValue(before);
  await page.locator('#header-question-form input[type=hidden]').evaluate((e,value)=>{e.value=value},before);
- await page.locator('#header-question-form').getByRole('button',{name:'Ask Codex',exact:true}).click();
+ await page.locator('#header-question-form').getByRole('button',{name:'Ask an assistant',exact:true}).click();
  await expect(page.locator('#question-panel [role=alert]')).toContainText('case changed');
  await expect(page.locator('#question-answer')).toHaveCount(0);
  await page.locator('#question-close').click();await page.locator('#question-history').click();

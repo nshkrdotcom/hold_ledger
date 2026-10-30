@@ -7,10 +7,14 @@ const path = require('node:path');
 const app = path.resolve(__dirname, '../..');
 const source = fs.readFileSync(path.join(app, 'assets/js/app.js'), 'utf8');
 const glossary = fs.readFileSync(path.join(app, 'priv/education_glossary.json'), 'utf8');
+const registryPath = path.join(app, 'priv/education_help.json');
+const registry = fs.readFileSync(registryPath, 'utf8');
 const start = source.indexOf('const eduTerms =');
 const end = source.indexOf('const csrfToken =');
 if (start < 0 || end <= start) throw new Error('Cannot locate the application help code');
-const helpCode = `const educationGlossary = ${glossary};\n${source.slice(start, end)}`;
+const helpCode = `const educationGlossary = ${glossary};\nconst educationHelp = ${registry};\n${source.slice(start, end)}`;
+
+test.use({hasTouch: true});
 
 test.beforeEach(async ({page}) => {
   await page.setContent(`<!doctype html><html lang="en"><head><style>
@@ -25,24 +29,123 @@ test.beforeEach(async ({page}) => {
       <span id="existing">Existing explanation</span>
       <table><tr><th tabindex="0" id="unmapped">Internal mystery</th></tr></table>
       <button id="ordinary" data-edu-hint="Runs this example.">Run the case</button>
+      <button id="append-preview" phx-click="apply_preview">Save to timeline</button>
+      <input id="question-field" aria-label="Draft question" />
     </section>
     <aside id="edu-help-drawer" hidden role="dialog" aria-modal="false">
       <button data-edu-help-close>Close page guide</button><h2 id="edu-help-title"></h2>
       <p id="edu-help-description"></p><p id="edu-help-limit"></p>
+      <section data-control-guide><h3>Help with controls</h3><div id="edu-control-help"></div></section>
     </aside>
     <div id="edu-tooltip" role="tooltip" hidden><strong data-tooltip-title></strong><p data-tooltip-short></p></div>
     <aside id="edu-term-dialog" role="dialog" aria-modal="false" aria-labelledby="edu-term-title" hidden tabindex="-1">
       <button data-edu-term-close>Close term guide</button><h2 id="edu-term-title"></h2>
       <p data-term-meaning></p><p data-term-detail></p><p data-term-example></p>
+      <section data-term-why-section><p data-term-why></p></section>
+      <section data-term-limit-section><p data-term-limit></p></section>
+      <div data-term-lookups></div>
       <code data-term-source></code><a data-term-link>Read glossary</a>
       <button data-copy-explanation>Copy explanation</button><p data-copy-status role="status"></p>
     </aside><p id="copy-status" role="status"></p>
   </body></html>`);
   await page.evaluate(() => {
     window.caseRuns = 0;
+    window.timelineSaves = 0;
     document.getElementById('ordinary').addEventListener('click', () => window.caseRuns++);
+    document.getElementById('append-preview').addEventListener('click', () => window.timelineSaves++);
   });
   await page.addScriptTag({content: helpCode});
+});
+
+test('touch users can explain a control without running it', async ({page}) => {
+  await page.locator('#edu-help-toggle').tap();
+  const help = page.locator('[data-help-control="lab.save_to_timeline"]');
+  await expect(help).toBeVisible();
+  await help.tap();
+  await expect(page.locator('#edu-term-dialog')).toBeVisible();
+  await expect(page.locator('#edu-term-title')).toHaveText('Save to timeline');
+  await expect(page.locator('[data-term-meaning]')).toContainText('review session');
+  expect(await page.evaluate(() => window.timelineSaves)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#append-preview')).toBeFocused();
+  await page.locator('#append-preview').tap();
+  expect(await page.evaluate(() => window.timelineSaves)).toBe(1);
+});
+
+test('registry help follows a patched control and discards detached context', async ({page}) => {
+  await page.locator('#append-preview').focus();
+  await expect(page.locator('#edu-tooltip [data-tooltip-short]')).toContainText('review session');
+  await page.locator('#append-preview').evaluate(node => node.replaceWith(node.cloneNode(true)));
+  await expect(page.locator('#edu-tooltip')).toBeHidden();
+  await page.locator('#edu-help-toggle').click();
+  await page.locator('[data-help-control="lab.save_to_timeline"]').click();
+  await expect(page.locator('#edu-term-dialog')).toBeVisible();
+  await page.locator('#append-preview').evaluate(node => node.remove());
+  await expect(page.locator('#edu-term-dialog')).toBeHidden();
+});
+
+test('question-mark shortcut opens help only outside text entry', async ({page}) => {
+  await page.locator('#question-field').focus();
+  await page.keyboard.type('?');
+  await expect(page.locator('#edu-help-drawer')).toBeHidden();
+  await expect(page.locator('#question-field')).toHaveValue('?');
+  await page.locator('#append-preview').focus();
+  await page.keyboard.press('?');
+  await expect(page.locator('#edu-help-drawer')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#append-preview')).toBeFocused();
+});
+
+test('changing an action replaces its registered explanation', async ({page}) => {
+  const action = page.locator('#append-preview');
+  await action.focus();
+  await expect(page.locator('#edu-tooltip [data-tooltip-short]')).toContainText('review session');
+  await action.evaluate(node => node.setAttribute('phx-click', 'reset_experiment'));
+  await expect(page.locator('#edu-tooltip')).toBeHidden();
+  await page.locator('#question-field').focus();
+  await action.focus();
+  await expect(page.locator('#edu-tooltip [data-tooltip-short]')).toContainText('Discard temporary changes');
+});
+
+test('closing help for a disabled control returns focus to Help', async ({page}) => {
+  await page.locator('#append-preview').evaluate(node => {node.disabled = true;});
+  await page.locator('#edu-help-toggle').click();
+  await page.locator('[data-help-control="lab.save_to_timeline"]').click();
+  await expect(page.locator('#edu-term-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#edu-term-dialog')).toBeHidden();
+  await expect(page.locator('#edu-help-toggle')).toBeFocused();
+});
+
+test('proposed result, hold status and effect type have distinct help', async ({page}) => {
+  await page.locator('#review-document').evaluate(node => node.insertAdjacentHTML('beforeend', `
+    <form id="candidate-form">
+      <select id="result-field" name="output[result]"><option>admitted</option></select>
+      <select id="status-field" name="output[entries][0][status]"><option>reserved</option></select>
+      <select id="effect-field" name="output[effects][0][type]"><option>authorize</option></select>
+    </form>`));
+  await page.locator('#result-field').focus();
+  await expect(page.locator('#edu-tooltip [data-tooltip-title]')).toHaveText('Proposed result');
+  await page.locator('#status-field').focus();
+  await expect(page.locator('#edu-tooltip [data-tooltip-title]')).toHaveText('Change a proposed hold state');
+  await page.locator('#effect-field').focus();
+  await expect(page.locator('#edu-tooltip [data-tooltip-title]')).toHaveText('Proposed outside work');
+});
+
+test('Guides retains the current-page marker outside primary navigation', async ({page}) => {
+  await page.evaluate(() => document.body.insertAdjacentHTML('afterbegin', `
+    <header id="global-header">
+      <nav data-global-nav><a href="/" data-nav="/">Explore</a></nav>
+      <details id="reference-nav"><summary>Guides</summary>
+        <a href="/system" data-nav="/system">How the system works</a>
+      </details>
+    </header>`));
+  const markup = (await page.content()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '');
+  await page.route('http://review.test/system', route => route.fulfill({body: markup, contentType: 'text/html'}));
+  await page.goto('http://review.test/system');
+  await page.addScriptTag({content: helpCode});
+  await expect(page.locator('#reference-nav [data-nav="/system"]')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-global-nav] [data-nav="/"]')).not.toHaveAttribute('aria-current', 'page');
 });
 
 test('authored hover help leaves ordinary controls usable and ignores unmapped text', async ({page}) => {

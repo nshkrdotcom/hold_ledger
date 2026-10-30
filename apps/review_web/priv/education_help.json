@@ -1,0 +1,610 @@
+{
+  "schema": 1,
+  "pages": [
+    {
+      "path": "/",
+      "title": "Where should I start?",
+      "detail": "Follow the payment example, inspect the Elixir-to-Lean connection, or open Case Lab. Choose a reading path that fits what you want to learn.",
+      "limit": "Catalog counts describe available claims, not a fresh proof run."
+    },
+    {
+      "path": "/start",
+      "title": "Why does a timeout keep the hold?",
+      "detail": "Start with the empty account and follow each event. Compare the before and after state, then open the selected moment in Case Lab.",
+      "limit": "This runs the local ledger model. It does not contact a payment processor."
+    },
+    {
+      "path": "/system",
+      "title": "Which part of the system does this work?",
+      "detail": "Choose a component or hold state to see its role and source. Follow a request from the ledger to the runtime and modeled processor.",
+      "limit": "Real processor behavior and storage durability need separate evidence."
+    },
+    {
+      "path": "/guarantees",
+      "title": "What behavior does the policy require?",
+      "detail": "Choose a payment requirement, compare the expected behavior with a possible mistake, then read its related claims.",
+      "limit": "The complete claim determines which inputs and outputs it covers."
+    },
+    {
+      "path": "/atlas",
+      "title": "Which claim covers the behavior I care about?",
+      "detail": "Search for an event, example or claim name. Each profile gives a concrete situation, the required behavior and source links.",
+      "limit": "Reading families organize the catalog; they are not proof dependencies or checker results."
+    },
+    {
+      "path": "/proofs",
+      "title": "What does a claim promise?",
+      "detail": "Follow exact fit from the payment requirement to requires and expects. Read which inputs the claim covers and which output it demands.",
+      "limit": "Reading the statement is separate from checking a proof of it."
+    },
+    {
+      "path": "/assurance",
+      "title": "What does the evidence establish?",
+      "detail": "Check what produced a result, which source it covers and what it assumes. Use these distinctions when reading reports in Case Lab.",
+      "limit": "A proof about a model does not establish real storage durability or processor compliance."
+    },
+    {
+      "path": "/repository",
+      "title": "Where is the source?",
+      "detail": "Choose the question you are investigating and follow its file or claim link. The directory also includes the named mutation and policy examples.",
+      "limit": "An example description is not a freshly executed check."
+    },
+    {
+      "path": "/glossary",
+      "title": "What does this word mean here?",
+      "detail": "Search a word or alias, read its repository example and follow the related guide. These entries also appear in contextual help.",
+      "limit": "Read the original statement when exact conditions matter."
+    },
+    {
+      "path": "/how-it-fits",
+      "title": "How do these pieces fit together?",
+      "detail": "Follow the reading map from policy through implementation, claims and proof evidence. Open the stage that answers your question.",
+      "limit": "This is a reading order, not a logical dependency graph."
+    },
+    {
+      "path": "/examples",
+      "title": "Which claim is meant to catch this mistake?",
+      "detail": "Choose a named source mutation. Read its changed behavior, concrete input and target claim, then inspect the linked source.",
+      "limit": "This page explains committed examples; it does not run a mutation campaign."
+    },
+    {
+      "path": "/translation",
+      "title": "What does Lynx contribute?",
+      "detail": "Read the Elixir source and law, available generated Lean, and the checked-in theorem. Each pane identifies where its text came from.",
+      "limit": "Generated source can be unavailable. Checked-in proof text alone is not current verification evidence."
+    },
+    {
+      "path": "/lens",
+      "title": "Does this changed claim still cover the requirement?",
+      "detail": "Read the policy and proposed change, choose your conclusion, then reveal the worked explanation. Optional notes help connect your reasoning.",
+      "limit": "These are two practice studies. Proposed claim changes are not checked by Lean here."
+    },
+    {
+      "path": "/claims",
+      "title": "What does this case show?",
+      "detail": "Try an event, inspect the code result and test a proposed output against the claim. Open Inspector for the condition tree and proof source.",
+      "limit": "A case check covers the selected input and output, not every possible execution."
+    },
+    {
+      "path": "/lab",
+      "title": "What does this case show?",
+      "detail": "Try an event, inspect the code result and test a proposed output against the claim. Open Inspector for the condition tree and proof source.",
+      "limit": "A case check covers the selected input and output, not every possible execution."
+    }
+  ],
+  "controls": {
+    "lab.claim": {
+      "term": "Choose a claim",
+      "selector": "#law-picker select",
+      "short": "Open a claim and a prepared case for it.",
+      "detail": "The claim determines which input conditions and output promise you are inspecting. Read its title before trying an event.",
+      "limit": "Changing claims opens a different case. Save temporary events first if you want to keep them.",
+      "link": "/atlas"
+    },
+    "lab.compare_sources": {
+      "term": "Compare source versions",
+      "selector": "[phx-click=\"show_sources\"], .case-mode-nav a",
+      "short": "Choose two saved source versions to compare.",
+      "detail": "Select a staged original and proposal, then run the same case against both. The opening example change is an illustration.",
+      "limit": "A difference is a case to review. Matching results for the tried cases do not prove the versions equivalent.",
+      "link": "/assurance"
+    },
+    "lab.snapshots": {
+      "term": "Source snapshots",
+      "selector": "#compare-form select",
+      "short": "Select the original and proposed source versions.",
+      "detail": "These are trusted local snapshots prepared outside the browser. The app checks that their files still match the recorded version.",
+      "limit": "Selecting a snapshot does not run its code or verify its proofs.",
+      "link": "/assurance"
+    },
+    "lab.run_versions": {
+      "term": "Run on both versions",
+      "selector": "[phx-click=\"replay\"], #compare-form button",
+      "short": "Evaluate this case with both selected source versions.",
+      "detail": "Each version runs separately. Compare which inputs its claim covers, which outputs it allows, and what its code returns.",
+      "limit": "This comparison covers the tried case, not every possible execution.",
+      "link": "/assurance"
+    },
+    "lab.open_events": {
+      "term": "Run another event",
+      "selector": "[phx-click=\"open_tools\"][phx-value-tool=\"events\"]",
+      "short": "Apply another event to the selected state.",
+      "detail": "Try dispatch, timeout, retry, cancellation or a processor result. The event stays temporary until you save it to the timeline.",
+      "limit": "",
+      "link": "/start"
+    },
+    "lab.save_to_timeline": {
+      "term": "Save to timeline",
+      "selector": "[phx-click=\"apply_preview\"]",
+      "short": "Keep the events you have tried in this review session.",
+      "detail": "Save when you want to return to this sequence later. Reset and reload discard events you have not saved.",
+      "limit": "Saving events does not record a review decision or verify a claim.",
+      "link": "/lab"
+    },
+    "lab.reset": {
+      "term": "Reset",
+      "selector": "[phx-click=\"reset_experiment\"]",
+      "short": "Discard temporary changes and return to the saved timeline.",
+      "detail": "Use this to start again from the recorded case. Previously saved steps remain available.",
+      "limit": "",
+      "link": "/lab"
+    },
+    "lab.timeline": {
+      "term": "Case timeline",
+      "selector": "[phx-click=\"select_step\"]",
+      "short": "Inspect the account and event at this point in the history.",
+      "detail": "New events run from the selected step. Moving through the timeline does not erase the other steps or forked paths.",
+      "limit": "",
+      "link": "/start"
+    },
+    "lab.amount": {
+      "term": "Request amount",
+      "selector": "#review-amount, #next-event input[name=\"event[amount]\"]",
+      "short": "Amounts are whole cents: 100 means $1.00.",
+      "detail": "A new request needs enough available amount and a free hold slot. Changing the amount previews a case; save it to keep the event.",
+      "limit": "An input outside the selected claim may still have a policy requirement.",
+      "link": "/atlas/po_a2"
+    },
+    "lab.boundary": {
+      "term": "Try the capacity boundary",
+      "selector": "[phx-click=\"boundary\"]",
+      "short": "Try a request just below, at, or above the available amount.",
+      "detail": "The buttons use the remaining capacity in the selected state. An exact fit must be admitted when its key is new and a slot is free.",
+      "limit": "A larger request can be outside the exact-fit claim. That does not mean the claim proved its rejection.",
+      "link": "/atlas/po_a2"
+    },
+    "lab.propose": {
+      "term": "Edit proposed output",
+      "selector": "[phx-click=\"edit_candidate\"], [phx-click=\"open_tools\"][phx-value-tool=\"draft\"]",
+      "short": "Change the answer you want to test against the claim.",
+      "detail": "Edit the result, held amount, entries or requested effects. The code returned the other output; this one is your proposal.",
+      "limit": "A proposal the claim accepts still needs to be compared with the payment policy.",
+      "link": "/proofs"
+    },
+    "lab.proposed_result": {
+      "term": "Proposed result",
+      "selector": "#alternative-result-select, #candidate-form select[name=\"output[result]\"]",
+      "short": "Choose the result your proposed output should report.",
+      "detail": "Try a different result while keeping the rest of the output visible. The claim check updates for this proposal.",
+      "limit": "This changes a proposed answer, not the implementation.",
+      "link": "/proofs"
+    },
+    "lab.proposed_amount": {
+      "term": "Proposed held amount",
+      "selector": "#alternative-reserved-input",
+      "short": "Change the held-amount counter in the proposed output.",
+      "detail": "The editor keeps your value even if it disagrees with the entries. Use Recalculate totals when you want counters derived from those entries.",
+      "limit": "A changed counter is an illustration; the code did not return it.",
+      "link": "/glossary#term-invariant"
+    },
+    "lab.status": {
+      "term": "Change a proposed hold state",
+      "selector": "[phx-click=\"cycle_status\"], #candidate-form select[name$=\"[status]\"]",
+      "short": "Try another status for this entry in the proposed output.",
+      "detail": "Watch whether the claim accepts the changed status and whether the account remains consistent. Other output fields keep their current values.",
+      "limit": "Changing a local status does not change a real processor authorization.",
+      "link": "/system"
+    },
+    "lab.preset": {
+      "term": "Try a preset output",
+      "selector": "[phx-click=\"hunt\"]",
+      "short": "Check a small set of prepared alternative outputs.",
+      "detail": "This looks for an output worth inspecting against the selected claim. Read the result and conditions after a proposal is found.",
+      "limit": "It does not change the source or search every possible output.",
+      "link": "/examples"
+    },
+    "lab.mutate": {
+      "term": "Change part of a proposed output",
+      "selector": "[phx-click=\"mutate_candidate\"]",
+      "short": "Apply the named change to the proposed output.",
+      "detail": "Remove effects, zero counters or change an identity to examine a specific mistake. Other values remain available for inspection.",
+      "limit": "This is a proposed output, not an executed source mutation.",
+      "link": "/examples"
+    },
+    "lab.restore": {
+      "term": "Reset to code result",
+      "selector": "[phx-click=\"restore_candidate\"]",
+      "short": "Copy the code result into the proposed output again.",
+      "detail": "Use this to undo your output edits while keeping the selected input and timeline.",
+      "limit": "",
+      "link": "/lab"
+    },
+    "lab.recalculate": {
+      "term": "Recalculate totals",
+      "selector": "[phx-click=\"candidate_recalculate\"], [phx-click=\"initial_recalculate\"]",
+      "short": "Set the counters from the holds in the edited state.",
+      "detail": "The editor otherwise keeps the counters you entered, so you can examine inconsistent states deliberately.",
+      "limit": "Recalculating counters alone does not establish that the whole state or proposed behavior is valid.",
+      "link": "/glossary#term-invariant"
+    },
+    "lab.advanced": {
+      "term": "Full state and JSON editor",
+      "selector": "[phx-click=\"show_advanced\"], #candidate-json, #candidate-json-form button",
+      "short": "Edit the full proposed state, result and effects.",
+      "detail": "Use structured fields or JSON when the quick controls cannot express your example. Invalid input clears the previous check.",
+      "limit": "This editor accepts bounded example data; it does not execute pasted code.",
+      "link": "/lab"
+    },
+    "lab.add_entry": {
+      "term": "Add an entry",
+      "selector": "[phx-click=\"candidate_add_entry\"], [phx-click=\"initial_add_entry\"]",
+      "short": "Add a hold record to the state you are editing.",
+      "detail": "Set its request ID, amount and status. Counters remain unchanged until you edit or recalculate them.",
+      "limit": "",
+      "link": "/glossary#term-hold"
+    },
+    "lab.add_effect": {
+      "term": "Add void effect",
+      "selector": "[phx-click=\"candidate_add_effect\"]",
+      "short": "Add a proposed request to cancel an authorization.",
+      "detail": "Choose the key whose authorization the proposed output should ask the processor to void.",
+      "limit": "An effect requests outside work; it does not mean that work has completed.",
+      "link": "/glossary#term-effect"
+    },
+    "lab.clear_effects": {
+      "term": "Clear effects",
+      "selector": "[phx-click=\"candidate_clear_effects\"]",
+      "short": "Remove requested outside work from the proposed output.",
+      "detail": "This helps examine whether the claim requires the correct authorization or void request.",
+      "limit": "The proposed state stays as you edited it.",
+      "link": "/examples?example=M7"
+    },
+    "lab.branch": {
+      "term": "Continue from the proposed output",
+      "selector": "[phx-click=\"branch_candidate\"]",
+      "short": "Create a second timeline path starting from your proposed output.",
+      "detail": "One path keeps the code result. The other uses your proposal as the starting state for later events.",
+      "limit": "The proposal must be a valid state before it can be continued.",
+      "link": "/lab"
+    },
+    "lab.run_paths": {
+      "term": "Run on both paths",
+      "selector": "[phx-click=\"apply_event_pair\"]",
+      "short": "Apply the same next event to both timeline paths.",
+      "detail": "Compare the continuation from the code result with the continuation from your proposed output. Both use the same implementation.",
+      "limit": "These paths are different from comparing two source versions.",
+      "link": "/lab"
+    },
+    "lab.event_fields": {
+      "term": "Next event",
+      "selector": "#next-event input:not([name=\"event[amount]\"]), #next-event select, #next-event button[type=\"submit\"]",
+      "short": "Choose the event and the request it concerns.",
+      "detail": "The request ID identifies the hold. An amount is used for a new request; other events use the fields relevant to that event.",
+      "limit": "Processor events here act on the local model.",
+      "link": "/system"
+    },
+    "lab.starting": {
+      "term": "Edit starting state",
+      "selector": "[phx-click=\"edit_initial\"], #save-starting",
+      "short": "Build a different account state for a new case.",
+      "detail": "Edit its limits, counters and entries, then choose Run from this state. This creates a separate review session.",
+      "limit": "",
+      "link": "/lab"
+    },
+    "lab.conditions": {
+      "term": "Conditions",
+      "selector": "[phx-click=\"inspect\"][phx-value-view=\"clauses\"], #case-conditions-depth > summary",
+      "short": "See why the claim accepts or rejects this case.",
+      "detail": "Inspect the input conditions and required result with their observed values. Expand an expression to read its parts.",
+      "limit": "The values explain the selected case; they are not a proof of every input.",
+      "link": "/proofs"
+    },
+    "lab.proof": {
+      "term": "Proof source",
+      "selector": "[phx-click=\"inspect\"][phx-value-view=\"proof\"], #case-proof-depth > summary",
+      "short": "Read the Lean statement and the proof supplied for it.",
+      "detail": "Start with the theorem header, then open the proof text if you want to follow the argument.",
+      "limit": "Source text is separate from a current verification report.",
+      "link": "/translation"
+    },
+    "lab.assumptions": {
+      "term": "Assumptions",
+      "selector": "[phx-click=\"inspect\"][phx-value-view=\"premises\"]",
+      "short": "Inspect the processor behavior the model relies on.",
+      "detail": "Try a supported assumption change and compare the local ledger with the modeled processor.",
+      "limit": "A modeled assumption is not evidence that a real processor honors it.",
+      "link": "/assurance"
+    },
+    "lab.artifacts": {
+      "term": "Verification files",
+      "selector": "[phx-click=\"inspect\"][phx-value-view=\"artifacts\"], [phx-click=\"refresh_evidence\"]",
+      "short": "Read the generated source and available verification reports.",
+      "detail": "Check the source version, claim scope and status attached to each report before using it as evidence.",
+      "limit": "Missing or stale files cannot establish current acceptance.",
+      "link": "/assurance"
+    },
+    "lab.notes": {
+      "term": "Review notes",
+      "selector": "[phx-click=\"inspect\"][phx-value-view=\"record\"]",
+      "short": "Read the judgments and questions saved for this case.",
+      "detail": "Notes record what a reviewer found. They are separate from the temporary events in an unsaved experiment.",
+      "limit": "A review note does not change a proof result or the editorial status of an explanation.",
+      "link": "/lab"
+    },
+    "lab.review": {
+      "term": "Record a review decision",
+      "selector": "[phx-click=\"review_decision\"]",
+      "short": "Save your judgment about the selected claim and case.",
+      "detail": "Flag a concern, leave an open question or mark the case reviewed. Add context when it helps explain the decision.",
+      "limit": "This does not save temporary events or establish formal acceptance.",
+      "link": "/assurance"
+    },
+    "lab.note_context": {
+      "term": "Add review context",
+      "selector": "[phx-click=\"toggle_note\"], #note-form textarea, #note-form button",
+      "short": "Explain what you noticed in this case.",
+      "detail": "Connect the policy, claim and concrete input or output. Your notes stay separate from assistant questions.",
+      "limit": "",
+      "link": "/proofs"
+    },
+    "lab.evidence_choice": {
+      "term": "Select comparison evidence",
+      "selector": "#evidence-choice select",
+      "short": "Choose the stored finding your review decision concerns.",
+      "detail": "The selected evidence identifies the source versions and case being reviewed. Read its status before recording a conclusion.",
+      "limit": "",
+      "link": "/assurance"
+    },
+    "lab.save_case": {
+      "term": "Save this case for review",
+      "selector": "[phx-click=\"save_challenge\"]",
+      "short": "Keep this input and proposed output as a review case.",
+      "detail": "Save temporary events to the timeline first. The stored case retains its source and selected claim.",
+      "limit": "",
+      "link": "/lab"
+    },
+    "lab.basis": {
+      "term": "Choose an output to inspect",
+      "selector": "[phx-click=\"basis\"]",
+      "short": "Choose which output supplies the values in the condition view.",
+      "detail": "Code returned uses the computed result. Proposed output uses the answer you are testing against the claim.",
+      "limit": "",
+      "link": "/glossary#term-basis"
+    },
+    "lab.binding": {
+      "term": "Choose a binding",
+      "selector": "#binding-selector select, [phx-change=\"binding\"] select",
+      "short": "Inspect one set of values substituted into the claim.",
+      "detail": "Some claims consider several entries or combinations. This selection changes the values shown in the condition tree.",
+      "limit": "One displayed combination does not replace the aggregate case result.",
+      "link": "/glossary#term-binding"
+    },
+    "lab.clause": {
+      "term": "Inspect a condition",
+      "selector": "[phx-click=\"select_clause\"], [phx-click=\"clause\"]",
+      "short": "Follow this part of the claim into its explanation and source.",
+      "detail": "Read the values and expression together. A reviewed source link may also identify a related Lean passage.",
+      "limit": "Source correspondence does not show a saved Lean goal state.",
+      "link": "/glossary#term-clause"
+    },
+    "lab.helper": {
+      "term": "Read a helper",
+      "selector": "[phx-click=\"helper\"], [phx-click=\"lemma\"]",
+      "short": "Open the definition or supporting statement used here.",
+      "detail": "Follow it when the name alone does not explain what the condition or proof requires.",
+      "limit": "",
+      "link": "/glossary#term-helper"
+    },
+    "lab.source": {
+      "term": "Read source",
+      "selector": "[phx-click=\"inspect_registered_source\"], [phx-click=\"inspect_source\"], [phx-click=\"inspect_artifact\"], [phx-click=\"full_proof\"], [phx-click=\"proof_stage\"], [phx-click=\"inspect_law\"], [phx-click=\"pair_proof\"]",
+      "short": "Open the source passage or report named by this control.",
+      "detail": "Source links refer to the files recorded for this claim. If the source has changed, reopen the claim before relying on an older reading.",
+      "limit": "",
+      "link": "/translation"
+    },
+    "lab.coupled": {
+      "term": "Open a processor-model case",
+      "selector": "[phx-click=\"coupled\"], [phx-click=\"open_premise_case\"]",
+      "short": "Compare local ledger knowledge with the modeled processor.",
+      "detail": "Follow issuance, delivery and local observation as separate events. A missing local reply can leave a live remote authorization.",
+      "limit": "The model does not contact a payment processor.",
+      "link": "/glossary#term-coupled-model"
+    },
+    "lens.mode": {
+      "term": "Choose how to read the exercise",
+      "selector": "#lens-exercise-modes a, #lens-see-explanation",
+      "short": "Choose whether to see the explanation before making a judgment.",
+      "detail": "Review first asks for your conclusion before showing the worked explanation. Explore freely shows it while you try the example.",
+      "limit": "Changing modes clears the current practice answer.",
+      "link": "/lens/po_a2?mode=explore"
+    },
+    "lens.classification": {
+      "term": "Choose a review conclusion",
+      "selector": "[phx-click=\"decision\"]",
+      "short": "Choose the conclusion you think this example supports.",
+      "detail": "Ask whether the claim leaves out a required input, accepts a forbidden output or rejects an allowed output. Choose unsure when evidence is missing.",
+      "limit": "The answer stays in this practice page; it is not a saved review decision.",
+      "link": "/proofs"
+    },
+    "lens.confirm": {
+      "term": "Keep my answer and show the explanation",
+      "selector": "#lens-confirm",
+      "short": "Compare your selected conclusion with the worked explanation.",
+      "detail": "The reasoning fields are optional. You can choose that the evidence is insufficient and still read the explanation.",
+      "limit": "",
+      "link": "/lens/po_a2?mode=explore"
+    },
+    "lens.change": {
+      "term": "Try a claim change",
+      "selector": "[phx-click=\"variation\"], [phx-click=\"witness\"]",
+      "short": "Try a different input or proposed claim change.",
+      "detail": "Read what changed, then compare its coverage and required output with the original claim. A new example clears your current answer.",
+      "limit": "These are modeled claim changes, not edits to source files.",
+      "link": "/proofs"
+    },
+    "assistant.send": {
+      "term": "Ask an assistant",
+      "selector": "#header-question-form button[type=\"submit\"], #question-send",
+      "short": "Send your question with the displayed case and source to Codex.",
+      "detail": "Inspect Shares case + source or Context before sending. The configured provider is Codex; your private review notes are excluded.",
+      "limit": "The response is a generated explanation. Check proof results in the evidence panels.",
+      "link": "/assurance"
+    },
+    "assistant.context": {
+      "term": "Inspect shared context",
+      "selector": "[phx-click=\"inspect_context\"]",
+      "short": "Read exactly which question, case and source would be sent.",
+      "detail": "Opening this preview sends nothing. Submit the question only after the displayed context is the one you intend to share.",
+      "limit": "",
+      "link": "/assurance"
+    },
+    "assistant.history": {
+      "term": "Question history",
+      "selector": "#question-history, [phx-click=\"history\"], [phx-click=\"recall\"]",
+      "short": "Read a locally saved question and answer.",
+      "detail": "Reopening history sends no request. A follow-up uses that historical case unless you choose Ask using current case.",
+      "limit": "",
+      "link": "/glossary#term-review"
+    },
+    "assistant.followup": {
+      "term": "Ask a follow-up",
+      "selector": "[phx-click=\"followup\"]",
+      "short": "Write another question about this saved conversation and case.",
+      "detail": "The follow-up keeps the historical case. Inspect its context before sending or choose Ask using current case to switch.",
+      "limit": "",
+      "link": "/assurance"
+    },
+    "assistant.clear": {
+      "term": "Clear question history",
+      "selector": "[phx-click=\"clear\"], [phx-click=\"confirm_clear\"]",
+      "short": "Delete saved local questions and answers after confirmation.",
+      "detail": "This removes question history, not review notes or saved case timelines. Deletion is unavailable while a question is running.",
+      "limit": "",
+      "link": "/lab"
+    },
+    "lab.view": {
+      "term": "Choose a Lab view",
+      "selector": "[phx-click=\"case_view\"]",
+      "short": "Choose the case overview or the detailed Inspector.",
+      "detail": "Guided keeps the requirement, input, outputs and result together. Inspector opens the conditions and proof source.",
+      "limit": "Switching views keeps the case and unsaved edits.",
+      "link": "/lab"
+    },
+    "learn.story": {
+      "term": "Follow the payment example",
+      "selector": "[phx-click=\"scenario\"]",
+      "short": "Show the account at the selected point in the story.",
+      "detail": "Start with the empty account, then follow a request, dispatch, timeout and second request. The displayed results come from the local ledger model.",
+      "limit": "These controls do not contact a payment processor.",
+      "link": "/start"
+    },
+    "learn.open_moment": {
+      "term": "Open this moment in Case Lab",
+      "selector": "[phx-click=\"open_story\"]",
+      "short": "Save this story prefix as a case and open its selected moment.",
+      "detail": "Case Lab opens the same account, events and latest result shown here. You can inspect the claim or continue with another event.",
+      "limit": "The new case is a local review session.",
+      "link": "/lab"
+    },
+    "learn.retry": {
+      "term": "Reload the example",
+      "selector": "[phx-click=\"reload_story\"]",
+      "short": "Try to load the walkthrough from the current source again.",
+      "detail": "Use this after resolving the displayed source or execution problem. An unavailable result is not replaced with a made-up state.",
+      "limit": "",
+      "link": "/start"
+    },
+    "learn.mutation": {
+      "term": "Choose a deliberate bug",
+      "selector": "[phx-click=\"select_mutation\"]",
+      "short": "Read the source change, witness and target claim for this mutation.",
+      "detail": "Each example describes one committed source fault. Compare its wrong behavior with the requirement and follow the source links.",
+      "limit": "Selecting an example does not execute its patch or run a mutation campaign.",
+      "link": "/examples"
+    },
+    "lab.fencing": {
+      "term": "Processor cancellation guarantee",
+      "selector": "[phx-click=\"toggle_assumption\"]",
+      "short": "Change whether the modeled processor keeps a void final.",
+      "detail": "Compare the ledger with a processor that can revive an authorization after cancellation. The local entry alone cannot enforce remote behavior.",
+      "limit": "This changes a model assumption, not a real processor.",
+      "link": "/glossary#term-terminal-fence"
+    },
+    "assistant.current": {
+      "term": "Start a question about the current case",
+      "selector": "#question-assistant [phx-click=\"new\"]",
+      "short": "Write a new question using the case currently open in the Lab.",
+      "detail": "This replaces a historical follow-up context with the current case. Opening the composer sends nothing.",
+      "limit": "",
+      "link": "/lab"
+    },
+    "assistant.history_scope": {
+      "term": "Choose question history",
+      "selector": "#question-assistant [phx-click=\"history_scope\"]",
+      "short": "Choose whether to show this case’s questions or all local questions.",
+      "detail": "The selection changes the local history list. Reading an answer does not send another request.",
+      "limit": "",
+      "link": "/lab"
+    },
+    "lens.again": {
+      "term": "Try the review again",
+      "selector": "[phx-click=\"try_again\"]",
+      "short": "Clear your practice answer and read the example again.",
+      "detail": "The classification and optional reasoning fields return to their starting state. Saved Lab review notes are separate.",
+      "limit": "",
+      "link": "/lens/po_a2"
+    },
+    "lab.effect_type": {
+      "term": "Proposed outside work",
+      "selector": "#candidate-form select[name^=\"output[effects]\"][name$=\"[type]\"]",
+      "short": "Choose the outside work your proposed output should request.",
+      "detail": "Authorize asks the processor for a hold; void asks it to cancel one. The key and amount identify the request.",
+      "limit": "This edits a proposed effect. It does not contact a payment processor.",
+      "link": "/glossary#term-effect"
+    }
+  },
+  "exemptions": [
+    {
+      "category": "navigation",
+      "reason": "Clearly named links state their destination; relevant source and mode links receive authored help where needed."
+    },
+    {
+      "category": "disclosure",
+      "reason": "A descriptive summary names the content it reveals. Conditions, proofs and unclear technical disclosures receive extra help."
+    },
+    {
+      "category": "close_copy_pagination",
+      "reason": "Close, copy, previous, next and clear-filter actions state their immediate result."
+    },
+    {
+      "category": "labelled_fields",
+      "reason": "Ordinary search and optional reasoning fields have visible labels; consequential editor fields receive authored help."
+    }
+  ],
+  "action_exemptions": {
+    "cancel": "The visible Cancel action names the operation to stop; no extra hover help is needed.",
+    "cancel_hunt": "Stop search directly names the running preset search.",
+    "close": "Close dismisses the current answer panel.",
+    "close_helper": "Close dismisses the current source helper.",
+    "close_source": "Close source dismisses the source passage.",
+    "close_tools": "Done editing closes the editor without creating a new action.",
+    "component": "Selecting a named component reveals its authored explanation beside the selector.",
+    "guarantee": "Selecting a named requirement reveals its authored explanation beside the selector.",
+    "pipeline": "Selecting a reading stage reveals its explanation beside the selector.",
+    "status": "Selecting a named status reveals its meaning beside the selector.",
+    "history_page": "Previous and Next move through the local history list.",
+    "keep": "The cancellation button explicitly keeps question history.",
+    "open": "The labeled answer preview opens an existing answer without a provider call."
+  }
+}

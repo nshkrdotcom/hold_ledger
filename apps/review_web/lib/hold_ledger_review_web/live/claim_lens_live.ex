@@ -9,6 +9,24 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
   # Review judgments are user assertions, not evaluations or formal receipts.
   @decisions ~w(unresolved concern expected no_change covers permits_forbidden overconstrains)
   @review_fields ~w(policy_anchor contract_clause witness scope_limit text)
+  @decision_groups [
+    {"inputs", "Which inputs does it cover?",
+     [
+       {"concern", "Leaves out a required input", "The policy requires this case to be covered."},
+       {"expected", "Correctly leaves this input out", "The policy permits this exclusion."}
+     ]},
+    {"outputs", "Which outputs does it allow?",
+     [
+       {"covers", "Covers this example", "The statement matches the policy for this case."},
+       {"permits_forbidden", "Allows a forbidden output", "The promise may be too weak."},
+       {"overconstrains", "Rejects a permitted output", "The promise may be too strict."}
+     ]},
+    {"evidence", "What else affects your judgment?",
+     [
+       {"no_change", "The claim is unchanged", "Only the proof argument changed."},
+       {"unresolved", "I need more evidence", "A missing fact or assumption blocks my judgment."}
+     ]}
+  ]
 
   @impl true
   def mount(_, _, socket) do
@@ -245,6 +263,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
         selected_steps: selected_steps,
         observed_link: observation_link,
         observed_links: observed_links,
+        decision_groups: @decision_groups,
         feedback?: assigns.mode == "explore" or not is_nil(assigns.submitted_review)
       )
 
@@ -257,7 +276,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
       <section :if={!@study || !@observation || !@reading} id="lens-unavailable" role="status">
         Source-bound Claim Lens reading is unavailable.
       </section>
-      <div :if={@study && @observation && @reading} id="claim-lens">
+      <div :if={@study && @observation && @reading} id="claim-lens" data-learning-mode={@mode}>
         <div class="edu-workbench-intro" id="lens-education-bridge">
           <div>
             <strong>Read the policy. Make your own judgment.</strong>
@@ -271,7 +290,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
           <div class="lens-hero-top">
             <span class="lens-kicker">Claim Lens</span>
             <nav id="lens-modes" class="lens-modes" aria-label="Review experiences">
-              <a href={~p"/claims/#{@study.slug}?compare=open"}>Compare versions</a>
+              <a href={~p"/claims/#{@study.slug}?compare=open"}>Compare source versions</a>
             </nav>
           </div>
           <div id="lens-demo-scope" class="lens-demo-scope">
@@ -378,7 +397,6 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   type="button"
                   class="edu-term-button"
                   data-edu-term="witness"
-                  title="Explain this concept"
                 >Try another input</button>
               </h2>
               <div class="lens-choice-stack" role="group" aria-label="Pointwise witness">
@@ -430,7 +448,6 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   type="button"
                   class="edu-term-button"
                   data-edu-term="requires"
-                  title="Explain this concept"
                 >What if the precondition changed?</button>
               </h2>
               <div class="lens-variations" role="group" aria-label="Proposed claim change">
@@ -502,7 +519,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
 
             <section class="lens-panel lens-human" id="lens-review">
               <div class="lens-panel-head">
-                <span class="lens-step">06 / Commit your interpretation</span>
+                <span class="lens-step">06 / Make a judgment</span>
                 <span class="lens-evidence lens-provenance" data-kind="human">Human judgment · local only</span>
               </div>
               <h2>
@@ -510,69 +527,37 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   type="button"
                   class="edu-term-button"
                   data-edu-term="review"
-                  title="Explain this concept"
                 >What does this claim promise here?</button>
               </h2>
               <p>
-                Choose the answer that fits your reading of the policy and claim. You can explain your reasoning below or say you need more evidence.
+                Choose one answer from the groups below. Written notes are optional.
+              </p>
+              <p :if={@mode == "challenge" && !@submitted_review} class="lens-worked-choice">
+                <.link
+                  id="lens-see-explanation"
+                  patch={~p"/lens/#{@study.slug}?mode=explore"}
+                >See the worked explanation</.link>
+                <span>Opens Explore freely without recording an answer.</span>
               </p>
               <div class="lens-decisions" role="group" aria-label="Provisional human decision">
-                <button
-                  id="lens-decision-concern"
-                  phx-click="decision"
-                  disabled={not is_nil(@submitted_review)}
-                  type="button"
-                  phx-value-choice="concern"
-                  aria-pressed={to_string(@decision == "concern")}
-                >Excludes valid input <small>Possible guarantee loss</small></button>
-                <button
-                  id="lens-decision-expected"
-                  phx-click="decision"
-                  disabled={not is_nil(@submitted_review)}
-                  type="button"
-                  phx-value-choice="expected"
-                  aria-pressed={to_string(@decision == "expected")}
-                >Permitted by policy <small>Expected exclusion</small></button>
-                <button
-                  id="lens-decision-no-change"
-                  phx-click="decision"
-                  disabled={not is_nil(@submitted_review)}
-                  type="button"
-                  phx-value-choice="no_change"
-                  aria-pressed={to_string(@decision == "no_change")}
-                >Claim unchanged <small>Proof-only control</small></button>
-                <button
-                  id="lens-decision-unresolved"
-                  phx-click="decision"
-                  disabled={not is_nil(@submitted_review)}
-                  type="button"
-                  phx-value-choice="unresolved"
-                  aria-pressed={to_string(@decision == "unresolved")}
-                >Insufficient evidence <small>Unresolved assumptions</small></button>
-                <button
-                  id="lens-decision-covers"
-                  type="button"
-                  phx-click="decision"
-                  phx-value-choice="covers"
-                  disabled={not is_nil(@submitted_review)}
-                  aria-pressed={to_string(@decision == "covers")}
-                >Covers intended policy <small>Scoped to this example</small></button>
-                <button
-                  id="lens-decision-permits-forbidden"
-                  type="button"
-                  phx-click="decision"
-                  phx-value-choice="permits_forbidden"
-                  disabled={not is_nil(@submitted_review)}
-                  aria-pressed={to_string(@decision == "permits_forbidden")}
-                >Permits forbidden output <small>Claim may be too weak</small></button>
-                <button
-                  id="lens-decision-overconstrains"
-                  type="button"
-                  phx-click="decision"
-                  phx-value-choice="overconstrains"
-                  disabled={not is_nil(@submitted_review)}
-                  aria-pressed={to_string(@decision == "overconstrains")}
-                >Rejects allowed behavior <small>Claim may be too strict</small></button>
+                <fieldset
+                  :for={{group, title, choices} <- @decision_groups}
+                  id={"lens-decisions-" <> group}
+                  class="lens-decision-group"
+                >
+                  <legend>{title}</legend>
+                  <div>
+                    <button
+                      :for={{value, label, explanation} <- choices}
+                      id={"lens-decision-" <> String.replace(value, "_", "-")}
+                      type="button"
+                      phx-click="decision"
+                      phx-value-choice={value}
+                      disabled={not is_nil(@submitted_review)}
+                      aria-pressed={to_string(@decision == value)}
+                    >{label}<small>{explanation}</small></button>
+                  </div>
+                </fieldset>
               </div>
               <.form
                 for={@review_form}
@@ -580,55 +565,61 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 phx-change="review_note"
                 phx-submit="reveal"
               >
-                <div class="lens-argument-grid" aria-label="Four-part evidence argument">
+                <details id="lens-review-notes" class="lens-details lens-review-notes">
+                  <summary>Optional · add your reasoning and source notes</summary>
+                  <p class="lens-footnote">
+                    Keep a short explanation for yourself. These fields are not required to reveal feedback.
+                  </p>
+                  <div class="lens-argument-grid" aria-label="Optional evidence notes">
+                    <.input
+                      field={@review_form[:policy_anchor]}
+                      type="text"
+                      maxlength="500"
+                      disabled={not is_nil(@submitted_review)}
+                      label="Policy passage"
+                      placeholder="guides/specification.md · exact-fit admission"
+                    />
+                    <.input
+                      field={@review_form[:contract_clause]}
+                      type="text"
+                      maxlength="500"
+                      disabled={not is_nil(@submitted_review)}
+                      label="Claim clause"
+                      placeholder="requires or expects clause"
+                    />
+                    <.input
+                      field={@review_form[:witness]}
+                      type="text"
+                      maxlength="500"
+                      disabled={not is_nil(@submitted_review)}
+                      label="Example that shows the difference"
+                      placeholder="100¢ request / 100¢ remaining"
+                    />
+                    <.input
+                      field={@review_form[:scope_limit]}
+                      type="text"
+                      maxlength="500"
+                      disabled={not is_nil(@submitted_review)}
+                      label="Limit or assumption"
+                      placeholder="Illustrative edit; not Lean checked"
+                    />
+                  </div>
                   <.input
-                    field={@review_form[:policy_anchor]}
-                    type="text"
-                    maxlength="500"
+                    field={@review_form[:text]}
+                    type="textarea"
+                    maxlength="2000"
                     disabled={not is_nil(@submitted_review)}
-                    label="01 · Policy passage"
-                    placeholder="guides/specification.md · exact-fit admission"
+                    label="Your explanation · which requirement or boundary matters?"
                   />
-                  <.input
-                    field={@review_form[:contract_clause]}
-                    type="text"
-                    maxlength="500"
-                    disabled={not is_nil(@submitted_review)}
-                    label="02 · Claim clause"
-                    placeholder="requires or expects clause"
-                  />
-                  <.input
-                    field={@review_form[:witness]}
-                    type="text"
-                    maxlength="500"
-                    disabled={not is_nil(@submitted_review)}
-                    label="03 · Example that shows the difference"
-                    placeholder="100¢ request / 100¢ remaining"
-                  />
-                  <.input
-                    field={@review_form[:scope_limit]}
-                    type="text"
-                    maxlength="500"
-                    disabled={not is_nil(@submitted_review)}
-                    label="04 · Limit or assumption"
-                    placeholder="Illustrative edit; not Lean checked"
-                  />
-                </div>
-                <.input
-                  field={@review_form[:text]}
-                  type="textarea"
-                  maxlength="2000"
-                  disabled={not is_nil(@submitted_review)}
-                  label="Your explanation · which requirement or boundary matters?"
-                />
+                </details>
                 <button
                   :if={@mode == "challenge" && !@submitted_review}
                   id="lens-confirm"
-                  data-edu-hint="Keep your initial classification and reveal the worked explanation. This records no approval, checker receipt or persistent review note."
+                  data-edu-hint="Keep your answer for this attempt and show the worked explanation. Written notes are optional."
                   type="submit"
                   disabled={is_nil(@decision)}
                 >
-                  Confirm classification and reveal feedback
+                  Keep my answer and show the explanation
                 </button>
               </.form>
               <div :if={@submitted_review} id="lens-initial-answer" role="status">
@@ -852,7 +843,6 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                     type="button"
                     class="edu-term-button"
                     data-edu-term="law"
-                    title="Explain this concept"
                   >The authored contract</button>
                 </h2>
                 <p class="lens-evidence">{@reading["law"]["file"]}</p>
@@ -920,7 +910,6 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                     type="button"
                     class="edu-term-button"
                     data-edu-term="theorem"
-                    title="Explain this concept"
                   >What the theorem states</button>
                 </h2>
                 <article :for={decl <- @reading["declarations"]} class="lens-lean-decl">
@@ -954,7 +943,6 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                     type="button"
                     class="edu-term-button"
                     data-edu-term="proof-status"
-                    title="Explain this concept"
                   >What is actually checked?</button>
                 </h2>
                 <dl class="lens-evidence-grid">
@@ -1045,15 +1033,15 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
   defp verdict_label(status), do: status |> Atom.to_string() |> ReviewCopy.check()
 
   defp baseline_description(:catches),
-    do: "The current source law excludes this candidate on the selected binding."
+    do: "The current claim rejects the proposed output for this input."
 
   defp baseline_description(:allows_here),
-    do: "The current source law accepts the candidate on this bound input."
+    do: "The current claim accepts the proposed output for this input."
 
   defp baseline_description(:doesnt_apply),
-    do: "The source precondition is false; the postcondition is not evaluated."
+    do: "The input does not meet the claim's starting condition, so its output promise is not checked."
 
-  defp baseline_description(:cant_check), do: "No pointwise acceptance conclusion is available."
+  defp baseline_description(:cant_check), do: "The case check could not be completed."
 
   defp gap_title(%{baseline: %{status: :cant_check}}), do: "No evaluation conclusion"
   defp gap_title(%{alternative: %{status: :cant_check}}), do: "Illustration unavailable"
@@ -1080,7 +1068,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
 
   defp gap_text(%{alternative: %{status: :cant_check}}),
     do:
-      "The hypothetical model could not be compared reliably with the baseline. No claim-delta conclusion follows."
+      "The proposed claim change could not be compared reliably with the current claim. This case does not support a conclusion about the change."
 
   defp gap_text(%{changed?: false}),
     do:

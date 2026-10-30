@@ -236,7 +236,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
 
   defp submission_error({:case, false}),
     do:
-      "Your question wasn't sent because the case changed. Check this case and press Ask Codex again."
+      "Your question wasn't sent because the case changed. Check this case and press Ask an assistant again."
 
   defp submission_error({:ready, false}),
     do:
@@ -363,10 +363,10 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           <input type="hidden" name="question[context_id]" value={@send_context_id} />
           <button
             type="submit"
-            aria-describedby="question-sharing"
+            aria-describedby="question-sharing question-provider"
             disabled={!@ready || @health != :ok}
             phx-disable-with="Sending…"
-          >Ask Codex</button>
+          >Ask an assistant</button>
         </.form>
         <button
           :if={@composing}
@@ -374,9 +374,9 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           class="question-sharing"
           phx-click="inspect_context"
           phx-target={@myself}
-          title="Inspect the question, case and source sent to Codex"
         >Shares case + source</button>
-        <button class="question-mobile-open" phx-click="new" phx-target={@myself}>Ask</button>
+        <span id="question-provider" class="question-provider">Uses Codex</span>
+        <button class="question-mobile-open" phx-click="new" phx-target={@myself}>Ask an assistant</button>
         <button
           :if={!@composing && !running?(@active)}
           phx-click="new"
@@ -412,6 +412,10 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           Question history is unavailable, so the app cannot send a question.
         </p>
         <p :if={@error} role="alert">{@error}</p>
+        <p class="question-local-help">
+          Keep reading: <a href="/glossary">look up a term</a> or
+          <a href="/proofs">read a claim</a>. These guides work without sending a question.
+        </p>
         <details :if={@error && @error_detail} id="question-error-details">
           <summary>Technical details</summary><code>{@error_detail}</code>
         </details>
@@ -479,7 +483,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
               type="submit"
               disabled={!@ready || @health != :ok}
               phx-disable-with="Sending…"
-            >Send to Codex</button>
+            >Send question</button>
             <button type="button" phx-click="inspect_context" phx-target={@myself}>Inspect context</button>
           </div>
         </.form>

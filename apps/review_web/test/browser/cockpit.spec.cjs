@@ -3,6 +3,8 @@ async function open(page,slug='po_exposure_retain') {
   await page.goto('/claims/'+slug);
   await expect(page).toHaveURL(new RegExp('/claims/'+slug+'/trace-'));
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  // These regressions exercise the detailed source workspace.
+  await page.locator('#case-view-inspector').click();
   await expect(page.locator('#timeline')).toBeVisible();
   return page.url();
 }

@@ -5,7 +5,9 @@ for (const width of [390, 800, 1024, 1440]) {
     await page.setViewportSize({width, height: 900});
     await page.goto('/');
     await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-    await expect(page.locator('#edu-overview h1')).toContainText('Understand payment holds');
+    await expect(page.locator('#edu-overview h1')).toContainText('Follow the code.');
+    await expect(page.locator('#edu-home-example')).toHaveAttribute('data-moment', '0');
+    await expect(page.locator('#edu-home-capacity-held')).toHaveText('0¢');
     await expect(page.locator('.edu-journey')).toHaveCount(3);
     await expect(page.locator('.edu-stat-strip')).toContainText('Registered claims');
     await expect(page.locator('#edu-overview')).not.toContainText('49 proven');
@@ -17,6 +19,95 @@ for (const width of [390, 800, 1024, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
 }
+
+test('the payment story opens the exact computed prefix in Case Lab', async ({page}) => {
+  await page.goto('/start');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('#edu-story')).toHaveAttribute('data-moment', '0');
+  await expect(page.locator('#edu-story-initial-held')).toHaveText('0¢');
+  await expect(page.locator('#edu-story-initial-available')).toHaveText('100¢');
+  await expect(page.locator('#edu-story-prev')).toBeDisabled();
+  await page.locator('#edu-story-next').click();
+  await expect(page.locator('#edu-story')).toHaveAttribute('data-moment', '1');
+  await expect(page.locator('#edu-story-before-held')).toHaveText('0¢');
+  await expect(page.locator('#edu-story-after-held')).toHaveText('100¢');
+  await expect(page.locator('#edu-story-result code')).toContainText(':admitted');
+  await page.locator('#edu-story-next').click();
+  await expect(page.locator('#edu-story-result')).toContainText('100¢');
+  await page.locator('#edu-story-next').click();
+  await expect(page.locator('#edu-story')).toHaveAttribute('data-moment', '3');
+  await expect(page.locator('#edu-story-after')).toContainText('Outcome unknown');
+  await expect(page.locator('#edu-story-after-available')).toHaveText('0¢');
+  await expect(page.locator('#edu-story-after-slots-free')).toHaveText('1');
+  await page.locator('#edu-story-next').click();
+  await expect(page.locator('#edu-story-result code')).toContainText(':insufficient_amount');
+  await expect(page.locator('#edu-story-after-held')).toHaveText('100¢');
+  await page.locator('#edu-story-prev').click();
+  await page.locator('#edu-open-moment').click();
+  await expect(page).toHaveURL(/\/claims\/po_b2\/trace-[^/?]+$/);
+  await expect(page.locator('#timeline > button')).toHaveCount(4);
+  await expect(page.locator('#timeline [aria-current=step]')).toContainText('timeout');
+  await expect(page.locator('#trace-revision')).toContainText('Saved history');
+});
+
+test('home controls update the account and retain the selected moment in the walkthrough link', async ({page}) => {
+  await page.goto('/');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await page.locator('#edu-home-next').click();
+  await expect(page.locator('#edu-home-example')).toHaveAttribute('data-moment', '1');
+  await expect(page.locator('#edu-home-capacity-held')).toHaveText('100¢');
+  await expect(page.locator('#edu-home-result code')).toContainText(':admitted');
+  await page.locator('#edu-home-example a[href="/start?moment=1"]').click();
+  await expect(page.locator('#edu-story')).toHaveAttribute('data-moment', '1');
+  await expect(page.locator('#edu-story-before-held')).toHaveText('0¢');
+});
+
+test('the focused mutation directory exposes M7 source and its actual target', async ({page}) => {
+  await page.goto('/examples');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('.learning-example-picker button')).toHaveCount(10);
+  await page.locator('#edu-mutation-M7').click();
+  await expect(page).toHaveURL(/\/examples\?example=M7$/);
+  await expect(page.locator('#edu-selected-mutation')).toHaveAttribute('data-example-id', 'M7');
+  await expect(page.locator('#edu-mutation-M7')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#edu-mutation-claim')).toHaveAttribute('href', '/atlas/po_b3');
+  await expect(page.locator('#edu-mutation-patch')).toContainText(':voiding, []}');
+  await expect(page.locator('#edu-examples-scope')).toContainText('does not run the mutation');
+  await page.goto('/examples?example=missing');
+  await expect(page.locator('#edu-mutation-unavailable')).toBeVisible();
+  await page.locator('#edu-mutation-M4').click();
+  await expect(page.locator('#edu-selected-mutation')).toHaveAttribute('data-example-id', 'M4');
+});
+
+test('translation distinguishes actual law, generated material and supplied theorem', async ({page}) => {
+  await page.goto('/translation');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('#translation-elixir')).toContainText('request_eligible?');
+  await expect(page.locator('#translation-generated-source, #translation-generated-unavailable')).toHaveCount(1);
+  await expect(page.locator('#translation-theorem')).toContainText('Source text');
+  await expect(page.locator('#translation-theorem-header')).toContainText('Lynx.Term');
+  await expect(page.locator('#translation-proof')).not.toHaveAttribute('open', '');
+  await page.locator('#translation-implementation > summary').click();
+  await expect(page.locator('#translation-implementation')).toContainText('def request(');
+  await expect(page.locator('#translation-implementation')).toContainText('amount <= amount_limit - used_amount');
+  await page.locator('#translation-proof > summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#translation-proof')).toHaveAttribute('open', '');
+  await expect(page.locator('#translation-proof pre')).toBeVisible();
+});
+
+test('learning source panels and controls reflow with enlarged text', async ({page}) => {
+  await page.setViewportSize({width: 390, height: 900});
+  for (const path of ['/', '/start?moment=3', '/how-it-fits', '/examples?example=M7', '/translation']) {
+    await page.goto(path);
+    await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+    await page.addStyleTag({content: 'html {font-size: 200%}'});
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), path).toBeLessThanOrEqual(390);
+  }
+  await page.locator('#translation-proof > summary').click();
+  await page.locator('#translation-implementation > summary').click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
 
 test('the atlas keeps eight families and all 49 claims with source access', async ({page}) => {
   await page.goto('/atlas');
@@ -46,12 +137,14 @@ test('help is available by click and keyboard, with glossary on real screens', a
   await expect(page.locator('#edu-tooltip [data-tooltip-short]')).not.toBeEmpty();
   await page.keyboard.press('Escape');
   await expect(page.locator('#edu-tooltip')).toBeHidden();
+  await page.locator('#edu-help-toggle').click();
   await page.locator('#edu-guidance').selectOption('focused');
+  await page.keyboard.press('Escape');
   await page.goto('/lab');
   await expect(page.locator('#edu-guidance')).toHaveValue('focused');
 });
 
-const destinations = ['/', '/start', '/system', '/guarantees', '/atlas',
+const destinations = ['/', '/start', '/how-it-fits', '/examples', '/translation', '/system', '/guarantees', '/atlas',
   '/atlas/po_a2', '/atlas/po_composite_recovery', '/proofs', '/assurance',
   '/repository', '/glossary', '/lab', '/claims/po_a2', '/claims/po_b7', '/lens/po_a2',
   '/lens/po_exposure_retain'];
@@ -110,7 +203,9 @@ test('touch help and patched controls preserve ordinary review actions', async (
 test('tooltip keyboard, hover and description state survive a LiveView patch', async ({page}) => {
   await page.goto('/claims/po_a2');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await page.locator('#edu-help-toggle').click();
   await page.locator('#edu-guidance').selectOption('focused');
+  await page.keyboard.press('Escape');
   await page.getByRole('button', {name: '1¢ more', exact: true}).click();
   await expect(page.locator('#review-amount')).toHaveValue('101');
   await expect(page.locator('#edu-guidance')).toHaveValue('focused');

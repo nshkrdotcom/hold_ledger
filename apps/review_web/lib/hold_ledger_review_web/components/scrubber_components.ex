@@ -5,6 +5,135 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
   alias HoldLedgerReview.Trace
   alias HoldLedgerReviewWeb.{ReviewCopy, TraceFork}
 
+  attr :id, :string, required: true
+  attr :ledger, :map, required: true
+  attr :title, :string, default: "Account capacity"
+
+  def capacity_view(assigns) do
+    amount = capacity_axis(assigns.ledger["used_amount"], assigns.ledger["amount_limit"])
+    slots = capacity_axis(assigns.ledger["used_holds"], assigns.ledger["hold_limit"])
+    entries = assigns.ledger["entries"] || []
+    {finished, active} = Enum.split_with(entries, &(&1["status"] in ~w(declined voided)))
+    shown_slots = if is_integer(slots.limit), do: min(max(slots.limit, 0), 8), else: 0
+
+    assigns =
+      assign(assigns,
+        amount: amount,
+        slots: slots,
+        active: active,
+        finished: finished,
+        slot_cells: if(shown_slots > 0, do: Enum.to_list(1..shown_slots), else: []),
+        additional_slots:
+          if(is_integer(slots.limit), do: max(slots.limit - shown_slots, 0), else: 0)
+      )
+
+    ~H"""
+    <figure id={@id} class="capacity-view" aria-labelledby={@id <> "-title"}>
+      <figcaption id={@id <> "-title"} class="capacity-title">{@title}</figcaption>
+      <div class="capacity-dimensions">
+        <section class="capacity-amount" aria-labelledby={@id <> "-amount-title"}>
+          <h3 id={@id <> "-amount-title"}>Amount capacity</h3>
+          <dl class="capacity-numbers">
+            <div>
+              <dt>Held</dt><dd id={@id <> "-held"}>{capacity_amount(@amount.used)}</dd>
+            </div>
+            <div>
+              <dt>Available</dt><dd id={@id <> "-available"}>{capacity_amount(@amount.free)}</dd>
+            </div>
+          </dl>
+          <div class="capacity-track" aria-hidden="true">
+            <span style={"width: #{@amount.percent}%"}></span>
+          </div>
+          <p class="capacity-limit">
+            Limit {capacity_amount(@amount.limit)}
+            <span :if={is_integer(@amount.limit)}>({ReviewCopy.dollar_gloss(@amount.limit)})</span>
+          </p>
+          <p :if={!@amount.in_range?} class="capacity-range-note">
+            Recorded amount is outside the limit or unavailable. The numbers are shown unchanged.
+          </p>
+        </section>
+        <section class="capacity-holds" aria-labelledby={@id <> "-slots-title"}>
+          <h3 id={@id <> "-slots-title"}>Hold slots</h3>
+          <dl class="capacity-numbers">
+            <div>
+              <dt>Used</dt><dd id={@id <> "-slots-used"}>{capacity_number(@slots.used)}</dd>
+            </div>
+            <div>
+              <dt>Free</dt><dd id={@id <> "-slots-free"}>{capacity_number(@slots.free)}</dd>
+            </div>
+          </dl>
+          <div :if={@slot_cells != []} class="capacity-rack" aria-hidden="true">
+            <span
+              :for={position <- @slot_cells}
+              class={[
+                "capacity-slot",
+                is_integer(@slots.used) && position <= @slots.used && "capacity-slot-used"
+              ]}
+            ></span>
+          </div>
+          <p class="capacity-limit">
+            Limit {capacity_number(@slots.limit)}
+            <span :if={@additional_slots > 0}>· {@additional_slots} more slots than shown</span>
+            <span :if={@slots.limit == 0}>· No hold slots configured</span>
+          </p>
+          <p :if={!@slots.in_range?} class="capacity-range-note">
+            Recorded slot count is outside the limit or unavailable. The numbers are shown unchanged.
+          </p>
+        </section>
+      </div>
+      <div :if={@active != []} class="capacity-active-records">
+        <h3>Recorded holds</h3>
+        <ul class="capacity-records">
+          <li
+            :for={entry <- @active}
+            class={["capacity-record", "capacity-record-" <> capacity_tone(entry["status"])]}
+          >
+            <span class="capacity-record-identity">Request {entry["key"]}</span>
+            <strong>{capacity_amount(entry["amount"])}</strong>
+            <span class="capacity-record-status">{ReviewCopy.state(entry["status"])}</span>
+          </li>
+        </ul>
+      </div>
+      <p :if={@active == []} class="capacity-empty">No active hold entries recorded.</p>
+      <div :if={@finished != []} class="capacity-finished-records">
+        <h3>Finished records · identities retained</h3>
+        <ul class="capacity-records">
+          <li :for={entry <- @finished} class="capacity-record capacity-record-finished">
+            <span class="capacity-record-identity">Request {entry["key"]}</span>
+            <strong>{capacity_amount(entry["amount"])}</strong>
+            <span class="capacity-record-status">{ReviewCopy.state(entry["status"])}</span>
+          </li>
+        </ul>
+        <p class="capacity-footnote">Finished entries retain their request IDs; they do not hold capacity.</p>
+      </div>
+      <p class="capacity-footnote">Recorded totals are shown as supplied, without recounting the entries.</p>
+    </figure>
+    """
+  end
+
+  defp capacity_axis(used, limit) do
+    numeric? = is_integer(used) && is_integer(limit)
+
+    %{
+      used: used,
+      limit: limit,
+      free: if(numeric?, do: limit - used),
+      in_range?: numeric? && limit >= 0 && used >= 0 && used <= limit,
+      percent:
+        if(numeric? && limit > 0, do: div(min(max(used, 0), limit) * 100, limit), else: 0)
+    }
+  end
+
+  defp capacity_amount(value) when is_integer(value), do: "#{value}¢"
+  defp capacity_amount(value), do: capacity_number(value)
+  defp capacity_number(nil), do: "Unavailable"
+  defp capacity_number(value) when is_integer(value), do: Integer.to_string(value)
+  defp capacity_number(value), do: inspect(value)
+
+  defp capacity_tone("authorized"), do: "authorized"
+  defp capacity_tone(status) when status in ~w(sent unknown voiding), do: "pending"
+  defp capacity_tone(_status), do: "reserved"
+
   attr :doc, :map, required: true
   attr :cursor, :string, required: true
   attr :preview, :any, default: nil
@@ -228,6 +357,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
   attr :doc, :map, required: true
   attr :cursor, :string, required: true
   attr :step, :any, default: nil
+  attr :inspector, :boolean, default: false
 
   def active_state(assigns) do
     {:ok, recorded} = Trace.state_at(assigns.doc, assigns.cursor)
@@ -244,48 +374,38 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           phx-click="edit_initial"
         >Edit starting state</button>
       </header>
-      <p class="available-money">
-        <strong>{@ledger["amount_limit"] - @ledger["used_amount"]}¢</strong>
-        available
-        <small>({ReviewCopy.dollar_gloss(@ledger["amount_limit"] - @ledger["used_amount"])})</small>
-      </p><meter
-        class="money-bar"
-        min="0"
-        max={max(@ledger["amount_limit"], 1)}
-        value={@ledger["used_amount"]}
-        aria-label="Money reserved before this event"
-      ></meter>
-      <div class="capacity-grid">
-        <strong id="amount-counter">{@ledger["used_amount"]}¢ / {@ledger["amount_limit"]}¢</strong><span>reserved / limit</span><strong id="slot-counter">{@ledger[
-          "used_holds"
-        ]} / {@ledger["hold_limit"]}</strong><span>hold slots used</span>
-      </div>
-      <table :if={@ledger["entries"] != []} id="entries">
-        <thead>
-          <tr>
-            <th scope="col">
-              <button type="button" class="edu-term-button" data-edu-term="request-id">Request ID</button>
-            </th>
-            <th scope="col">Amount (¢)</th>
-            <th scope="col">
-              <button type="button" class="edu-term-button" data-edu-term="hold">Hold state</button>
-            </th>
-          </tr>
-        </thead><tbody>
-          <tr :for={entry <- @ledger["entries"]}>
-            <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>
-              <button type="button" class="edu-term-button" data-edu-term={entry["status"]}>
-                {ReviewCopy.state(entry["status"])}
-              </button>
-            </td>
-          </tr>
-          <tr :if={@ledger["entries"] == []}>
-            <td colspan="3">No entries</td>
-          </tr>
-        </tbody>
-      </table>
-      <p :if={@ledger["entries"] == []} id="entries">No holds recorded</p>
-      <details id="state-tuple" class="state-tuple">
+      <.capacity_view id="active-capacity" ledger={@ledger} title="Account before the event" />
+      <details id="state-records" class="state-records" open={@inspector}>
+        <summary>Read the recorded totals and entry table</summary>
+        <div class="capacity-grid">
+          <strong id="amount-counter">{@ledger["used_amount"]}¢ / {@ledger["amount_limit"]}¢</strong><span>reserved / limit</span><strong id="slot-counter">{@ledger[
+            "used_holds"
+          ]} / {@ledger["hold_limit"]}</strong><span>hold slots used</span>
+        </div>
+        <table :if={@ledger["entries"] != []} id="entries">
+          <thead>
+            <tr>
+              <th scope="col">
+                <button type="button" class="edu-term-button" data-edu-term="request-id">Request ID</button>
+              </th>
+              <th scope="col">Amount (¢)</th>
+              <th scope="col">
+                <button type="button" class="edu-term-button" data-edu-term="hold">Hold state</button>
+              </th>
+            </tr>
+          </thead><tbody>
+            <tr :for={entry <- @ledger["entries"]}>
+              <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>
+                <button type="button" class="edu-term-button" data-edu-term={entry["status"]}>
+                  {ReviewCopy.state(entry["status"])}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p :if={@ledger["entries"] == []} id="entries">No holds recorded</p>
+      </details>
+      <details id="state-tuple" class="state-tuple" open={@inspector}>
         <summary>Read the state tuple</summary>
         <p>The source stores these fields in a fixed order:</p>
         <code phx-no-curly-interpolation>{amount_limit, hold_limit, used_amount, used_holds, entries}</code>

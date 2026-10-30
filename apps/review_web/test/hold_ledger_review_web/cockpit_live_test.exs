@@ -23,6 +23,65 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
 
   defp tab(_view, _name), do: :ok
 
+  test "Guided and Inspector change disclosure without changing the experiment", %{conn: conn} do
+    {view, doc} = open(conn, "po_a2")
+    assert has_element?(view, "#review-document[data-case-view=guided]")
+    assert has_element?(view, "#case-view-guided[aria-pressed=true]")
+    refute has_element?(view, "#case-conditions-depth[open]")
+    refute has_element?(view, "#case-proof-depth[open]")
+    refute has_element?(view, "#state-tuple[open]")
+
+    render_change(view, "preview_amount", %{"amount" => "99"})
+    assert has_element?(view, "#case-current-summary", "99¢")
+    assert has_element?(view, "#scratch-status", "Unsaved experiment")
+    element(view, "#case-view-inspector") |> render_click()
+    assert has_element?(view, "#review-document[data-case-view=inspector]")
+    assert has_element?(view, "#case-conditions-depth[open]")
+    assert has_element?(view, "#case-proof-depth[open]")
+    assert has_element?(view, "#state-tuple[open]")
+    assert has_element?(view, "#review-amount[value='99']")
+    assert has_element?(view, "#scratch-status", "Unsaved experiment")
+
+    element(view, "#case-view-guided") |> render_click()
+    refute has_element?(view, "#case-conditions-depth[open]")
+    refute has_element?(view, "#case-proof-depth[open]")
+    assert has_element?(view, "#review-amount[value='99']")
+    {:ok, saved} = Trace.get(doc["id"])
+    assert saved["steps"] == doc["steps"]
+
+    render_click(view, "case_view", %{"view" => "run_proof"})
+    assert has_element?(view, "#review-document[data-case-view=guided]")
+  end
+
+  test "evidence actions reveal their closed panel while Guided stays selected", %{conn: conn} do
+    {view, _doc} = open(conn, "po_a2")
+    element(view, "#inspector-tools [phx-value-view=clauses]") |> render_click()
+    assert has_element?(view, "#case-conditions-depth[open]")
+    refute has_element?(view, "#case-proof-depth[open]")
+    assert has_element?(view, "#review-document[data-case-view=guided]")
+
+    element(view, "#inspector-tools [phx-value-view=proof]") |> render_click()
+    assert has_element?(view, "#case-proof-depth[open]")
+    assert has_element?(view, "#proof-script[data-source-view=full]")
+    assert has_element?(view, "#review-document[data-case-view=guided]")
+  end
+
+  test "case summary follows the computed boundary and clears unavailable checks", %{conn: conn} do
+    {view, _doc} = open(conn, "po_a2")
+    assert has_element?(view, "#case-current-summary", "Code returned: Accepted")
+    assert has_element?(view, "#case-current-summary", "Rejects proposed output")
+
+    render_click(view, "boundary", %{"offset" => "1"})
+    assert has_element?(view, "#case-current-summary", "101¢")
+    assert has_element?(view, "#case-current-summary", "Not enough available money")
+    assert has_element?(view, "#case-current-summary", "Outside this claim's input")
+
+    render_click(view, "edit_candidate", %{})
+    render_change(view, "alternative_total", %{"amount" => "not-an-integer"})
+    assert has_element?(view, "#case-current-summary", "Check unavailable")
+    refute has_element?(view, "#case-current-summary", "Accepts proposed output")
+  end
+
   test "helper law explains step-probe scope without exposing engine atoms", %{conn: conn} do
     {view, _} = open(conn, "l2_identity")
     assert has_element?(view, "#unavailable-binding", "set_status/3")

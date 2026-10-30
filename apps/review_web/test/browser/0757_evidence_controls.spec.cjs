@@ -2,6 +2,9 @@ const {test,expect}=require('@playwright/test');
 async function open(page,slug){await page.goto('/claims/'+slug);await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/)}
 for(const width of [1280,390])test(`helper source controls reveal content and work repeatedly at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:900});await open(page,'l2_identity');
+ await expect(page.locator('#case-conditions-depth')).toHaveJSProperty('open',false);
+ await page.locator('#inspector-tools [phx-value-view=clauses]').click();
+ await expect(page.locator('#case-conditions-depth')).toHaveJSProperty('open',true);
  const source=page.locator('#condition-source');await expect(source).toHaveJSProperty('open',true);
  await expect(page.locator('#conditions-requires')).toContainText('Spec.proper_entries?');await expect(page.locator('#conditions-requires')).toContainText('Spec.known_status?');await expect(page.locator('#conditions-expects')).toContainText('Ledger.set_status');
  await expect(page.locator('#condition-source-status')).toHaveText('Evaluation unavailable for this input.');await expect(page.locator('#binding-0')).toHaveCount(0);
@@ -22,6 +25,7 @@ test('native rule exposes every registered Lean statement and full declaration',
 
 for(const width of [1280,390])test(`full proof has a keyboard-scrollable viewport at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:900});await open(page,'po_a2');
+ await page.locator('#case-proof-depth > summary').click();
  const context=page.locator('.condition-context summary');
  expect(await context.count()).toBeGreaterThan(0);
  for(const label of await context.allTextContents())expect(label.trim()).toBe('Enclosing condition');

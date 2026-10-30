@@ -14,6 +14,9 @@ async function connected(page) {
 }
 async function confirm(page, decision = 'concern') {
   await page.locator(`#lens-decision-${decision}`).click();
+  if (!await page.locator('#lens-review-notes').evaluate(node => node.open)) {
+    await page.locator('#lens-review-notes > summary').click();
+  }
   await page.getByRole('textbox', {name: 'Your explanation'}).fill('Initial synthetic answer');
   await page.locator('#lens-confirm').click();
   await expect(page.locator('#lens-initial-answer')).toContainText('Initial synthetic answer');
@@ -47,6 +50,7 @@ for (const width of [1280, 390]) {
     // Choosing is still a draft; reveal is a separate deliberate action.
     await withheld(page);
     await expect(page.locator('#lens-confirm')).toBeEnabled();
+    await page.locator('#lens-review-notes > summary').click();
     await page.getByRole('textbox', {name: 'Your explanation'}).fill('Inspect the boundary');
     await page.locator('#lens-confirm').click();
     await expect(page.locator('#lens-initial-answer')).toContainText('needs more evidence');
@@ -112,6 +116,7 @@ test('bare route preserves the authored argument and reports real clipboard outc
     scope_limit: 'Illustrative candidate; processor premises unverified',
     text: 'Excluding equality loses required admission coverage',
   };
+  await page.locator('#lens-review-notes > summary').click();
   for (const [name, value] of Object.entries(fields)) {
     await page.locator(`[name="review[${name}]"]`).fill(value);
   }

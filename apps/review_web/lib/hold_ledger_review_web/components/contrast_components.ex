@@ -5,6 +5,78 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
 
   attr :case, :map, default: nil
   attr :step, :map, default: nil
+  attr :invalid, :boolean, default: false
+
+  def case_summary(assigns) do
+    event = (assigns.case && assigns.case["event"]) || (assigns.step && assigns.step["event"])
+    output = (assigns.case && assigns.case["actual"]) || (assigns.step && assigns.step["output"])
+
+    assigns =
+      assign(assigns,
+        event_label: case_event_label(event),
+        result_label: case_result_label(output, event),
+        check_label:
+          if(assigns.case && !assigns.invalid,
+            do: ReviewCopy.candidate_acceptance(assigns.case),
+            else: "Check unavailable"
+          )
+      )
+
+    ~H"""
+    <section
+      id="case-current-summary"
+      class="case-current-summary"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <h2>What this case shows</h2>
+      <p><strong>{@event_label}</strong><span>{@result_label}</span></p>
+      <p class="case-summary-check">Claim check: <strong>{@check_label}</strong></p>
+      <small>The claim check covers this input and proposed output.</small>
+    </section>
+    """
+  end
+
+  defp case_event_label(%{"type" => "request", "key" => key, "amount" => amount}),
+    do: "Request #{key} asks for #{amount}¢."
+
+  defp case_event_label(%{"type" => type, "key" => key}) do
+    label =
+      Map.get(
+        %{
+          "dispatch" => "Send authorization",
+          "timeout" => "Missing reply",
+          "retry" => "Retry authorization",
+          "void" => "Request cancellation",
+          "void_confirmed" => "Confirm cancellation",
+          "processor_result" => "Record processor result",
+          "transport_ack" => "Record transport acknowledgment"
+        },
+        type,
+        String.replace(type, "_", " ")
+      )
+
+    "#{label} for request #{key}."
+  end
+
+  defp case_event_label(nil), do: "Starting account."
+
+  defp case_event_label(event),
+    do: HoldLedgerReviewWeb.ScrubberComponents.event_label(event)
+
+  defp case_result_label(%{"result" => result}, _event) when is_binary(result),
+    do: "Code returned: #{ReviewCopy.result(result)}."
+
+  defp case_result_label(_, nil), do: "Choose an event to inspect its result."
+
+  defp case_result_label(nil, _event),
+    do: "Read the local ledger and modeled processor records for this event."
+
+  defp case_result_label(_, _event), do: "No computed output is available for this event."
+
+  attr :case, :map, default: nil
+  attr :step, :map, default: nil
   attr :slug, :string, required: true
   attr :editor, :string, default: nil
   attr :candidate_form, :any, default: nil
@@ -22,7 +94,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
     ~H"""
     <section class="instrument" id="contrast">
       <header>
-        <span class="section-number">01</span><h2>Outputs</h2>
+        <span class="section-number">Outputs</span><h2>Compare what happened</h2>
       </header>
       <div :if={@step && @step["output"]}>
         <p :if={@step["origin"] != "computed"} id="hypothetical-lineage" class="signal">
@@ -212,13 +284,12 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         :if={@signal}
         id="verdict-signal"
         class={["verdict-signal", "verdict-" <> @signal.state]}
-        role="status"
         data-state={@signal.state}
       >
         <strong>{@signal.title}</strong>
         <span>{@signal.detail}</span>
       </div>
-      <div :if={@case} id="active-predicate-result" role="status">
+      <div :if={@case} id="active-predicate-result">
         <table id="contrast-matrix">
           <caption class="sr-only">
             Coverage, output acceptance and accounting for the selected case
