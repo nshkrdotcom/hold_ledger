@@ -11,11 +11,11 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
     "po_s" => "Keep the ledger consistent"
   }
   def title(law) do
-    @titles[law["slug"]] ||
-      (law["title"] || law["slug"] || "Ledger rule")
-      |> String.split(" · ")
-      |> List.last()
-      |> String.capitalize()
+    @titles[law["slug"]] || HoldLedgerReviewWeb.Education.title(law["slug"]) ||
+      ((law["title"] || law["slug"] || "Ledger rule")
+       |> String.split(" · ")
+       |> List.last()
+       |> String.capitalize())
   end
 
   def policy(%{"slug" => "po_a2"}),

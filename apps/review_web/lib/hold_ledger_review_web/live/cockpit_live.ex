@@ -1488,6 +1488,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         </div>
       </section>
       <div :if={@doc && @reading} id="review-document">
+        <div class="edu-workbench-intro" id="case-education-bridge">
+          <div><strong>Reading this repository for the first time?</strong>
+            <p>Case Lab explores an input and a hypothetical output. Its pointwise check does not certify all inputs or a real processor.</p>
+          </div>
+          <a href="/system">Meet the Ledger and Spec →</a>
+        </div>
         <p :if={!Trace.current?(@doc)} role="alert" id="stale-session">
           The source files changed. Reopen this rule to run it again.
         </p>
@@ -1739,14 +1745,14 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           >{label}</button>
         </nav>
         <section :if={@secondary == "premises"} id="premises-panel" class="secondary-panel">
-          <h2>What the payment processor must guarantee</h2><.premise
+          <h2 data-edu-term="assumption" tabindex="0">What the payment processor must guarantee</h2><.premise
             case={@case_data}
             fencing={@fencing}
             selected_key={@premise_key}
           /><.assumptions reading={@reading} show_status={false} />
         </section>
         <section :if={@secondary == "artifacts"} id="artifacts-panel" class="secondary-panel">
-          <h2>Verification files</h2><.verification_files reading={@reading} /><button
+          <h2 data-edu-term="source-identity" tabindex="0">Verification files</h2><.verification_files reading={@reading} /><button
             :if={@package}
             phx-click="pair_proof"
             id="pair-proof"
@@ -1758,7 +1764,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           />
         </section>
         <section :if={@secondary == "record"} id="record-panel" class="secondary-panel">
-          <h2>Review notes</h2><section id="session-record">
+          <h2 data-edu-term="review" tabindex="0">Review notes</h2><section id="session-record">
             <a href={~p"/sessions/#{@doc["id"]}/export"}>Export session</a>
             <button
               phx-click="save_challenge"

@@ -41,9 +41,9 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         </.form>
         <div class="rule-identity">
           <span class="eyebrow">{@slug} · Requirement summary</span>
-          <h1>{ReviewCopy.title(@reading)}</h1>
+          <h1 data-edu-term="claim" tabindex="0">{ReviewCopy.title(@reading)}</h1>
         </div>
-        <button phx-click="show_sources" id="choose-sources">Compare versions</button>
+        <button phx-click="show_sources" id="choose-sources" data-edu-hint="Select source-matching baseline and proposal snapshots; an illustrative diff is not a completed checker run.">Compare versions</button>
       </div>
       <p id="policy-anchor">
         {ReviewCopy.policy(@reading)}
@@ -57,7 +57,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         >Read requirement source</button>
       </p>
       <details id="review-help" class="review-help">
-        <summary>How to read this workspace</summary>
+        <summary data-edu-hint="Learn the distinction between pointwise checks, policy, proof evidence, and unsaved experiments.">How to read this workspace</summary>
         <p>Rule acceptance is a pointwise check, not a policy judgment or a formal proof.
           An accepted changed output is worth investigating, not automatically a defect.
           Unavailable never means false.</p>
@@ -67,15 +67,15 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           Notes do not approve policy or save pending events.</p>
       </details>
       <details id="selected-claim" class="selected-claim">
-        <summary>Read full claim · requires / expects</summary>
+        <summary data-edu-hint="Expand the source-bound law precondition and postcondition; native Lean-only groups use theorem declarations instead.">Read full claim · requires / expects</summary>
         <dl :if={@reading["contract"]["status"] == "source_read"}>
           <div>
-            <dt>Applies when</dt><dd>
+            <dt data-edu-term="requires" tabindex="0">Applies when</dt><dd>
               <code id="requires-expression">{@reading["contract"]["requires"]}</code>
             </dd>
           </div>
           <div>
-            <dt>Requires of the result</dt><dd>
+            <dt data-edu-term="expects" tabindex="0">Requires of the result</dt><dd>
               <code id="expects-expression">{@reading["contract"]["expects"]}</code>
             </dd>
           </div>

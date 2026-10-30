@@ -7,9 +7,31 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Explore payment-hold rules by running concrete cases. The compact rule header keeps a requirement summary, its exact source, and **Read full claim** together without making long expressions precede the input. Run a request, change an alternative output, and read its differences beside their fields. The experiment and checks occupy two natural-scrolling lanes; selected condition and Lean source excerpts share the reasoning lane. The editor does not block other controls.
+Hold Ledger's Phoenix application opens to a **repository learning dashboard** at
+`/`. It is for first-time readers, engineers and formal-methods reviewers who
+want to understand the payment-hold model, requirements, catalog and proof
+boundaries before using the existing review tools. All 49 currently registered
+groups (35 Elixir/Lynx laws and 14 native Lean groups) appear in the Atlas
+using derived inventory plus curated, source-tied explanations. Registration is
+**not** represented as a fresh checker result.
 
-The Phoenix app uses the original Ledger, independent Spec and claim evaluator. It sends no payments.
+Learn the payment-hold scenario at `/start`, explore code and hold states at
+`/system`, examine the policy themes at `/guarantees`, browse the catalog at
+`/atlas` (and individual `/atlas/:slug` profiles), learn the source-to-proof
+pipeline at `/proofs`, inspect evidence limitations at `/assurance`, browse the
+purpose-based source map at `/repository`, and look up terms at `/glossary`.
+
+The **Case Lab** entry is now `/lab`; it opens the original source-bound
+Cockpit and continues to use `/claims/:slug` and `/claims/:slug/:id` for stable
+claim review URLs. **Claim Lens** stays at `/lens/:slug`, with its existing two
+guided exercises. Source comparison remains in Case Lab. The original Ledger,
+Spec, evaluator, Lean files, checks and processor logic are unchanged.
+
+Shared explanatory assistance works by hover, focus and touch with a persistent
+page help drawer and an optional Guided/Focused explanation-density setting.
+The same curated glossary powers the reference page and workbench tooltips.
+None of the educational scenario steps, examples or glossary entries is a new
+formal proof, real processor execution or human policy approval.
 
 ## Run locally
 

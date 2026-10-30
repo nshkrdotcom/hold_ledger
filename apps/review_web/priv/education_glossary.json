@@ -1,0 +1,429 @@
+{
+  "schema": 1,
+  "terms": [
+    {
+      "id": "hold",
+      "term": "Hold",
+      "short": "A temporary reservation of authorization capacity.",
+      "detail": "A request can consume capacity without moving or settling funds. A hold may remain reserved while the remote outcome is unknown.",
+      "example": "A 100-cent request with 100 cents of capacity leaves zero available for another request.",
+      "link": "/start"
+    },
+    {
+      "id": "capacity",
+      "term": "Capacity",
+      "short": "The amount and number of holds the account can still reserve.",
+      "detail": "The model tracks both used amount and the number of occupied hold slots. Neither may exceed its configured limit.",
+      "example": "A new 100-cent request fits when the amount limit has 100 cents left and a slot is free.",
+      "link": "/guarantees"
+    },
+    {
+      "id": "authorization",
+      "term": "Authorization",
+      "short": "A processor decision allowing a payment authorization.",
+      "detail": "An authorization result is different from an acknowledgment that a request was delivered.",
+      "example": "An HTTP acknowledgment does not mean that the bank approved a hold.",
+      "link": "/system"
+    },
+    {
+      "id": "processor",
+      "term": "Processor",
+      "short": "The external party that may approve, decline, or void an authorization.",
+      "detail": "The pure ledger emits requested effects; the processor is outside that pure computation. Any promise about its real behavior needs separate evidence.",
+      "example": "A late processor approval may arrive after the local request timed out.",
+      "link": "/assurance"
+    },
+    {
+      "id": "timeout",
+      "term": "Timeout",
+      "short": "The absence of a timely answer, not a decline.",
+      "detail": "When a sent authorization times out, its remote outcome may still be live; the model retains its reserved capacity.",
+      "example": "Do not reuse 100 cents just because a 100-cent authorization did not reply.",
+      "link": "/start"
+    },
+    {
+      "id": "unknown",
+      "term": "Unknown state",
+      "short": "A hold whose remote outcome has not been established.",
+      "detail": "Unknown holds still consume capacity. A later trusted terminal response can resolve the uncertainty.",
+      "example": "A timeout on a sent hold marks it unknown rather than declined.",
+      "link": "/system"
+    },
+    {
+      "id": "reserved",
+      "term": "Reserved state",
+      "short": "A locally created hold that has not yet been dispatched.",
+      "detail": "A reserved-only hold can be canceled locally without asking the processor to void something it never received.",
+      "example": "The P08 case is a legitimate local release, not a premature remote release.",
+      "link": "/system"
+    },
+    {
+      "id": "sent",
+      "term": "Sent state",
+      "short": "An authorization has been dispatched and may be live remotely.",
+      "detail": "The ledger retains capacity until it receives sufficiently trustworthy terminal evidence.",
+      "example": "A transport acknowledgment of a sent request does not grant permission to release.",
+      "link": "/system"
+    },
+    {
+      "id": "authorized",
+      "term": "Authorized state",
+      "short": "The model has received a trusted approval for this hold.",
+      "detail": "Authorized capacity remains reserved until a permitted terminal transition.",
+      "example": "Starting cancellation does not itself release an authorized hold.",
+      "link": "/system"
+    },
+    {
+      "id": "voiding",
+      "term": "Voiding state",
+      "short": "A cancellation has been requested but not confirmed.",
+      "detail": "A void effect requests remote cancellation, while the ledger still reserves the amount and slot.",
+      "example": "An authorized hold stays capacity-consuming after the void request.",
+      "link": "/system"
+    },
+    {
+      "id": "voided",
+      "term": "Voided state",
+      "short": "A trusted terminal cancellation has been recorded.",
+      "detail": "The hold can stop consuming capacity, but its original identity is retained to prevent replay.",
+      "example": "An old request ID cannot be reused to create a fresh hold.",
+      "link": "/system"
+    },
+    {
+      "id": "declined",
+      "term": "Declined state",
+      "short": "The processor returned a trusted negative authorization result.",
+      "detail": "A decline is terminal in the model; a timeout without a reply is not the same thing.",
+      "example": "Only a trusted decline permits its capacity to be released.",
+      "link": "/system"
+    },
+    {
+      "id": "request-id",
+      "term": "Request identity",
+      "short": "The stable key used to recognize an operation and its retries.",
+      "detail": "The key and amount remain associated so repeats can be recognized and conflicting retries rejected.",
+      "example": "Retrying a 100-cent authorization with a new ID could create two live requests.",
+      "link": "/guarantees"
+    },
+    {
+      "id": "idempotency",
+      "term": "Idempotency",
+      "short": "Repeating a request does not create a second independent operation.",
+      "detail": "Stable identifiers and processor-side deduplication matter for safe retries. The external deduplication guarantee is an assumption to validate.",
+      "example": "The second request using the same key should not reserve a second 100 cents.",
+      "link": "/guarantees"
+    },
+    {
+      "id": "event",
+      "term": "Event",
+      "short": "An input that asks the ledger to advance state.",
+      "detail": "Examples include request, dispatch, timeout, retry, processor result, void, and restart.",
+      "example": "A timeout event changes a sent hold into an unknown one.",
+      "link": "/system"
+    },
+    {
+      "id": "effect",
+      "term": "Effect",
+      "short": "A description of work requested outside the pure ledger.",
+      "detail": "An emitted authorization or void effect is not evidence the external processor actually completed that work.",
+      "example": "A void effect means request cancellation, not cancellation confirmed.",
+      "link": "/assurance"
+    },
+    {
+      "id": "pure-core",
+      "term": "Pure core",
+      "short": "Code that computes output from input without I/O.",
+      "detail": "Ledger.step/2 transforms modeled state and events into new state, a result and effect requests. Journal persistence and networking happen elsewhere.",
+      "example": "The same state and event yield the same modeled transition.",
+      "link": "/system"
+    },
+    {
+      "id": "specification",
+      "term": "Specification",
+      "short": "An independently authored description of intended behavior.",
+      "detail": "The behavioral Spec and guides/specification.md are separate from the implementation. A proof of a claim does not decide whether policy was correctly chosen.",
+      "example": "Policy requires admitting a fresh exact-fit request.",
+      "link": "/guarantees"
+    },
+    {
+      "id": "law",
+      "term": "Formal law",
+      "short": "A source-declared precondition and postcondition describing a property.",
+      "detail": "Elixir/Lynx laws express a statement about the modeled code. The statement may be too weak or too strong for human policy.",
+      "example": "PO-A2 describes required admission of eligible requests.",
+      "link": "/proofs"
+    },
+    {
+      "id": "requires",
+      "term": "requires",
+      "short": "The precondition defining when a law makes its promise.",
+      "detail": "A false precondition means the law does not apply to that input; it does not mean the system rejected the request.",
+      "example": "Changing amount <= remaining to amount < remaining excludes exact-fit cases.",
+      "link": "/proofs"
+    },
+    {
+      "id": "expects",
+      "term": "expects",
+      "short": "The postcondition constraining the output when the precondition holds.",
+      "detail": "A weakened postcondition may let a wrong output satisfy the written claim.",
+      "example": "Saying only that the next state is valid may not guarantee an eligible request is admitted.",
+      "link": "/proofs"
+    },
+    {
+      "id": "invariant",
+      "term": "Invariant",
+      "short": "A condition intended to hold for every modeled reachable state.",
+      "detail": "A step-preservation argument and a valid initial state can support a claim about finite histories under the model assumptions.",
+      "example": "Used capacity agrees with the amounts of capacity-consuming holds.",
+      "link": "/guarantees"
+    },
+    {
+      "id": "witness",
+      "term": "Witness",
+      "short": "One concrete input or trace used to illustrate a property.",
+      "detail": "A pointwise witness is useful for understanding a rule but is not by itself a universal theorem.",
+      "example": "99, 100 and 101 cents distinguish below-limit, exact-fit and over-limit cases.",
+      "link": "/proofs"
+    },
+    {
+      "id": "counterexample",
+      "term": "Counterexample",
+      "short": "A concrete case contradicting a specified statement.",
+      "detail": "A failed proof tactic or timed-out checker is not automatically a counterexample.",
+      "example": "An eligible exact-fit request is excluded by a hypothetical strict less-than precondition.",
+      "link": "/proofs"
+    },
+    {
+      "id": "mutation",
+      "term": "Mutation",
+      "short": "A deliberately altered piece of code used to challenge a property.",
+      "detail": "Mutation tests help show whether a check detects a specific fault. A mutant is not a freshly proved theorem.",
+      "example": "The exact-fit mutant rejects equality that policy requires.",
+      "link": "/guarantees"
+    },
+    {
+      "id": "claim",
+      "term": "Claim",
+      "short": "A registered formal obligation with a defined scope.",
+      "detail": "This repository currently catalogs Elixir/Lynx law groups and Lean-only groups. Registration is not proof acceptance.",
+      "example": "PO-A2 is one group among 49 in the catalog.",
+      "link": "/atlas"
+    },
+    {
+      "id": "theorem",
+      "term": "Theorem",
+      "short": "A mathematical statement accompanied by a proof term.",
+      "detail": "Lean kernel acceptance is about the stated proposition and admitted assumptions, not whether the proposition matches product intent.",
+      "example": "A proven statement with a narrowed precondition can still omit a required case.",
+      "link": "/proofs"
+    },
+    {
+      "id": "lemma",
+      "term": "Lemma",
+      "short": "A helper result used to establish a larger result.",
+      "detail": "Foundational lookup, arithmetic and structure properties support larger review obligations. Not every registered group plays the same role.",
+      "example": "L3 explains the accounting delta of a status change.",
+      "link": "/atlas"
+    },
+    {
+      "id": "lean",
+      "term": "Lean 4",
+      "short": "A language and proof assistant used for the formal representation.",
+      "detail": "Lean proofs are checked against a precise mathematical statement. A raw Lean source excerpt is useful reading but not a fresh receipt.",
+      "example": "The native Lean history groups do not have Elixir requires/ expects counterparts.",
+      "link": "/proofs"
+    },
+    {
+      "id": "lynx",
+      "term": "Lynx",
+      "short": "The translation/proof pipeline connecting supported Elixir laws to Lean.",
+      "detail": "Only the supported language subset and the matching source/toolchain are covered; translating code does not validate human policy by itself.",
+      "example": "The PO-A2 law references Ledger.request/3 and Spec.request_eligible?/3.",
+      "link": "/proofs"
+    },
+    {
+      "id": "elixir",
+      "term": "Elixir",
+      "short": "The implementation language of the ledger and review companion.",
+      "detail": "The pure Ledger and independent Spec are Elixir modules; Phoenix LiveView powers the browser interface.",
+      "example": "lib/hold_ledger/ledger.ex contains the pure transition logic.",
+      "link": "/repository"
+    },
+    {
+      "id": "phoenix",
+      "term": "Phoenix LiveView",
+      "short": "The interactive web framework used by this review companion.",
+      "detail": "It displays cases and explanations. It does not itself run arbitrary Lean proofs or move money.",
+      "example": "Case Lab and Claim Lens are Phoenix LiveViews in apps/review_web/.",
+      "link": "/repository"
+    },
+    {
+      "id": "induction",
+      "term": "Induction",
+      "short": "A proof method reasoning from a base and a preserved step.",
+      "detail": "A finite-history theorem can establish a property for any modeled finite sequence by proving it at start and after each event.",
+      "example": "PO-C1 reasons about finite event lists.",
+      "link": "/proofs"
+    },
+    {
+      "id": "axiom",
+      "term": "Axiom",
+      "short": "A declared starting assumption accepted without proof in that development.",
+      "detail": "A proof report must be bound to exact source and explicitly allowed axioms. Axiom lists in old reports are not current evidence.",
+      "example": "The repository validation rules restrict which foundational Lean axioms are allowed.",
+      "link": "/assurance"
+    },
+    {
+      "id": "omega",
+      "term": "omega",
+      "short": "A Lean tactic for decidable integer-arithmetic goals.",
+      "detail": "Tactics construct proof terms; Lean checks the resulting proof, but this is not a new business-policy judgment.",
+      "example": "Arithmetic facts about capacities and nonnegative totals can benefit from omega.",
+      "link": "/proofs"
+    },
+    {
+      "id": "aesop",
+      "term": "aesop",
+      "short": "A Lean proof-search tactic.",
+      "detail": "It applies registered rules to make progress on proof obligations. Seeing aesop in a file is not a proof report.",
+      "example": "An automatically solved branch still relies on the exact theorem statement.",
+      "link": "/proofs"
+    },
+    {
+      "id": "cases",
+      "term": "cases",
+      "short": "A Lean tactic that splits a problem into possible constructors or cases.",
+      "detail": "Each branch must be handled under the modeled data types; it is not an interactive runtime switch statement.",
+      "example": "Different hold-state constructors may require separate proof arguments.",
+      "link": "/proofs"
+    },
+    {
+      "id": "sorry",
+      "term": "sorry",
+      "short": "An admitted proof placeholder that does not justify the proposition.",
+      "detail": "A source snippet containing sorry should not be treated as completed evidence. Inspect the source-matching report and assumptions.",
+      "example": "A declared theorem can still be listed without an accepted final proof.",
+      "link": "/assurance"
+    },
+    {
+      "id": "proof-status",
+      "term": "Proof status",
+      "short": "The level of evidence available for an exact statement and source revision.",
+      "detail": "Registered, source-readable, pointwise-evaluated, and fully checked are distinct categories. Do not infer success from catalog support.",
+      "example": "A new hypothetical edit has no new Lean check.",
+      "link": "/assurance"
+    },
+    {
+      "id": "source-identity",
+      "term": "Source identity",
+      "short": "A digest or other identifier binding evidence to exact source bytes.",
+      "detail": "Evidence from a different revision may be stale. A link to source helps reading but is not a proof dependency.",
+      "example": "A checked report must match the current law and translation sources.",
+      "link": "/assurance"
+    },
+    {
+      "id": "proof-dependency",
+      "term": "Proof dependency",
+      "short": "A formally established relationship among definitions and theorem proofs.",
+      "detail": "A guide link or source location is a reading aid, not an automatically measured kernel dependency graph.",
+      "example": "The Atlas groups claims by topic, not proof-level imports.",
+      "link": "/atlas"
+    },
+    {
+      "id": "pointwise",
+      "term": "Pointwise evaluation",
+      "short": "A check of one concrete state, input and proposed output.",
+      "detail": "A pointwise result may say whether a claim permits a candidate at that point; it cannot establish the theorem for all possible states.",
+      "example": "Case Lab checks a single proposed alternative against registered laws.",
+      "link": "/assurance"
+    },
+    {
+      "id": "hypothetical",
+      "term": "Hypothetical",
+      "short": "A hand-authored possible change that has not been reverified.",
+      "detail": "It is useful for challenging a claim but must not be labeled as accepted or rejected by Lean.",
+      "example": "Changing <= to < in the Claim Lens is a curated hypothetical.",
+      "link": "/lens/po_a2"
+    },
+    {
+      "id": "assumption",
+      "term": "Assumption",
+      "short": "A premise the proof model relies on but may not establish.",
+      "detail": "Processor fencing, trustworthy results, journal durability and translation correctness have separate scopes and evidence needs.",
+      "example": "A requested remote void is not permanent fencing unless the processor guarantees that behavior.",
+      "link": "/assurance"
+    },
+    {
+      "id": "journal",
+      "term": "Journal",
+      "short": "An ordered record used by runtime recovery.",
+      "detail": "Durable journal sync and replay behavior are separate concerns from the pure transition function.",
+      "example": "A crash recovery replays only the durable prefix.",
+      "link": "/repository"
+    },
+    {
+      "id": "replay",
+      "term": "Replay",
+      "short": "Reapplying recorded operations to reconstruct state.",
+      "detail": "Modeled replay properties do not alone prove that real disks synced all intended entries.",
+      "example": "The composite recovery group relates committed replay to modeled state.",
+      "link": "/repository"
+    },
+    {
+      "id": "composite",
+      "term": "Composite state",
+      "short": "The ledger together with other modeled pending work.",
+      "detail": "Composite proofs connect ledger state with pending void obligations and recovery, rather than inspecting one isolated call.",
+      "example": "An authorized hold may remain reserved while a void effect is awaiting confirmation.",
+      "link": "/system"
+    },
+    {
+      "id": "terminal-fence",
+      "term": "Terminal fencing",
+      "short": "A requirement that late work cannot revive a terminal request.",
+      "detail": "The formal model can express a fencing contract; real processor adherence needs independent evidence.",
+      "example": "A voided authorization must not become live because a late request arrives.",
+      "link": "/assurance"
+    },
+    {
+      "id": "coverage",
+      "term": "Coverage",
+      "short": "The cases and inputs to which a rule actually applies.",
+      "detail": "A proven claim can exclude a required input through a too-strong precondition. Coverage is distinct from checking success.",
+      "example": "A strict less-than rule omits exact-fit requests.",
+      "link": "/guarantees"
+    },
+    {
+      "id": "vacuity",
+      "term": "Vacuity",
+      "short": "A condition in which a claim says little because its premise never holds.",
+      "detail": "Checking vacuity helps but cannot decide whether a reachable yet excluded input was meant to be included.",
+      "example": "A rule that applies only to impossible states gives little product assurance.",
+      "link": "/proofs"
+    },
+    {
+      "id": "effect-intent",
+      "term": "Effect intent",
+      "short": "A proposed external action described by a pure transition.",
+      "detail": "An effect list does not certify delivery, approval, or cancellation by an external processor.",
+      "example": "P02 retains capacity but omits the required void effect.",
+      "link": "/assurance"
+    },
+    {
+      "id": "policy-gap",
+      "term": "Semantic gap",
+      "short": "A mismatch between independently intended behavior and a formal claim.",
+      "detail": "Policy adequacy requires human reasoning; an accepted proof of an inadequate statement remains inadequate for that intent.",
+      "example": "A rule may allow rejection of a request policy says must be admitted.",
+      "link": "/lens/po_a2"
+    },
+    {
+      "id": "review",
+      "term": "Human review",
+      "short": "A judgment about whether the formal claim expresses intended assurance.",
+      "detail": "Review notes cite policy, exact claim clause, witness and evidence limitations. Human signoff is not a checker result.",
+      "example": "A reviewer may correctly conclude more processor evidence is needed.",
+      "link": "/lens/po_exposure_retain"
+    }
+  ]
+}

@@ -41,7 +41,7 @@ test('actual isolated source replay distinguishes a tightened exact-fit premise'
 
 });
 test('source selection uses registered identities and replay is unavailable without a pair',async({page})=>{
-  await page.goto('/');await expect(page).toHaveURL(/\/claims\/po_a2\/trace-/);
+  await page.goto('/lab');await expect(page).toHaveURL(/\/claims\/po_a2\/trace-/);
   await page.locator('#choose-sources').click();
   await expect(page.locator('#compare_baseline')).toHaveJSProperty('tagName','SELECT');
   await expect(page.locator('#replay-pair')).toHaveCount(0);

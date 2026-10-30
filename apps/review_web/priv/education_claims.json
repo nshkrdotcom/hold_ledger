@@ -1,0 +1,300 @@
+{
+  "schema": 1,
+  "editorial_note": "Human-readable navigation only; not proof results or a dependency graph.",
+  "claims": [
+    {
+      "slug": "l1_find",
+      "title": "Find a hold without losing its identity",
+      "family": "Foundations",
+      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+    },
+    {
+      "slug": "l2_identity",
+      "title": "Keep request identities intact when status changes",
+      "family": "Foundations",
+      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+    },
+    {
+      "slug": "l3_accounting",
+      "title": "Account for one status change exactly",
+      "family": "Foundations",
+      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+    },
+    {
+      "slug": "l4_structure",
+      "title": "Preserve the shape of the hold list",
+      "family": "Foundations",
+      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+    },
+    {
+      "slug": "l5_fresh",
+      "title": "Count a new positive hold once",
+      "family": "Foundations",
+      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+    },
+    {
+      "slug": "l6_restart",
+      "title": "Keep reservation totals through a restart",
+      "family": "Foundations",
+      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+    },
+    {
+      "slug": "po_i",
+      "title": "Begin in a valid state",
+      "family": "Admission",
+      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+    },
+    {
+      "slug": "po_a1",
+      "title": "Keep requests inside the state rules",
+      "family": "Admission",
+      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+    },
+    {
+      "slug": "po_a2",
+      "title": "Admit every eligible request, including exact fit",
+      "family": "Admission",
+      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+    },
+    {
+      "slug": "po_a3",
+      "title": "Leave state unchanged when nothing applies",
+      "family": "Admission",
+      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+    },
+    {
+      "slug": "po_a4_duplicate",
+      "title": "Recognize the same request again",
+      "family": "Admission",
+      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+    },
+    {
+      "slug": "po_a4_conflict",
+      "title": "Reject a reused ID with a different amount",
+      "family": "Admission",
+      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+    },
+    {
+      "slug": "po_b1_dispatch",
+      "title": "Preserve validity when dispatching",
+      "family": "Single-step safety",
+      "risk": "A single event could corrupt the state even if earlier steps were valid."
+    },
+    {
+      "slug": "po_b1_timeout",
+      "title": "Preserve validity after a timeout",
+      "family": "Single-step safety",
+      "risk": "A single event could corrupt the state even if earlier steps were valid."
+    },
+    {
+      "slug": "po_b1_restart",
+      "title": "Preserve validity across restart",
+      "family": "Single-step safety",
+      "risk": "A single event could corrupt the state even if earlier steps were valid."
+    },
+    {
+      "slug": "po_b1_retry",
+      "title": "Preserve validity during retry",
+      "family": "Single-step safety",
+      "risk": "A single event could corrupt the state even if earlier steps were valid."
+    },
+    {
+      "slug": "po_b1_processor_result",
+      "title": "Preserve validity when a processor responds",
+      "family": "Single-step safety",
+      "risk": "A single event could corrupt the state even if earlier steps were valid."
+    },
+    {
+      "slug": "po_b1_void",
+      "title": "Preserve validity when cancellation begins",
+      "family": "Single-step safety",
+      "risk": "A single event could corrupt the state even if earlier steps were valid."
+    },
+    {
+      "slug": "po_b2",
+      "title": "Retain uncertain authorization capacity",
+      "family": "Identity & lifecycle",
+      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+    },
+    {
+      "slug": "po_b3",
+      "title": "Send effects for the right hold and amount",
+      "family": "Identity & lifecycle",
+      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+    },
+    {
+      "slug": "po_s",
+      "title": "Keep every single modeled step valid",
+      "family": "Single-step safety",
+      "risk": "A single event could corrupt the state even if earlier steps were valid."
+    },
+    {
+      "slug": "po_c1",
+      "title": "Preserve validity through any finite event list",
+      "family": "Histories",
+      "risk": "Locally sensible operations might add up to an unsafe sequence."
+    },
+    {
+      "slug": "po_c2",
+      "title": "Keep every modeled journal prefix valid",
+      "family": "Histories",
+      "risk": "Locally sensible operations might add up to an unsafe sequence."
+    },
+    {
+      "slug": "po_b4",
+      "title": "Do not invent approvals without a processor result",
+      "family": "Identity & lifecycle",
+      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+    },
+    {
+      "slug": "po_b5_declined",
+      "title": "Never revive a declined hold",
+      "family": "Identity & lifecycle",
+      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+    },
+    {
+      "slug": "po_b5_voided",
+      "title": "Never revive a voided hold",
+      "family": "Identity & lifecycle",
+      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+    },
+    {
+      "slug": "po_b6",
+      "title": "Remember every seen identity and amount",
+      "family": "Identity & lifecycle",
+      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+    },
+    {
+      "slug": "po_b7",
+      "title": "Treat in-flight sends as unknown after restart",
+      "family": "Identity & lifecycle",
+      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+    },
+    {
+      "slug": "po_c3",
+      "title": "Preserve terminal identities and approval evidence through history",
+      "family": "Histories",
+      "risk": "Locally sensible operations might add up to an unsafe sequence."
+    },
+    {
+      "slug": "po_b1_void_confirmed",
+      "title": "Release capacity only on a valid void confirmation",
+      "family": "Single-step safety",
+      "risk": "A single event could corrupt the state even if earlier steps were valid."
+    },
+    {
+      "slug": "po_attempt_poison",
+      "title": "Do not restart a poisoned attempt",
+      "family": "Attempts",
+      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+    },
+    {
+      "slug": "po_terminal_fence",
+      "title": "Fence late authorization after terminal results",
+      "family": "Processor & exposure",
+      "risk": "Remote authorizations could remain live after local capacity is reused."
+    },
+    {
+      "slug": "po_attempt_retired",
+      "title": "Ignore late events for retired attempts",
+      "family": "Attempts",
+      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+    },
+    {
+      "slug": "po_attempt_slot",
+      "title": "Reject an attempt when its slot is occupied",
+      "family": "Attempts",
+      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+    },
+    {
+      "slug": "po_exposure_retain",
+      "title": "Keep issued holds reserved until terminal evidence",
+      "family": "Processor & exposure",
+      "risk": "Remote authorizations could remain live after local capacity is reused."
+    },
+    {
+      "slug": "po_composite_recovery",
+      "title": "Replay committed work into the same composite state",
+      "family": "Composite & recovery",
+      "risk": "Recovery or pending void work could drift from the ledger and journal."
+    },
+    {
+      "slug": "po_exposure_history",
+      "title": "Keep remote exposure reserved through history",
+      "family": "Processor & exposure",
+      "risk": "Remote authorizations could remain live after local capacity is reused."
+    },
+    {
+      "slug": "po_exposure_bounds",
+      "title": "Bound the amount the processor may still authorize",
+      "family": "Processor & exposure",
+      "risk": "Remote authorizations could remain live after local capacity is reused."
+    },
+    {
+      "slug": "po_attempt_history",
+      "title": "Track attempts safely across finite histories",
+      "family": "Attempts",
+      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+    },
+    {
+      "slug": "po_composite_init",
+      "title": "Initialize the combined state validly",
+      "family": "Composite & recovery",
+      "risk": "Recovery or pending void work could drift from the ledger and journal."
+    },
+    {
+      "slug": "po_composite_preservation",
+      "title": "Keep the combined state valid after a step",
+      "family": "Composite & recovery",
+      "risk": "Recovery or pending void work could drift from the ledger and journal."
+    },
+    {
+      "slug": "po_composite_oracle",
+      "title": "Relate combined-state views to the reference model",
+      "family": "Composite & recovery",
+      "risk": "Recovery or pending void work could drift from the ledger and journal."
+    },
+    {
+      "slug": "po_composite_history",
+      "title": "Preserve combined safety through history",
+      "family": "Composite & recovery",
+      "risk": "Recovery or pending void work could drift from the ledger and journal."
+    },
+    {
+      "slug": "po_composite_confirmation",
+      "title": "Confirm a pending void at most once",
+      "family": "Composite & recovery",
+      "risk": "Recovery or pending void work could drift from the ledger and journal."
+    },
+    {
+      "slug": "po_composite_open",
+      "title": "Track void work that remains outstanding",
+      "family": "Composite & recovery",
+      "risk": "Recovery or pending void work could drift from the ledger and journal."
+    },
+    {
+      "slug": "po_composite_recovery_valid",
+      "title": "Restore a valid combined state after recovery",
+      "family": "Composite & recovery",
+      "risk": "Recovery or pending void work could drift from the ledger and journal."
+    },
+    {
+      "slug": "po_exposure_model",
+      "title": "Relate ledger actions to a modeled processor",
+      "family": "Processor & exposure",
+      "risk": "Remote authorizations could remain live after local capacity is reused."
+    },
+    {
+      "slug": "po_exposure_model_bounds",
+      "title": "Bound exposure in the combined model",
+      "family": "Processor & exposure",
+      "risk": "Remote authorizations could remain live after local capacity is reused."
+    },
+    {
+      "slug": "po_attempt_persist",
+      "title": "Persist before an attempt retires",
+      "family": "Attempts",
+      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+    }
+  ]
+}

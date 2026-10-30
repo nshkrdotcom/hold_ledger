@@ -253,6 +253,12 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
         Source-bound Claim Lens reading is unavailable.
       </section>
       <div :if={@study && @observation && @reading} id="claim-lens">
+        <div class="edu-workbench-intro" id="lens-education-bridge">
+          <div><strong>New to formal review?</strong>
+            <p>Learn the system first; this view tests how an authored claim relates to independent policy, not whether the payment processor is safe.</p>
+          </div>
+          <a href="/proofs">Understand the claim →</a>
+        </div>
         <header class="lens-hero">
           <div class="lens-hero-top">
             <span class="lens-kicker">VERIFICATION / INTERACTIVE SEMANTICS</span>
@@ -313,7 +319,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
             <span><b>Hypothetical</b> Unchecked by Lean</span>
           </div>
           <details id="lens-evidence-legend" class="lens-details lens-legend">
-            <summary>Understand the five evidence levels</summary>
+            <summary data-edu-hint="Distinguish policy, a pointwise result, source reading, checked artifacts, and unverified external assumptions.">Understand the five evidence levels</summary>
             <ol class="lens-legend-list">
               <li>
                 <strong>Policy Requirement</strong>
@@ -361,9 +367,10 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
             </section>
             <section class="lens-panel" id="lens-witness-picker">
               <span class="lens-step">02 / Near-miss selector</span>
-              <h2>Change one boundary</h2>
+              <h2 data-edu-term="witness" tabindex="0">Change one boundary</h2>
               <div class="lens-choice-stack" role="group" aria-label="Pointwise witness">
                 <button
+                  data-edu-hint="Choose one concrete input boundary. This is an authored comparison, not a new theorem proof."
                   :for={witness <- @study.witnesses}
                   id={"lens-witness-#{witness.id}"}
                   type="button"
@@ -405,9 +412,10 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 <span class="lens-step">04 / Contract boundary</span>
                 <span class="lens-evidence lens-provenance" data-kind="hypothetical">HYPOTHETICAL: Unchecked by Lean</span>
               </div>
-              <h2>What if the precondition changed?</h2>
+              <h2 data-edu-term="requires" tabindex="0">What if the precondition changed?</h2>
               <div class="lens-variations" role="group" aria-label="Hypothetical edit">
                 <button
+                  data-edu-hint="Select an illustrative contract edit. All changes here are hypothetical and unchecked by Lean."
                   :for={variation <- @study.variations}
                   id={"lens-variation-#{variation.id}"}
                   type="button"
@@ -480,7 +488,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 <span class="lens-step">06 / Commit your interpretation</span>
                 <span class="lens-evidence lens-provenance" data-kind="human">Human judgment · local only</span>
               </div>
-              <h2>What does the contract promise here?</h2>
+              <h2 data-edu-term="review" tabindex="0">What does the contract promise here?</h2>
               <p>
                 Choose the best classification, then anchor it to the policy, claim,
                 concrete witness and scope limit. No concern and uncertainty are valid conclusions.
@@ -659,7 +667,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 <span class="lens-step">07 / Feedback · after classification</span>
                 <span class="lens-evidence lens-provenance" data-kind="pointwise">Bounded, pointwise evidence</span>
               </div>
-              <h2>Policy expectation vs. contract permission</h2>
+              <h2 data-edu-term="policy-gap" tabindex="0">Policy expectation vs. contract permission</h2>
 
               <p :if={!@feedback?} id="lens-feedback-withheld" class="lens-feedback-withheld">
                 Automated verdicts, source-bound applicability and any worked answer are deliberately
@@ -814,7 +822,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
             <aside class="lens-reading" aria-label="Source and verification evidence">
               <section class="lens-panel" id="lens-source-contract">
                 <span class="lens-step">Source / Elixir law</span>
-                <h2>The authored contract</h2>
+                <h2 data-edu-term="law" tabindex="0">The authored contract</h2>
                 <p class="lens-evidence">{@reading["law"]["file"]}</p>
                 <dl :if={@reading["contract"]["status"] == "source_read"} class="lens-contract">
                   <dt>REQUIRES</dt><dd tabindex="0" aria-label="Authored precondition">
@@ -875,7 +883,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
               </section>
               <section class="lens-panel" id="lens-lean-reading">
                 <span class="lens-step">Source / Lean text</span>
-                <h2>What the theorem states</h2>
+                <h2 data-edu-term="theorem" tabindex="0">What the theorem states</h2>
                 <article :for={decl <- @reading["declarations"]} class="lens-lean-decl">
                   <p class="lens-evidence">
                     {decl["path"]}:{decl["line"]} · {evidence_label(decl["status"])}
@@ -902,7 +910,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
               </section>
               <section class="lens-panel" id="lens-evidence-status">
                 <span class="lens-step">Evidence / Provenance</span>
-                <h2>What is actually checked?</h2>
+                <h2 data-edu-term="proof-status" tabindex="0">What is actually checked?</h2>
                 <dl class="lens-evidence-grid">
                   <dt>Pointwise baseline</dt><dd>
                     Audited Elixir law · {@observation.baseline.bindings_tested} source binding(s)

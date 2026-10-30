@@ -12,7 +12,17 @@ defmodule HoldLedgerReviewWeb.Router do
 
   scope "/", HoldLedgerReviewWeb do
     pipe_through :browser
-    live "/", CockpitLive, :index
+    live "/", EducationLive, :overview
+    live "/start", EducationLive, :start
+    live "/system", EducationLive, :system
+    live "/guarantees", EducationLive, :guarantees
+    live "/atlas", EducationLive, :atlas
+    live "/atlas/:slug", EducationLive, :profile
+    live "/proofs", EducationLive, :proofs
+    live "/assurance", EducationLive, :assurance
+    live "/repository", EducationLive, :repository
+    live "/glossary", EducationLive, :glossary
+    live "/lab", CockpitLive, :index
     live "/lens/:slug", ClaimLensLive, :show
     live "/claims/:slug", CockpitLive, :claim
     live "/claims/:slug/:id", CockpitLive, :show
