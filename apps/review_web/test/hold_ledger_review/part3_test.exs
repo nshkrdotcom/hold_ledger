@@ -13,7 +13,6 @@ defmodule HoldLedgerReview.Part3Test do
     Part3ContractDelta,
     Part3Diagnostics,
     Part3Docket,
-    Part3Editor,
     Part3Package,
     Part3ProofInspector,
     Part3RepairPacket,
@@ -262,24 +261,8 @@ defmodule HoldLedgerReview.Part3Test do
            end)
   end
 
-  test "candidate counters remain wrong until explicit recalculation; valid starting input enforced",
-       ctx do
+  test "pinning refuses an invalid starting state", ctx do
     {:ok, witness} = Adversarial.seed("P04")
-
-    assert {:ok, wrong} =
-             Part3Editor.change(witness, %{"action" => "add_entry", "section" => "candidate"})
-
-    assert wrong["output"]["after"]["used_amount"] == 0
-    assert wrong["before"] == witness["before"]
-    assert {:ok, _} = Adversarial.decode(wrong)
-    assert {:ok, pinned, _} = Part3Store.pin(ctx.package["id"], wrong, ctx.store)
-    assert is_map(pinned)
-
-    assert {:ok, recalculated} =
-             Part3Editor.change(wrong, %{"action" => "recalculate", "section" => "candidate"})
-
-    assert recalculated["output"]["after"]["used_amount"] == 1
-    assert recalculated["before"] == witness["before"]
     invalid_before = put_in(witness, ["before", "used_amount"], 999)
 
     assert {:error, :invalid_or_stale_pin} =

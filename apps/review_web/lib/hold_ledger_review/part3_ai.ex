@@ -8,9 +8,9 @@ defmodule HoldLedgerReview.Part3AI do
   alias HoldLedgerReview.{
     Adversarial,
     AI,
-    AIProtocol,
     Anchor,
     Canonical,
+    JSONSchema,
     Part3Package,
     Part3Snapshots
   }
@@ -171,7 +171,7 @@ defmodule HoldLedgerReview.Part3AI do
 
   def validate(output, packet) when is_map(output) do
     with true <- byte_size(Jason.encode!(output)) <= @max_response,
-         true <- AIProtocol.structure?(output, schema()),
+         true <- JSONSchema.structure?(output, schema()),
          true <-
            output["request_kind"] == "part3_review" and
              output["context_digest"] == packet.context_digest,
