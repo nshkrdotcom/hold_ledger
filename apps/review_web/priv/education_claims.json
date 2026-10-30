@@ -1,300 +1,1491 @@
 {
-  "schema": 1,
-  "editorial_note": "Human-readable navigation only; not proof results or a dependency graph.",
+  "schema": 2,
+  "editorial_note": "Readings of the registered claims, with concrete examples and source references. The families provide a reading order; proof evidence is reported separately.",
   "claims": [
     {
       "slug": "l1_find",
-      "title": "Find a hold without losing its identity",
+      "title": "Find the entry that belongs to a key",
       "family": "Foundations",
-      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+      "scenario": "The list contains key 11 for 100¢ and key 22 for 50¢. Look up key 22.",
+      "must_happen": "Ledger.find and the independently written Spec.lookup must return the same answer, including when a key is absent.",
+      "wrong_behavior": "Return key 11’s entry when the lookup asks for key 22, or report a stored key as missing.",
+      "why_others_miss": "The list can be well formed and its totals correct while a lookup picks the wrong entry.",
+      "does_not_cover": "The input list must be proper and have unique keys. The lookup query itself is not restricted to integers.",
+      "risk": "Return key 11’s entry when the lookup asks for key 22, or report a stored key as missing.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "l1_find",
+          "path": "test/laws/l1_find_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "State and validity",
+          "path": "guides/specification.md",
+          "section": "State and validity"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "l2_identity",
-      "title": "Keep request identities intact when status changes",
+      "title": "Change a status without changing who holds what",
       "family": "Foundations",
-      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+      "scenario": "Key 11 holds 100¢ and key 22 holds 50¢. Change key 11 from reserved to sent.",
+      "must_happen": "Every existing key and its original amount must remain in the entry list after the status replacement.",
+      "wrong_behavior": "Change key 11’s amount to 50¢, or drop key 22 while replacing key 11’s status.",
+      "why_others_miss": "A list can still contain unique, well-formed entries after an amount has been overwritten.",
+      "does_not_cover": "This helper claim preserves keys and amounts. It does not decide which status a payment event should choose.",
+      "risk": "Change key 11’s amount to 50¢, or drop key 22 while replacing key 11’s status.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "l2_identity",
+          "path": "test/laws/l2_identity_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "State and validity",
+          "path": "guides/specification.md",
+          "section": "State and validity"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "l3_accounting",
-      "title": "Account for one status change exactly",
+      "title": "Count exactly what one status change adds or removes",
       "family": "Foundations",
-      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+      "scenario": "Key 11 is sent for 100¢. Replace its status with declined.",
+      "must_happen": "The holding total must fall by 100¢ and the holding count by one. A change between two holding statuses must leave both totals unchanged.",
+      "wrong_behavior": "Stop counting the 100¢ but leave its slot occupied when the entry becomes declined.",
+      "why_others_miss": "Keeping the key, amount and list shape says nothing about the sum and count calculated from the statuses.",
+      "does_not_cover": "These are totals calculated from the entry list. Updating a state’s stored counters is checked by the state-validity claims.",
+      "risk": "Stop counting the 100¢ but leave its slot occupied when the entry becomes declined.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "l3_accounting",
+          "path": "test/laws/l3_accounting_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "State and validity",
+          "path": "guides/specification.md",
+          "section": "State and validity"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "l4_structure",
-      "title": "Preserve the shape of the hold list",
+      "title": "Keep the entry list well formed when a status changes",
       "family": "Foundations",
-      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+      "scenario": "A proper list has one 100¢ entry for key 11. Replace its reserved status with sent.",
+      "must_happen": "The result must still be a proper list of valid entries with unique keys.",
+      "wrong_behavior": "Append a second copy of key 11 instead of replacing its status in the existing entry.",
+      "why_others_miss": "The original key and amount would still be present, so identity preservation alone would miss the duplicate.",
+      "does_not_cover": "The replacement status must be known and the key must already exist. Account limits and cached counters are outside this helper claim.",
+      "risk": "Append a second copy of key 11 instead of replacing its status in the existing entry.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "l4_structure",
+          "path": "test/laws/l4_structure_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "State and validity",
+          "path": "guides/specification.md",
+          "section": "State and validity"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "l5_fresh",
-      "title": "Count a new positive hold once",
+      "title": "Count a fresh reserved entry once",
       "family": "Foundations",
-      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+      "scenario": "A well-formed list has no key 11. Add key 11 as a reserved hold for 100¢.",
+      "must_happen": "The new list must keep unique keys and valid entries, add 100¢ to the holding total, and add one holding entry.",
+      "wrong_behavior": "Add the reserved entry but omit its 100¢ from the calculated holding total.",
+      "why_others_miss": "Lookup and status-replacement claims do not describe what happens when a fresh entry is added.",
+      "does_not_cover": "This is a claim about constructing an entry list. PO-A2 separately checks whether a fresh request fits the account’s limits.",
+      "risk": "Add the reserved entry but omit its 100¢ from the calculated holding total.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "l5_fresh",
+          "path": "test/laws/l5_fresh_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "State and validity",
+          "path": "guides/specification.md",
+          "section": "State and validity"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "l6_restart",
-      "title": "Keep reservation totals through a restart",
+      "title": "Keep the same holding totals when sends become unknown",
       "family": "Foundations",
-      "risk": "Small bookkeeping mistakes can undermine every higher-level claim."
+      "scenario": "The list contains a sent hold for 100¢ and an authorized hold for 50¢. Mark in-flight sends unknown.",
+      "must_happen": "The list must still account for 150¢ and two holding entries after Ledger.mark_unknown runs.",
+      "wrong_behavior": "Treat the newly unknown 100¢ entry as free when calculating the post-restart holding total.",
+      "why_others_miss": "Both sent and unknown are well-formed statuses; checking list structure alone would not catch a changed total.",
+      "does_not_cover": "This claim checks calculated totals. PO-B7 also checks that restart leaves no sent entries and preserves the stored counters.",
+      "risk": "Treat the newly unknown 100¢ entry as free when calculating the post-restart holding total.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "l6_restart",
+          "path": "test/laws/l6_restart_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_i",
-      "title": "Begin in a valid state",
+      "title": "Start with a valid account state",
       "family": "Admission",
-      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+      "scenario": "Initialize an account with an amount limit of 100¢ and one hold slot. Also consider limits of zero.",
+      "must_happen": "Every pair of nonnegative integer limits must produce a state whose entries, counters and limits satisfy Spec.valid?.",
+      "wrong_behavior": "Initialize the account with 100¢ marked used even though there are no holding entries.",
+      "why_others_miss": "Step-preservation claims start by assuming a valid state. They do not establish that initialization provides one.",
+      "does_not_cover": "The written conclusion checks validity. The separate policy describes the exact empty starting state and rejection of invalid arguments.",
+      "risk": "Initialize the account with 100¢ marked used even though there are no holding entries.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_i",
+          "path": "test/laws/po_i_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "State and validity",
+          "path": "guides/specification.md",
+          "section": "State and validity"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_a1",
-      "title": "Keep requests inside the state rules",
+      "title": "Keep request handling within the account limits",
       "family": "Admission",
-      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+      "scenario": "An account already holds its full 100¢. A fresh key requests another 50¢.",
+      "must_happen": "The request’s next state must have matching entries and counters, with used amount and hold count within their limits.",
+      "wrong_behavior": "Admit the extra 50¢ and leave the account using 150¢ against its 100¢ limit.",
+      "why_others_miss": "PO-A2 requires admission for requests that fit. This claim also covers over-capacity requests and malformed key or amount arguments.",
+      "does_not_cover": "A valid result can still be the wrong policy result. In particular, refusing every request would satisfy validity alone.",
+      "risk": "Admit the extra 50¢ and leave the account using 150¢ against its 100¢ limit.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_a1",
+          "path": "test/laws/po_a1_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P04",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": [
+        "P04"
+      ]
     },
     {
       "slug": "po_a2",
-      "title": "Admit every eligible request, including exact fit",
+      "title": "Admit a request that fits exactly",
       "family": "Admission",
-      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+      "scenario": "An empty account has a 100¢ limit and one free slot. Fresh key 11 requests 100¢.",
+      "must_happen": "Return admitted, add key 11 as reserved, increase the used amount by 100¢ and the hold count by one, and request no outside work.",
+      "wrong_behavior": "Return insufficient_amount because the admission check rejects an exact fit. M4 makes this mistake; M5 refuses every eligible request.",
+      "why_others_miss": "Refusing the request leaves an empty, valid state. A validity check alone does not require the service to admit an eligible request.",
+      "does_not_cover": "The promise applies when request_eligible? holds: a valid account, fresh integer key, positive integer amount, free slot and sufficient amount capacity.",
+      "risk": "Return insufficient_amount because the admission check rejects an exact fit. M4 makes this mistake; M5 refuses every eligible request.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_a2",
+          "path": "test/laws/po_a2_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M4",
+          "path": "mutants/04_exact_fit/README.md"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M5",
+          "path": "mutants/05_always_reject/README.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P04",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [
+        "M4",
+        "M5"
+      ],
+      "exercise_ids": [
+        "P04"
+      ]
     },
     {
       "slug": "po_a3",
-      "title": "Leave state unchanged when nothing applies",
+      "title": "Leave the account alone when an event is not applied",
       "family": "Admission",
-      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+      "scenario": "An account holds 100¢ under key 11. A dispatch for absent key 22 returns not_found.",
+      "must_happen": "A non-applied result must return the entire original state and an empty requested-effects list.",
+      "wrong_behavior": "Return not_found for key 22 while changing key 11 or requesting an authorization anyway.",
+      "why_others_miss": "Those changes could leave a valid state. This claim requires exact state equality and no outside work.",
+      "does_not_cover": "The condition uses the result returned by the code. Other claims and the policy decide whether that result was the right one.",
+      "risk": "Return not_found for key 22 while changing key 11 or requesting an authorization anyway.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_a3",
+          "path": "test/laws/po_a3_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_a4_duplicate",
-      "title": "Recognize the same request again",
+      "title": "Recognize a request even after its hold ends",
       "family": "Admission",
-      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+      "scenario": "Key 11 is remembered as voided for 300¢. The same key requests 300¢ again.",
+      "must_happen": "Return duplicate with the entire state unchanged and no requested effects, regardless of the remembered status.",
+      "wrong_behavior": "Create another hold under the voided key and reserve its 300¢ again, as M1 attempts.",
+      "why_others_miss": "A capacity check can find enough free space after release. It does not establish whether this identity has already been used.",
+      "does_not_cover": "The new request uses an integer key and the original positive integer amount. A different positive amount belongs to the conflict claim.",
+      "risk": "Create another hold under the voided key and reserve its 300¢ again, as M1 attempts.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_a4_duplicate",
+          "path": "test/laws/po_a4_duplicate_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M1",
+          "path": "mutants/01_terminal_replay/README.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P08",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [
+        "M1"
+      ],
+      "exercise_ids": [
+        "P08"
+      ]
     },
     {
       "slug": "po_a4_conflict",
-      "title": "Reject a reused ID with a different amount",
+      "title": "Reject a reused key with a different amount",
       "family": "Admission",
-      "risk": "Eligible requests could be rejected, duplicated, or admitted beyond limits."
+      "scenario": "Key 11 already records a 100¢ hold. Another request uses key 11 for 50¢, even though the account is full.",
+      "must_happen": "Return conflict, preserve the entire state and request no outside work. The identity check comes before the capacity checks.",
+      "wrong_behavior": "Overwrite key 11’s 100¢ with 50¢, or report insufficient_amount instead of the required conflict.",
+      "why_others_miss": "Both refusal results could leave the state valid. This claim checks the exact result and the unchanged state.",
+      "does_not_cover": "The incoming amount must be a different positive integer. Malformed requests are handled by the event policy.",
+      "risk": "Overwrite key 11’s 100¢ with 50¢, or report insufficient_amount instead of the required conflict.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_a4_conflict",
+          "path": "test/laws/po_a4_conflict_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_b1_dispatch",
-      "title": "Preserve validity when dispatching",
+      "title": "Keep the totals correct when a hold is dispatched",
       "family": "Single-step safety",
-      "risk": "A single event could corrupt the state even if earlier steps were valid."
+      "scenario": "Key 11 is reserved for 100¢, with 100¢ and one slot already counted. Dispatch it.",
+      "must_happen": "The next state must remain valid: the entries and stored totals agree and both limits are respected.",
+      "wrong_behavior": "Count the 100¢ a second time when its status changes from reserved to sent.",
+      "why_others_miss": "An authorization request can name the right key and amount even when the stored counters are wrong.",
+      "does_not_cover": "Validity does not require the precise sent transition or its authorization request. Read the effects claim and event policy for those details.",
+      "risk": "Count the 100¢ a second time when its status changes from reserved to sent.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b1_dispatch",
+          "path": "test/laws/po_b1_dispatch_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_b1_timeout",
-      "title": "Preserve validity after a timeout",
+      "title": "Keep an unknown hold in the totals",
       "family": "Single-step safety",
-      "risk": "A single event could corrupt the state even if earlier steps were valid."
+      "scenario": "Key 11 is sent for 300¢. Its authorization reply times out.",
+      "must_happen": "The next state must still have counters that match its holding entries and respect both limits.",
+      "wrong_behavior": "Keep key 11 as unknown but subtract its 300¢ and one slot from the counters. This is M2’s fault.",
+      "why_others_miss": "PO-B2 can preserve an unknown entry’s key and amount without checking the stored counters. This validity claim checks their agreement.",
+      "does_not_cover": "Changing the entry to declined and releasing it can be internally valid. The retention claim is needed to reject that invented terminal result.",
+      "risk": "Keep key 11 as unknown but subtract its 300¢ and one slot from the counters. This is M2’s fault.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b1_timeout",
+          "path": "test/laws/po_b1_timeout_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M2",
+          "path": "mutants/02_timeout_release/README.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P03",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P06",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [
+        "M2"
+      ],
+      "exercise_ids": [
+        "P03",
+        "P06"
+      ]
     },
     {
       "slug": "po_b1_restart",
-      "title": "Preserve validity across restart",
+      "title": "Keep restart’s entries and counters in agreement",
       "family": "Single-step safety",
-      "risk": "A single event could corrupt the state even if earlier steps were valid."
+      "scenario": "An account holds 100¢ as sent and 50¢ as authorized. Apply restart.",
+      "must_happen": "The resulting state must have correct amount and hold counters within the configured limits.",
+      "wrong_behavior": "Leave both holding entries in place but reset the used counters to zero on restart.",
+      "why_others_miss": "Removing every sent label would not catch counters that no longer match the remaining unknown and authorized entries.",
+      "does_not_cover": "Leaving a sent entry unchanged can still satisfy validity. PO-B7 checks that restart actually removes sent statuses.",
+      "risk": "Leave both holding entries in place but reset the used counters to zero on restart.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b1_restart",
+          "path": "test/laws/po_b1_restart_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_b1_retry",
-      "title": "Preserve validity during retry",
+      "title": "Keep retry from counting the hold twice",
       "family": "Single-step safety",
-      "risk": "A single event could corrupt the state even if earlier steps were valid."
+      "scenario": "Key 11 is unknown for 100¢, already using one slot. Retry the authorization.",
+      "must_happen": "The retry’s next state must preserve the relationship between holding entries, used counters and account limits.",
+      "wrong_behavior": "Add another 100¢ and another slot to the counters even though the same entry is being retried.",
+      "why_others_miss": "Reusing the correct key in the authorization request does not by itself check the account’s stored totals.",
+      "does_not_cover": "A valid next state can accompany an incorrect requested effect. PO-B3 checks that retry requests the original identity and amount.",
+      "risk": "Add another 100¢ and another slot to the counters even though the same entry is being retried.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b1_retry",
+          "path": "test/laws/po_b1_retry_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_b1_processor_result",
-      "title": "Preserve validity when a processor responds",
+      "title": "Keep processor results from corrupting the totals",
       "family": "Single-step safety",
-      "risk": "A single event could corrupt the state even if earlier steps were valid."
+      "scenario": "Key 11 is sent for 300¢. The processor returns declined.",
+      "must_happen": "Handling the result must leave a valid state, with used counters matching the remaining holding entries.",
+      "wrong_behavior": "Increase used amount when the 300¢ hold is declined, as M8 does.",
+      "why_others_miss": "A declined entry can keep its correct key and amount while the cached amount total moves in the wrong direction.",
+      "does_not_cover": "Validity alone does not choose between approved and declined behavior. The event policy and independent reference specify the full result.",
+      "risk": "Increase used amount when the 300¢ hold is declined, as M8 does.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b1_processor_result",
+          "path": "test/laws/po_b1_processor_result_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M8",
+          "path": "mutants/08_decline_accounting/README.md"
+        }
+      ],
+      "named_mutants": [
+        "M8"
+      ],
+      "exercise_ids": []
     },
     {
       "slug": "po_b1_void",
-      "title": "Preserve validity when cancellation begins",
+      "title": "Keep cancellation accounting internally consistent",
       "family": "Single-step safety",
-      "risk": "A single event could corrupt the state even if earlier steps were valid."
+      "scenario": "Key 11 is authorized for 100¢. A cancellation request arrives.",
+      "must_happen": "The returned state must have well-formed entries, correct holding totals and counters within the limits.",
+      "wrong_behavior": "Mark key 11 voiding while reporting that its 100¢ and one slot are free.",
+      "why_others_miss": "Remembering the key and requesting the right remote void do not ensure that the stored totals still count the hold.",
+      "does_not_cover": "A voided entry with zero used counters is also valid. This claim alone therefore permits P01’s premature release; retention supplies the missing requirement.",
+      "risk": "Mark key 11 voiding while reporting that its 100¢ and one slot are free.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b1_void",
+          "path": "test/laws/po_b1_void_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P01",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P02",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P05",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P08",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": [
+        "P01",
+        "P02",
+        "P05",
+        "P08"
+      ]
     },
     {
       "slug": "po_b2",
-      "title": "Retain uncertain authorization capacity",
+      "title": "Keep an unresolved hold’s identity and amount",
       "family": "Identity & lifecycle",
-      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+      "scenario": "Key 11 is unknown for 100¢. Retry it, or process an event that does not settle that key’s authorization.",
+      "must_happen": "Key 11 must remain unknown or sent with its original 100¢, and all previously recorded keys and amounts must remain present.",
+      "wrong_behavior": "Drop the unknown entry or mark it declined just because another event was processed.",
+      "why_others_miss": "A released terminal entry can produce perfectly consistent totals while losing the unresolved status this claim protects.",
+      "does_not_cover": "Its own approved or declined processor result is excluded. The conclusion does not freeze global counters or check their accuracy.",
+      "risk": "Drop the unknown entry or mark it declined just because another event was processed.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b2",
+          "path": "test/laws/po_b2_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_b3",
-      "title": "Send effects for the right hold and amount",
+      "title": "Request outside work for the right hold",
       "family": "Identity & lifecycle",
-      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+      "scenario": "Key 11 is authorized for 300¢. Cancelling it returns voiding while retaining the hold.",
+      "must_happen": "A voiding result must request the void for key 11. Dispatched and retried results must request authorization with the stored key and amount.",
+      "wrong_behavior": "Omit the required void request, as M7 does, or retry under a different authorization key, as M3 does.",
+      "why_others_miss": "A valid state that retains the hold can still omit the remote work. That is the gap exposed by P02.",
+      "does_not_cover": "The predicate branches on the supplied result. P01’s voided result with no effects passes it; retention rejects that premature release. Delivery is a separate concern.",
+      "risk": "Omit the required void request, as M7 does, or retry under a different authorization key, as M3 does.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b3",
+          "path": "test/laws/po_b3_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M3",
+          "path": "mutants/03_retry_identity/README.md"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M7",
+          "path": "mutants/07_void_effect/README.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P01",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P02",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P05",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [
+        "M3",
+        "M7"
+      ],
+      "exercise_ids": [
+        "P01",
+        "P02",
+        "P05"
+      ]
     },
     {
       "slug": "po_s",
-      "title": "Keep every single modeled step valid",
+      "title": "Keep a valid account valid after one event",
       "family": "Single-step safety",
-      "risk": "A single event could corrupt the state even if earlier steps were valid."
+      "scenario": "A valid account holds 100¢. Send it a request, timeout, restart or even a malformed event term.",
+      "must_happen": "Ledger.step must return a next state that still satisfies the entry, counter and capacity rules.",
+      "wrong_behavior": "Let an event-dispatch branch produce entries whose holding amount differs from the stored used amount.",
+      "why_others_miss": "Operation-specific checks do not alone describe the single dispatcher through which arbitrary event terms pass.",
+      "does_not_cover": "This is a state-validity promise. Exact results, required admission, retained identities and requested effects need their own claims.",
+      "risk": "Let an event-dispatch branch produce entries whose holding amount differs from the stored used amount.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_s",
+          "path": "test/laws/po_s_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Events",
+          "path": "guides/specification.md",
+          "section": "Events"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P03",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P04",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P06",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": [
+        "P03",
+        "P04",
+        "P06"
+      ]
     },
     {
       "slug": "po_c1",
-      "title": "Preserve validity through any finite event list",
+      "title": "Keep the account valid through a finite event list",
       "family": "Histories",
-      "risk": "Locally sensible operations might add up to an unsafe sequence."
+      "scenario": "Start with a valid account holding 100¢. Run dispatch, timeout and retry in order, followed by any further finite list of events.",
+      "must_happen": "Ledger.run must finish in a valid state for every proper finite event list.",
+      "wrong_behavior": "Fold the list using an outdated intermediate state so that the final counters no longer match its entries.",
+      "why_others_miss": "One-step preservation addresses individual transitions. This claim also covers how Ledger.run composes them.",
+      "does_not_cover": "The list must be proper and finite. The fold discards requested effects and does not establish delivery or wall-clock progress.",
+      "risk": "Fold the list using an outdated intermediate state so that the final counters no longer match its entries.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_c1",
+          "path": "test/laws/po_c1_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Replay",
+          "path": "guides/specification.md",
+          "section": "Replay"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_c2",
-      "title": "Keep every modeled journal prefix valid",
+      "title": "Keep event histories valid from initialization",
       "family": "Histories",
-      "risk": "Locally sensible operations might add up to an unsafe sequence."
+      "scenario": "Initialize a 100¢ account, then replay a finite list containing a request, dispatch and timeout.",
+      "must_happen": "The state produced by initialization followed by Ledger.run must satisfy validity for nonnegative integer limits.",
+      "wrong_behavior": "Combine initialization and replay incorrectly so the replayed 100¢ entry is paired with empty-account counters.",
+      "why_others_miss": "PO-C1 assumes a valid starting state. This claim connects the run directly to the state made by initialization.",
+      "does_not_cover": "A journal prefix is one such event list. The claim does not establish which records reached durable storage or execute their historical effects.",
+      "risk": "Combine initialization and replay incorrectly so the replayed 100¢ entry is paired with empty-account counters.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_c2",
+          "path": "test/laws/po_c2_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Replay",
+          "path": "guides/specification.md",
+          "section": "Replay"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_b4",
-      "title": "Do not invent approvals without a processor result",
+      "title": "Require an approval before marking a hold authorized",
       "family": "Identity & lifecycle",
-      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+      "scenario": "Key 11 is sent for 300¢. A transport acknowledgment arrives without a processor approval.",
+      "must_happen": "A previously non-authorized entry may become authorized only on its own approved result, starting from sent or unknown.",
+      "wrong_behavior": "Mark key 11 authorized merely because delivery was acknowledged. M6 introduces this mistake.",
+      "why_others_miss": "Sent and authorized both consume 300¢ and one slot, so that unauthorized status change can pass accounting checks.",
+      "does_not_cover": "The helper checks entries present before the event. It does not by itself rule out a fabricated new authorized entry or establish a real processor’s honesty.",
+      "risk": "Mark key 11 authorized merely because delivery was acknowledged. M6 introduces this mistake.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b4",
+          "path": "test/laws/po_b4_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M6",
+          "path": "mutants/06_ack_result/README.md"
+        }
+      ],
+      "named_mutants": [
+        "M6"
+      ],
+      "exercise_ids": []
     },
     {
       "slug": "po_b5_declined",
-      "title": "Never revive a declined hold",
+      "title": "Keep a declined hold declined",
       "family": "Identity & lifecycle",
-      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+      "scenario": "Key 11 is remembered as declined for 100¢. A delayed approved result or a repeated request arrives.",
+      "must_happen": "The same key and amount must still be recorded with declined status after the event.",
+      "wrong_behavior": "Revive the declined entry as authorized when the late approved result arrives.",
+      "why_others_miss": "Retaining a key and its amount does not preserve its terminal status. Correct counters can also accompany a wrongly revived entry.",
+      "does_not_cover": "This protects a local terminal entry over one step. Preventing a remote processor from creating an authorization is a separate fencing requirement.",
+      "risk": "Revive the declined entry as authorized when the late approved result arrives.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b5_declined",
+          "path": "test/laws/po_b5_declined_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_b5_voided",
-      "title": "Never revive a voided hold",
+      "title": "Keep a cancelled hold voided",
       "family": "Identity & lifecycle",
-      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+      "scenario": "Key 11 is remembered as voided for 100¢. A late result arrives after the hold has released its capacity.",
+      "must_happen": "The entry must remain voided with the same key and original amount after any next event.",
+      "wrong_behavior": "Change the voided entry back to sent or authorized in response to delayed traffic.",
+      "why_others_miss": "The identity claim preserves the entry’s key and amount but permits its status to change. This claim preserves the terminal status too.",
+      "does_not_cover": "Voided can follow a local cancellation before dispatch or a confirmed remote void. This local rule does not prove remote fencing.",
+      "risk": "Change the voided entry back to sent or authorized in response to delayed traffic.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b5_voided",
+          "path": "test/laws/po_b5_voided_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P08",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": [
+        "P08"
+      ]
     },
     {
       "slug": "po_b6",
-      "title": "Remember every seen identity and amount",
+      "title": "Remember every existing key and amount",
       "family": "Identity & lifecycle",
-      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+      "scenario": "Key 11 holds 100¢ and key 22 holds 50¢. Process an event for key 11.",
+      "must_happen": "Both original keys must remain recorded with their original amounts in the next state.",
+      "wrong_behavior": "Remove key 22 or change its 50¢ amount while updating key 11.",
+      "why_others_miss": "Recomputing correct counters after deleting an entry can leave a valid account while erasing a remembered identity.",
+      "does_not_cover": "The conclusion allows status changes. P07 keeps key 1 and its amount but wrongly voids it, so exposure retention is needed as well.",
+      "risk": "Remove key 22 or change its 50¢ amount while updating key 11.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b6",
+          "path": "test/laws/po_b6_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P07",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P08",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": [
+        "P07",
+        "P08"
+      ]
     },
     {
       "slug": "po_b7",
-      "title": "Treat in-flight sends as unknown after restart",
+      "title": "Turn in-flight sends into uncertainty on restart",
       "family": "Identity & lifecycle",
-      "risk": "Late replies, retries or state changes could confuse which hold is still live."
+      "scenario": "Key 11 is sent for 300¢ when the process restarts.",
+      "must_happen": "Restart must leave no sent entries and preserve the used amount and hold count.",
+      "wrong_behavior": "Leave key 11 marked sent after restart, as M9 does, instead of acknowledging that its outcome is now uncertain.",
+      "why_others_miss": "The unchanged sent state is internally valid. A validity-only restart check therefore misses this status requirement.",
+      "does_not_cover": "This is the modeled restart transition. Finding and replaying the durable journal prefix belongs to recovery and runtime handling.",
+      "risk": "Leave key 11 marked sent after restart, as M9 does, instead of acknowledging that its outcome is now uncertain.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b7",
+          "path": "test/laws/po_b7_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M9",
+          "path": "mutants/09_restart_unknown/README.md"
+        }
+      ],
+      "named_mutants": [
+        "M9"
+      ],
+      "exercise_ids": []
     },
     {
       "slug": "po_c3",
-      "title": "Preserve terminal identities and approval evidence through history",
+      "title": "Follow the reference behavior across a whole history",
       "family": "Histories",
-      "risk": "Locally sensible operations might add up to an unsafe sequence."
+      "scenario": "Run a 100¢ hold through request, dispatch, approval, cancellation and confirmation, then process a late approval.",
+      "must_happen": "The final state must equal the independent expected run, preserve earlier identities and terminal entries, and have approvals explained along the reference history.",
+      "wrong_behavior": "Finish a history with a revived terminal hold or a final state that differs from the independently defined event sequence.",
+      "why_others_miss": "Validity across a history can still permit the wrong statuses or admission decisions. Reference agreement adds those behavioral requirements.",
+      "does_not_cover": "The claim covers proper finite event lists. Ledger.run returns state and discards results and effects, so effect execution remains outside this conclusion.",
+      "risk": "Finish a history with a revived terminal hold or a final state that differs from the independently defined event sequence.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_c3",
+          "path": "test/laws/po_c3_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Replay",
+          "path": "guides/specification.md",
+          "section": "Replay"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_b1_void_confirmed",
-      "title": "Release capacity only on a valid void confirmation",
+      "title": "Keep confirmation’s counters consistent",
       "family": "Single-step safety",
-      "risk": "A single event could corrupt the state even if earlier steps were valid."
+      "scenario": "Key 11 is voiding for 100¢ and occupies one slot. Process a void confirmation.",
+      "must_happen": "The next state must satisfy validity, including agreement between holding entries and the stored amount and slot counters.",
+      "wrong_behavior": "Mark key 11 voided but leave its 100¢ counted as used, or subtract its slot twice.",
+      "why_others_miss": "Removing a pending-work record does not by itself check the ledger’s remaining amount and count.",
+      "does_not_cover": "The written law checks validity only. The event policy and composite confirmation claim describe which hold may release and how repeated confirmation behaves.",
+      "risk": "Mark key 11 voided but leave its 100¢ counted as used, or subtract its slot twice.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_b1_void_confirmed",
+          "path": "test/laws/po_b1_void_confirmed_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_attempt_poison",
-      "title": "Do not restart a poisoned attempt",
+      "title": "Stop new attempts after the lifecycle is poisoned",
       "family": "Attempts",
-      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+      "scenario": "The attempt lifecycle has been marked poisoned. A new authorization attempt is requested for key 11.",
+      "must_happen": "Return the unchanged lifecycle state and no intents when asked to start another attempt.",
+      "wrong_behavior": "Spawn another authorization worker even though the lifecycle is already poisoned.",
+      "why_others_miss": "An empty operation slot and room under the attempt limit do not make a poisoned lifecycle eligible to start work.",
+      "does_not_cover": "The law describes the pure Attempts.step response to a start event. It does not establish how the runtime detects a failure or stops existing workers.",
+      "risk": "Spawn another authorization worker even though the lifecycle is already poisoned.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_attempt_poison",
+          "path": "test/laws/po_attempt_poison_test.exs"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_terminal_fence",
-      "title": "Fence late authorization after terminal results",
+      "title": "Keep a delayed authorization behind the processor’s fence",
       "family": "Processor & exposure",
-      "risk": "Remote authorizations could remain live after local capacity is reused."
+      "scenario": "The modeled processor has a voided record for key 11. A delayed authorization for that key arrives with an approved outcome.",
+      "must_happen": "The environment must remain unchanged and return declined for that delayed authorization.",
+      "wrong_behavior": "Create a remotely live authorization for key 11 after its voided record has already fenced the key.",
+      "why_others_miss": "Ignoring a late reply in the local ledger does not prevent the processor from creating a remote authorization.",
+      "does_not_cover": "This proves a behavior of Environment’s model. A real adapter must honor the permanent-fencing contract, including delayed delivery.",
+      "risk": "Create a remotely live authorization for key 11 after its voided record has already fenced the key.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_terminal_fence",
+          "path": "test/laws/po_terminal_fence_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "policy",
+          "reference": "Processor terminal attestation",
+          "path": "guides/processors.md",
+          "section": "Terminal attestation and retention"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_attempt_retired",
-      "title": "Ignore late events for retired attempts",
+      "title": "Ignore events for an attempt that is no longer present",
       "family": "Attempts",
-      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+      "scenario": "Attempt 7 has left the attempt list. A late result, worker-down message or deadline still names it.",
+      "must_happen": "Result, down, deadline, shutdown-result and committed events for the absent ID must leave the state unchanged and emit no intents.",
+      "wrong_behavior": "Treat the late result for attempt 7 as a reason to persist or retire it again.",
+      "why_others_miss": "The active attempts can still have unique IDs and free slots while a stale event requests work for an absent ID.",
+      "does_not_cover": "Absence is the precondition. This claim does not describe when an active attempt is allowed to retire.",
+      "risk": "Treat the late result for attempt 7 as a reason to persist or retire it again.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_attempt_retired",
+          "path": "test/laws/po_attempt_retired_test.exs"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_attempt_slot",
-      "title": "Reject an attempt when its slot is occupied",
+      "title": "Allow one active attempt per operation and key",
       "family": "Attempts",
-      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+      "scenario": "An authorization attempt for key 11 is already active. Another start requests authorization for the same key.",
+      "must_happen": "Refuse the new start by returning the unchanged lifecycle state and no intents.",
+      "wrong_behavior": "Spawn a second authorization attempt for key 11 while the first still occupies that operation/key slot.",
+      "why_others_miss": "A global worker limit may still have room. The occupied-slot check prevents two attempts from competing for the same operation.",
+      "does_not_cover": "The slot is the pair of operation kind and key. An authorization and a lookup for the same key are different slots.",
+      "risk": "Spawn a second authorization attempt for key 11 while the first still occupies that operation/key slot.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_attempt_slot",
+          "path": "test/laws/po_attempt_slot_test.exs"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_exposure_retain",
-      "title": "Keep issued holds reserved until terminal evidence",
+      "title": "Keep issued holds counted until their own release evidence",
       "family": "Processor & exposure",
-      "risk": "Remote authorizations could remain live after local capacity is reused."
+      "scenario": "Key 11 is authorized for 100¢. Request cancellation before a terminal confirmation has arrived.",
+      "must_happen": "The same key and amount must remain in a holding status: sent, unknown, authorized or voiding.",
+      "wrong_behavior": "Release the 100¢ immediately after requesting a remote void, as M10 does, while the old authorization may still be live.",
+      "why_others_miss": "A voided entry with released counters can be internally valid. P01 also shows that changing the supplied result can let the empty effects list pass.",
+      "does_not_cover": "The condition excludes that key’s declined result and void confirmation. Other keys can change global totals; real processor truth and fencing remain external requirements.",
+      "risk": "Release the 100¢ immediately after requesting a remote void, as M10 does, while the old authorization may still be live.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_exposure_retain",
+          "path": "test/laws/po_exposure_retain_test.exs"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        },
+        {
+          "kind": "mutant",
+          "reference": "M10",
+          "path": "mutants/10_premature_void_release/README.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P01",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P03",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P05",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P07",
+          "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P08",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [
+        "M10"
+      ],
+      "exercise_ids": [
+        "P01",
+        "P03",
+        "P05",
+        "P07",
+        "P08"
+      ]
     },
     {
       "slug": "po_composite_recovery",
-      "title": "Replay committed work into the same composite state",
+      "title": "Replay committed work into the same combined state",
       "family": "Composite & recovery",
-      "risk": "Recovery or pending void work could drift from the ledger and journal."
+      "scenario": "A committed cancellation leaves a 100¢ hold voiding and its remote void work still pending. Replay the same committed events.",
+      "must_happen": "The composite fold must reconstruct the identical modeled state, including pending obligations and their recorded metadata.",
+      "wrong_behavior": "Rebuild the ledger’s hold entries but lose the outstanding void obligation during replay.",
+      "why_others_miss": "Two recovered states can both be valid while recording different pending work. Replay equality requires the same state.",
+      "does_not_cover": "The theorem starts from a finite sequence of committed modeled transitions. It does not establish which writes a disk actually preserved.",
+      "risk": "Rebuild the ledger’s hold entries but lose the outstanding void obligation during replay.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_composite_recovery",
+          "path": "test/support/lean/Recovery.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_exposure_history",
-      "title": "Keep remote exposure reserved through history",
+      "title": "Keep one issued hold protected through a history",
       "family": "Processor & exposure",
-      "risk": "Remote authorizations could remain live after local capacity is reused."
+      "scenario": "A 100¢ authorization is sent. Timeout, retry and restart follow, with no decline or void confirmation for that key.",
+      "must_happen": "After the finite event history, the original key and amount must still be present in a protected holding status in a valid state.",
+      "wrong_behavior": "Release the old authorization’s 100¢ somewhere in the sequence despite receiving no terminal evidence for that key.",
+      "why_others_miss": "One retention step does not itself state the result of the whole fold. This theorem carries the protection through every event in the list.",
+      "does_not_cover": "The history excludes that key’s declined result and void confirmation. It establishes local retention, not a promise that the processor will eventually respond.",
+      "risk": "Release the old authorization’s 100¢ somewhere in the sequence despite receiving no terminal evidence for that key.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_exposure_history",
+          "path": "test/support/lean/ExposureTrace.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Uncertain outcomes and identities",
+          "path": "guides/specification.md",
+          "section": "Uncertain outcomes and identities"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_exposure_bounds",
-      "title": "Bound the amount the processor may still authorize",
+      "title": "Bound remote exposure using its authorization history",
       "family": "Processor & exposure",
-      "risk": "Remote authorizations could remain live after local capacity is reused."
+      "scenario": "An account allows 100¢ and one hold. A remote authorization for 100¢ can be traced to a valid local authorization request.",
+      "must_happen": "The total amount and count of remote live authorizations must stay within the account’s amount and hold limits.",
+      "wrong_behavior": "Count two independent remote authorizations against a single local 100¢ hold when retries were supposed to reuse one identity.",
+      "why_others_miss": "Local counters cannot reveal a processor that duplicates authorization identities. The theorem explicitly requires deduplication and a causal history for each remote authorization.",
+      "does_not_cover": "The bound depends on unique remote keys and histories with no terminal release evidence for authorizations still counted as live. Those processor premises need real-world support.",
+      "risk": "Count two independent remote authorizations against a single local 100¢ hold when retries were supposed to reuse one identity.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_exposure_bounds",
+          "path": "test/support/lean/ExposureBound.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_attempt_history",
-      "title": "Track attempts safely across finite histories",
+      "title": "Keep attempt IDs and slots distinct across a history",
       "family": "Attempts",
-      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+      "scenario": "Start an authorization attempt, receive its result, commit it, and then process a late worker-down event.",
+      "must_happen": "The typed finite history must preserve unique attempt IDs and operation/key slots, maintain ID bounds, and retire each ID at most once. A committing attempt ignores further completion events.",
+      "wrong_behavior": "Reuse an active attempt ID or emit a second retirement for the same ID later in the history.",
+      "why_others_miss": "Single-event refusal checks do not describe ID allocation and retirement across an entire lifecycle. This theorem also connects the typed steps to translated Attempts.step.",
+      "does_not_cover": "The history begins at the typed initial state. The theorem models events and intents; it does not schedule real workers.",
+      "risk": "Reuse an active attempt ID or emit a second retirement for the same ID later in the history.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_attempt_history",
+          "path": "test/support/lean/AttemptSafety.lean"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Lifecycle history scope",
+          "path": "guides/verification.md",
+          "section": "Lifecycle history theorem"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_composite_init",
-      "title": "Initialize the combined state validly",
+      "title": "Start the ledger and pending work in agreement",
       "family": "Composite & recovery",
-      "risk": "Recovery or pending void work could drift from the ledger and journal."
+      "scenario": "Initialize the combined state with a 100¢ amount limit and two hold slots.",
+      "must_happen": "The result must satisfy composite validity: a valid ledger, valid obligation records and the required correspondence between voiding keys and pending void work.",
+      "wrong_behavior": "Start with an outstanding void obligation for key 11 even though the ledger contains no such hold.",
+      "why_others_miss": "An empty ledger can be valid while unrelated pending-work records are wrong. Ledger initialization checks do not inspect that second part.",
+      "does_not_cover": "The theorem takes nonnegative integer limits. It covers modeled initialization, before any journal file is read.",
+      "risk": "Start with an outstanding void obligation for key 11 even though the ledger contains no such hold.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_composite_init",
+          "path": "test/support/lean/CompositeSafety.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_composite_preservation",
-      "title": "Keep the combined state valid after a step",
+      "title": "Keep pending void work paired with the ledger",
       "family": "Composite & recovery",
-      "risk": "Recovery or pending void work could drift from the ledger and journal."
+      "scenario": "A 100¢ hold is voiding and has one pending void obligation. Process another composite event.",
+      "must_happen": "The next state must preserve full composite validity, including valid obligation metadata and exactly one obligation for every voiding key.",
+      "wrong_behavior": "Leave the hold voiding but remove its obligation, so the ledger remembers a cancellation that the pending-work list has forgotten.",
+      "why_others_miss": "The ledger’s counters and entries can remain valid while its outstanding work falls out of agreement.",
+      "does_not_cover": "The claim checks the combined invariant. The oracle claim compares the complete result with independently specified behavior.",
+      "risk": "Leave the hold voiding but remove its obligation, so the ledger remembers a cancellation that the pending-work list has forgotten.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_composite_preservation",
+          "path": "test/support/lean/CompositeSafety.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_composite_oracle",
-      "title": "Relate combined-state views to the reference model",
+      "title": "Match the independent reference for a combined step",
       "family": "Composite & recovery",
-      "risk": "Recovery or pending void work could drift from the ledger and journal."
+      "scenario": "Key 11 is authorized for 100¢. Apply a cancellation to both the composite implementation and its independent reference.",
+      "must_happen": "The complete step outputs must agree: next combined state, result and requested effects.",
+      "wrong_behavior": "Return a structurally valid combined state but the wrong result or different pending-void metadata from the independent reference.",
+      "why_others_miss": "Composite validity can allow several different states. Equality to the reference also specifies which transition occurred.",
+      "does_not_cover": "The comparison assumes a valid composite input. Agreement still needs review against the policy, since two implementations can share a misunderstanding.",
+      "risk": "Return a structurally valid combined state but the wrong result or different pending-void metadata from the independent reference.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_composite_oracle",
+          "path": "test/support/lean/CompositeSafety.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_composite_history",
-      "title": "Preserve combined safety through history",
+      "title": "Keep the combined state consistent through a finite run",
       "family": "Composite & recovery",
-      "risk": "Recovery or pending void work could drift from the ledger and journal."
+      "scenario": "Run a 100¢ hold through authorization, cancellation, restart and confirmation while tracking its pending void work.",
+      "must_happen": "The finite run must succeed, preserve full composite validity, correspond to committed modeled steps and agree with the independent composite run.",
+      "wrong_behavior": "Carry a stale obligation into the final state because the history fold missed the confirmation that removed it.",
+      "why_others_miss": "A correct single-step function still needs a correctly composed history fold. This claim connects both while retaining reference agreement.",
+      "does_not_cover": "The events form a finite list. Committed steps here describe the pure model, not evidence of physical journal synchronization.",
+      "risk": "Carry a stale obligation into the final state because the history fold missed the confirmation that removed it.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_composite_history",
+          "path": "test/support/lean/CompositeSafety.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_composite_confirmation",
-      "title": "Confirm a pending void at most once",
+      "title": "Finish a pending void once",
       "family": "Composite & recovery",
-      "risk": "Recovery or pending void work could drift from the ledger and journal."
+      "scenario": "Key 11 is voiding for 100¢ with a matching obligation. Process its trusted confirmation, then the same confirmation again.",
+      "must_happen": "The first confirmation must return voided with no effects and a valid combined state, removing the obligation. The repeat must return stale and leave that state unchanged.",
+      "wrong_behavior": "Remove the obligation on the first confirmation, then subtract another 100¢ or another slot when the confirmation is repeated.",
+      "why_others_miss": "A validity check does not alone specify the first and repeated results. This theorem fixes the complete repeated-confirmation behavior.",
+      "does_not_cover": "The starting composite state must be valid and the hold voiding. The runtime is responsible for admitting trusted confirmations.",
+      "risk": "Remove the obligation on the first confirmation, then subtract another 100¢ or another slot when the confirmation is repeated.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_composite_confirmation",
+          "path": "test/support/lean/CompositeSafety.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_composite_open",
-      "title": "Track void work that remains outstanding",
+      "title": "Record the void work when cancellation begins",
       "family": "Composite & recovery",
-      "risk": "Recovery or pending void work could drift from the ledger and journal."
+      "scenario": "Key 11 is authorized for 100¢ and has no pending void obligation. Request cancellation.",
+      "must_happen": "Return voiding, request the matching remote void, and append exactly one fresh obligation with zero attempts and an unattempted outcome.",
+      "wrong_behavior": "Request the remote cancellation but forget to record the outstanding work that recovery will need.",
+      "why_others_miss": "An effects check can see the correct void request while saying nothing about the companion pending-work records.",
+      "does_not_cover": "This theorem starts with a valid composite state and an authorized hold. A reserved-only cancellation follows the separate local-release path.",
+      "risk": "Request the remote cancellation but forget to record the outstanding work that recovery will need.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_composite_open",
+          "path": "test/support/lean/CompositeSafety.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "exercise",
+          "reference": "P08",
+          "path": "guides/payment_hold_review_exercises.md"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": [
+        "P08"
+      ]
     },
     {
       "slug": "po_composite_recovery_valid",
-      "title": "Restore a valid combined state after recovery",
+      "title": "Preserve combined validity across committed work",
       "family": "Composite & recovery",
-      "risk": "Recovery or pending void work could drift from the ledger and journal."
+      "scenario": "A valid combined state contains a voiding 100¢ hold and its obligation. Follow a finite sequence of committed transitions.",
+      "must_happen": "The final committed state must still satisfy the complete ledger-and-obligation invariant.",
+      "wrong_behavior": "Commit a sequence whose final state has two void obligations for one hold or an obligation with invalid metadata.",
+      "why_others_miss": "Replay equality alone can reconstruct the same bad state. This theorem adds the invariant required of the committed result.",
+      "does_not_cover": "It assumes a valid starting state and the modeled committed relation. Disk durability and selection of the recovered prefix need separate evidence.",
+      "risk": "Commit a sequence whose final state has two void obligations for one hold or an obligation with invalid metadata.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_composite_recovery_valid",
+          "path": "test/support/lean/CompositeSafety.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_exposure_model",
-      "title": "Relate ledger actions to a modeled processor",
+      "title": "Keep the ledger and modeled processor in agreement",
       "family": "Processor & exposure",
-      "risk": "Remote authorizations could remain live after local capacity is reused."
+      "scenario": "A 100¢ hold is dispatched, delivered to the modeled processor, cancelled and confirmed. Track local state alongside issued requests and remote records.",
+      "must_happen": "Initialization, each modeled step and every finite run must preserve the combined exposure invariant. The registered void-before-issue result also keeps a delayed authorization fenced.",
+      "wrong_behavior": "Let a modeled delivery create a live remote authorization with no corresponding local held capacity.",
+      "why_others_miss": "The ledger and processor can each look internally consistent while disagreeing about which authorizations are live. The combined invariant checks their relationship.",
+      "does_not_cover": "The modeled environment follows explicit delivery and fencing rules. A real processor must supply evidence that it honors those rules.",
+      "risk": "Let a modeled delivery create a live remote authorization with no corresponding local held capacity.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_exposure_model",
+          "path": "test/support/lean/ExposureModel.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_exposure_model_bounds",
-      "title": "Bound exposure in the combined model",
+      "title": "Read remote capacity bounds from the combined invariant",
       "family": "Processor & exposure",
-      "risk": "Remote authorizations could remain live after local capacity is reused."
+      "scenario": "A valid combined exposure state has a 100¢ amount limit, one slot and a remote live authorization for key 11.",
+      "must_happen": "The remote live amount must be at most 100¢ and the live authorization count at most one.",
+      "wrong_behavior": "Allow a combined state to pass its invariant while its remote records contain more live amount or authorizations than the local limits permit.",
+      "why_others_miss": "A collection of structural checks is useful only if it implies the intended numeric limits. This theorem makes that implication explicit.",
+      "does_not_cover": "The premise is full exposure validity. The separate exposure-bounds theorem instead takes deduplication and causal-history premises directly.",
+      "risk": "Allow a combined state to pass its invariant while its remote records contain more live amount or authorizations than the local limits permit.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_exposure_model_bounds",
+          "path": "test/support/lean/ExposureModel.lean"
+        },
+        {
+          "kind": "policy",
+          "reference": "Pending voids and composite recovery",
+          "path": "guides/specification.md",
+          "section": "Pending voids and composite recovery"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     },
     {
       "slug": "po_attempt_persist",
-      "title": "Persist before an attempt retires",
+      "title": "Request persistence once before retiring an attempt",
       "family": "Attempts",
-      "risk": "Concurrent and stale runtime attempts could interfere or complete twice."
+      "scenario": "Attempt 7 produces a result and enters committing. Another completion arrives before a committed event retires it.",
+      "must_happen": "The finite typed history must request persistence at most once for each attempt ID. Retirement on a committed event must have an earlier persistence request for that ID.",
+      "wrong_behavior": "Emit two persistence requests for attempt 7, or retire it without any earlier persistence request in the modeled history.",
+      "why_others_miss": "Unique active IDs and at-most-once retirement do not establish the ordering or uniqueness of persistence requests.",
+      "does_not_cover": "These are persistence intents in the lifecycle model. The theorem does not establish that a journal write or fsync actually completed.",
+      "risk": "Emit two persistence requests for attempt 7, or retire it without any earlier persistence request in the modeled history.",
+      "provenance": [
+        {
+          "kind": "claim",
+          "reference": "po_attempt_persist",
+          "path": "test/support/lean/AttemptSafety.lean"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Lifecycle history scope",
+          "path": "guides/verification.md",
+          "section": "Lifecycle history theorem"
+        }
+      ],
+      "named_mutants": [],
+      "exercise_ids": []
     }
   ]
 }

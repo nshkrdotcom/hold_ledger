@@ -32,27 +32,27 @@ test('early release: valid accounting is distinct from required retention',async
   await expect(page.locator('#hypothetical-output')).toContainText(/0¢ reserved[\s\S]*Cancelled/);
   await expect(page.locator('#validity-row td').nth(0)).toHaveText('Accounting balances');
   await expect(page.locator('#validity-row td').nth(1)).toHaveText('Accounting balances');
-  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
+  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects proposed output');
   await tab(page,'clauses');
   await page.locator('#clause-0-candidate-root > .logic-line > button[phx-click=helper]').click();
   await expect(page.locator('#helper-definition')).toContainText('voided');
   await expect(page.locator('#helper-definition')).toContainText(':sent, :unknown, :authorized, :voiding');
   await page.reload();await tab(page,'outputs');await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  expect(new URL(page.url()).pathname).toBe(new URL(url).pathname);await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
+  expect(new URL(page.url()).pathname).toBe(new URL(url).pathname);await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects proposed output');
   expect(errors).toEqual([]);
 });
 
 test('the same output passes validity; inspect its helper definition',async({page})=>{
   await open(page,'po_b1_void');await tab(page,'outputs');
-  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Accepts alternative');
+  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Accepts proposed output');
   await tab(page,'clauses');
   await page.locator('#dissector').getByRole('button',{name:'Definition',exact:true}).first().click();
   await expect(page.locator('#helper-definition')).toContainText('Definition on these values');
   await page.locator('#helper-definition').getByRole('button',{name:'Close',exact:true}).click();
   await tab(page,'outputs');await page.locator('#edit-candidate').click();await expect(page.locator('#inspect-retention')).toHaveCount(0);await page.locator('#close-tools').click();
-  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Accepts alternative');
+  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Accepts proposed output');
   await page.locator('#alternative-counter input').fill('7');
-  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects alternative');
+  await expect(page.locator('#selected-law-row td').nth(1)).toHaveText('Rejects proposed output');
 });
 
 test('99, 100 and 101 expose actual eligibility operands and outside-domain silence',async({page})=>{
@@ -92,7 +92,7 @@ test('full actual proof source stays beside selected source stage',async({page})
   const link=page.locator('#lemma-links a').first();
   const response=await page.request.get(await link.getAttribute('href'));expect(response.status()).toBe(200);
   const stale=await page.request.get((await link.getAttribute('href')).replace(/[a-f0-9]{64}$/,'0'.repeat(64)));expect(stale.status()).toBe(404);
-  await tab(page,'artifacts');await expect(page.locator('#formal-status')).toHaveText('not_supplied');
+  await tab(page,'artifacts');await expect(page.locator('#formal-status')).toHaveText('Not supplied');
 });
 
 test('hypothetical early release changes the next request; actual branch is retained',async({page})=>{
@@ -146,7 +146,7 @@ test('coupled model separates remote delivery, observation and terminal fencing'
   await inspect(page);
   await expect(page.locator('#remote-state')).toBeVisible();
   for(const type of ['request','dispatch','authorize','timeout']) await event(page,type,'11');
-  await expect(page.locator('#remote-state')).toContainText('Awaiting confirmation');await expect(page.locator('#remote-state')).toContainText('approved');
+  await expect(page.locator('#remote-state')).toContainText('Outcome unknown');await expect(page.locator('#remote-state')).toContainText('approved');
   await event(page,'observe','11');await expect(page.locator('#coupled-local-after')).toContainText('Authorized');
   await event(page,'void','11');await event(page,'remote_void','11');
   await expect(page.locator('#amount-counter')).toHaveText('100¢ / 100¢');
@@ -181,13 +181,13 @@ test('mobile stays within viewport and requests no provider',async({page,baseURL
 
 test('generated Lean artifacts are readable when fresh and cannot become full acceptance',async({page})=>{
   await open(page);await tab(page,'proof');
-  await tab(page,'artifacts');const status=await page.locator('#focused-status').innerText();
+  await tab(page,'artifacts');const status=await page.locator('#focused-status').getAttribute('data-status');
   if(status==='elaborated') {
     const links=page.locator('#generated-artifacts a');expect(await links.count()).toBeGreaterThan(0);
     const response=await page.request.get(await links.first().getAttribute('href'));
     expect(response.status()).toBe(200);expect((await response.text()).length).toBeGreaterThan(20);
   } else await expect(page.locator('#generated-artifacts a')).toHaveCount(0);
-  await tab(page,'artifacts');await expect(page.locator('#formal-status')).toHaveText('not_supplied');
+  await tab(page,'artifacts');await expect(page.locator('#formal-status')).toHaveText('Not supplied');
 });
 
 test('command and interface share the same law reading and clause observations',async({page})=>{

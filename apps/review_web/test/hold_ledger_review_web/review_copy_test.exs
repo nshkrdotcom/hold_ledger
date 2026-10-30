@@ -20,7 +20,7 @@ defmodule HoldLedgerReviewWeb.ReviewCopyTest do
 
     assert ReviewCopy.applicability(case_data) == "Applies (2 of 3 bindings)"
     assert ReviewCopy.code_acceptance(case_data) == "Rejects code result"
-    assert ReviewCopy.candidate_acceptance(case_data) == "Rejects alternative"
+    assert ReviewCopy.candidate_acceptance(case_data) == "Rejects proposed output"
     assert ReviewCopy.accounting(true) == "Accounting balances"
   end
 
@@ -29,8 +29,8 @@ defmodule HoldLedgerReviewWeb.ReviewCopyTest do
              "Not checked"
 
     out = %{"explanation" => %{"complete" => true, "bindings" => [binding(false, nil)]}}
-    assert ReviewCopy.applicability(out) == "Does not apply"
-    assert ReviewCopy.code_acceptance(out) == "Not applicable"
+    assert ReviewCopy.applicability(out) == "Claim says nothing about this input"
+    assert ReviewCopy.code_acceptance(out) == "Outside this claim's input"
 
     assert ReviewCopy.applicability(%{
              "explanation" => %{"complete" => true, "bindings" => [%{"error" => "unavailable"}]}
@@ -48,7 +48,7 @@ defmodule HoldLedgerReviewWeb.ReviewCopyTest do
     assert ReviewCopy.code_acceptance(uncertain) == "Unavailable"
 
     assert ReviewCopy.candidate_acceptance(%{"law_status" => "allows_here"}) ==
-             "Accepts alternative"
+             "Accepts proposed output"
 
     assert ReviewCopy.candidate_acceptance(%{"law_status" => "cant_check"}) == "Unavailable"
     assert ReviewCopy.accounting(nil) == "Unavailable"

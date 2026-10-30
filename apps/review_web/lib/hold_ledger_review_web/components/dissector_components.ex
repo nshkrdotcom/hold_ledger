@@ -58,11 +58,19 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         <summary>Assumptions and promise</summary>
         <dl :if={@reading["contract"]["status"] == "source_read"}>
           <div>
-            <dt>Assumptions · requires</dt>
+            <dt>
+              <button type="button" class="edu-term-button" data-edu-term="requires">
+                Applies when · requires
+              </button>
+            </dt>
             <dd><code id="conditions-requires">{@reading["contract"]["requires"]}</code></dd>
           </div>
           <div>
-            <dt>Promise · expects</dt>
+            <dt>
+              <button type="button" class="edu-term-button" data-edu-term="expects">
+                Promises · expects
+              </button>
+            </dt>
             <dd><code id="conditions-expects">{@reading["contract"]["expects"]}</code></dd>
           </div>
         </dl>
@@ -100,14 +108,14 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         id="links-stale"
         class="scope-note connection-unavailable"
       >
-        Source-bound reading notes are stale for the current law source. Clause/proof links are unavailable; ordinary checks remain accessible.
+        The source has changed since these notes were reviewed. Clause-to-proof links are unavailable; the source and supported case checks remain available.
       </p>
       <p
         :if={@reading["reading_status"] != "stale" && @reading["connections"] == []}
         id="links-unsupported"
         class="scope-note"
       >
-        No reviewed proof correspondence is available for this claim. Its ordinary source and checks remain accessible.
+        This claim has no reviewed clause-to-proof links yet. You can still read its source and use any supported case checks.
       </p>
       <details :if={@unavailable != []} class="unavailable-readings">
         <summary>{length(@unavailable)} source-reading relationships unavailable</summary>
@@ -152,7 +160,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             phx-click="basis"
             phx-value-basis="candidate"
             aria-pressed={to_string(@basis == "candidate")}
-          >Alternative result</button>
+          >Proposed output</button>
         </div>
         <article
           :for={{binding, index} <- Enum.with_index(@bindings)}
@@ -170,7 +178,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
           <p :if={binding["error"]} role="alert">{binding["error"]}</p>
           <div :if={binding["requires"]}>
             <.clause_table
-              title="When this rule applies"
+              title="When this claim applies"
               node={binding["requires"]}
               phase="requires"
               binding={index}
@@ -184,7 +192,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             />
             <.clause_table
               :if={binding[@basis]}
-              title="What the rule requires"
+              title="What the claim promises"
               node={binding[@basis]}
               phase={@basis}
               binding={index}
@@ -197,7 +205,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
               stage={@stage}
             />
             <p :if={!binding[@basis]} class="scope-note" id="outside-domain">
-              This rule does not apply to this input.
+              This claim says nothing about this input.
             </p>
           </div>
         </article>
@@ -272,7 +280,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         id={"complete-tree-#{@binding}-#{@phase}"}
         open={tree_selection?(@selection, @phase, @binding, @groups)}
       >
-        <summary>Complete observed expression tree · original source structure and paths</summary>
+        <summary>Full expression tree · values and source paths</summary>
         <.logic
           node={@node}
           root={@node}

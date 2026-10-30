@@ -35,7 +35,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
             name="slug"
             value={@slug}
             type="select"
-            label="Rule to inspect"
+            label="Claim to inspect"
             options={Enum.map(@catalog, &{ReviewCopy.title(&1), &1["slug"]})}
           />
         </.form>
@@ -68,10 +68,10 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         >Read requirement source</button>
       </p>
       <details id="review-help" class="review-help">
-        <summary data-edu-hint="Learn the distinction between pointwise checks, policy, proof evidence, and unsaved experiments.">
+        <summary data-edu-hint="Learn the distinction between single-case checks, policy, proof evidence, and unsaved experiments.">
           How to read this workspace
         </summary>
-        <p>Rule acceptance is a pointwise check, not a policy judgment or a formal proof.
+        <p>A single-case check tells you whether this claim accepts the proposed output.
           An accepted changed output is worth investigating, not automatically a defect.
           Unavailable never means false.</p>
         <p id="connection-scope">Clause ↔ proof links are source-reading aids, not Lean goal
@@ -103,7 +103,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
                 class="edu-term-button"
                 data-edu-term="expects"
                 title="Explain this concept"
-              >Requires of the result</button>
+              >Promises for the output</button>
             </dt><dd>
               <code id="expects-expression">{@reading["contract"]["expects"]}</code>
             </dd>
@@ -126,7 +126,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           <small>Not a recorded source comparison</small>
         </p>
         <p :if={!@package && !@example} id="standalone-law-scope" class="scope-note">
-          Standalone rule review · no proposed source change
+          Claim source · no proposed source change
         </p>
         <details :if={@package} id="source-change-details" class="source-change-details">
           <summary>
@@ -219,19 +219,19 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <h3 :if={@package}>Compare versions</h3>
       <dl id="source-coverage" class="coverage-list">
         <div :if={!@package && @example} id="coverage-row">
-          <dt>Old rule covers this request</dt><dd id="coverage-baseline">
+          <dt>Original claim covers this request</dt><dd id="coverage-baseline">
             {answer(@example.baseline)}
-          </dd><dt>Changed rule covers it</dt><dd id="coverage-proposal">
+          </dd><dt>Changed claim covers it</dt><dd id="coverage-proposal">
             {answer(@example.proposal)}
           </dd>
         </div>
         <div :if={@package} id="pair-applicability">
-          <dt>Does the rule cover this case?</dt><dd :for={row <- @rows}>
+          <dt>Does the claim cover this case?</dt><dd :for={row <- @rows}>
             <strong>{row.side}</strong> {version_coverage(row.requires)}
           </dd>
         </div>
         <div :if={@package} id="pair-candidate">
-          <dt>Would the rule accept this alternative?</dt><dd :for={row <- @rows}>
+          <dt>Would the claim accept this output?</dt><dd :for={row <- @rows}>
             <strong>{row.side}</strong> {version_alternative(row.candidate)}
           </dd>
         </div>
@@ -521,8 +521,8 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     ~H"""
     <p id="goal-state-status">Saved Lean hypotheses and goals: unavailable.</p>
     <section id="lean-bridge">
-      <h3>Lynx producer artifacts</h3><p>
-        Focused elaboration: <span id="focused-status">{@reading["focused"]["status"]}</span>. Full gate: <span id="formal-status">{@reading["formal"]["status"]}</span>.
+      <h3>Generated proof files</h3><p>
+        Focused elaboration: <span id="focused-status" data-status={@reading["focused"]["status"]}>{ReviewCopy.evidence_status(@reading["focused"]["status"])}</span>. Full verification: <span id="formal-status" data-status={@reading["formal"]["status"]}>{ReviewCopy.evidence_status(@reading["formal"]["status"])}</span>.
       </p><ul id="generated-artifacts">
         <li :for={item <- @reading["focused"]["artifacts"] || []}>
           <button class="text-button" phx-click="inspect_artifact" phx-value-sha={item["sha256"]}>{Path.basename(
@@ -628,7 +628,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       </p>
       <div :if={@result.status != "not_applicable"}>
         <p>
-          Identity #{@result.key} · {@result.amount}¢ · hypothetical terminal confirmation, then delayed authorization.
+          Hold #{@result.key} · {@result.amount}¢. Try a confirmed cancellation followed by a delayed authorization.
         </p>
         <button
           role="switch"
@@ -650,7 +650,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
             </tr><tr>
               <th>Remote authorization for this key</th><td id="premise-remote">{@result.remote}¢</td>
             </tr><tr>
-              <th>Identity remains covered?</th><td id="premise-covered">
+              <th>Does the ledger cover this authorization?</th><td id="premise-covered">
                 {answer(@result.covered)}
               </td>
             </tr>
@@ -668,8 +668,8 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
   defp version_coverage(false), do: "Does not apply"
   defp version_coverage(_), do: "Unavailable or not run"
 
-  defp version_alternative(true), do: "Accepts alternative"
-  defp version_alternative(false), do: "Rejects alternative"
+  defp version_alternative(true), do: "Accepts proposed output"
+  defp version_alternative(false), do: "Rejects proposed output"
   defp version_alternative(_), do: "Unavailable or not run"
 
   defp answer(true), do: "Yes"

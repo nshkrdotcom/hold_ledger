@@ -16,8 +16,8 @@ defmodule HoldLedgerReview.ClaimLens do
     %{
       slug: "po_a2",
       title: "Exact-fit admission",
-      question: "Could a passing claim stop protecting the last available cent?",
-      summary: "Make the covered input space visible before trusting a green proof.",
+      question: "Does this claim cover a request for all available capacity?",
+      summary: "Check which requests the claim covers before deciding what it guarantees.",
       policy: "An exact amount fit is admitted.",
       policy_section: "Events · request eligibility",
       clause: "Spec.request_eligible?(s, key, amount)",
@@ -29,21 +29,21 @@ defmodule HoldLedgerReview.ClaimLens do
           id: "original",
           title: "Authored claim",
           short: "No edit",
-          detail: "Use the source-bound eligibility precondition as authored."
+          detail: "Use the claim’s original starting condition."
         },
         %{
           id: "strict",
           title: "Exclude exact fit",
           short: "Tighten requires",
           detail:
-            "Hypothetically add amount < remaining to requires. This narrows coverage; it does not change the source files."
+            "Add amount < remaining to requires. The claim then leaves out an exact-fit request."
         },
         %{
           id: "proof_only",
           title: "Proof-body-only control",
           short: "No contract delta",
           detail:
-            "Assume only proof-body formatting changed. The claim remains identical; no proof was rerun."
+            "Only the proof body’s formatting changes in this example. The claim stays the same; the revised proof has not been checked."
         }
       ],
       witnesses: [
@@ -75,8 +75,8 @@ defmodule HoldLedgerReview.ClaimLens do
     %{
       slug: "po_exposure_retain",
       title: "Retention before terminal evidence",
-      question: "Which events really must keep capacity reserved?",
-      summary: "An excluded terminal event can be legitimate, not a loophole.",
+      question: "When must the ledger keep a hold reserved?",
+      summary: "Compare a request to cancel with confirmation that cancellation is complete.",
       policy:
         "An issued or potentially issued authorization continues consuming local capacity until reliable terminal evidence allows release.",
       policy_section: "Uncertain outcomes and identities",
@@ -89,21 +89,21 @@ defmodule HoldLedgerReview.ClaimLens do
           id: "original",
           title: "Authored claim",
           short: "No edit",
-          detail: "Terminal release evidence stays outside the retention obligation."
+          detail: "The original claim excludes events that provide evidence for releasing the hold."
         },
         %{
           id: "drop_release",
           title: "Remove the release exclusion",
           short: "Broaden requires",
           detail:
-            "Hypothetically remove not Spec.release_evidence?(event, key). The unchanged promise would then cover legitimate terminal release."
+            "Remove the release-evidence condition. The claim would then require money to stay held even after a valid release."
         },
         %{
           id: "proof_only",
           title: "Proof-body-only control",
           short: "No contract delta",
           detail:
-            "Assume only proof-body formatting changed. The claim remains identical; no proof was rerun."
+            "Only the proof body’s formatting changes in this example. The claim stays the same; the revised proof has not been checked."
         }
       ],
       witnesses: [

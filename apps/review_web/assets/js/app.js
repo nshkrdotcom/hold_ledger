@@ -146,217 +146,321 @@ const CopyReview = {
 // workbenches are re-rendered by LiveView; no per-node hook needs to survive a
 // patch. The glossary is the same source as /glossary (not a parallel judge).
 const eduTerms = new Map(educationGlossary.terms.map(term => [term.id, term]))
+const eduDialogTriggers = new WeakSet()
 const eduUI = {
   get tooltip() { return document.getElementById("edu-tooltip") },
-  get title() { return this.tooltip?.querySelector("[data-tooltip-title]") },
-  get short() { return this.tooltip?.querySelector("[data-tooltip-short]") },
-  get detail() { return this.tooltip?.querySelector("[data-tooltip-detail]") },
-  get link() { return this.tooltip?.querySelector("[data-tooltip-link]") },
+  get dialog() { return document.getElementById("edu-term-dialog") },
   get drawer() { return document.getElementById("edu-help-drawer") },
   get helpButton() { return document.querySelector("[data-edu-help-open]") },
   get guidance() { return document.querySelector("select[data-edu-guidance]") },
 }
 let eduActiveTarget = null
-let eduPinned = false
+let eduDialogTarget = null
 let eduLastFocus = null
 let eduCloseTimer = null
 let eduPreviousDescription = null
-
-const eduWords = [
-  ["precondition", "requires"], ["requires", "requires"], ["postcondition", "expects"],
-  ["expects", "expects"], ["pointwise", "pointwise"], ["hypothetical", "hypothetical"],
-  ["proof status", "proof-status"], ["formal acceptance", "proof-status"],
-  ["source", "source-identity"], ["checker", "proof-status"],
-  ["proof", "theorem"], ["policy", "specification"], ["argument", "review"],
-  ["condition", "requires"], ["applicability", "coverage"],
-  ["evidence", "proof-status"], ["assumption", "assumption"],
-  ["voiding", "voiding"], ["voided", "voided"], ["void", "effect-intent"],
-  ["terminal", "terminal-fence"], ["processor", "processor"],
-  ["unknown", "unknown"], ["timeout", "timeout"], ["reserved", "reserved"],
-  ["capacity", "capacity"], ["recalculate", "capacity"],
-  ["amount", "capacity"], ["slot", "capacity"], ["result", "pointwise"],
-  ["effect", "effect"], ["output", "pointwise"],
-  ["witness", "witness"], ["alternative", "hypothetical"],
-  ["candidate", "hypothetical"], ["contrast", "counterexample"],
-  ["trace", "witness"], ["timeline", "event"], ["event", "event"],
-  ["law", "law"], ["claim", "claim"], ["retry", "idempotency"],
-  ["replay", "replay"], ["journal", "journal"],
-  ["review", "review"], ["compare", "source-identity"],
-  ["note", "review"], ["snapshot", "source-identity"],
-  ["export", "source-identity"], ["induction", "induction"],
-]
+let eduRestoringFocus = false
 
 const pageHelp = [
-  [/^\/$|^\/start/, ["From payment risk to a formal claim", "Start with the missing-reply scenario. A hold reserves capacity while the remote authorization may still be live. Follow the linked system, requirements, proof and evidence screens at your own pace."]],
-  [/^\/system/, ["Meet the code and its trust boundaries", "The Ledger computes pure state transitions. The independent Spec describes intended behavior. Runtime sends effects, and the processor sits beyond the formal model. Select a layer or status to see its meaning."]],
-  [/^\/guarantees/, ["Read policy before proofs", "These six human themes summarize the governing specification. Select a guarantee, compare safe and unsafe near-misses, then open the registered law group. The themes are not themselves proof receipts."]],
-  [/^\/atlas/, ["Every registered claim has a place", "Use the eight editorial families or search across the source catalog. A group is registered, not necessarily freshly checked. Select a profile for its exact slug and source; separate conceptual grouping from proof dependency."]],
-  [/^\/proofs/, ["Read the verification pipeline", "Five different layers: human policy, Elixir code and law, Lynx translation, Lean statement and checked evidence. A proof can be valid for a claim that omits desired behavior."]],
-  [/^\/assurance/, ["Do not confuse evidence levels", "An illustrative example, pointwise check, proof source, focused elaboration and source-matched formal receipt have different meanings. The real processor and journal introduce separate assumptions."]],
-  [/^\/repository/, ["Find files by their purpose", "This source map shows the pure Ledger, independent Spec, runtime, laws, Lean support, proof registry and review companion. Use the claim profiles for source-bound technical review."]],
-  [/^\/glossary/, ["Look up a concept when it appears", "Search the terms or follow their example links back into the project. Tooltips in the workbench use these same definitions and can be opened with keyboard focus or touch."]],
-  [/^\/lens/, ["Claim Lens: test whether a claim expresses policy", "Start with the governing requirement and a concrete witness. Commit your own classification before revealing the pointwise verdict. Hypothetical edits have NOT been Lean checked. Only two guided claims are configured."]],
-  [/^\/claims|^\/lab/, ["Case Lab: what does this law check here?", "Choose a registered law and experiment with a concrete event and an alternative output. The pointwise check is not a universal theorem. Open source and proof readings for provenance; external processor behavior is still assumed."]],
+  [/^\/$/, ["Where should I start?", "Follow the 100¢ payment hold, learn to read a claim, or go straight to Case Lab. The page directory links to the rest of the material.", "Catalog counts describe the claims available to read. They do not report a fresh proof run."]],
+  [/^\/start/, ["Why keep money on hold after a timeout?", "Follow the four steps. Watch what stays reserved when a reply goes missing, then see why another 100¢ request cannot fit.", "This is a walkthrough of the model, not a transaction with a payment processor."]],
+  [/^\/system/, ["Which part of the system does this work?", "Choose a component or hold state to see its role, meaning and source. Follow a request from the pure ledger to the runtime and processor.", "The model describes processor and storage behavior. Real systems need separate evidence for those assumptions."]],
+  [/^\/guarantees/, ["What behavior does the policy require?", "Choose a requirement, compare the expected behavior with a mistake, then read the related claims.", "A policy summary helps you find the right claim. The complete statement determines which inputs and outputs it covers."]],
+  [/^\/atlas/, ["Which claim covers the behavior I care about?", "Browse the eight families or search for an event, example or claim name. Open a claim to read its promise, a possible mistake and the source behind the explanation.", "The families are a reading order. They do not describe proof dependencies or current checker results."]],
+  [/^\/proofs/, ["What does this claim actually promise?", "Follow exact-fit admission from the requirement to requires and expects. Expand the called predicates, then compare the statement with the input you need it to cover.", "Reading a theorem explains its scope. A matching verification report is needed to establish what the checkers accepted."]],
+  [/^\/assurance/, ["What does this evidence establish?", "Identify what produced the result, which source it covers and what remains assumed. Use the evidence guide when reading a report in Case Lab.", "A proof of the modeled behavior does not establish physical storage durability or a real processor's compliance."]],
+  [/^\/repository/, ["Where can I read the source?", "Choose the question you are investigating and follow its file path or claim link. The map separates policy, implementation, reference behavior and proof support.", "A file location is a starting point. Use the source identity shown in Case Lab when matching code to a report."]],
+  [/^\/glossary/, ["What does this term mean here?", "Search for a word, read its example and follow the link back to the relevant page. The same definitions appear in term guides throughout the app.", "A definition explains the term. The source statement supplies its exact conditions."]],
+  [/^\/lens/, ["Claim Lens: does the changed claim still cover the policy?", "Read the policy, input and proposed change. Record your judgment, then reveal the explanation. Choose Explore freely if you want to read the worked answer first.", "These are two practice reviews. Hypothetical edits are not checked by Lean, and your answer is a temporary draft."]],
+  [/^\/claims|^\/lab/, ["Case Lab: would the claim accept a wrong output?", "Run an input, propose a different output and inspect the conditions. Follow another event or read the source to investigate the result.", "A single-case check covers the selected input and output. Accepting your proposal does not mean the code produces it or that it violates policy."]],
 ]
 
+function eduTarget(event) {
+  const node = event.target instanceof Element ? event.target : null
+  return node?.closest("[data-edu-term], [data-edu-hint]") || null
+}
+
+function eduExplain(target) {
+  const term = eduTerms.get(target.dataset.eduTerm)
+  if (term) return term
+  if (!target.dataset.eduHint) return null
+  return {
+    term: (target.getAttribute("aria-label") || target.textContent || "About this control").trim(),
+    short: target.dataset.eduHint,
+  }
+}
+
 function eduCloseTooltip() {
-  if (!eduUI.tooltip) return
   clearTimeout(eduCloseTimer)
   if (eduActiveTarget) {
     if (eduPreviousDescription) eduActiveTarget.setAttribute("aria-describedby", eduPreviousDescription)
     else eduActiveTarget.removeAttribute("aria-describedby")
   }
-  eduUI.tooltip.hidden = true
-  eduUI.tooltip.dataset.pinned = "false"
+  if (eduUI.tooltip) eduUI.tooltip.hidden = true
   eduActiveTarget = null
-  eduPinned = false
+  eduPreviousDescription = null
 }
-function eduTarget(event) {
-  const node = event.target instanceof Element ? event.target : null
-  if (!node) return null
-  const explicit = node.closest("[data-edu-term], [data-edu-hint]")
-  if (explicit) return explicit
-  if (!node.closest("#review-document, #claim-lens, .site-tools")) return null
-  return node.closest("dt, th, [data-kind], .status-pill, .field-delta, .lens-step, .lens-evidence")
-}
-function eduExplain(target) {
-  const id = target.dataset.eduTerm
-  const term = id && eduTerms.get(id)
-  if (term) return {term: term.term, short: term.short, detail: term.detail, link: `/glossary#term-${term.id}`}
-  const hint = target.dataset.eduHint
-  const label = (target.getAttribute("aria-label") || target.innerText || target.value || target.getAttribute("placeholder") || target.getAttribute("title") || "Review control").trim().replace(/\s+/g, " ").slice(0, 110)
-  const text = label.toLowerCase()
-  const matched = eduWords.find(([keyword]) => text.includes(keyword))
-  const concept = matched && eduTerms.get(matched[1])
-  if (hint) return {term: label || "Explanation", short: hint, detail: concept?.detail || "Use the page guide for the relationship between this control and the evidence it displays.", link: concept ? `/glossary#term-${concept.id}` : "/glossary"}
-  if (concept) return {term: label || concept.term, short: concept.short, detail: concept.detail, link: `/glossary#term-${concept.id}`}
-  return {term: label || "Review control", short: "An interaction in the review workbench. Its result is bounded by the selected source, case and evidence.", detail: "Case Lab and Claim Lens show model cases and reviewed source. A screen interaction is not itself a new formal checker receipt.", link: "/assurance"}
-}
-function eduShowTooltip(target, pinned = false) {
-  if (!eduUI.tooltip || !target?.isConnected) return
-  if (eduPinned && !pinned && target !== eduActiveTarget) return
-  clearTimeout(eduCloseTimer)
-  if (eduActiveTarget && eduActiveTarget !== target) eduCloseTooltip()
-  if (eduActiveTarget !== target) eduPreviousDescription = target.getAttribute("aria-describedby")
-  const explanation = eduExplain(target)
-  eduUI.title.textContent = explanation.term
-  eduUI.short.textContent = explanation.short
-  eduUI.detail.textContent = explanation.detail
-  eduUI.link.setAttribute("href", explanation.link)
-  eduUI.tooltip.hidden = false
-  eduUI.tooltip.dataset.pinned = String(pinned)
-  eduPinned = pinned
-  eduActiveTarget = target
-  target.setAttribute("aria-describedby", [eduPreviousDescription, "edu-tooltip"].filter(Boolean).join(" "))
+
+function eduPositionTooltip(target) {
+  const tooltip = eduUI.tooltip
+  if (!tooltip || tooltip.hidden || !target?.isConnected) return
   const box = target.getBoundingClientRect()
-  const width = eduUI.tooltip.offsetWidth
-  const height = eduUI.tooltip.offsetHeight
-  const left = Math.max(10, Math.min(window.innerWidth - width - 10, box.left + box.width / 2 - width / 2))
+  const left = Math.max(12, Math.min(innerWidth - tooltip.offsetWidth - 12,
+    box.left + box.width / 2 - tooltip.offsetWidth / 2))
   const below = box.bottom + 10
-  const top = below + height < window.innerHeight - 10 ? below : Math.max(10, box.top - height - 10)
-  eduUI.tooltip.style.left = `${left}px`
-  eduUI.tooltip.style.top = `${top}px`
+  const top = below + tooltip.offsetHeight < innerHeight - 12
+    ? below : Math.max(12, box.top - tooltip.offsetHeight - 10)
+  tooltip.style.left = `${left}px`
+  tooltip.style.top = `${top}px`
+}
+
+function eduShowTooltip(target) {
+  if (!eduUI.tooltip || !target?.isConnected || eduDialogTarget || eduRestoringFocus) return
+  const explanation = eduExplain(target)
+  if (!explanation) return
+  clearTimeout(eduCloseTimer)
+  if (eduActiveTarget !== target) {
+    eduCloseTooltip()
+    eduPreviousDescription = target.getAttribute("aria-describedby")
+  }
+  eduActiveTarget = target
+  eduUI.tooltip.querySelector("[data-tooltip-title]").textContent = explanation.term
+  eduUI.tooltip.querySelector("[data-tooltip-short]").textContent = explanation.short
+  eduUI.tooltip.hidden = false
+  target.setAttribute("aria-describedby", [eduPreviousDescription, "edu-tooltip"].filter(Boolean).join(" "))
+  eduPositionTooltip(target)
+}
+
+function eduCloseTerm(restoreFocus = true) {
+  const target = eduDialogTarget
+  if (eduUI.dialog) eduUI.dialog.hidden = true
+  if (target) target.setAttribute("aria-expanded", "false")
+  eduDialogTarget = null
+  if (restoreFocus && target?.isConnected) {
+    eduRestoringFocus = true
+    target.focus({preventScroll: true})
+    eduRestoringFocus = false
+  }
+}
+
+function eduOpenTerm(target) {
+  const term = eduTerms.get(target.dataset.eduTerm)
+  const dialog = eduUI.dialog
+  if (!dialog || !term) return
+  eduCloseTooltip()
+  eduCloseHelp(false)
+  eduCloseTerm(false)
+  eduDialogTarget = target
+  dialog.querySelector("#edu-term-title").textContent = term.term
+  dialog.querySelector("[data-term-meaning]").textContent = term.short
+  dialog.querySelector("[data-term-detail]").textContent = term.detail
+  dialog.querySelector("[data-term-example]").textContent = term.example
+  dialog.querySelector("[data-term-source]").textContent = term.source_path || ""
+  dialog.querySelector("[data-term-link]").href = `/glossary#term-${term.id}`
+  dialog.querySelector("[data-copy-status]").textContent = ""
+  target.setAttribute("aria-expanded", "true")
+  target.setAttribute("aria-controls", "edu-term-dialog")
+  target.setAttribute("aria-haspopup", "dialog")
+  dialog.hidden = false
+  dialog.querySelector("[data-edu-term-close]").focus({preventScroll: true})
 }
 
 function eduCloseHelp(restoreFocus = true) {
-  if (!eduUI.drawer) return
-  eduUI.drawer.hidden = true
+  if (eduUI.drawer) eduUI.drawer.hidden = true
   eduUI.helpButton?.setAttribute("aria-expanded", "false")
   if (restoreFocus && eduLastFocus?.isConnected) eduLastFocus.focus({preventScroll: true})
 }
+
 function eduOpenHelp() {
   if (!eduUI.drawer) return
   eduCloseTooltip()
+  eduCloseTerm(false)
   eduLastFocus = document.activeElement
-  const [title, detail] = (pageHelp.find(([re]) => re.test(location.pathname)) || pageHelp[0])[1]
+  const [title, action, limit] = (pageHelp.find(([re]) => re.test(location.pathname)) || pageHelp[0])[1]
   eduUI.drawer.querySelector("#edu-help-title").textContent = title
-  eduUI.drawer.querySelector("#edu-help-description").textContent = detail
+  eduUI.drawer.querySelector("#edu-help-description").textContent = action
+  eduUI.drawer.querySelector("#edu-help-limit").textContent = limit
   eduUI.drawer.hidden = false
   eduUI.helpButton?.setAttribute("aria-expanded", "true")
   eduUI.drawer.querySelector("[data-edu-help-close]")?.focus({preventScroll: true})
 }
+
+async function eduCopy(text, status) {
+  if (!status) return
+  try {
+    await navigator.clipboard.writeText(text)
+    status.textContent = "Copied."
+  } catch {
+    status.textContent = "Copy is unavailable in this browser. Select the text to copy it."
+  }
+}
+
 function eduMarkNav() {
   for (const a of document.querySelectorAll("[data-global-nav] [data-nav]")) {
     const segment = a.dataset.nav
-    const active = segment === "/" ? location.pathname === "/" : location.pathname.startsWith(segment)
+    const active = segment === "/" ? location.pathname === "/"
+      : segment === "/lab" ? /^\/(lab|claims)(\/|$)/.test(location.pathname)
+      : location.pathname === segment || location.pathname.startsWith(`${segment}/`)
     if (active) a.setAttribute("aria-current", "page")
     else a.removeAttribute("aria-current")
   }
+  document.querySelectorAll("[data-edu-term]").forEach(eduSyncTerm)
 }
+
+function eduSyncTerm(target) {
+  if (!(target instanceof Element)) return
+  if (target === eduUI.helpButton) {
+    const expanded = String(Boolean(eduUI.drawer && !eduUI.drawer.hidden))
+    if (target.getAttribute("aria-expanded") !== expanded) {
+      target.setAttribute("aria-expanded", expanded)
+    }
+    return
+  }
+  const attributes = {
+    "aria-haspopup": "dialog",
+    "aria-controls": "edu-term-dialog",
+    "aria-expanded": String(target === eduDialogTarget),
+  }
+  const opensDialog = eduTerms.has(target.dataset.eduTerm) &&
+    !target.matches("a, input, select, textarea, [phx-click]")
+  if (!opensDialog) {
+    if (eduDialogTriggers.has(target)) {
+      Object.keys(attributes).forEach(name => target.removeAttribute(name))
+      eduDialogTriggers.delete(target)
+    }
+    return
+  }
+  eduDialogTriggers.add(target)
+  for (const [name, value] of Object.entries(attributes)) {
+    if (target.getAttribute(name) !== value) target.setAttribute(name, value)
+  }
+}
+
 function eduRestoreGuidance() {
   let density = document.documentElement.dataset.eduGuidance || "guided"
-  try { density = localStorage.getItem("hold_ledger_education_density") || density } catch { /* optional */ }
+  try { density = localStorage.getItem("hold_ledger_education_density") || density } catch { /* optional preference */ }
   if (!["guided", "focused"].includes(density)) density = "guided"
   document.documentElement.dataset.eduGuidance = density
   if (eduUI.guidance) eduUI.guidance.value = density
 }
+
 eduRestoreGuidance()
 document.addEventListener("change", event => {
   if (!event.target.matches("select[data-edu-guidance]")) return
   const density = event.target.value
   document.documentElement.dataset.eduGuidance = density
-  try { localStorage.setItem("hold_ledger_education_density", density) } catch { /* optional */ }
-})
-document.addEventListener("pointerover", event => {
-  if (event.pointerType === "touch") return
-  const target = eduTarget(event)
-  if (target && !eduPinned) eduShowTooltip(target)
-})
-document.addEventListener("pointerout", event => {
-  if (!eduPinned && eduActiveTarget && !eduActiveTarget.contains(document.activeElement) &&
-      (eduActiveTarget.contains(event.target) || eduUI.tooltip.contains(event.target)) &&
-      !eduActiveTarget.contains(event.relatedTarget) && !eduUI.tooltip.contains(event.relatedTarget)) {
-    eduCloseTimer = setTimeout(eduCloseTooltip, 150)
-  }
+  try { localStorage.setItem("hold_ledger_education_density", density) } catch { /* optional preference */ }
 })
 document.addEventListener("pointerover", event => {
   if (eduUI.tooltip?.contains(event.target)) clearTimeout(eduCloseTimer)
+  if (event.pointerType !== "touch") {
+    const target = eduTarget(event)
+    if (target) eduShowTooltip(target)
+  }
+})
+document.addEventListener("pointerout", event => {
+  if (!eduActiveTarget || eduActiveTarget.contains(document.activeElement)) return
+  const fromHelp = eduActiveTarget.contains(event.target) || eduUI.tooltip?.contains(event.target)
+  const toHelp = eduActiveTarget.contains(event.relatedTarget) || eduUI.tooltip?.contains(event.relatedTarget)
+  if (fromHelp && !toHelp) eduCloseTimer = setTimeout(eduCloseTooltip, 150)
 })
 document.addEventListener("focusin", event => {
   const target = eduTarget(event)
-  if (target && !eduPinned) eduShowTooltip(target)
+  if (target) eduShowTooltip(target)
 })
 document.addEventListener("focusout", event => {
-  if (!eduPinned && eduActiveTarget?.contains(event.target) && !eduUI.tooltip?.contains(event.relatedTarget)) eduCloseTooltip()
+  if (eduActiveTarget?.contains(event.target)) eduCloseTooltip()
 })
 document.addEventListener("click", event => {
   const node = event.target instanceof Element ? event.target : null
   if (!node) return
   if (node.closest("[data-edu-help-open]")) {
-    event.preventDefault()
     if (eduUI.drawer?.hidden) eduOpenHelp()
     else eduCloseHelp()
     return
   }
-  if (node.closest("[data-edu-help-close]")) {eduCloseHelp(); return}
-  if (!eduUI.drawer?.hidden && !eduUI.drawer.contains(node) && !node.closest("[data-edu-help-open]")) eduCloseHelp(false)
+  if (node.closest("[data-edu-help-close]")) { eduCloseHelp(); return }
+  if (node.closest("[data-edu-term-close]")) { eduCloseTerm(); return }
+  if (node.closest("[data-copy-explanation]") && eduDialogTarget) {
+    const term = eduTerms.get(eduDialogTarget.dataset.eduTerm)
+    eduCopy([term.term, term.short, term.detail, term.example, term.source_path].filter(Boolean).join("\n\n"),
+      eduUI.dialog.querySelector("[data-copy-status]"))
+    return
+  }
+  const copy = node.closest("[data-copy-text]")
+  if (copy) { eduCopy(copy.dataset.copyText, document.getElementById("copy-status")); return }
+  // A hint on an ordinary control explains it but never replaces its action.
   const term = node.closest("[data-edu-term]")
-  if (term) {
+  if (term && !term.matches("a, input, select, textarea, [phx-click]")) {
     event.preventDefault()
-    if (eduPinned && eduActiveTarget === term) eduCloseTooltip()
-    else eduShowTooltip(term, true)
-  } else if (!eduUI.tooltip?.contains(node)) eduCloseTooltip()
+    if (eduDialogTarget === term) eduCloseTerm()
+    else eduOpenTerm(term)
+    return
+  }
+  if (!eduUI.dialog?.contains(node)) eduCloseTerm(false)
+  if (!eduUI.drawer?.contains(node)) eduCloseHelp(false)
+  eduCloseTooltip()
 })
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
-    if (eduPinned || !eduUI.tooltip?.hidden) eduCloseTooltip()
-    if (!eduUI.drawer?.hidden) eduCloseHelp()
+    const open = eduDialogTarget || (eduUI.drawer && !eduUI.drawer.hidden) || eduActiveTarget
+    if (open) {
+      event.preventDefault()
+      event.stopPropagation()
+      eduCloseTooltip()
+      if (eduDialogTarget) eduCloseTerm()
+      else if (eduUI.drawer && !eduUI.drawer.hidden) eduCloseHelp()
+    }
+    const reference = document.getElementById("reference-nav")
+    if (reference?.open && reference.contains(event.target)) {
+      reference.open = false
+      reference.querySelector("summary").focus()
+    }
   }
-  if ((event.key === "Enter" || event.key === " ") && event.target?.matches?.("[data-edu-term]:not(button):not(a):not(input):not(select):not(textarea)")) {
+  if ((event.key === "Enter" || event.key === " ") &&
+      event.target?.matches?.("[data-edu-term]:not(button):not(a):not(input):not(select):not(textarea):not([phx-click])")) {
     event.preventDefault()
-    eduShowTooltip(event.target, true)
+    if (eduDialogTarget === event.target) eduCloseTerm()
+    else eduOpenTerm(event.target)
   }
-})
+}, true)
 window.addEventListener("scroll", () => {
-  if (eduActiveTarget?.contains(document.activeElement)) eduShowTooltip(eduActiveTarget, eduPinned)
+  if (eduActiveTarget?.contains(document.activeElement)) eduPositionTooltip(eduActiveTarget)
   else eduCloseTooltip()
-}, {capture:true, passive:true})
-window.addEventListener("phx:page-loading-stop", () => { eduCloseTooltip(); eduCloseHelp(false); eduMarkNav(); eduRestoreGuidance() })
-window.addEventListener("resize", eduCloseTooltip)
+}, {capture: true, passive: true})
+window.addEventListener("resize", () => {
+  if (eduActiveTarget) eduPositionTooltip(eduActiveTarget)
+})
+window.addEventListener("phx:page-loading-stop", () => {
+  eduCloseTooltip()
+  eduCloseTerm(false)
+  eduCloseHelp(false)
+  eduMarkNav()
+  eduRestoreGuidance()
+})
 new MutationObserver(records => {
-  if (eduActiveTarget && (!eduActiveTarget.isConnected ||
-      records.some(record => eduActiveTarget.contains(record.target)))) eduCloseTooltip()
-}).observe(document.body, {childList: true, subtree: true})
+  const affectsExplanation = record => record.type !== "attributes" ||
+    (["data-edu-term", "data-edu-hint", "phx-click"].includes(record.attributeName) &&
+      record.oldValue !== record.target.getAttribute(record.attributeName))
+  const changed = target => target && (!target.isConnected ||
+    records.some(record => target.contains(record.target) && affectsExplanation(record)))
+  if (changed(eduActiveTarget)) eduCloseTooltip()
+  if (changed(eduDialogTarget)) eduCloseTerm(false)
+  for (const record of records) {
+    if (record.type === "attributes") eduSyncTerm(record.target)
+  }
+  if (records.some(record => record.type === "childList")) {
+    document.querySelectorAll("[data-edu-term]").forEach(eduSyncTerm)
+    eduSyncTerm(eduUI.helpButton)
+  }
+}).observe(document.body, {
+  childList: true,
+  characterData: true,
+  subtree: true,
+  attributes: true,
+  attributeOldValue: true,
+  attributeFilter: ["data-edu-term", "data-edu-hint", "phx-click", "aria-haspopup", "aria-controls", "aria-expanded"],
+})
 window.addEventListener("popstate", eduMarkNav)
 eduMarkNav()
 

@@ -620,7 +620,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
       _ ->
         {:noreply,
-         error(socket, "Correct the alternative's accounting before continuing from it.")}
+         error(socket, "Correct the proposed output's accounting before continuing from it.")}
     end
   end
 
@@ -925,7 +925,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         else: "no executable case"
 
     text =
-      "Active rule review: #{label}. Law #{socket.assigns.slug}; input #{input}. "
+      "Active claim review: #{label}. Law #{socket.assigns.slug}; input #{input}. "
 
     doc = socket.assigns.doc
 
@@ -1449,7 +1449,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       )
 
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} review_stage="challenge" review_claim={@slug || "po_a2"}>
       <:tools :if={@doc && @reading}>
         <nav class="lens-modes case-mode-nav" id="case-review-modes" aria-label="Review experiences">
           <a href={~p"/claims/#{@slug}/#{@doc["id"]}"} aria-current="page">Case Lab</a>
@@ -1481,7 +1481,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         role="status"
         aria-label="Opening review workspace"
       >
-        <p>Opening ledger…</p>
+        <p>Opening Case Lab…</p>
         <div class="loading-layout" aria-hidden="true">
           <div class="loading-panel"><span></span><span></span><span></span></div>
           <div class="loading-panel"><span></span><span></span><span></span></div>
@@ -1490,15 +1490,15 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       <div :if={@doc && @reading} id="review-document">
         <div class="edu-workbench-intro" id="case-education-bridge">
           <div>
-            <strong>Reading this repository for the first time?</strong>
+            <strong>Try an input. Propose a different output.</strong>
             <p>
-              Case Lab explores an input and a hypothetical output. Its pointwise check does not certify all inputs or a real processor.
+              See what the claim accepts, then compare it with the payment requirement.
             </p>
           </div>
-          <a href="/system">Meet the Ledger and Spec →</a>
+          <a href="/proofs">Learn to read a claim →</a>
         </div>
         <p :if={!Trace.current?(@doc)} role="alert" id="stale-session">
-          The source files changed. Reopen this rule to run it again.
+          The source files changed. Reopen this claim to run it again.
         </p>
         <.comparison
           reading={@reading}
@@ -1520,19 +1520,19 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           aria-label="Three layers of review evidence"
         >
           <div class="case-map-cell">
-            <span>01 / Human requirement</span>
-            <strong>What should the ledger allow?</strong>
-            <small>Independent policy lives in the governing specification above, not in the proof.</small>
+            <span>1. Read the requirement</span>
+            <strong>Start with the expected behavior.</strong>
+            <small>The policy source is linked above.</small>
           </div>
           <div class="case-map-cell">
-            <span>02 / Pointwise claim</span>
-            <strong>What does this law check here?</strong>
-            <small>The computed and alternative outputs below are one case, not a universal theorem.</small>
+            <span>2. Try a case</span>
+            <strong>Compare the two outputs.</strong>
+            <small>The check covers the selected input and proposed output.</small>
           </div>
           <div class="case-map-cell">
-            <span>03 / Assurance boundary</span>
-            <strong>What remains unverified?</strong>
-            <small>Remote processor, source identity, and hypothetical changes need independent evidence.</small>
+            <span>3. Make a judgment</span>
+            <strong>Explain what you found.</strong>
+            <small>Use the source and evidence to support your review note.</small>
             <a :if={@slug in ~w(po_a2 po_exposure_retain)} href={~p"/lens/#{@slug}"}>
               Make an initial classification
             </a>
@@ -1572,7 +1572,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 <header>
                   <h3>
                     {case @tools do
-                      "draft" -> "Edit the alternative result"
+                      "draft" -> "Edit the proposed output"
                       "events" -> "Run another event"
                       _ -> "Starting account"
                     end}
@@ -1585,7 +1585,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                       phx-click="hunt"
                       id="hunt-candidate"
                       disabled={!@case_data || @hunt.status == "running"}
-                    >Try six preset alternatives</button><button
+                    >Try a preset output</button><button
                       :if={@hunt.status == "running"}
                       phx-click="cancel_hunt"
                     >Stop search</button><output id="hunt-status">{hunt_label(@hunt)}</output>
@@ -1640,13 +1640,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
               />
               <div class="case-reasoning">
                 <div class="case-depth-heading">
-                  <span class="eyebrow">02 / Investigate the semantic difference</span>
-                  <p>Open a source lens when you need a clause or Lean passage.
-                    Links are reading aids, not kernel-level dependencies.</p>
+                  <span class="eyebrow">Read the conditions and source</span>
+                  <p>Follow the check into the statement when you need to understand its result.</p>
                 </div>
                 <details id="case-conditions-depth" class="case-depth" open>
                   <summary>
-                    <strong>Condition breakdown</strong><span>Source-bound applicability &amp; output constraints</span>
+                    <strong>Condition breakdown</strong><span>When the claim applies and what it promises</span>
                   </summary>
                   <section id="clauses-panel">
                     <.dissector
@@ -1670,7 +1669,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 </details>
                 <details id="case-proof-depth" class="case-depth" open>
                   <summary>
-                    <strong>Formal source &amp; provenance</strong><span>Reviewed Lean text · verification scope</span>
+                    <strong>Proof source and evidence</strong><span>Lean text and matching verification records</span>
                   </summary>
                   <section id="proof-panel">
                     <.proof_source
@@ -1690,7 +1689,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
               </div>
               <section id="nearby-observation" aria-label="Observation and local repair">
                 <div class="section-heading">
-                  <h3>Flag this case</h3>
+                  <h3>Record your review</h3>
                   <button
                     id="add-observation"
                     phx-click="toggle_note"
@@ -1701,12 +1700,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 </div>
                 <p id="observation-target" class="review-target">
                   <%= if @case_data do %>
-                    Active rule {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
+                    Active claim {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
                       do: "unsaved experiment",
                       else: "saved step"
                     )}
                   <% else %>
-                    Rule {@slug} · no currently checkable alternative
+                    Claim {@slug} · no proposed output to check
                   <% end %>
                 </p>
                 <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">

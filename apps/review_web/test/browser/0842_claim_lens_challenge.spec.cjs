@@ -36,8 +36,8 @@ for (const width of [1280, 390]) {
     await expect(page.locator('.lens-decisions [aria-pressed=true]')).toHaveCount(0);
     await expect(page.locator('#lens-confirm')).toBeDisabled();
     await expect(page.locator('#lens-policy')).toContainText('An exact amount fit is admitted.');
-    await expect(page.locator('#lens-case-brief')).toContainText('Challenged output');
-    await expect(page.locator('#lens-evidence-legend')).toContainText('Pointwise Evaluation');
+    await expect(page.locator('#lens-case-brief')).toContainText('Proposed output');
+    await expect(page.locator('#lens-evidence-legend')).toContainText('Single-case check');
     await expect(page.locator('#lens-source-contract')).toContainText('request_eligible?');
     const choice = page.locator('#lens-decision-unresolved');
     await choice.focus();
@@ -58,7 +58,7 @@ for (const width of [1280, 390]) {
     await expect(page.locator('#lens-coverage-below')).toHaveAttribute('data-change', 'same');
     await expect(page.locator('#lens-coverage-exact')).toHaveAttribute('data-change', 'removed');
     await expect(page.locator('#lens-coverage-above')).toHaveAttribute('data-change', 'same');
-    await expect(page.locator('#lens-hypothetical-verdict')).toContainText("Doesn't apply");
+    await expect(page.locator('#lens-hypothetical-verdict')).toContainText("Claim says nothing about this input");
     await expect(page.locator('#lens-hypothetical-verdict')).toHaveCSS('border-top-style', 'dashed');
     await page.locator('#lens-worked-challenge summary').click();
     await expect(page.locator('#lens-worked-challenge pre')).toContainText('insufficient_amount');
@@ -82,7 +82,7 @@ test('changing context resets the answer and Challenge remains in the study URL'
   await expect(page.locator('#lens-proof-control')).toContainText('Proof-body-only change proposed');
   await confirm(page, 'no-change');
   await expect(page.locator('#lens-gap')).toContainText('No claim-level change');
-  await expect(page.locator('#lens-proof-control')).toContainText('No semantic delta in specification');
+  await expect(page.locator('#lens-proof-control')).toContainText('The claim is unchanged');
   await expect(page.locator('.lens-clause-edited')).toHaveCount(0);
   await page.locator('#lens-study-picker a[href="/lens/po_exposure_retain"]').click();
   await connected(page);

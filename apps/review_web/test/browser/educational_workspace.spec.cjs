@@ -5,11 +5,12 @@ for (const width of [390, 800, 1024, 1440]) {
     await page.setViewportSize({width, height: 900});
     await page.goto('/');
     await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-    await expect(page.locator('#edu-overview')).toContainText('Understand the system');
-    await expect(page.locator('.edu-stat-strip')).toContainText('Registered groups');
+    await expect(page.locator('#edu-overview h1')).toContainText('Understand payment holds');
+    await expect(page.locator('.edu-journey')).toHaveCount(3);
+    await expect(page.locator('.edu-stat-strip')).toContainText('Registered claims');
     await expect(page.locator('#edu-overview')).not.toContainText('49 proven');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.getByRole('link', {name: /Start with the story/}).click();
+    await page.getByRole('link', {name: /Follow a payment hold/}).first().click();
     await expect(page.locator('#edu-story')).toBeVisible();
     await page.getByRole('button', {name: /3 Timeout/}).click();
     await expect(page.locator('#edu-story')).toContainText('reply never arrives');
@@ -17,15 +18,18 @@ for (const width of [390, 800, 1024, 1440]) {
   });
 }
 
-test('the atlas contains all 49 source-derived groups with a native Lean profile', async ({page}) => {
+test('the atlas keeps eight families and all 49 claims with source access', async ({page}) => {
   await page.goto('/atlas');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('#edu-families > a')).toHaveCount(8);
   await expect(page.locator('.edu-claim-row')).toHaveCount(49);
   await page.locator('[name=kind]').selectOption('native_lean');
   await expect(page.locator('.edu-claim-row')).toHaveCount(14);
-  await page.getByRole('link', {name:/Replay committed work/}).first().click();
+  await page.locator('[data-claim-slug=po_composite_recovery]').click();
   await expect(page.locator('#edu-claim-profile')).toContainText('Registered');
-  await expect(page.locator('.edu-profile-panel').filter({hasText: 'SOURCE IDENTITY'})).toContainText('Native Lean');
+  await expect(page.locator('#edu-claim-profile')).toContainText('Lean-only');
+  await page.locator('#edu-claim-source > summary').click();
+  await expect(page.locator('#edu-claim-source a[href="/claims/po_composite_recovery"]')).toBeVisible();
 });
 
 test('help is available by click and keyboard, with glossary on real screens', async ({page}) => {
@@ -33,13 +37,13 @@ test('help is available by click and keyboard, with glossary on real screens', a
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await page.locator('#edu-help-toggle').click();
   await expect(page.locator('#edu-help-drawer')).toBeVisible();
-  await expect(page.locator('#edu-help-title')).toContainText('Claim Lens');
+  await expect(page.locator('#edu-help-title')).not.toBeEmpty();
   await page.keyboard.press('Escape');
   await expect(page.locator('#edu-help-drawer')).toBeHidden();
   const term = page.locator('[data-edu-term=requires]').first();
   await term.focus();
   await expect(page.locator('#edu-tooltip')).toBeVisible();
-  await expect(page.locator('#edu-tooltip')).toContainText('precondition');
+  await expect(page.locator('#edu-tooltip [data-tooltip-short]')).not.toBeEmpty();
   await page.keyboard.press('Escape');
   await expect(page.locator('#edu-tooltip')).toBeHidden();
   await page.locator('#edu-guidance').selectOption('focused');
@@ -85,9 +89,9 @@ test('touch help and patched controls preserve ordinary review actions', async (
     await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
     const term = page.locator('[data-edu-term=requires]').first();
     await term.tap();
-    await expect(page.locator('#edu-tooltip')).toBeVisible();
-    await term.tap();
-    await expect(page.locator('#edu-tooltip')).toBeHidden();
+    await expect(page.locator('#edu-term-dialog')).toBeVisible();
+    await page.getByRole('button', {name: 'Close term guide'}).tap();
+    await expect(page.locator('#edu-term-dialog')).toBeHidden();
     await expect(page.locator('#lens-confirm')).toBeDisabled();
     await expect(page.locator('#lens-feedback-withheld')).toBeVisible();
     await page.goto('/claims/po_a2');
@@ -115,13 +119,17 @@ test('tooltip keyboard, hover and description state survive a LiveView patch', a
   await term.focus();
   await expect(term).toHaveAttribute('aria-describedby', 'policy-anchor edu-tooltip');
   await page.keyboard.press('Enter');
-  await expect(page.locator('#edu-tooltip')).toHaveAttribute('data-pinned', 'true');
-  await page.keyboard.press('Escape');
+  await expect(page.locator('#edu-term-dialog')).toBeVisible();
   await expect(page.locator('#edu-tooltip')).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#edu-term-dialog')).toBeHidden();
+  await expect(term).toBeFocused();
   await expect(term).toHaveAttribute('aria-describedby', 'policy-anchor');
   await page.keyboard.press('Space');
-  await expect(page.locator('#edu-tooltip')).toHaveAttribute('data-pinned', 'true');
+  await expect(page.locator('#edu-term-dialog')).toBeVisible();
+  await expect(page.locator('#edu-tooltip')).toBeHidden();
   await page.keyboard.press('Escape');
+  await expect(page.locator('#edu-term-dialog')).toBeHidden();
   await term.evaluate(node => node.blur());
   await term.hover();
   await expect(page.locator('#edu-tooltip')).toBeVisible();
@@ -129,4 +137,27 @@ test('tooltip keyboard, hover and description state survive a LiveView patch', a
   await expect(page.locator('#edu-tooltip')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#edu-tooltip')).toBeHidden();
+});
+
+
+test('claim summary copy retains scope and source identity', async ({page, context}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/atlas/po_a2');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('#edu-claim-scope')).toBeVisible();
+  await page.locator('#edu-copy-claim').click();
+  await expect(page.locator('#copy-status')).toContainText('Copied');
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('Scope:');
+  expect(copied).toContain('test/laws/po_a2_test.exs');
+  expect(copied).toContain('Registration does not establish formal acceptance');
+});
+
+test('ordinary glossary aliases lead to authored explanations and source paths', async ({page}) => {
+  await page.goto('/glossary?q=pointwise');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('#term-pointwise')).toBeVisible();
+  await page.locator('#term-pointwise summary').click();
+  await expect(page.locator('#term-pointwise [data-source-path]')).toBeVisible();
+  await expect(page.locator('#term-pointwise [data-source-path]')).not.toBeEmpty();
 });

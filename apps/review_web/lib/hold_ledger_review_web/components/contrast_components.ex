@@ -26,7 +26,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       </header>
       <div :if={@step && @step["output"]}>
         <p :if={@step["origin"] != "computed"} id="hypothetical-lineage" class="signal">
-          Continuing from the alternative
+          Continuing from the proposed output
         </p>
         <div class="output-pair">
           <.output
@@ -37,7 +37,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           />
           <.output
             :if={@case}
-            title="What if it returned…"
+            title="Proposed output · not run"
             output={@case["candidate"]}
             id="hypothetical-output"
             differences={@differences}
@@ -55,7 +55,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           <summary>
             Full differences · {@differences.field_count} changed fields, {@differences.other_count} other rows
           </summary>
-          <h3>Code result → editable alternative</h3>
+          <h3>Code returned → proposed output</h3>
           <ol>
             <li
               :for={{difference, index} <- Enum.with_index(@differences.rows)}
@@ -68,7 +68,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           </ol>
         </details>
         <p :if={@invalid} id="invalid-candidate" role="alert">
-          Enter a whole number or valid output JSON to check this alternative.
+          Enter a whole number or valid output JSON to check this proposed output.
         </p>
       </div>
       <p :if={@step && !@step["output"]}>Coupled model step. Remote records are shown below.</p>
@@ -83,9 +83,9 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   def draft_tools(assigns) do
     ~H"""
     <section id="draft-tools">
-      <h3>Alternative tools</h3>
+      <h3>Edit the proposed output</h3>
       <div class="mutation-chips" id="candidate-mutations">
-        <button phx-click="mutate_candidate" phx-value-kind="drop_effects">Remove requested actions</button>
+        <button phx-click="mutate_candidate" phx-value-kind="drop_effects">Remove requested effects</button>
         <button phx-click="mutate_candidate" phx-value-kind="zero_counters">Zero both totals</button>
         <button phx-click="mutate_candidate" phx-value-kind="change_identity">Change first identity</button>
         <button phx-click="candidate_recalculate" id="recalculate-inline">Recalculate totals</button>
@@ -101,7 +101,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           phx-click="branch_candidate"
           id="branch-candidate"
           disabled={!@case || !@case["candidate_valid"]}
-        >Continue from this alternative</button>
+        >Continue from this output</button>
       </div>
     </section>
     """
@@ -218,26 +218,38 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         <table id="contrast-matrix">
           <thead>
             <tr>
-              <th>Question</th><th>Code result</th><th>Alternative (not executed)</th>
+              <th>Check</th><th>Code returned</th><th>Proposed output · not run</th>
             </tr>
           </thead>
           <tbody>
             <tr id="applicability-row">
-              <th scope="row">Does the rule apply?</th>
+              <th scope="row">
+                <button type="button" class="edu-term-button" data-edu-term="coverage">
+                  Does the claim cover this input?
+                </button>
+              </th>
               <td colspan="2">{ReviewCopy.applicability(@case)}</td>
             </tr>
             <tr
               id="selected-law-row"
               class={ReviewCopy.output_check_unavailable?(@case) && "check-unavailable"}
             >
-              <th scope="row">Does the output satisfy the rule?</th>
+              <th scope="row">
+                <button type="button" class="edu-term-button" data-edu-term="expects">
+                  Does the output satisfy the claim?
+                </button>
+              </th>
               <td>{ReviewCopy.code_acceptance(@case)}</td>
               <td class={["candidate-verdict", "candidate-" <> @signal.state]}>
                 <strong>{ReviewCopy.candidate_acceptance(@case)}</strong>
               </td>
             </tr>
             <tr id="validity-row">
-              <th scope="row">Is accounting internally valid?</th>
+              <th scope="row">
+                <button type="button" class="edu-term-button" data-edu-term="invariant">
+                  Do the totals and holds agree?
+                </button>
+              </th>
               <td>{ReviewCopy.accounting(@case["actual_valid"])}</td>
               <td>{ReviewCopy.accounting(@case["candidate_valid"])}</td>
             </tr>
@@ -284,7 +296,14 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         type="number"
         min="0"
         max="1000000"
-        label={String.replace(field, "_", " ")}
+        label={
+          %{
+            "amount_limit" => "Amount limit (¢)",
+            "hold_limit" => "Hold slot limit",
+            "used_amount" => "Reserved amount (¢)",
+            "used_holds" => "Hold slots used"
+          }[field]
+        }
       />
     </div>
     <div :for={{index, entry} <- @form.params["entries"] || %{}} class="form-row">
@@ -319,6 +338,12 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
     <article class="output" id={@id}>
       <div class="output-heading">
         <h3>{@title}</h3>
+        <button
+          type="button"
+          class="output-explanation edu-term-button"
+          data-edu-term={if(@editable, do: "hypothetical", else: "pointwise")}
+          aria-label={if(@editable, do: "About proposed outputs", else: "About computed outputs")}
+        >?</button>
         <button :if={@editable} id="edit-candidate" phx-click="edit_candidate" class="text-button">
           More edits
         </button>
@@ -362,6 +387,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       </div>
       <div class="output-headline">
         <strong>{@output["after"]["used_amount"]}¢ reserved</strong>
+        <small>{ReviewCopy.dollar_gloss(@output["after"]["used_amount"])}</small>
         <.field_delta change={OutputDifferences.at(@differences, ["after", "used_amount"])} />
       </div>
       <meter
@@ -422,8 +448,15 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             phx-click="cycle_status"
             phx-value-index={index}
             title={entry["status"]}
+            data-edu-hint={ReviewCopy.state_hint(entry["status"])}
           >{ReviewCopy.state(entry["status"])}</button>
-          <span :if={@id != "hypothetical-output"} class="status-pill" title={entry["status"]}>
+          <span
+            :if={@id != "hypothetical-output"}
+            class="status-pill"
+            title={entry["status"]}
+            tabindex="0"
+            data-edu-hint={ReviewCopy.state_hint(entry["status"])}
+          >
             {ReviewCopy.state(entry["status"])}
           </span>
           <.field_delta change={
@@ -434,18 +467,22 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       <ul
         :if={@differences && @differences.ghosts != []}
         class="comparison-ghosts"
-        aria-label="Entries absent from alternative"
+        aria-label="Entries absent from the proposed output"
       >
         <li :for={ghost <- @differences.ghosts} class="comparison-ghost">
           <span>{ghost.entry["key"]} · {ghost.entry["amount"]}¢ · {ReviewCopy.state(
             ghost.entry["status"]
           )}</span>
-          <small>Absent from alternative · original position {ghost.before_index + 1}</small>
+          <small>Absent from proposed output · original position {ghost.before_index + 1}</small>
         </li>
       </ul>
       <div class="effect-list">
-        <strong>Next actions</strong>
-        <p :if={@output["effects"] == []}>none</p>
+        <strong>
+          <button type="button" class="edu-term-button" data-edu-term="effect-intent">
+            Requested effects
+          </button>
+        </strong>
+        <p :if={@output["effects"] == []}>No outside work requested</p>
         <ul :if={@output["effects"] != []}>
           <li :for={{effect, index} <- Enum.with_index(@output["effects"])}>
             {ReviewCopy.action(effect)}
@@ -459,7 +496,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
               &(&1.kind in [:added, :removed, :order_change] && hd(&1.path) == "effects")
             )
         }>
-          Action membership or order differs; see Full differences.
+          Requested effects or their order differ; see Full differences.
         </small>
       </div>
     </article>
@@ -484,35 +521,35 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       "allows_here" when same? ->
         %{
           state: "same",
-          title: "Rule accepts this output",
-          detail: "Alternative matches the code result."
+          title: "Claim accepts the code result",
+          detail: "The proposed output matches what the code returned."
         }
 
       "allows_here" ->
         %{
           state: "permits",
-          title: "Rule permits the changed alternative",
-          detail: "Potential review gap · inspect which conditions still hold."
+          title: "Claim would accept this output. Intended?",
+          detail: "Compare the output with the policy, then inspect the conditions that accepted it."
         }
 
       "catches" ->
         %{
           state: "rejects",
-          title: "Rule rejects the alternative",
-          detail: "The selected check detects this change."
+          title: "Claim rejects this output",
+          detail: "The proposed output fails the claim on this input."
         }
 
       "doesnt_apply" ->
         %{
           state: "unavailable",
-          title: "Rule does not apply",
-          detail: "No acceptance result for this input."
+          title: "Claim says nothing about this input",
+          detail: "Its starting condition is false, so its promise is not checked here."
         }
 
       "not_probed" ->
         %{
           state: "unavailable",
-          title: "Not checked for this event",
+          title: "No check wired up for this event",
           detail: "Read the source for its scope."
         }
 
@@ -520,7 +557,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         %{
           state: "unavailable",
           title: "Check unavailable",
-          detail: "No result should be inferred."
+          detail: "Check the input and source details before trying again."
         }
     end
   end

@@ -5,14 +5,14 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
   @page_names %{
     overview: "Overview",
-    start: "Why holds?",
-    system: "System explorer",
-    guarantees: "Safety guarantees",
-    atlas: "Verification atlas",
-    profile: "Claim profile",
-    proofs: "How proofs work",
-    assurance: "Evidence & boundaries",
-    repository: "Repository map",
+    start: "Follow a payment hold",
+    system: "The hold system",
+    guarantees: "Payment-hold requirements",
+    atlas: "Find a claim",
+    profile: "Read a claim",
+    proofs: "Read the statement",
+    assurance: "Evidence and assumptions",
+    repository: "Find the source",
     glossary: "Glossary"
   }
 
@@ -20,84 +20,74 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     %{
       number: "01",
       name: "Policy",
-      tag: "Human intent",
-      headline: "What should happen?",
-      explanation:
-        "The independent specification defines desired behavior. It is not derived from what the current implementation happens to do.",
-      illustration:
-        "A fresh request exactly equal to available capacity must be admitted if a hold slot is free."
+      tag: "Required behavior",
+      headline: "Does the policy cover the case?",
+      explanation: "A fresh request for exactly the available amount must be admitted when a slot is free. Review the requirement before inspecting the claim.",
+      risk: "A missing or contradictory policy case leaves the intended behavior undecided.",
+      source: "guides/specification.md"
     },
     %{
       number: "02",
-      name: "Elixir code + law",
-      tag: "Source statement",
-      headline: "What code and contract are we checking?",
-      explanation:
-        "Ledger is implementation; Spec is an independent reference. A law defines when it applies (requires) and what it expects. A too-narrow requires clause can omit a policy-required input.",
-      illustration: "PO-A2: requires Spec.request_eligible?(s, key, amount)."
+      name: "Claim",
+      tag: "Input and output",
+      headline: "Does the statement cover an exact fit?",
+      explanation: "PO-A2 calls Spec.request_eligible? in requires. Follow that predicate: its amount comparison uses <=. The expects clause requires admission and the exact new state.",
+      risk: "Changing the precondition to exclude exact fit could leave a true claim that misses this requirement.",
+      source: "test/laws/po_a2_test.exs · lib/hold_ledger/spec.ex"
     },
     %{
       number: "03",
-      name: "Lynx",
-      tag: "Translation",
-      headline: "How does supported Elixir reach Lean?",
-      explanation:
-        "The checked pipeline translates supported Elixir constructs and laws into a formal representation. Toolchain support and exact source identity matter.",
-      illustration: "The actual law source references the translated PO-A2 contract."
+      name: "Translation",
+      tag: "Elixir to Lean",
+      headline: "Is the source represented faithfully?",
+      explanation: "Lynx translates the supported Elixir code and laws for formal checking. The supported language subset and the exact source version define what reaches Lean.",
+      risk: "A translation gap or a mismatched source version breaks the connection to the code being reviewed.",
+      source: "guides/verification.md"
     },
     %{
       number: "04",
-      name: "Lean",
-      tag: "Theorem and proof",
-      headline: "What statement has a proof?",
-      explanation:
-        "Lean checks a proof term for a precise theorem. Helper lemmas and tactics support the argument; they cannot independently decide the right business requirement.",
-      illustration:
-        "PO-A2 contains: exact Elixir.HoldLedger.ProofContracts.«po_a2/3» s key amount requires"
+      name: "Proof",
+      tag: "The stated theorem",
+      headline: "What does the proof establish?",
+      explanation: "Lean checks a proof of the theorem it is given. That includes the theorem's domain and assumptions. Read those before deciding whether the proof answers the policy question.",
+      risk: "A proof can establish a statement whose premises are too narrow or whose conclusion asks too little.",
+      source: "test/laws/po_a2_test.exs"
     },
     %{
       number: "05",
       name: "Receipt",
-      tag: "Source-matched evidence",
-      headline: "What did the checker actually accept?",
-      explanation:
-        "A completed verification receipt must match the exact sources, proof exports, allowed axioms and required checkers. This teaching page does not run or assume such a receipt exists.",
-      illustration: "Registered in the catalog ≠ accepted by six independent checkers."
+      tag: "Checked source",
+      headline: "Does the evidence match this source?",
+      explanation: "A full acceptance report must account for the required checkers, exported statements, allowed axioms and source identity. Read the report together with the files it records.",
+      risk: "A receipt for different source bytes does not establish acceptance of the current claim.",
+      source: "guides/verification.md · verification/laws.json"
     }
   ]
 
   @journeys [
     %{
-      title: "I'm new to the project",
-      tag: "START HERE",
-      description: "Meet the payment-hold problem without learning Lean first.",
+      title: "Understand the system",
+      tag: "Start with the example",
+      description: "Follow a 100¢ request through dispatch and timeout. See why the amount stays held when the reply is missing.",
       path: "/start",
-      icon: "◉",
-      steps: "3 short stops · problem → system → guarantees"
+      number: "01",
+      destination: "Payment-hold walkthrough"
     },
     %{
-      title: "I know Elixir, not Lean",
-      tag: "CODE TO PROOF",
-      description: "See exactly where the implementation, law, translation and theorem diverge.",
+      title: "Read a claim",
+      tag: "Connect policy to source",
+      description: "Read the inputs a claim covers and the output it requires. Use exact fit to spot a statement that asks too little.",
       path: "/proofs",
-      icon: "⌘",
-      steps: "Proof pipeline · source bridge"
+      number: "02",
+      destination: "Statement-reading guide"
     },
     %{
-      title: "I review formal claims",
-      tag: "CLAIM MAP",
-      description: "Find any of the registered groups and see what evidence means.",
-      path: "/atlas",
-      icon: "◇",
-      steps: "49 source-linked groups · 8 teaching families"
-    },
-    %{
-      title: "I want to challenge a case",
-      tag: "WORKBENCH",
-      description: "Use the existing interactive case analysis and Claim Lens.",
-      path: "/lab",
-      icon: "↗",
-      steps: "Real review tools · not a tutorial sandbox"
+      title: "Practice a review",
+      tag: "Make your own judgment",
+      description: "Compare a changed claim with the policy, record your judgment, then open the explanation in Claim Lens.",
+      path: "/lens/po_a2",
+      number: "03",
+      destination: "Exact-fit review exercise"
     }
   ]
 
@@ -167,19 +157,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       end
 
     socket =
-      if action == :glossary and is_binary(params["q"]) do
-        query = String.slice(params["q"], 0, 100)
-        needle = String.downcase(String.trim(query))
-
-        terms =
-          Enum.filter(socket.assigns.glossary, fn term ->
-            String.contains?(
-              String.downcase(term["term"] <> " " <> term["short"] <> " " <> term["detail"]),
-              needle
-            )
-          end)
-
-        assign(socket, term_query: query, filtered_terms: terms)
+      if action == :glossary do
+        query = if is_binary(params["q"]), do: String.slice(params["q"], 0, 100), else: ""
+        assign(socket, term_query: query, filtered_terms: Education.search_terms(query))
       else
         socket
       end
@@ -229,17 +209,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   end
 
   def handle_event("filter_terms", %{"q" => query}, socket) when is_binary(query) do
-    q = String.downcase(String.trim(String.slice(query, 0, 100)))
-
-    filtered =
-      Enum.filter(socket.assigns.glossary, fn term ->
-        String.contains?(
-          String.downcase(term["term"] <> " " <> term["short"] <> " " <> term["detail"]),
-          q
-        )
-      end)
-
-    {:noreply, assign(socket, term_query: query, filtered_terms: filtered)}
+    query = String.slice(query, 0, 100)
+    {:noreply, assign(socket, term_query: query, filtered_terms: Education.search_terms(query))}
   end
 
   def handle_event(_, _, socket), do: {:noreply, socket}
@@ -258,7 +229,11 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           (priority == "all" or claim["priority"] == priority) and
           String.contains?(
             String.downcase(
-              Enum.join([claim["title"], claim["slug"], claim["purpose"], claim["family"]], " ")
+              Enum.map_join(
+                ~w(title slug purpose family scenario must_happen wrong_behavior),
+                " ",
+                &(claim[&1] || "")
+              )
             ),
             needle
           )
@@ -285,6 +260,12 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp active_pipeline(assigns),
     do: Enum.find(assigns.pipeline, &(&1.number == assigns.pipeline_step))
 
+  defp review_stage(action) when action in [:start, :guarantees], do: "policy"
+  defp review_stage(action) when action in [:atlas, :profile, :proofs], do: "claim"
+  defp review_stage(:assurance), do: "evidence"
+  defp review_stage(:system), do: "assumptions"
+  defp review_stage(_), do: nil
+
   @impl true
   def render(assigns) do
     assigns =
@@ -296,11 +277,15 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       )
 
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app
+      flash={@flash}
+      review_stage={review_stage(@live_action)}
+      review_claim={(@profile && @profile["slug"]) || "po_a2"}
+    >
       <div class="edu-root" id="education-root">
         <%= if @catalog_issue do %>
           <div id="edu-catalog-unavailable" class="edu-caution" role="alert">
-            The current claim catalog could not be read. Inventory and claim links are unavailable; no cached proof status is assumed.
+            The claim catalog is unavailable. You can still read the guides; claim counts and source links will return when the catalog can be loaded.
           </div>
         <% end %>
         <%= case @live_action do %>
@@ -334,14 +319,14 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           <% :assurance -> %>
             <.assurance />
           <% :repository -> %>
-            <.repository components={@components} />
+            <.repository />
           <% :glossary -> %>
             <.glossary terms={@filtered_terms} query={@term_query} count={length(@glossary)} />
         <% end %>
         <footer class="edu-footer">
-          <span>HOLD LEDGER / REPOSITORY COMPANION</span>
-          <p>Curated explanations are navigation aids, not new formal verification evidence.</p>
-          <a href="/assurance">Understand evidence boundaries →</a>
+          <span>Hold Ledger · A guide to the repository</span>
+          <a href="/repository">Find the source</a>
+          <a href="/assurance">Read the evidence</a>
         </footer>
       </div>
     </Layouts.app>
@@ -371,85 +356,85 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     ~H"""
     <section class="edu-home-hero" id="edu-overview">
       <div class="edu-home-hero-content">
-        <p class="edu-eyebrow">THE REPOSITORY, EXPLAINED / 00</p>
-        <h1>Understand the system.<br /><em>Then question the proof.</em></h1>
+        <p class="edu-eyebrow">Payment holds, explained</p>
+        <h1>Understand payment holds.<span>Read the claims behind them.</span></h1>
         <p class="edu-hero-sub">
-          A payment authorization can remain live even when its reply disappears. This project models that risk, specifies safe behavior, and investigates how far formal evidence reaches.
+          A payment request can succeed even when its reply never arrives. Follow a 100¢ hold,
+          see what the ledger keeps reserved, and learn to check whether a claim covers the behavior you need.
         </p>
         <div class="edu-hero-actions">
-          <a class="edu-primary-button" href="/start">Start with the story
-          <span aria-hidden="true">↗</span></a>
-          <a class="edu-ghost-button" href="/atlas">Explore all claims →</a>
+          <a class="edu-primary-button" href="/start">
+            Follow a payment hold <span aria-hidden="true">→</span>
+          </a>
+          <a class="edu-ghost-button" href="/lab">Open Case Lab</a>
         </div>
-        <p class="edu-home-trust">
-          <span class="edu-dot"></span>
-          A verification <em>workbench</em>, not a payment service or proof-status dashboard.
-        </p>
+        <p class="edu-home-caption">One account. A 100¢ limit. A reply that never arrives.</p>
       </div>
-      <div
-        class="edu-hero-visual"
-        aria-label="Illustration: a reserved hold remains on the ledger while processor confirmation is unknown"
-      >
-        <div class="edu-visual-top">
-          <span>ONE ACCOUNT / MODELED EXAMPLE</span><span class="edu-visual-live">● UNKNOWN</span>
-        </div>
+      <figure class="edu-hero-visual" aria-label="Example: a 100-cent hold stays reserved while the processor outcome is unknown">
+        <figcaption class="edu-visual-top">
+          <span>Example · one account</span><span class="edu-visual-live">Reply missing</span>
+        </figcaption>
         <div class="edu-visual-amount">100<span>¢</span></div>
-        <p>Capacity reserved</p>
-        <div class="edu-visual-track"><span></span></div>
-        <div class="edu-visual-nodes">
-          <span>Request received</span><span>Sent to processor</span><strong>Reply missing</strong>
+        <p class="edu-visual-amount-label">Still held <span>$1.00</span></p>
+        <div class="edu-visual-track" aria-hidden="true"><span></span></div>
+        <dl class="edu-visual-ledger">
+          <div><dt>Account limit</dt><dd>100¢</dd></div>
+          <div><dt>Available for a new hold</dt><dd>0¢</dd></div>
+        </dl>
+        <div class="edu-visual-boundary">
+          <div><span>Ledger record</span><strong>Unknown</strong></div>
+          <div><span>Processor outcome</span><strong>Unconfirmed</strong></div>
         </div>
-        <div class="edu-visual-foot">
-          <span class="edu-pulse"></span> Silence does not release a hold.
-        </div>
-      </div>
+        <p class="edu-visual-foot">A timeout leaves the capacity held.</p>
+      </figure>
     </section>
-    <section class="edu-stat-strip" aria-label="Current registered verification inventory">
-      <div><strong>{@inventory.total}</strong><span>Registered groups</span></div>
-      <div><strong>{@inventory.elixir}</strong><span>Elixir / Lynx law groups</span></div>
-      <div><strong>{@inventory.lean}</strong><span>Native Lean groups</span></div>
-      <div class="edu-stat-note">
-        <strong>Important distinction</strong><span>Registered ≠ freshly verified.
-        <a href="/assurance">How to read evidence</a></span>
-      </div>
-    </section>
-    <section class="edu-home-journeys">
+
+    <section class="edu-home-journeys" aria-labelledby="edu-paths-title">
       <div class="edu-section-head">
-        <div>
-          <p class="edu-eyebrow">PICK YOUR ENTRY POINT</p><h2>No prerequisites. Multiple ways in.</h2>
-        </div><span>Every path leads to real source and tools.</span>
+        <div><p class="edu-eyebrow">Choose your next step</p><h2 id="edu-paths-title">Start with the question you have.</h2></div>
       </div>
       <div class="edu-journey-grid">
         <a :for={journey <- @journeys} class="edu-journey" href={journey.path}>
-          <span class="edu-journey-top"><b>{journey.icon}</b><small>{journey.tag}</small></span>
-          <h3>{journey.title}</h3><p>{journey.description}</p>
-          <span class="edu-journey-bottom"><small>{journey.steps}</small><strong aria-hidden="true">↗</strong></span>
+          <span class="edu-journey-top"><b>{journey.number}</b><small>{journey.tag}</small></span>
+          <h3>{journey.title}</h3>
+          <p>{journey.description}</p>
+          <span class="edu-journey-bottom"><small>{journey.destination}</small><strong aria-hidden="true">→</strong></span>
         </a>
       </div>
     </section>
-    <section class="edu-home-map">
-      <div class="edu-section-head">
-        <div>
-          <p class="edu-eyebrow">THE BIG PICTURE</p><h2>Follow the complete story.</h2>
-        </div><span>Choose any destination; nothing is locked.</span>
-      </div>
-      <div class="edu-destination-grid">
-        <a href="/start"><span>01 · CONTEXT</span><strong>Why payment holds?</strong><small>A missing reply and a double-reservation risk</small></a>
-        <a href="/system"><span>02 · CODE</span><strong>Meet the system</strong><small>Ledger, Spec, runtime and processor boundaries</small></a>
-        <a href="/guarantees"><span>03 · POLICY</span><strong>Safety guarantees</strong><small>Six things the requirements care about</small></a>
-        <a href="/atlas"><span>04 · CATALOG</span><strong>49 claims, one map</strong><small>Eight editorial families, full source links</small></a>
-        <a href="/proofs"><span>05 · METHOD</span><strong>How proofs work</strong><small>From independent policy to checker evidence</small></a>
-        <a href="/assurance"><span>06 · TRUST</span><strong>Evidence & assumptions</strong><small>What a proof establishes — and cannot</small></a>
-        <a href="/repository"><span>07 · SOURCE</span><strong>Find the code</strong><small>Purpose-based repository navigation</small></a>
-        <a href="/glossary"><span>08 · REFERENCE</span><strong>Glossary</strong><small>Plain-English explanations of 53 terms</small></a>
-      </div>
+
+    <section class="edu-stat-strip" aria-label="Current registered claim inventory">
+      <div><strong>{@inventory.total}</strong><span>Registered claims</span></div>
+      <div><strong>{@inventory.elixir}</strong><span>Elixir laws</span></div>
+      <div><strong>{@inventory.lean}</strong><span>Lean-only claims</span></div>
+      <p class="edu-stat-note">Counts come from the current catalog. <a href="/assurance">Check the evidence</a> before treating a registered claim as formally accepted.</p>
     </section>
-    <section class="edu-next-step">
-      <div>
-        <p class="edu-eyebrow">ALREADY KNOW THE CONTEXT?</p><h2>Open the working tools.</h2><p>
-          Case Lab runs real source-bound case exploration. Claim Lens asks you to judge a curated semantic challenge before showing its pointwise interpretation.
-        </p>
-      </div><div><a href="/lab">Open Case Lab →</a><a href="/lens/po_a2">Open Claim Lens →</a></div>
+
+    <section class="edu-home-map" aria-labelledby="edu-directory-title">
+      <div class="edu-section-head">
+        <div><p class="edu-eyebrow">Keep a useful page close</p><h2 id="edu-directory-title">Find your way around.</h2></div>
+        <span>Open any page. The reading paths are suggestions.</span>
+      </div>
+      <nav class="edu-page-directory" aria-label="Page directory">
+        <div>
+          <h3>The payment model</h3>
+          <a href="/start"><strong>Follow a payment hold</strong><span>Request, dispatch and a missing reply</span></a>
+          <a href="/system"><strong>Explore the system</strong><span>Ledger, Spec, runtime and the seven states</span></a>
+          <a href="/guarantees"><strong>Read the requirements</strong><span>Six behaviors the policy calls for</span></a>
+        </div>
+        <div>
+          <h3>Claims and evidence</h3>
+          <a href="/proofs"><strong>Read a formal statement</strong><span>Input coverage, promises and assumptions</span></a>
+          <a href="/atlas"><strong>Find a claim</strong><span>Browse the eight claim families</span></a>
+          <a href="/assurance"><strong>Check the evidence</strong><span>Examples, checks, reports and their scope</span></a>
+        </div>
+        <div>
+          <h3>Tools and reference</h3>
+          <a href="/lab"><strong>Case Lab</strong><span>Try an input and propose an output</span></a>
+          <a href="/repository"><strong>Repository map</strong><span>Find the source for your question</span></a>
+          <a href="/glossary"><strong>Glossary</strong><span>Plain meanings and repository examples</span></a>
+        </div>
+      </nav>
     </section>
     """
   end
@@ -461,34 +446,38 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       %{
         label: "Request",
         title: "A new request needs 100¢.",
-        text:
-          "An account has a 100-cent authorization limit. The fresh request fits exactly, so the modeled ledger reserves the full amount and a slot.",
-        state: "RESERVED",
-        result: "Accepted locally"
+        text: "The empty account has 100¢ free and two open hold slots. Request 11 asks for exactly 100¢, so the ledger admits it and uses one slot.",
+        state: "Reserved",
+        result: "100¢ held for request 11",
+        claim: "po_a2",
+        link: "Read the exact-fit claim"
       },
       %{
         label: "Dispatch",
-        title: "The authorization is sent.",
-        text:
-          "The runtime may send the authorization intent to the external processor. The ledger cannot yet infer what the processor will decide.",
-        state: "SENT",
-        result: "Outcome pending"
+        title: "The ledger requests authorization.",
+        text: "Dispatch records the hold as sent and asks the runtime to authorize 100¢ with the processor. Recording this request does not establish the remote outcome.",
+        state: "Sent",
+        result: "Authorization requested for key 11",
+        claim: "po_b3",
+        link: "Read the requested-effect claim"
       },
       %{
         label: "Timeout",
         title: "The reply never arrives.",
-        text:
-          "A timeout is not evidence of a decline. The authorization might still be live remotely, so the amount and slot stay reserved.",
-        state: "UNKNOWN",
-        result: "Keep capacity held"
+        text: "The processor may have approved the authorization before its reply was lost. The ledger marks the outcome unknown and keeps the 100¢ and its slot held.",
+        state: "Unknown",
+        result: "Capacity stays held",
+        claim: "po_b2",
+        link: "Read the capacity-retention claim"
       },
       %{
         label: "Second request",
-        title: "Another 100¢ cannot fit.",
-        text:
-          "If we released capacity on silence, a second request could overcommit the account. Retaining the unknown hold prevents that modeled risk.",
-        state: "UNKNOWN",
-        result: "Insufficient available capacity"
+        title: "The second request is refused.",
+        text: "Request 12 asks for another 100¢. One slot is still free, but the first request uses the whole amount limit. With 0¢ available, the ledger returns insufficient_amount and leaves the account unchanged.",
+        state: "Unknown",
+        result: "No capacity for request 12",
+        claim: "po_a1",
+        link: "Read the request-validity claim"
       }
     ]
 
@@ -496,16 +485,14 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
     ~H"""
     <.intro
-      eyebrow="01 / THE PROBLEM"
-      heading="A missing reply can still cost money."
-      description="Before looking at Lean or the proof catalog, understand the one safety mistake this project refuses to make."
+      eyebrow="Learn · the payment example"
+      heading="A missing reply still leaves money on hold."
+      description="Start with one empty account, a 100¢ limit and two hold slots. Follow what happens when a payment authorization's reply goes missing."
     />
     <div class="edu-two-column edu-story-grid" id="edu-story">
-      <div class="edu-story-console">
-        <div class="edu-console-top">
-          <span>ILLUSTRATIVE HOLD WALKTHROUGH</span><span>STEP {@step} / 4</span>
-        </div>
-        <div class="edu-story-progress"><span style={"width: #{@step * 25}%"}></span></div>
+      <section class="edu-story-console" aria-label="Payment-hold walkthrough">
+        <div class="edu-console-top"><span>Example walkthrough</span><span>Step {@step} of 4</span></div>
+        <div class="edu-story-progress" aria-hidden="true"><span style={"width: #{@step * 25}%"}></span></div>
         <div class="edu-story-steps" role="group" aria-label="Scenario step">
           <button
             :for={{step, index} <- Enum.with_index(@steps, 1)}
@@ -514,58 +501,43 @@ defmodule HoldLedgerReviewWeb.EducationLive do
             phx-value-step={index}
             class={if(@step == index, do: "active", else: "")}
             aria-pressed={to_string(@step == index)}
+            aria-controls="edu-story-event"
           >{index} <span>{step.label}</span></button>
         </div>
         <div class="edu-story-money">
-          <span>Available to new holds</span><strong>0<small>¢ of 100¢</small></strong><div class="edu-story-bar">
-            <i></i>
-          </div>
+          <div><span>Held for request 11</span><strong>100<small>¢</small></strong></div>
+          <div><span>Available to new holds</span><strong>0<small>¢</small></strong></div>
         </div>
-        <div class="edu-story-event">
-          <span class="edu-pill">{@selected.state}</span><h2>{@selected.title}</h2><p>
-            {@selected.text}
-          </p><div class="edu-story-result">
-            <span>MODELED RESULT</span><strong>{@selected.result}</strong>
-          </div>
+        <div class="edu-story-event" id="edu-story-event" aria-live="polite">
+          <span class="edu-pill">{@selected.state}</span>
+          <h2>{@selected.title}</h2>
+          <p>{@selected.text}</p>
+          <div class="edu-story-result"><span>Result in this example</span><strong>{@selected.result}</strong></div>
+          <a class="edu-inline-link" href={"/atlas/" <> @selected.claim}>{@selected.link} →</a>
+          <p :if={@step == 4} class="edu-micro-note">PO-A1 checks the resulting state's validity. The policy specifies this rejection; validity alone does not require this exact result.</p>
         </div>
         <div class="edu-story-controls">
-          <button type="button" phx-click="scenario" phx-value-step={@step - 1} disabled={@step == 1}>← Previous</button><button
-            type="button"
-            phx-click="scenario"
-            phx-value-step={@step + 1}
-            disabled={@step == 4}
-          >Next step →</button>
+          <button type="button" phx-click="scenario" phx-value-step={@step - 1} disabled={@step == 1}>← Previous</button>
+          <button type="button" phx-click="scenario" phx-value-step={@step + 1} disabled={@step == 4}>Next step →</button>
         </div>
-        <p class="edu-micro-note">
-          Teaching scenario from documented model behavior, not an executed processor transaction or new proof run.
-        </p>
-      </div>
-      <div class="edu-explainer-column">
-        <div class="edu-note-card">
-          <span class="edu-eyebrow">THE ENGINEERING PROBLEM</span><h2>A timeout is not a decline.</h2><p>
-            The remote authorization might have succeeded while its reply was lost. Reusing the capacity would be unsafe.
-          </p><a href="/system">See the seven hold states →</a>
-        </div>
-        <div class="edu-note-card">
-          <span class="edu-eyebrow">THE VERIFICATION PROBLEM</span><h2>
-            Correct totals are not enough.
-          </h2><p>
-            The code must also respect who owns capacity, what terminal evidence exists, and which input sequences the claims cover.
-          </p><a href="/guarantees">Understand the requirements →</a>
-        </div>
-        <div class="edu-small-detail">
-          <strong>One important limit</strong><p>
-            This repository models a single-account authorization-hold system. It does not show that a real processor honors every assumption.
-          </p>
-        </div>
-      </div>
+        <p class="edu-micro-note">Based on <code>guides/specification.md</code>. This example illustrates the model; it does not run a processor.</p>
+      </section>
+      <aside class="edu-explainer-column">
+        <section class="edu-note-card">
+          <p class="edu-eyebrow">The payment lesson</p>
+          <h2>Silence leaves a question open.</h2>
+          <p>The authorization might still be live. Holding the capacity prevents a new request from using the same 100¢.</p>
+          <a href="/system">Explore the seven hold states →</a>
+        </section>
+        <section class="edu-note-card">
+          <p class="edu-eyebrow">The claim-reading lesson</p>
+          <h2>Correct totals can miss the wrong decision.</h2>
+          <p>Rejecting an eligible request can leave a valid account. To catch that mistake, a claim must require admission when the request fits.</p>
+          <a href="/atlas/po_a2">Read the exact-fit example →</a>
+        </section>
+      </aside>
     </div>
-    <.next_links
-      one="/system"
-      one_title="Explore the actual system"
-      two="/guarantees"
-      two_title="What needs to stay true?"
-    />
+    <.next_links one="/system" one_title="Follow the hold through the system" two="/guarantees" two_title="Read the six requirements" />
     """
   end
 
@@ -577,18 +549,14 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp system(assigns) do
     ~H"""
     <.intro
-      eyebrow="02 / THE SYSTEM"
-      heading="The code, the model, and the outside world."
-      description="The web workbench is a companion to a real Elixir repository. It is not the ledger service itself."
+      eyebrow="Learn · the system"
+      heading="Follow a hold through the system."
+      description="Ledger handles each event. Spec describes the expected behavior independently. The runtime records inputs and asks the processor to do the outside work."
     />
     <div class="edu-section-head">
-      <div>
-        <p class="edu-eyebrow">ARCHITECTURE / PICK A COMPONENT</p><h2>
-          Follow the request across boundaries.
-        </h2>
-      </div><span>Click any layer for its role and source location.</span>
+      <div><p class="edu-eyebrow">Code and responsibilities</p><h2>Choose a part to see its role.</h2></div>
     </div>
-    <div class="edu-architecture">
+    <section class="edu-architecture" aria-label="System responsibilities">
       <div class="edu-arch-cards" role="group" aria-label="Architecture layers">
         <button
           :for={node <- @components}
@@ -597,23 +565,20 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           phx-value-id={node.id}
           class={["edu-arch-node", @component.id == node.id && "active"]}
           aria-pressed={to_string(@component.id == node.id)}
-        ><span>{node.title}</span><small>{node.role}</small><b aria-hidden="true">↗</b></button>
+          aria-controls="edu-component-detail"
+        ><strong>{node.title}</strong><span>{node.role}</span></button>
       </div>
-      <div class="edu-arch-explainer" id="edu-component-detail">
-        <span class="edu-eyebrow">SELECTED LAYER</span><h3>{@component.title}</h3><p>
-          {@component.explanation}
-        </p><div class="edu-file-label">
-          <span>REPOSITORY SOURCE</span><code>{@component.path}</code>
-        </div><a href={@component.link}>Follow this concept →</a>
+      <div class="edu-arch-explainer" id="edu-component-detail" aria-live="polite">
+        <p class="edu-eyebrow">Its part in the system</p>
+        <h3>{@component.title}</h3>
+        <p>{@component.explanation}</p>
+        <div class="edu-file-label"><span>Source</span><code>{@component.path}</code></div>
+        <a href={@component.link}>Read more about this part →</a>
       </div>
-    </div>
+    </section>
     <section class="edu-status-section">
       <div class="edu-section-head">
-        <div>
-          <p class="edu-eyebrow">THE STATE MACHINE</p><h2>
-            Seven hold states, each with a different meaning.
-          </h2>
-        </div><span>Status ≠ external truth.</span>
+        <div><p class="edu-eyebrow">What the ledger remembers</p><h2>Seven states, different reasons to hold capacity.</h2></div>
       </div>
       <div class="edu-status-grid" role="group" aria-label="Hold state explanations">
         <button
@@ -623,23 +588,27 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           phx-value-id={status.id}
           class={["edu-state-chip", @status.id == status.id && "active"]}
           aria-pressed={to_string(@status.id == status.id)}
-        ><span class="edu-state-dot"></span>{status.label}</button>
+          aria-controls="edu-status-detail"
+        >{status.label}</button>
       </div>
-      <div class="edu-status-detail" id="edu-status-detail">
-        <span>SELECTED HOLD STATE</span><h3>{@status.label}</h3><strong>{@status.description}</strong><p>
-          {@status.detail}
-        </p><a href="/atlas?family=Identity+%26+lifecycle">Find lifecycle claims →</a>
+      <div class="edu-status-detail" id="edu-status-detail" aria-live="polite">
+        <div><p class="edu-eyebrow">Selected state</p><h3>{@status.label}</h3></div>
+        <div><strong>{@status.description}</strong><p>{@status.detail}</p></div>
+        <a href="/atlas?family=Identity+%26+lifecycle">Read the lifecycle claims →</a>
       </div>
-      <p class="edu-micro-note">
-        Transitions are constrained by event and prior state; this selection is a status glossary, not an assertion that every state can transition directly to every other state.
-      </p>
+      <p class="edu-micro-note">These are state descriptions. Which transitions are allowed depends on the current state and the event.</p>
+      <details class="edu-disclosure" id="edu-raw-state-guide">
+        <summary>Read the raw state tuple</summary>
+        <div class="edu-disclosure-content">
+          <code phx-no-curly-interpolation>{amount_limit, hold_limit, used_amount, used_holds, entries}</code>
+          <p>The first two fields are the account's limits. The next two count the amount and slots currently held. Each entry records a key, an amount in cents and a state.</p>
+          <code phx-no-curly-interpolation>{100, 2, 100, 1, [{11, 100, :unknown}]}</code>
+          <p>This account allows 100¢ and two holds. Request 11 uses all 100¢ and one slot. Amounts are integer cents; 100¢ is $1.00.</p>
+          <p class="edu-source-note">Source: <code>guides/specification.md</code></p>
+        </div>
+      </details>
     </section>
-    <.next_links
-      one="/guarantees"
-      one_title="Read the safety guarantees"
-      two="/repository"
-      two_title="Locate the source files"
-    />
+    <.next_links one="/guarantees" one_title="Read the required behavior" two="/repository" two_title="Find the source files" />
     """
   end
 
@@ -649,12 +618,12 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp guarantees(assigns) do
     ~H"""
     <.intro
-      eyebrow="03 / REQUIREMENTS"
-      heading="Six questions the policy must answer."
-      description="These teaching themes summarize the independent specification. They are not extra verified claims or a replacement for the governing policy text."
+      eyebrow="Learn · policy"
+      heading="Six requirements for a payment hold."
+      description="The policy explains when capacity may be used, kept or released. Choose a requirement to see the behavior it calls for and the claims that help check it."
     />
     <div class="edu-guarantee-layout">
-      <div class="edu-guarantee-picker" role="group" aria-label="Select a guarantee">
+      <div class="edu-guarantee-picker" role="group" aria-label="Select a requirement">
         <button
           :for={g <- @guarantees}
           type="button"
@@ -662,30 +631,27 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           phx-value-id={g.id}
           class={["edu-guarantee-choice", @guarantee.id == g.id && "active"]}
           aria-pressed={to_string(@guarantee.id == g.id)}
+          aria-controls="edu-guarantee-detail"
         ><span>{g.number}</span><strong>{g.title}</strong><span aria-hidden="true">→</span></button>
       </div>
-      <div class="edu-guarantee-card">
-        <p class="edu-eyebrow">POLICY PERSPECTIVE / {@guarantee.number}</p><h2>{@guarantee.title}</h2><p class="edu-guarantee-nutshell">
-          {@guarantee.nutshell}
-        </p><div class="edu-contrast-pair">
-          <div>
-            <span>EXPECTED / SAFE</span><p>{@guarantee.safe}</p>
-          </div><div>
-            <span>NEAR-MISS / UNSAFE</span><p>{@guarantee.unsafe}</p>
-          </div>
-        </div><h3>Related registered claims</h3><div class="edu-related-links">
-          <a :for={slug <- @guarantee.slugs} href={"/atlas/" <> slug}><code>{slug}</code><span aria-hidden="true">↗</span></a>
-        </div><p class="edu-micro-note">
-          Policy authority: <code>guides/specification.md</code>. Read the actual preconditions and postconditions before concluding a particular obligation covers this example.
-        </p>
-      </div>
+      <section class="edu-guarantee-card" id="edu-guarantee-detail" aria-live="polite">
+        <p class="edu-eyebrow">Requirement {@guarantee.number}</p>
+        <h2>{@guarantee.title}</h2>
+        <p class="edu-guarantee-nutshell">{@guarantee.nutshell}</p>
+        <div class="edu-contrast-pair">
+          <div><h3>Required behavior</h3><p>{@guarantee.safe}</p></div>
+          <div><h3>What would go wrong</h3><p>{@guarantee.unsafe}</p></div>
+        </div>
+        <h3 class="edu-related-heading">Claims to read</h3>
+        <div class="edu-related-links">
+          <a :for={slug <- @guarantee.slugs} href={"/atlas/" <> slug}>
+            <span>{Education.title(slug) || slug}</span><code>{slug}</code>
+          </a>
+        </div>
+        <p class="edu-source-note">Policy source: <code>guides/specification.md</code>. Each claim's input conditions determine which part it covers.</p>
+      </section>
     </div>
-    <.next_links
-      one="/atlas"
-      one_title="How all 49 groups fit together"
-      two="/lens/po_a2"
-      two_title="Challenge an exact-fit claim"
-    />
+    <.next_links one="/atlas" one_title="Find claims by question" two="/lens/po_a2" two_title="Review a changed exact-fit claim" />
     """
   end
 
@@ -700,109 +666,65 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp atlas(assigns) do
     ~H"""
     <.intro
-      eyebrow="04 / VERIFICATION ATLAS"
-      heading="49 groups. Not 49 unrelated mysteries."
-      description="All catalog entries remain intact. These eight families are an editorial teaching map, not a verified theorem dependency graph."
+      eyebrow="Claims · the reading map"
+      heading="Find the claim you need."
+      description="Start with a question, then read the statement that answers it. The eight families below suggest a reading order, from bookkeeping to recovery."
     />
-    <section class="edu-origin-story" id="edu-origin-story">
+    <section id="edu-origin-story" class="edu-origin-story" aria-labelledby="edu-families-title">
       <div class="edu-section-head">
-        <div>
-          <p class="edu-eyebrow">HOW THE CLAIMS FIT TOGETHER</p><h2>
-            From pure bookkeeping to modeled recovery.
-          </h2>
-        </div><span>Conceptual reading progression, not an audited chronology or proof-dependency graph.</span>
+        <div><p class="edu-eyebrow">Eight families</p><h2 id="edu-families-title">What are you trying to understand?</h2></div>
+        <span>This is a reading order, not a proof-dependency diagram.</span>
       </div>
-      <div class="edu-origin-steps">
-        <a href="/atlas?family=Foundations"><span>01</span><strong>Build the arithmetic</strong><small>Lookup, identity, totals and valid states</small></a>
-        <a href="/atlas?family=Identity+%26+lifecycle"><span>02</span><strong>Protect the lifecycle</strong><small>Timeouts, voids and terminal states</small></a>
-        <a href="/atlas?family=Attempts"><span>03</span><strong>Track runtime attempts</strong><small>Slots, retirement and persistence</small></a>
-        <a href="/atlas?family=Processor+%26+exposure"><span>04</span><strong>Model remote exposure</strong><small>Fencing and what might still be live</small></a>
-        <a href="/atlas?family=Composite+%26+recovery"><span>05</span><strong>Reason about recovery</strong><small>Pending void work and committed replay</small></a>
-      </div>
+      <nav class="edu-family-grid" id="edu-families" aria-label="Claim families in reading order">
+        <a
+          :for={family <- @families}
+          href={"/atlas?family=" <> URI.encode_www_form(family.id)}
+          class={["edu-family-tile", @family == family.id && "active"]}
+          aria-current={if(@family == family.id, do: "true", else: nil)}
+        >
+          <span class="edu-family-number">{family.number}</span>
+          <div><span class="edu-family-name">{family.id}</span><h3>{family.question}</h3></div>
+          <span class="edu-family-count">{length(Education.by_family(@all, family.id))}<small>claims</small></span>
+        </a>
+      </nav>
     </section>
-    <div class="edu-section-head">
-      <div>
-        <p class="edu-eyebrow">THE EIGHT TEACHING FAMILIES</p><h2>Choose a safety concern.</h2>
-      </div><span>Every registered slug is assigned exactly once.</span>
-    </div>
-    <div class="edu-family-grid" id="edu-families">
-      <a
-        :for={family <- @families}
-        href={"/atlas?family=" <> URI.encode_www_form(family.id)}
-        class={["edu-family-tile", @family == family.id && "active"]}
-      ><span>{family.number} / {length(Education.by_family(@all, family.id))} GROUPS</span><h3>
-        {family.id}
-      </h3><p>{family.description}</p></a>
-    </div>
     <section class="edu-atlas-browser" id="edu-atlas-browser">
       <div class="edu-section-head">
-        <div>
-          <p class="edu-eyebrow">CATALOG / SOURCE-DERIVED INVENTORY</p><h2>
-            Find a precise obligation.
-          </h2>
-        </div><span>{length(@claims)} matching / {length(@all)} registered</span>
+        <div><p class="edu-eyebrow">The current catalog</p><h2>Search the claims.</h2></div>
+        <span id="edu-atlas-count" role="status">{length(@claims)} of {length(@all)} claims</span>
       </div>
-      <form id="edu-atlas-filters" phx-change="filter_claims" class="edu-atlas-filters">
-        <label>Search name, slug, or purpose<input
-          type="search"
-          name="q"
-          value={@query}
-          placeholder="Try timeout, capacity, history…"
-          phx-debounce="200"
-        /></label><label>Family<select name="family"><option value="all" selected={@family == "all"}>
-          All families
-        </option><option :for={family <- @families} value={family.id} selected={@family == family.id}>
-          {family.id}
-        </option></select></label><label>Source type<select name="kind"><option
-          value="all"
-          selected={@kind == "all"}
-        >
-          Both source types
-        </option><option value="elixir_law" selected={@kind == "elixir_law"}>
-          Elixir / Lynx law
-        </option><option value="native_lean" selected={@kind == "native_lean"}>
-          Native Lean group
-        </option></select></label><label>Priority<select name="priority"><option
-          value="all"
-          selected={@priority == "all"}
-        >
-          All priorities
-        </option><option value="L" selected={@priority == "L"}>L / foundations</option><option
-          value="P0"
-          selected={@priority == "P0"}
-        >
-          P0
-        </option><option value="P1" selected={@priority == "P1"}>P1</option></select></label>
-      </form>
-      <p class="edu-micro-note">
-        Priority labels are taken from the repository catalog. A native Lean group describes Lean declarations, not an Elixir <code>requires</code>/<code>expects</code>
-        contract.
-      </p>
+      <.form
+        for={to_form(%{"q" => @query, "family" => @family, "kind" => @kind, "priority" => @priority})}
+        id="edu-atlas-filters"
+        phx-change="filter_claims"
+        class="edu-atlas-filters"
+      >
+        <.input id="edu-claim-query" type="search" name="q" value={@query} label="Search a claim or scenario" placeholder="Try timeout, exact fit, recovery…" phx-debounce="200" class="edu-filter-input" />
+        <.input id="edu-family-filter" type="select" name="family" value={@family} label="Family" options={[{"All families", "all"}] ++ Enum.map(@families, &{&1.id, &1.id})} class="edu-filter-input" />
+        <.input id="edu-kind-filter" type="select" name="kind" value={@kind} label="Source type" options={[{"Both source types", "all"}, {"Elixir law", "elixir_law"}, {"Lean-only claim", "native_lean"}]} class="edu-filter-input" />
+        <.input id="edu-priority-filter" type="select" name="priority" value={@priority} label="Catalog priority" options={[{"All priorities", "all"}, {"L · foundations", "L"}, {"P0", "P0"}, {"P1", "P1"}]} class="edu-filter-input" />
+      </.form>
       <div class="edu-atlas-results" id="edu-atlas-results">
-        <a :for={claim <- @claims} href={"/atlas/" <> claim["slug"]} class="edu-claim-row"><span class="edu-claim-identity"><code>{claim[
-          "id"
-        ]}</code><small>{claim["priority"]}</small></span><span><strong>{claim["title"]}</strong><small>{claim[
-          "purpose"
-        ]}</small></span><span class="edu-claim-tags"><b>{claim["family"]}</b><small>{if claim["kind"] ==
-                                                                                           "native_lean",
-                                                                                         do:
-                                                                                           "Native Lean",
-                                                                                         else:
-                                                                                           "Elixir law"}</small></span><span
-          class="edu-row-arrow"
-          aria-hidden="true"
-        >↗</span></a>
+        <a
+          :for={claim <- @claims}
+          href={"/atlas/" <> claim["slug"]}
+          class="edu-claim-row"
+          data-claim-slug={claim["slug"]}
+        >
+          <span class="edu-claim-identity"><code>{claim["id"]}</code><small>{claim["priority"]}</small></span>
+          <span class="edu-claim-description"><strong>{claim["title"]}</strong><span>{claim["must_happen"] || claim["purpose"]}</span></span>
+          <span class="edu-claim-tags"><span>{claim["family"]}</span><small>{if(claim["kind"] == "native_lean", do: "Lean-only", else: "Elixir law")}</small></span>
+          <span class="edu-row-arrow" aria-hidden="true">→</span>
+        </a>
       </div>
       <div :if={@claims == []} class="edu-empty">
-        No matching claims. Try clearing a filter; an empty search is not a failed proof result.
+        <h3>No claims match these filters.</h3>
+        <p>Try a shorter phrase or return to all families and source types.</p>
+        <.link patch="/atlas">Clear filters →</.link>
       </div>
+      <p class="edu-source-note">The catalog supplies the claim IDs, source types and priorities. Registration identifies a statement; acceptance requires matching evidence.</p>
     </section>
-    <.next_links
-      one="/proofs"
-      one_title="Understand how proofs work"
-      two="/assurance"
-      two_title="Read evidence limits"
-    />
+    <.next_links one="/proofs" one_title="Learn to read the statement" two="/assurance" two_title="Check what the evidence establishes" />
     """
   end
 
@@ -811,73 +733,82 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp profile(assigns) do
     ~H"""
     <%= if @claim do %>
-      <div class="edu-profile-breadcrumb">
-        <a href="/atlas">← Verification atlas</a><span>/ {@claim["family"]}</span>
-      </div>
+      <nav class="edu-profile-breadcrumb" aria-label="Claim location">
+        <a href="/atlas">← All claims</a><span>{@claim["family"]}</span>
+      </nav>
       <section class="edu-profile-hero" id="edu-claim-profile">
-        <p class="edu-eyebrow">CLAIM PROFILE / {@claim["id"]}</p><h1>{@claim["title"]}</h1><p class="edu-profile-description">
-          {@claim["purpose"]}
-        </p><div class="edu-profile-badges">
-          <span>{@claim["family"]}</span><span>{@claim["priority"]} priority</span><span>{if @claim[
-                                                                                               "kind"
-                                                                                             ] ==
-                                                                                               "native_lean",
-                                                                                             do:
-                                                                                               "Native Lean group",
-                                                                                             else:
-                                                                                               "Elixir / Lynx law"}</span><span>Registered · proof status not implied</span>
+        <div class="edu-profile-heading">
+          <p class="edu-eyebrow">Read a claim · {@claim["id"]}</p>
+          <span class="edu-evidence-label">Registered claim</span>
+        </div>
+        <h1>{@claim["title"]}</h1>
+        <div class="edu-profile-badges">
+          <span>{@claim["family"]}</span>
+          <span>{if(@claim["kind"] == "native_lean", do: "Lean-only claim", else: "Elixir law")}</span>
+        </div>
+        <div class="edu-profile-scenario" id="edu-claim-scenario">
+          <p class="edu-eyebrow">Consider this case</p><p>{@claim["scenario"]}</p>
         </div>
       </section>
       <div class="edu-profile-grid">
-        <section class="edu-profile-panel">
-          <p class="edu-eyebrow">WHY THIS EXISTS</p><h2>A small part of a larger safety argument.</h2><p>
-            {@claim["risk"]}
-          </p><p>
-            The catalog describes this group's purpose as: <strong>{@claim["purpose"]}</strong>
-          </p><p class="edu-micro-note">
-            This explanation is a reading aid. Exact semantics live in the source declaration and its assumptions.
-          </p>
-        </section><section class="edu-profile-panel">
-          <p class="edu-eyebrow">SOURCE IDENTITY</p><h2>Where the actual statement lives.</h2><dl>
-            <dt>Registered slug</dt><dd><code>{@claim["slug"]}</code></dd><dt>Claim group</dt><dd>
-              <code>{@claim["id"]}</code>
-            </dd><dt>Source</dt><dd>
-              <code>{@claim["education_source_path"] || @claim["module"] ||
-                "Refer to the registered source"}</code>
-            </dd><dt>Target</dt><dd>
-              <code>{@claim["target"] || Enum.join(@claim["theorems"] || [], ", ")}</code>
-            </dd>
-          </dl>
-          <%= if @claim["kind"] == "native_lean" do %>
-            <p class="edu-micro-note">
-              Native Lean model/history statement — no Elixir requires/ expects counterpart is asserted.
-            </p>
-          <% else %>
-            <p class="edu-micro-note">
-              Open the source-bound Case Lab reading to inspect the actual law and any supported proof source links.
-            </p>
-          <% end %>
+        <section class="edu-profile-panel edu-profile-promise">
+          <p class="edu-eyebrow">The promise</p><h2>Must happen</h2><p>{@claim["must_happen"]}</p>
+        </section>
+        <section class="edu-profile-panel edu-profile-wrong">
+          <p class="edu-eyebrow">The challenge</p><h2>Wrong behavior</h2><p>{@claim["wrong_behavior"] || @claim["risk"]}</p>
         </section>
       </div>
-      <div class="edu-profile-bridge">
-        <div>
-          <p class="edu-eyebrow">WHAT THIS DOES NOT SETTLE</p><h2>
-            Registration is not formal acceptance.
-          </h2><p>
-            Neither this profile nor its conceptual group certifies that all required checkers accepted current source, that independent policy is adequate, or that a real processor obeys its trust contract. Source-reading links are not necessarily kernel dependencies.
-          </p>
-        </div><div>
-          <a href={"/claims/" <> @claim["slug"]}>Inspect in Case Lab →</a><a
-            :if={@claim["slug"] in ~w(po_a2 po_exposure_retain)}
-            href={"/lens/" <> @claim["slug"]}
-          >Try guided Claim Lens →</a><a href="/assurance">Learn evidence levels →</a>
-        </div>
+      <section class="edu-profile-scope" id="edu-claim-scope" aria-labelledby="edu-scope-title">
+        <h2 id="edu-scope-title">Scope</h2><p>{@claim["does_not_cover"]}</p>
+      </section>
+      <div class="edu-profile-actions">
+        <a class="edu-primary-button" href={"/claims/" <> @claim["slug"]}>Read the full statement <span aria-hidden="true">→</span></a>
+        <a :if={@claim["slug"] in ~w(po_a2 po_exposure_retain)} class="edu-secondary-button" href={"/lens/" <> @claim["slug"]}>Practice this review</a>
+        <button id="edu-copy-claim" type="button" class="edu-copy-button" data-copy-text={Education.claim_summary(@claim)}>Copy claim summary</button>
       </div>
+      <p class="edu-source-note">Registration does not report checker acceptance. <a href="/assurance#catalog-evidence">See what each kind of evidence covers.</a></p>
+      <details class="edu-disclosure" id="edu-claim-source">
+        <summary>Compare coverage and inspect the sources</summary>
+        <div class="edu-disclosure-content edu-profile-detail-grid">
+          <section>
+            <h2>Why another check may miss it</h2>
+            <p>{@claim["why_others_miss"]}</p>
+            <h3>Named mutation examples</h3>
+            <div :if={(@claim["named_mutants"] || []) != []} class="edu-source-chips">
+              <a :for={mutant <- @claim["named_mutants"]} href="/repository#mutation-examples">{mutant}</a>
+            </div>
+            <p :if={(@claim["named_mutants"] || []) == []}>No named mutant yet.</p>
+            <div :if={(@claim["exercise_ids"] || []) != []}>
+              <h3>Related review exercises</h3>
+              <div class="edu-source-chips">
+                <a :for={exercise <- @claim["exercise_ids"]} href="/repository#review-exercises">{exercise} · exercise guide</a>
+              </div>
+            </div>
+          </section>
+          <section>
+            <h2>Statement and explanation sources</h2>
+            <dl class="edu-source-identity">
+              <div><dt>Claim ID</dt><dd><code>{@claim["slug"]}</code></dd></div>
+              <div><dt>Statement</dt><dd><code>{@claim["education_source_path"] || @claim["module"]}</code></dd></div>
+              <div><dt>Declaration</dt><dd><code>{@claim["target"] || Enum.join(@claim["theorems"] || [], ", ")}</code></dd></div>
+            </dl>
+            <ul class="edu-provenance-list">
+              <li :for={source <- @claim["provenance"] || []}>
+                <strong>{source["reference"]}</strong>
+                <span :if={source["section"]}>{source["section"]}</span>
+                <code>{source["path"]}</code>
+              </li>
+            </ul>
+            <a class="edu-inline-link" href={"/claims/" <> @claim["slug"]}>Open the source reading →</a>
+          </section>
+        </div>
+      </details>
+      <.next_links one="/atlas" one_title="Find another claim" two="/assurance" two_title="Read the evidence and assumptions" />
     <% else %>
       <section id="edu-unknown-claim" class="edu-empty">
-        <h1>That claim isn't in the current catalog.</h1><p>
-          No proof result is inferred for an unknown slug.
-        </p><a href="/atlas">Return to the complete atlas →</a>
+        <h1>That claim is not in the current catalog.</h1>
+        <p>Check the claim ID or browse the catalog to find the statement you need.</p>
+        <a href="/atlas">Return to all claims →</a>
       </section>
     <% end %>
     """
@@ -889,10 +820,62 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp proofs(assigns) do
     ~H"""
     <.intro
-      eyebrow="05 / HOW PROOFS WORK"
-      heading="From a human requirement to a checked statement."
-      description="Five layers that are related but never interchangeable. Select a step to see the boundary and a real PO-A2 source anchor."
+      eyebrow="Learn · reading statements"
+      heading="Read what a claim promises."
+      description="A proof establishes the statement it was given. Your first job is to check whether that statement covers the behavior the policy requires. Start with a request that fits exactly."
     />
+    <section class="edu-reading-guide" aria-labelledby="edu-reading-title">
+      <aside class="edu-reading-example">
+        <p class="edu-eyebrow">The running example · PO-A2</p>
+        <h2 id="edu-reading-title">100¢ free.<br />100¢ requested.</h2>
+        <p>The valid account starts empty, with a 100¢ limit and two hold slots. Request 11 is new. The policy requires admission.</p>
+        <dl><div><dt>Amount held afterward</dt><dd>100¢</dd></div><div><dt>Slots used afterward</dt><dd>1</dd></div></dl>
+        <a href="/atlas/po_a2">Read the claim's full example →</a>
+      </aside>
+      <ol class="edu-reading-steps">
+        <li>
+          <h3>Find the inputs it covers</h3>
+          <p>The <button type="button" class="edu-term-button" data-edu-term="requires">requires</button> clause calls <code>Spec.request_eligible?(s, key, amount)</code>. The name is a starting point; follow the predicate to read its conditions.</p>
+        </li>
+        <li>
+          <h3>Read the called predicate</h3>
+          <p>Eligibility includes a valid state, an unused integer key, a positive integer amount, an open slot and enough remaining amount. Its comparison uses <code>&lt;=</code>, so the 100¢ exact fit is included.</p>
+        </li>
+        <li>
+          <h3>Read the promised output</h3>
+          <p>The <button type="button" class="edu-term-button" data-edu-term="expects">expects</button> clause requires <code>:admitted</code>, the exact updated counters and a reserved entry. It also matches the independent Spec result.</p>
+        </li>
+      </ol>
+    </section>
+    <details class="edu-disclosure" id="edu-contract-source">
+      <summary>Read the PO-A2 contract in Elixir</summary>
+      <div class="edu-disclosure-content">
+        <p>Contract excerpt from <code>test/laws/po_a2_test.exs</code>:</p>
+        <pre phx-no-curly-interpolation><code>requires: Spec.request_eligible?(s, key, amount),
+expects:
+  Ledger.request(s, key, amount) ==
+    {{elem(s, 0), elem(s, 1), elem(s, 2) + amount, elem(s, 3) + 1,
+      [{key, amount, :reserved} | elem(s, 4)]}, :admitted, []} and
+    Ledger.request(s, key, amount) == Spec.expected_step(s, {:request, key, amount})</code></pre>
+        <p>The final empty list means this request produces no outside effect. Dispatch is a separate event.</p>
+        <a class="edu-inline-link" href="/claims/po_a2">Open the current source and its reading aids →</a>
+      </div>
+    </details>
+    <section class="edu-concept-pair" aria-label="Two questions to ask of a statement">
+      <article>
+        <p class="edu-eyebrow">Beyond one example</p><h2>Which inputs does “every” include?</h2>
+        <p>The 100¢ example is one case. A checked proof establishes the statement for every input in its domain that satisfies the premise. That domain is part of the claim you are reviewing.</p>
+        <p>Compare the covered inputs with the policy. Excluding exact fit would leave out an important case, even if other requests were still covered.</p>
+      </article>
+      <article>
+        <p class="edu-eyebrow">Check that it can apply</p><h2>Can a real input satisfy the premise?</h2>
+        <p>If nothing satisfies the premise, the statement can be true without requiring any behavior. This is <button type="button" class="edu-term-button" data-edu-term="vacuity">vacuity</button>.</p>
+        <p>Find a concrete covered input, then test important boundaries. An always-false premise and a premise that merely misses exact fit are different problems.</p>
+      </article>
+    </section>
+    <div class="edu-section-head">
+      <div><p class="edu-eyebrow">Follow the same claim</p><h2>Where could the argument go wrong?</h2></div>
+    </div>
     <div class="edu-pipeline" role="group" aria-label="Verification pipeline steps">
       <button
         :for={p <- @pipeline}
@@ -900,202 +883,113 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         phx-click="pipeline"
         phx-value-step={p.number}
         aria-pressed={to_string(@active.number == p.number)}
+        aria-controls="edu-proof-detail"
         class={["edu-pipeline-step", @active.number == p.number && "active"]}
-      ><span>{p.number} / {p.tag}</span><strong>{p.name}</strong></button>
+      ><span>{p.tag}</span><strong>{p.name}</strong></button>
     </div>
-    <section id="edu-proof-detail" class="edu-pipeline-detail">
-      <div>
-        <p class="edu-eyebrow">SELECTED LAYER / {@active.number}</p><h2>{@active.headline}</h2><p>
-          {@active.explanation}
-        </p><div class="edu-proof-anchor">
-          <span>WORKED EXAMPLE / PO-A2</span><code>{@active.illustration}</code>
-        </div>
-      </div><aside>
-        <h3>What you are seeing</h3><p>
-          The actual Elixir law lives at <code>test/laws/po_a2_test.exs</code>. The human requirement lives in <code>guides/specification.md</code>.
-        </p><a href="/atlas/po_a2">Open PO-A2 claim profile →</a><a href="/claims/po_a2">Open its source-bound Case Lab →</a>
-      </aside>
+    <section id="edu-proof-detail" class="edu-pipeline-detail" aria-live="polite">
+      <div><p class="edu-eyebrow">{@active.name}</p><h2>{@active.headline}</h2><p>{@active.explanation}</p></div>
+      <aside><h3>What can go wrong</h3><p>{@active.risk}</p><code>{@active.source}</code></aside>
     </section>
-    <section class="edu-code-reading">
-      <div class="edu-section-head">
-        <div>
-          <p class="edu-eyebrow">READING THE CONTRACT</p><h2>
-            The smallest piece of real code worth understanding.
-          </h2>
-        </div><a href="/glossary?q=requires">Open the glossary →</a>
-      </div><div class="edu-code-grid">
-        <div>
-          <span>01 / ELIXIR LAW SOURCE EXCERPT</span><pre><code>law(po_a2(s, key, amount),
-    requires: Spec.request_eligible?(s, key, amount),
-    expects: Ledger.request(s, key, amount) == ...)</code></pre><p>
-            Source excerpt shortened with an ellipsis. The actual <code>expects</code>
-            also fixes exact counters and matches <code>Spec.expected_step</code>.
-          </p>
-        </div><div>
-          <span>02 / LEAN PROOF REFERENCE IN THE LAW</span><pre><code>exact Elixir.HoldLedger.ProofContracts.
-    «po_a2/3» s key amount requires</code></pre><p>
-            This is a source snippet, not a fresh Lean elaboration or acceptance receipt. The actual theorem/checks require source-bound tooling.
-          </p>
-        </div>
+    <details class="edu-disclosure" id="edu-proof-body">
+      <summary>Reading the proof body</summary>
+      <div class="edu-disclosure-content">
+        <p>Tactics help construct a proof. Names such as <code>omega</code>, <code>cases</code> and <code>induction</code> describe proof work; they do not choose the payment policy.</p>
+        <p>The PO-A2 law refers to this proof:</p>
+        <pre><code>exact Elixir.HoldLedger.ProofContracts.«po_a2/3» s key amount requires</code></pre>
+        <p>For a policy review, concentrate on the statement, called definitions, domain and assumptions. For a proof-only change, first confirm that the statement and other review-sensitive source really are unchanged.</p>
+        <p class="edu-source-note">Review rules: <code>guides/human_review.md</code>. The source snippet above is not a fresh proof run.</p>
+        <a class="edu-inline-link" href="/glossary?q=axiom">Look up proof assumptions →</a>
       </div>
-    </section>
-    <div class="edu-note-card edu-proof-concepts">
-      <p class="edu-eyebrow">LEAN WITHOUT THE MYSTIQUE</p><h2>Four words you'll see again.</h2><div>
-        <a href="/glossary?q=induction"><strong>Induction</strong><span>From a base to all finite modeled histories.</span></a><a href="/glossary?q=omega"><strong>omega</strong><span>Arithmetic tactic, not a new business rule.</span></a><a href="/glossary?q=axiom"><strong>Axiom</strong><span>A trust assumption the development relies on.</span></a><a href="/glossary?q=counterexample"><strong>Counterexample</strong><span>A concrete contradiction, not a failed tactic.</span></a>
-      </div>
-    </div>
-    <.next_links
-      one="/atlas"
-      one_title="Browse the actual statements"
-      two="/assurance"
-      two_title="What counts as proof evidence?"
-    />
+    </details>
+    <.next_links one="/lens/po_a2" one_title="Review a changed precondition" two="/assurance" two_title="Check the evidence behind a proof" />
     """
   end
 
   defp assurance(assigns) do
+    evidence = [
+      %{id: "catalog-evidence", label: "Registration", question: "Which statement is in the catalog?", meaning: "A claim ID points to a source declaration and its intended purpose.", scope: "Registration alone does not report checker acceptance."},
+      %{id: "example-evidence", label: "Example", question: "What happens in this situation?", meaning: "A concrete input or trace illustrates the behavior. A curated walkthrough explains a case without executing it.", scope: "One example covers that situation, not every possible input."},
+      %{id: "case-evidence", label: "Single-case check", question: "What does this claim accept here?", meaning: "The evaluator checks an input and output against the supported source-bound claim.", scope: "It may reject the output, accept it or say nothing because the premise is false. A successful case is not a universal proof."},
+      %{id: "source-evidence", label: "Source reading", question: "What does the statement actually say?", meaning: "Read the law, theorem and relevant definitions in the recorded source.", scope: "A source link helps you inspect meaning; it does not establish a kernel dependency or checker result."},
+      %{id: "focused-evidence", label: "Focused elaboration", question: "Did this selected Lean work elaborate?", meaning: "A focused tool run can help develop or diagnose a particular statement or proof.", scope: "Its report covers the work it ran. It may not include every check required for full acceptance."},
+      %{id: "formal-evidence", label: "Full acceptance report", question: "Did the required checks accept these sources?", meaning: "Inspect source identity, exported statements, allowed axioms and the outcomes of all required checkers.", scope: "The report establishes its stated formal scope. Policy suitability and real-world assumptions still need review."}
+    ]
+
+    assigns = assign(assigns, :evidence, evidence)
+
     ~H"""
     <.intro
-      eyebrow="06 / EVIDENCE & ASSUMPTIONS"
-      heading="A green proof can't answer every question."
-      description="The workbench has several kinds of evidence. This page explains what each can establish, and where the formal model stops."
+      eyebrow="Evidence · meaning and scope"
+      heading="Check what the evidence covers."
+      description="A catalog entry, an example and a completed formal report answer different questions. Read the kind of evidence beside each result, then check that its scope matches your question."
     />
-    <div class="edu-assurance-note">
-      <div>
-        <p class="edu-eyebrow">CURRENT CHECKOUT / CAREFUL WORDING</p><h2>
-          No formal-acceptance percentage is asserted here.
-        </h2><p>
-          The Atlas counts registered groups from the source catalog. A matching report, complete checker acceptance, and source hashes must be inspected separately before describing any group as formally accepted.
-        </p>
-      </div><a href="/lab">Inspect actual report surfaces →</a>
-    </div>
-    <div class="edu-section-head">
-      <div>
-        <p class="edu-eyebrow">THE EVIDENCE LADDER</p><h2>
-          Seven different statements, seven different strengths.
-        </h2>
-      </div>
-    </div>
-    <div class="edu-evidence-grid">
-      <div>
-        <span>01 / POLICY</span><h3>Human requirement</h3><p>
-          States intended behavior. It cannot prove what the code or processor does.
-        </p>
-      </div>
-      <div>
-        <span>02 / EXAMPLE</span><h3>Concrete or curated witness</h3><p>
-          Illustrates one input/trace. It does not universally establish a claim.
-        </p>
-      </div>
-      <div>
-        <span>03 / POINTWISE</span><h3>Elixir claim evaluation</h3><p>
-          Checks one source-bound candidate input and output; may be not applicable or incomplete.
-        </p>
-      </div>
-      <div>
-        <span>04 / SOURCE</span><h3>Reviewed Lean passage</h3><p>
-          Useful source navigation. A link is not a kernel proof-dependency record.
-        </p>
-      </div>
-      <div>
-        <span>05 / DEVELOPMENT</span><h3>Focused elaboration</h3><p>
-          Limited tool run evidence is not necessarily the full formal acceptance gate.
-        </p>
-      </div>
-      <div>
-        <span>06 / FORMAL RECEIPT</span><h3>Full checked artifact</h3><p>
-          Requires matching sources, exports, axioms and all specified checkers; not inferred here.
-        </p>
-      </div>
-      <div>
-        <span>07 / WORLD</span><h3>External trust assumptions</h3><p>
-          Real processor fencing, delivery and durable storage need separate verification.
-        </p>
-      </div>
-    </div>
-    <section class="edu-trust-boundary">
-      <div>
-        <p class="edu-eyebrow">MODEL BOUNDARY</p><h2>
-          Requested remote work is not completed remote work.
-        </h2><p>
-          Pure transitions describe effect intentions. Journal and processor behavior introduce other trust boundaries.
-        </p>
-      </div><div class="edu-trust-flow">
-        <span>LEDGER MODEL</span><b aria-hidden="true">→</b><span>REQUESTED EFFECT</span><b aria-hidden="true">⇢</b><span>REAL PROCESSOR</span>
-      </div><ul>
-        <li>Terminal fencing: Can late authorization resurrect a voided hold?</li><li>
-          Processor truthfulness: Can an acknowledgment be confused with an approval?
-        </li><li>Durable journal: What actually survived the crash?</li><li>
-          Translation and source identity: Which exact statement and files were checked?
-        </li>
-      </ul>
+    <section class="edu-evidence-list" aria-label="Kinds of evidence">
+      <article :for={item <- @evidence} id={item.id}>
+        <span class="edu-evidence-label">{item.label}</span>
+        <div><h2>{item.question}</h2><p>{item.meaning}</p><p class="edu-evidence-scope">{item.scope}</p></div>
+      </article>
     </section>
-    <.next_links
-      one="/lens/po_exposure_retain"
-      one_title="Challenge a retention assumption"
-      two="/repository"
-      two_title="Find the evidence-related files"
-    />
+    <aside class="edu-assurance-note">
+      <div><h2>Match the report to the code.</h2><p>A report for different source bytes does not establish acceptance of the current claim. Open the source and report together when reviewing a change.</p></div>
+      <a href="/lab">Inspect source and evidence in Case Lab →</a>
+    </aside>
+    <section class="edu-trust-boundary" id="model-boundary" aria-labelledby="edu-boundary-title">
+      <p class="edu-eyebrow">Outside the pure model</p>
+      <h2 id="edu-boundary-title">The processor and storage need their own evidence.</h2>
+      <p>A pure transition can request an authorization or void. That output does not show that the work reached the processor or completed there.</p>
+      <div class="edu-boundary-questions">
+        <article><h3>Will a terminal key stay final remotely?</h3><p>The processor must honor permanent terminal fencing, including delayed requests. The ledger's own handling of late replies does not establish that remote property.</p></article>
+        <article><h3>What actually survived the crash?</h3><p>The runtime relies on synced journal inputs. A model of replay does not by itself establish the durability of the storage carrying those inputs.</p></article>
+        <article><h3>What does a reply establish?</h3><p>A transport acknowledgment is not an approval. Trusted processor outcomes and confirmations have specific meanings in the model.</p></article>
+      </div>
+      <p class="edu-source-note">Sources: <code>guides/specification.md</code>, <code>guides/processors.md</code> and <code>guides/verification.md</code>.</p>
+    </section>
+    <.next_links one="/lens/po_exposure_retain" one_title="Review when capacity may be released" two="/repository" two_title="Find the evidence-related source" />
     """
   end
 
-  attr :components, :list, required: true
-
   defp repository(assigns) do
+    sections = [
+      %{title: "Decide what should happen", description: "Start with the policy, then use the independent Spec and the review rules.", entries: [
+        %{id: "policy-source", title: "Payment-hold policy", path: "guides/specification.md", explanation: "The state shape, event behavior and conditions for keeping or releasing capacity.", link: "/guarantees", action: "Read the requirements"},
+        %{id: "spec-source", title: "Independent behavioral Spec", path: "lib/hold_ledger/spec.ex", explanation: "Expected transitions and predicates such as request_eligible?, implemented separately from Ledger.", link: "/proofs", action: "Read a predicate in context"},
+        %{id: "review-rules", title: "Human review rules", path: "guides/human_review.md", explanation: "How to inspect a statement change, distinguish proof-only work and record unresolved questions.", link: "/lens/po_a2", action: "Practice a review"}
+      ]},
+      %{title: "Read the implementation and claims", description: "Keep the code, its stated properties and the registration record distinct.", entries: [
+        %{id: "ledger-source", title: "Pure ledger", path: "lib/hold_ledger/ledger.ex", explanation: "State transitions that return a new state, a result and requested effects.", link: "/system", action: "Explore the system"},
+        %{id: "claim-source", title: "Elixir laws and Lean models", path: "test/laws/ · test/support/lean/", explanation: "The actual statements, proof references and supporting formal models.", link: "/atlas", action: "Find a claim"},
+        %{id: "registry-source", title: "Claim registry and verification guide", path: "verification/laws.json · guides/verification.md", explanation: "Registered claims, supported verification commands and the evidence required for acceptance.", link: "/assurance", action: "Read the evidence guide"}
+      ]},
+      %{title: "Inspect runtime assumptions", description: "Follow what has to happen outside a pure state transition.", entries: [
+        %{id: "runtime-source", title: "Journal, server and effect execution", path: "lib/hold_ledger/", explanation: "Input persistence, recovery and attempts to carry out requested effects.", link: "/atlas?family=Composite+%26+recovery", action: "Read recovery claims"},
+        %{id: "processor-source", title: "Processor contract", path: "guides/processors.md", explanation: "The remote properties an adapter must attest to, including permanent terminal fencing.", link: "/assurance#model-boundary", action: "Review the external assumptions"}
+      ]},
+      %{title: "Try a concrete challenge", description: "Use repository examples to connect a statement to behavior it should catch.", entries: [
+        %{id: "witness-examples", title: "Witnesses and ordinary tests", path: "test/hold_ledger_witness_test.exs · test/", explanation: "Concrete inputs and traces for checking what happens in selected cases.", link: "/lab", action: "Explore a case"},
+        %{id: "mutation-examples", title: "Deliberately broken implementations", path: "mutants/", explanation: "Named mutations describe a wrong behavior, the input that exposes it and the claims that catch it.", link: "/atlas/po_a2", action: "Read the exact-fit mutation example"},
+        %{id: "review-exercises", title: "Payment-hold review exercises", path: "guides/payment_hold_review_exercises.md", explanation: "P01–P08 provide review cases grounded in the policy. Claim Lens presents two interactive studies.", link: "/lens/po_a2", action: "Open the exact-fit study"}
+      ]}
+    ]
+
+    assigns = assign(assigns, :sections, sections)
+
     ~H"""
     <.intro
-      eyebrow="07 / REPOSITORY MAP"
-      heading="Where does each answer live?"
-      description="A purpose-based map of the checkout. These are file locations and reading routes, not live hyperlinks to a remote repository revision."
+      eyebrow="Reference · repository map"
+      heading="Find the source for your question."
+      description="Use the paths below in your checkout. The links beside them open the related explanation or tool in this app."
     />
-    <div class="edu-repository-map">
-      <div :for={c <- @components} class="edu-repo-item">
-        <span class="edu-repo-index">{c.id}</span><div>
-          <h2>{c.title}</h2><p>{c.explanation}</p><code>{c.path}</code>
-        </div><a href={c.link}>Explore →</a>
+    <section :for={section <- @sections} class="edu-repository-section">
+      <div class="edu-section-head"><div><h2>{section.title}</h2><p>{section.description}</p></div></div>
+      <div class="edu-repository-map">
+        <article :for={entry <- section.entries} class="edu-repo-item" id={entry.id}>
+          <div><h3>{entry.title}</h3><p>{entry.explanation}</p><code>{entry.path}</code></div>
+          <a href={entry.link}>{entry.action} <span aria-hidden="true">→</span></a>
+        </article>
       </div>
-      <div class="edu-repo-item">
-        <span class="edu-repo-index">proof</span><div>
-          <h2>Lean support library</h2><p>
-            Reusable definitions, mathematical models and helper statements used by the proof pipeline.
-          </p><code>test/support/lean/</code>
-        </div><a href="/proofs">Understand →</a>
-      </div>
-      <div class="edu-repo-item">
-        <span class="edu-repo-index">checks</span><div>
-          <h2>Verification registry & evidence rules</h2><p>
-            Obligations are registered here. That is distinct from executing complete source-bound verification checks.
-          </p><code>verification/laws.json · verification/obligations.json</code>
-        </div><a href="/atlas">Browse →</a>
-      </div>
-      <div class="edu-repo-item">
-        <span class="edu-repo-index">tests</span><div>
-          <h2>Tests and deliberate mutants</h2><p>
-            Examples, property checks, and intentional broken implementations provide concrete challenges.
-          </p><code>test/ · mutants/</code>
-        </div><a href="/guarantees">Learn why →</a>
-      </div>
-      <div class="edu-repo-item">
-        <span class="edu-repo-index">app</span><div>
-          <h2>Interactive review companion</h2><p>
-            The Phoenix interface you are using. It does not replace the actual Ledger, Spec or Lean checker.
-          </p><code>apps/review_web/</code>
-        </div><a href="/lab">Open →</a>
-      </div>
-    </div>
-    <div class="edu-repo-follow">
-      <p class="edu-eyebrow">FOLLOW ONE CONCEPT THROUGH THE REPO</p><h2>
-        Why does an unknown hold keep its money?
-      </h2><div>
-        <a href="/glossary?q=unknown">01. Learn the state</a><a href="/guarantees">02. Read the policy</a><a href="/atlas/po_b2">03. Find the claim</a><a href="/claims/po_b2">04. Inspect the source</a>
-      </div>
-    </div>
-    <.next_links
-      one="/glossary"
-      one_title="Look up terminology"
-      two="/lab"
-      two_title="Use the review tools"
-    />
+    </section>
+    <.next_links one="/glossary" one_title="Look up a source term" two="/lab" two_title="Try a case in the workbench" />
     """
   end
 
@@ -1106,33 +1000,50 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp glossary(assigns) do
     ~H"""
     <.intro
-      eyebrow="08 / PLAIN-LANGUAGE REFERENCE"
-      heading="No unexplained vocabulary."
-      description="Search the repository's key domain, code and formal-verification terms. The same definitions power help on the real workbench."
+      eyebrow="Reference · glossary"
+      heading="Look up a term."
+      description="Find its plain meaning, a concrete example from this repository and the source to read next. The same definitions appear in contextual help."
     />
-    <form id="edu-glossary-filter" phx-change="filter_terms" class="edu-search">
-      <label for="edu-term-query">Find a term or meaning</label><input
-        id="edu-term-query"
-        type="search"
-        name="q"
-        value={@query}
-        placeholder="Try axiom, voiding, requires, processor…"
-        phx-debounce="180"
-      /><span>{length(@terms)} / {@count} terms</span>
-    </form>
+    <.form for={to_form(%{"q" => @query})} id="edu-glossary-filter" phx-change="filter_terms" class="edu-search">
+      <.input id="edu-term-query" type="search" name="q" value={@query} label="Find a term or meaning" placeholder="Try requires, unknown, idempotency…" phx-debounce="180" class="edu-filter-input" />
+      <span role="status">{length(@terms)} of {@count} terms</span>
+    </.form>
     <div class="edu-glossary-grid" id="edu-glossary-results">
       <article :for={term <- @terms} id={"term-" <> term["id"]} class="edu-term-card">
-        <h2>{term["term"]}</h2><strong>{term["short"]}</strong><p>{term["detail"]}</p><div class="edu-term-example">
-          <span>IN THIS REPOSITORY</span><p>{term["example"]}</p>
-        </div><a href={term["link"]}>Explore this in context →</a>
+        <h2>{term["term"]}</h2>
+        <p class="edu-term-meaning">{term["short"]}</p>
+        <div class="edu-term-example"><h3>In this repository</h3><p>{term["example"]}</p></div>
+        <details class="edu-term-detail">
+          <summary>More context and source</summary>
+          <p>{term["detail"]}</p>
+          <code data-source-path={term["source_path"]}>{term["source_path"]}</code>
+        </details>
+        <a href={term["link"]} aria-label={"See " <> term["term"] <> " in context"}>See in context →</a>
       </article>
-    </div><p :if={@terms == []} class="edu-empty">No matching terms. Try a shorter search.</p>
-    <.next_links
-      one="/atlas"
-      one_title="Find a claim using the vocabulary"
-      two="/proofs"
-      two_title="See the proof pipeline"
-    />
+    </div>
+    <div :if={@terms == []} class="edu-empty"><h2>No matching terms.</h2><p>Try a shorter phrase or clear the search to browse all definitions.</p><.link patch="/glossary">Show all terms →</.link></div>
+    <section class="edu-reading-paths" aria-labelledby="edu-prerequisites-title">
+      <div class="edu-section-head"><div><p class="edu-eyebrow">If the idea is new</p><h2 id="edu-prerequisites-title">Take the short explanation first.</h2></div></div>
+      <div>
+        <article>
+          <h3>Payment holds and retries</h3>
+          <p>Start with the <a href="/start">100¢ walkthrough</a> and <a href="/glossary?q=idempotency">idempotency example</a>.</p>
+          <p>Optional reading: <a href="https://docs.stripe.com/api/idempotent_requests">Stripe's idempotent requests</a> explains how keys support retries. HTTP details can wait.</p>
+          <p class="edu-source-note">The repository's permanent identity and remote fencing requirements are specified separately in its policy and processor contract.</p>
+        </article>
+        <article>
+          <h3>Formal statements</h3>
+          <p>Start with the <a href="/proofs">statement-reading guide</a>: premise, input domain and promised output.</p>
+          <p>Optional reading: Lean's <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/#propositional-logic">propositional logic</a> and <a href="https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/#the-universal-quantifier">universal quantifier</a>. Focus on <code>Prop</code>, <code>→</code>, <code>∧</code> and <code>∀</code>; constructing proofs can wait.</p>
+        </article>
+        <article>
+          <h3>Lean syntax</h3>
+          <p>Look up a source term here first. Reading statements does not require learning the whole proof language.</p>
+          <p>Optional reading: <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/">Getting to Know Lean</a>. Read the types and functions sections to recognize declarations; leave larger programming exercises for later.</p>
+        </article>
+      </div>
+    </section>
+    <.next_links one="/atlas" one_title="Find a claim using these terms" two="/proofs" two_title="Practice reading a statement" />
     """
   end
 
@@ -1144,7 +1055,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp next_links(assigns) do
     ~H"""
     <nav class="edu-next-links" aria-label="Recommended next pages">
-      <p>KEEP EXPLORING</p><a href={@one}>{@one_title} <span aria-hidden="true">↗</span></a><a href={
+      <p>Where to go next</p><a href={@one}>{@one_title} <span aria-hidden="true">↗</span></a><a href={
         @two
       }>{@two_title} <span aria-hidden="true">↗</span></a>
     </nav>

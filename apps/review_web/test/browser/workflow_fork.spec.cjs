@@ -14,8 +14,8 @@ async function saved(page) {
 test('rule-accepts-changed-alternative has its own visual state', async ({page}) => {
   await open(page, 'po_b1_void');
   await expect(page.locator('#verdict-signal')).toHaveAttribute('data-state', 'permits');
-  await expect(page.locator('#verdict-signal')).toContainText('Rule permits the changed alternative');
-  await expect(page.locator('#selected-law-row td').last()).toHaveText('Accepts alternative');
+  await expect(page.locator('#verdict-signal')).toContainText('Claim would accept this output. Intended?');
+  await expect(page.locator('#selected-law-row td').last()).toHaveText('Accepts proposed output');
   await page.locator('#edit-candidate').click();
   await page.getByRole('button', {name: 'Reset to code result'}).click();
   await expect(page.locator('#verdict-signal')).toHaveAttribute('data-state', 'same');

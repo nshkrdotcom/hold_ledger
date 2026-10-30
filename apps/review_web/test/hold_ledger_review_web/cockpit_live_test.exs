@@ -42,7 +42,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     end
 
     assert has_element?(view, "#example-provenance", "Illustrative example")
-    assert has_element?(view, "#selected-claim", "Requires of the result")
+    assert has_element?(view, "#selected-claim", "Promises for the output")
     assert has_element?(view, "#output-differences")
     assert has_element?(view, "#nearby-observation")
     assert has_element?(view, "#repair-unavailable")
@@ -57,7 +57,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     tab(view, "proof")
     assert has_element?(view, "#proof-source-workspace")
     tab(view, "artifacts")
-    assert has_element?(view, "#formal-status", "not_supplied")
+    assert has_element?(view, "#formal-status", "Not supplied")
     tab(view, "clauses")
     assert has_element?(view, "#dissector")
     assert has_element?(view, ".condition-group")
@@ -66,12 +66,12 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   test "validity law permits the same candidate rejected by retention", %{conn: conn} do
     {view, doc} = open(conn, "po_b1_void")
     tab(view, "outputs")
-    assert has_element?(view, "#selected-law-row td:last-child", "Accepts alternative")
+    assert has_element?(view, "#selected-law-row td:last-child", "Accepts proposed output")
     render_click(view, "edit_candidate", %{})
     refute has_element?(view, "#inspect-retention")
     render_click(view, "inspect_law", %{"slug" => "po_exposure_retain"})
     assert_patch(view, "/claims/po_exposure_retain/#{doc["id"]}")
-    assert has_element?(view, "#selected-law-row td:last-child", "Rejects alternative")
+    assert has_element?(view, "#selected-law-row td:last-child", "Rejects proposed output")
     assert has_element?(view, "#hypothetical-output", "0¢ reserved")
   end
 
@@ -268,7 +268,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     {:ok, saved} = Trace.get(doc["id"])
     assert length(saved["steps"]) == 1
     assert length(saved["notes"]) == 1
-    assert hd(saved["notes"])["text"] =~ "Active rule review"
+    assert hd(saved["notes"])["text"] =~ "Active claim review"
   end
 
   test "actual bounded search result is rechecked and cancellation stays explicit", %{conn: conn} do
@@ -279,7 +279,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     render_async(view, 5_000)
     assert has_element?(view, "#hunt-status", "found")
     tab(view, "outputs")
-    assert has_element?(view, "#selected-law-row td:last-child", "Rejects alternative")
+    assert has_element?(view, "#selected-law-row td:last-child", "Rejects proposed output")
     tab(view, "clauses")
     render_click(view, "edit_candidate", %{})
     render_click(view, "hunt", %{})
@@ -554,7 +554,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   } do
     {view, doc} = open(conn, "po_a2")
     assert has_element?(view, "#hypothetical-output .field-delta", "-100¢")
-    assert has_element?(view, "#hypothetical-output .comparison-ghost", "Absent from alternative")
+    assert has_element?(view, "#hypothetical-output .comparison-ghost", "Absent from proposed output")
     refute has_element?(view, "#hypothetical-output .comparison-ghost button")
     assert has_element?(view, "#output-differences summary", "changed fields")
     render_click(view, "restore_candidate", %{})
@@ -595,7 +595,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
   } do
     {view, doc} = open(conn, "po_a2")
     assert has_element?(view, "#active-predicate-result", "Accepts code result")
-    assert has_element?(view, "#active-predicate-result", "Rejects alternative")
+    assert has_element?(view, "#active-predicate-result", "Rejects proposed output")
     assert has_element?(view, "#local-decision-target", "session note")
 
     assert has_element?(

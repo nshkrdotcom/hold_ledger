@@ -92,7 +92,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           />
         </div>
         <p class="fork-label" id="fork-origin">
-          Two recorded outcomes from the same event. Select any step to inspect its state and rule checks.
+          Two recorded outcomes from the same event. Select a step to inspect its state and claim checks.
         </p>
         <div class="timeline-branches">
           <section class="timeline-branch code-branch" id="code-branch" aria-label="Code path">
@@ -237,6 +237,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
       </header>
       <p class="available-money">
         <strong>{@ledger["amount_limit"] - @ledger["used_amount"]}¢</strong> available
+        <small>({ReviewCopy.dollar_gloss(@ledger["amount_limit"] - @ledger["used_amount"])})</small>
       </p><meter
         class="money-bar"
         min="0"
@@ -247,12 +248,12 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
       <div class="capacity-grid">
         <strong id="amount-counter">{@ledger["used_amount"]}¢ / {@ledger["amount_limit"]}¢</strong><span>reserved / limit</span><strong id="slot-counter">{@ledger[
           "used_holds"
-        ]} / {@ledger["hold_limit"]}</strong><span>slots</span>
+        ]} / {@ledger["hold_limit"]}</strong><span>hold slots used</span>
       </div>
       <table :if={@ledger["entries"] != []} id="entries">
         <thead>
           <tr>
-            <th>Identity</th><th>Amount</th><th>Status</th>
+            <th>Request ID</th><th>Amount</th><th>Hold state</th>
           </tr>
         </thead><tbody>
           <tr :for={entry <- @ledger["entries"]}>
@@ -265,7 +266,14 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           </tr>
         </tbody>
       </table>
-      <p :if={@ledger["entries"] == []} id="entries">No entries</p>
+      <p :if={@ledger["entries"] == []} id="entries">No holds recorded</p>
+      <details id="state-tuple" class="state-tuple">
+        <summary>Read the state tuple</summary>
+        <p>The source stores these fields in a fixed order:</p>
+        <code phx-no-curly-interpolation>{amount_limit, hold_limit, used_amount, used_holds, entries}</code>
+        <pre>{ReviewCopy.state_tuple(@ledger)}</pre>
+        <p>Each entry contains its request ID, amount in cents and hold state.</p>
+      </details>
       <div :if={@doc["mode"] == "exposure"} id="remote-state">
         <h3>After selected coupled event</h3>
         <p id="coupled-amount-counter">

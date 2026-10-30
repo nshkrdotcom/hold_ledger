@@ -7,38 +7,25 @@
 [![GitHub](https://img.shields.io/badge/GitHub-hold__ledger-181717?logo=github)](https://github.com/nshkrdotcom/hold_ledger)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Hold Ledger's Phoenix application opens to a **repository learning dashboard** at
-`/`. It is for first-time readers, engineers and formal-methods reviewers who
-want to understand the payment-hold model, requirements, catalog and proof
-boundaries before using the existing review tools. All 49 currently registered
-groups (35 Elixir/Lynx laws and 14 native Lean groups) appear in the Atlas
-using derived inventory plus curated, source-tied explanations. Registration is
-**not** represented as a fresh checker result.
+A payment processor can authorize a request even when its reply never arrives.
+The ledger still needs to keep that money on hold. This Phoenix app lets you
+follow that situation, explore the code, and read the claims that describe how
+the ledger should behave.
 
-Learn the payment-hold scenario at `/start`, explore code and hold states at
-`/system`, examine the policy themes at `/guarantees`, browse the catalog at
-`/atlas` (and individual `/atlas/:slug` profiles), learn the source-to-proof
-pipeline at `/proofs`, inspect evidence limitations at `/assurance`, browse the
-purpose-based source map at `/repository`, and look up terms at `/glossary`.
+Start with a 100¢ hold. In **Case Lab**, try inputs and propose different
+outputs to see what a claim accepts. In **Claim Lens**, practice reviewing a
+changed claim before revealing the explanation. Each path leads back to the
+policy and source, so you can check the reasoning yourself.
 
-The **Case Lab** entry is now `/lab`; it opens the original source-bound
-Cockpit and continues to use `/claims/:slug` and `/claims/:slug/:id` for stable
-claim review URLs. **Claim Lens** stays at `/lens/:slug`, with its existing two
-guided exercises. Source comparison remains in Case Lab. The original Ledger,
-Spec, evaluator, Lean files, checks and processor logic are unchanged.
-
-Shared explanatory assistance works by hover, focus and touch with a persistent
-page help drawer and an optional Guided/Focused explanation-density setting.
-Focus or tap an annotated heading button to read its explanation. Press Escape
-to dismiss help; closing the page guide returns focus to its opener. Ordinary
-review buttons continue to perform their original actions.
-The same curated glossary powers the reference page and workbench tooltips.
-None of the educational scenario steps, examples or glossary entries is a new
-formal proof, real processor execution or human policy approval.
+The app explores a local model of one account. The catalog contains 49 claims:
+35 Elixir laws translated through Lynx and 14 written directly in Lean.
 
 ## Run locally
 
-From the repository root, use the pinned tools:
+Use the Elixir/OTP versions in the repository's `.tool-versions`, plus Python
+and `uv` as described in [Getting started](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/getting-started.md).
+Onboarding checks your existing Elixir/OTP installation and provisions the
+pinned local proof tools. From the repository root:
 
 ```sh
 uv sync --locked
@@ -48,141 +35,163 @@ uv run --locked python scripts/local_run.py --cwd apps/review_web mix assets.bui
 uv run --locked python scripts/local_run.py --cwd apps/review_web mix phx.server
 ```
 
-Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `100` means one dollar.
+Open [localhost:4000](http://localhost:4000) and choose **Follow a payment hold**.
+Amounts are integer cents: `100` means $1.00.
 
-## Explore the Claim Lens
+## Try your first review
 
-Open [Claim Lens: exact-fit admission](http://localhost:4000/lens/po_a2) or
-[Claim Lens: retention](http://localhost:4000/lens/po_exposure_retain).
-Use the **Case Lab / Claim Lens / Compare versions** links to switch between
-concrete executions, semantic-gap experiments, and the existing trusted local
-source-comparison workflow. **Compare versions** opens the Case Lab's snapshot
-chooser; it is not a new diff engine or an automatic proof run.
+Open [exact-fit admission](http://localhost:4000/lens/po_a2). An account has
+100¢ available and a free hold slot. A new request asks for all 100¢.
 
-The header's **Claim Lens · 2 examples** link always opens a working example.
-It keeps the current claim when that claim has a guided example, otherwise it
-opens exact-fit admission. A notice at the top of Lens explains the demo scope
-and links directly to both examples. The full claim catalog remains in Case Lab.
+1. Read the policy and the claim's `requires` and `expects` clauses.
+2. Compare the original claim with the proposed change. Which inputs does
+   each cover?
+3. Inspect **Code returned** and **Proposed output · not run**.
+4. Choose a classification, then confirm it to reveal the worked explanation.
+   If you are unsure, you can say so.
 
-Claim Lens is a *separate*, compact LiveView for reading a formal obligation
-against an independently stated requirement. Choose a fixed real-world-inspired
-witness, select a curated hypothetical precondition edit, and compare:
+Then try the inputs just below and above the limit. The exercise is about
+reading what a claim promises; you can leave the proof tactics for later.
 
-- the hand-reviewed expectation from `guides/specification.md`, including its
-  source location;
-- the **unchanged, source-bound** Elixir law's pointwise response to an
-  unexecuted candidate result;
-- a transparently modeled *hypothetical* precondition with the existing
-  promise. The UI never rewrites the law or claims the hypothetical was proved.
+## Find your way around
 
-**Review first is now the default** at `/lens/:slug` and
-`/lens/:slug?mode=challenge`. It withholds curated verdicts, coverage rows,
-worked explanations and observed source-path hints until the reviewer selects
-an initial classification and presses **Confirm classification and reveal
-feedback**. Six broad category families plus a proof-only no-change control
-are available; uncertainty is valid. The policy, claim excerpt, case input,
-computed output and clearly unexecuted alternative are visible before reveal.
-The reviewer may expand the evidence library to read source without receiving
-an automated verdict. **Explore freely** at `/lens/:slug?mode=explore`
-shows comparison results immediately for learning and QA.
+| What you want to do | Open |
+|---|---|
+| Follow a hold through a missing reply | [Payment walkthrough](http://localhost:4000/start) |
+| Explore the components and hold states | [System](http://localhost:4000/system) |
+| Read the six payment requirements | [Requirements](http://localhost:4000/guarantees) |
+| Find a claim, its scenario, and source | [Claim catalog](http://localhost:4000/atlas) |
+| Learn to read a statement and its proof | [Reading claims](http://localhost:4000/proofs) |
+| Understand reports and external assumptions | [Evidence](http://localhost:4000/assurance) |
+| Locate the relevant files | [Source map](http://localhost:4000/repository) |
+| Look up an unfamiliar term | [Glossary](http://localhost:4000/glossary) |
+| Run a case or compare source versions | [Case Lab](http://localhost:4000/lab) |
+| Practice a review | [Claim Lens](http://localhost:4000/lens/po_a2) |
 
-The optional four-part argument form asks for a policy anchor, a contract
-provision, a discriminating witness and the limitation or external assumption,
-plus a narrative. After confirmation the UI can copy a **local provisional
-Markdown argument** to the clipboard. This draft is never scored, persisted,
-submitted to a model, or turned into a verified repair packet. Changing the
-witness, hypothesis, study or mode, selecting **Try again**, or reloading
-clears the attempt. The challenge is practice, not a blinded study; prior
-exposure to Explore may have disclosed the answer.
+The catalog groups claims into eight families as a reading order. Each profile
+starts with a concrete situation, the required result, and what could go wrong.
+Source references show where the explanation comes from. Profiles live at
+`/atlas/:slug`; working cases use `/claims/:slug` and `/claims/:slug/:id`.
+Term explanations and page help are available throughout the app, with full
+source and raw data nearby.
 
-After feedback the **contrast studio** offers three explicitly authored guide
-exercises: P02 (missing void effect), P05 (premature release despite effect),
-and P08 (legitimate immediate release of a never-dispatched reservation).
-These are illustrative comparisons from the guide and scenario JSON, not
-freshly executed cases, and no answers appear until feedback is enabled.
-An **external-premise reading checklist** helps reviewers name processor
-fencing, truthful decline and journal durability without pretending a checked
-box proves any of them. A collapsible evidence library separates reviewed
-Lean text and source-matched reports from pointwise and hypothetical displays.
+## Explore a case in Case Lab
 
-After feedback, the three-witness coverage strip shows authored versus
-hypothetical input applicability together. “Doesn't apply” means the claim says
-nothing about that input; exclusion alone does not establish a policy defect.
-The worked challenge includes exact before/event, computed and curated candidate
-values. Mutation paths remain references; the page does not execute those patches.
-Selecting a semantic hypothetical accents its existing reviewed source clause.
+Choose a claim and read its requirement summary. **Read full claim** opens the
+actual `requires` and `expects`, or the native Lean declaration. Enter an
+amount or use **1¢ less / All available / 1¢ more** to explore a boundary.
 
-Exact-fit admission demonstrates how adding `amount < remaining` to
-`po_a2`'s precondition excludes the 100¢ boundary even though the original
-claim rejects a mistaken `:insufficient_amount` output there. Retention shows
-that removing `not Spec.release_evidence?(event, key)` from
-`po_exposure_retain` would demand retention even after a legitimate terminal
-confirmation. The latter is a counterexample to the *hypothetical assertion*,
-not a flaw in the original ledger. A **proof-body-only control** avoids
-teaching reviewers to flag harmless edits merely because a proof changed.
+**Code returned** shows the computed Ledger result. **Proposed output · not
+run** lets you ask whether the claim would accept a different answer. Edit the
+result, reserved amount, hold status, or requested effects. A requested effect
+describes outside work, such as sending a cancellation request.
 
-Select a clause to see its reviewed, digest-validated Elixir ↔ Lean **source
-reading** relationship, matching observed condition path when available, and
-related Lean source excerpts. The panel distinctly labels live pointwise
-checks, Lean text, focused elaboration, and the actual full-gate provenance.
-It does **not** manufacture interactive tactic states, kernel dependencies,
-formal acceptance for edited claims, or independent policy approvals. The
-human-classification and explanation fields are ephemeral LiveView drafts:
-**they are not persisted, sent to a model, or added to review notes**. The named mutant
-patch and test paths are review references, not tests run by the browser.
+The check table keeps three questions separate: does the claim cover this
+input, does it accept the output, and does the account balance?
 
-The studies are fixed illustrations, not a general editor or proof checker.
-Both pages remain read-only with respect to Ledger, Spec, law sources, snapshots
-and formal reports.
+| Result | How to read it |
+|---|---|
+| Claim would accept this output. Intended? | Compare the proposed output with the policy. Acceptance alone does not establish a defect. |
+| Claim rejects this output | The proposed output fails the claim for this input. |
+| Claim says nothing about this input | The starting condition is false; inspect why the input is excluded. |
+| No check wired up for this event | Read the source; this event has no supported probe. |
+| Check unavailable | An observation is missing or failed. |
 
-## Try a case
+You can deliberately leave totals inconsistent. **Recalculate totals** changes
+them only when requested. The JSON editor accepts up to eight entries and
+integers up to 1,000,000. **Full differences** includes additions, removals,
+ordering changes, and ambiguous matches. Invalid edits clear the previous
+successful check.
 
-Choose a rule. The header presents a source-linked requirement summary. **Read full claim** expands the actual `requires` and `expects`, or names a native Lean-only declaration. For exact-fit admission, an explicitly labeled **illustrative example** compares `amount <= remaining` with `amount < remaining`: a request using all available capacity is covered by the first and excluded by the second. Standalone law review has no fabricated source change; real baseline/proposal comparisons show their own full source-change list.
+Use **Run another event** to try dispatch, timeout, retry, cancellation, or
+confirmation. Branch from a proposed output to explore its consequences, then
+use **Run on both paths** to apply an event to both branches. For example,
+release capacity early and try requesting it again.
 
-Enter an amount or choose **1¢ less / All available / 1¢ more**. The page shows what the code returns and whether the rule covers this input. The opening comparison is labeled **Example change**; attach two source versions to replace it with actual isolated runs.
+## Practice with Claim Lens
 
-**Code returned** is the computed Ledger result. **What if it returned…** is an editable, *unexecuted* alternative. Neutral change tokens sit beside the alternative's reserved money, slot count, limits, result, and unambiguously matched entry/effect fields. **Full differences** expands the complete structured audit list (including order, additions, deletions and ambiguous occurrence correspondence), with its changed-field count kept separate from other rows. An original entry absent from the candidate appears only as a noninteractive, explicitly labeled ghost; it is not in the candidate totals or passed to later events. Repeated identities/effects are never silently paired or re-keyed. Edit **Result** and **Reserved (¢)** directly on the alternative card, select a status, or use **More edits** for detailed changes to money and effects. Markers and checks update without saving, recalculating counters, or invoking another evaluator.
+Lens has two studies: [exact-fit admission](http://localhost:4000/lens/po_a2)
+and [retention](http://localhost:4000/lens/po_exposure_retain). Each pairs a
+policy passage with an actual claim, a concrete input, and a modeled change
+to the claim. A proof-body-only example helps you distinguish a changed
+argument from a changed promise.
 
-An alternative can have inconsistent counters. **Recalculate totals** corrects them only when requested. The full state and JSON editor provides the same bounded values: up to eight entries and integers up to 1,000,000.
+**Review first** is the default. You can read the source before deciding;
+worked verdicts, coverage comparisons, and explanations appear after you
+confirm your classification. **Explore freely**, at
+`/lens/:slug?mode=explore`, shows that feedback immediately.
 
-**Checks for this case** distinguishes a changed alternative the rule still accepts (prominent amber), one the rule rejects (calm green), an unchanged output, and cases whose checks are unavailable. The matrix separately reports whether the rule applies, what the rule accepts, and whether each account balances. False preconditions are **not applicable**, and missing, unsupported or failed observations are **unavailable**, not false. Acceptance of a hypothetical alternative is not by itself a policy violation. A balanced account can still release a hold too early. Multi-binding checks retain their aggregate result when you select one binding to inspect. An invalid edit removes the current successful alternative check instead of showing an old verdict.
+An optional argument form asks you to connect the policy, claim, example, and
+remaining assumption. After confirmation, you can copy it as Markdown. Your
+classification and argument stay in the current page: they are not saved to
+review notes or sent to a model. Changing the input, proposed change, study,
+or mode clears the attempt, as do **Try again** and reloading.
 
-## Follow what happens next
+After feedback, three further comparisons cover a missing void effect (P02),
+premature release (P05), and cancellation before dispatch (P08). These worked
+examples come from the review guide. Lens models fixed claim changes; it does
+not edit source or check a revised proof.
 
-**Run another event** opens an inline event form. Try dispatch, timeout, retry, cancellation or confirmation. These steps change the experiment without writing saved history. You can keep going from an unsaved request.
+## Read the source and evidence
 
-**Continue from this alternative** branches from the edited result without replacing the code path. The case timeline shows the shared history and both recorded branches, with a result and reserved-money meter on every applicable step. **Run on both paths** applies one follow-on event to both branch tips; their actual computed outcomes remain side by side. For example, release a hold early and request the same capacity again. The original branch rejects an over-capacity request while the alternative can admit it. These are concrete modeled results, not an automatic safety or policy judgment.
+Start with the conditions that explain the result. Expand the observed
+expression tree for helper definitions, operands, and individual bindings.
+Selecting a reviewed clause opens the related Lean passage; **Read full
+proof** opens the complete source. Links are checked against the reviewed
+source bytes. A missing, stale, or ambiguous link is marked unavailable.
 
-Select an earlier step to branch from there. **Reset** discards the experiment. **Save to timeline** records its pending commands through the original revision-checked store. Each command saves atomically; if another tab interrupts a multi-step save, the page retains the unsaved suffix and reports the partial result. Reloading discards unsaved work.
+| What you are looking at | What it establishes |
+|---|---|
+| Registered claim | The claim belongs to the catalog. |
+| Single-case check | The claim's response to this particular input and output. |
+| Source reading | A reviewed connection between Elixir and Lean text. |
+| Focused elaboration | Lean elaborated the selected generated declarations for the recorded sources. |
+| Accepted full verification report | The required checks passed for the source bytes and claim scope recorded in the report. |
 
-**Edit starting state** opens the account fields inline and creates a separate saved session. It never changes the governing payment policy.
+A proof establishes its stated claim under its assumptions. Reviewing whether
+that claim expresses the payment policy remains a separate task. **Assumptions**
+lets you compare processor behavior, including whether cancellation remains
+final. **Open coupled processor case** shows local knowledge alongside remote
+authorization and delivery. The linked processor and runtime guides explain
+the assumptions about real services and durable storage.
 
-The output cards keep reserved money, result, entries and actions in view. **Output fields** reveals the complete scalar fields; changed limits open those details automatically. The compact check table keeps applicability, output satisfaction and accounting separate.
-
-## Read the proof and assumptions
-
-Conditions first show short, source-reviewed groups with exact observed true/false/unavailable/not-evaluated counts. Positive-amount boundaries and starting-state invariants are not lumped into a generic green guard badge. Satisfied unchanged checks may be folded, while false, unavailable, skipped and compared-source changes retain explicit attention. **Complete observed expression tree** reveals the original structural paths, mixed operators, helper definitions and operands without replacing the primary view. Claims lacking reviewed grouping receive an honest generic outline. The complete proof remains in the reasoning region, after the condition view.
-
-**Why this check has that result** shows the observed clauses for one selected binding and one output basis without inventing a second evaluator. Selecting a linked clause shows one local Lean passage, its declaration location, line, relation and context; multiple reviewed passages have explicit selectors. Selecting a proof-reading step reveals its matching condition in reverse. These many-to-many source-reading aids are validated against exact reviewed digests, original structural AST paths and unique Lean anchors; stale, absent or ambiguous mappings are unavailable, never guessed. A proof passage is not automatically an isolated proof of its associated boolean. All 49 catalog claims retain the generic/full-source reading path. Keyboard and touch use the same controls; selection survives compatible input edits but not a changed event/basis/binding/source.
-
-**Proof** in the evidence dock opens the complete Lean source, including every registered declaration for a native Lean rule. **Read full proof** provides the same expansion; selecting a reviewed proof step returns to its excerpt. **Conditions** opens the actual source assumptions and promise alongside any evaluated conditions. Helper laws without an event probe show their source directly and mark evaluation unavailable. Lemma references open source alongside the case. Neither linked passages nor the displayed proof lines represent Lean goal states, kernel dependencies, translation correctness or formal acceptance.
-
-**Assumptions** opens the processor model. Select a hold and compare a processor that remembers cancellation with one that later resurrects an authorization. The model does not establish how a real processor behaves. **Open coupled processor case**, in the event tools, separates local knowledge from remote authorization, delivery and terminal confirmation.
-
-All 49 catalog obligations remain readable. Native Lean statements without an executable Elixir counterpart say so.
-
-**Verification files** contains generated sources, matching reports, checker details and unavailable artifacts. To generate focused translation and Lean elaboration for the three primary worked claims, run from the repository root:
+**Verification files** contains generated sources and matching reports. To
+produce focused readings for the three primary worked claims, run from the
+repository root:
 
 ```sh
 MIX_ENV=test uv run --locked python scripts/local_run.py \
   mix run apps/review_web/scripts/produce_claim_readings.exs
 ```
 
-This uses the original ProofCase assembler and pinned Lynx runner. Generated artifacts remain under ignored `tmp/verification/claim-reading`. Focused elaboration is separate from full formal acceptance. Only the original `ProofEvidence` validator accepts a matching required-scope report; see the [verification guide](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md). Missing evidence stays missing.
+Output goes to ignored `tmp/verification/claim-reading`. Full acceptance uses
+the matching required-scope report and `ProofEvidence` validation described in
+the [verification guide](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md).
+
+## Save your work
+
+Lab events remain temporary until you choose **Save to timeline**. **Reset**
+discards the experiment; reloading also discards unsaved work. **Edit starting
+state** creates a separate saved session.
+
+Saving checks the session revision to catch changes from another tab. Commands
+save individually. If a conflict interrupts a multi-step save, the page reports
+what was saved and keeps the remaining steps unsaved.
+
+Use **Flag concern**, **Open question**, or **Mark reviewed** to record a
+review note, with optional context. The target identifies the claim and case;
+when stored comparison evidence is selected, it identifies that finding.
+Notes have their own revision checks and do not save pending events.
+
+Open **Review notes** to read the history or export a session. **Download
+local repair packet** appears when a selected source comparison has matching
+evidence accepted by the packet validator. Source drift blocks stale
+computations and exports. Notes and packets record review material; policy
+approval and formal acceptance require their own evidence.
 
 ## Compare two source versions
 
-Stage operator-trusted local Git worktrees:
+From the repository root, stage each trusted local Git worktree:
 
 ```sh
 python3 apps/review_web/scripts/stage_part3_snapshot.py \
@@ -190,59 +199,76 @@ python3 apps/review_web/scripts/stage_part3_snapshot.py \
   --destination /absolute/path/to/hold_ledger/tmp/review_studio/snapshots
 ```
 
-Provision compatible pinned dependencies offline under each snapshot's ignored `tmp/part3_build` directories. **Compare versions** selects their registered content identities. **Run on both versions** executes the active input in separate BEAM processes using the original evaluator. Neither a branch name nor a historical receipt substitutes for matching source.
+Provision compatible pinned dependencies offline in each snapshot's ignored
+`tmp/part3_build` directories. In Lab, **Compare versions** selects the snapshots
+by content identity. **Run on both versions** evaluates the active input in
+separate BEAM processes. The opening **Example change** is a built-in
+illustration.
 
-Read three results separately: an input excluded by a rule, an alternative output permitted by a rule, and an actual execution difference. No example found does not establish equivalence or safety. Separate processes prevent module mixing; they do not sandbox hostile code. The browser does not install project dependencies or accept executable uploads.
+Read input coverage, acceptance of a proposed output, and execution differences
+separately. Finding no difference in the tried cases does not establish
+equivalence. Use trusted source: process isolation prevents module mixing but
+does not sandbox hostile code. The browser neither installs dependencies nor
+accepts executable uploads.
 
-## Keep review notes
+## Ask Codex about a case
 
-**Flag this case** follows the check matrix, condition evidence, and Lean source reading. Use **Flag concern**, **Open question**, or **Mark reviewed**, and optionally **Add context** for a freeform note. A single **How to read this workspace** disclosure near the rule header explains the limits of checks and proof-reading links. The target names the rule/event and saved or unsaved context; these session actions reuse the original revision-checked notes without saving pending experiment events. Unsaved exploration receives an experiment-context digest. When a real source comparison has selected stored evidence, disposition controls instead explicitly name that **stored comparison finding**, not the active scratch case. They use the original human-revision CAS. **Review notes** retains history and challenges; conflicted writes remain refused.
+Type a question and press **Ask Codex** or Enter to send it immediately with
+the displayed case and source. On smaller screens, open **Ask** and press
+**Send to Codex**. Each submission authorizes that question and its displayed
+context.
 
-When a selected real comparison has matching evidence and the original packet validator accepts it, **Download local repair packet** (JSON or Markdown) is available beside the result. Without such evidence, the page explains why no packet is available; it does not fabricate evidence, auto-run a comparison or auto-save. Export a saved session from **Review notes** to retain its history. Source drift still prevents stale computations and exports. An observation or exported packet is not policy authorization or formal acceptance.
+Before sending, use **Shares case + source** and **Context** to inspect the
+exact prompt and packet. It includes the selected input/output, policy,
+Ledger/Spec, runtime and processor documentation, and active claim and Lean
+excerpts. Private review notes are excluded. Oversized or stale packets are
+refused.
 
-A local export grants no permission to send source or review content to a model. Questions are sent only through the separate, explicitly consented question control described below.
+The completion adapter uses your existing Codex authentication and requests
+`gpt-6.1-terra` with medium reasoning. It has no editing or shell tools and uses
+no fallback provider. Answers appear beside the case, with source links and
+reported response metadata. They are generated explanations; the evidence
+panels remain the place to check proof results.
 
-## Ask about the case
+**History** searches local questions and reopens answers without a provider
+call. You can copy or export a question, submit a follow-up with its historical
+case, or choose **Ask using current case**. Typing, inspecting context, recalling
+history, and reloading send nothing. Question actions do not save pending
+events or change review notes.
 
-Type a question in the top bar and press **Ask Codex** or Enter. This sends it immediately, including the case and source indicated beside the button. **Shares case + source** lets you inspect the packet locally before sending. **Context** shows the exact application prompt and source material: the selected case and output basis, governing policy, core Ledger/Spec, runtime and processor documentation, and the active law and Lean declaration. Long Lean passages are labeled excerpts; the model receives the displayed lines, while the full proof remains available in the source viewer. Private review notes are not included. The source packet has a fixed size limit; an oversized or stale packet is refused.
+Prompts, source context, answers, errors, and request events are stored in
+ignored `tmp/review_studio/questions/<trace-id>/events.jsonl`, with owner-only
+permissions. Logs exclude credentials and private provider reasoning. A log
+failure prevents dispatch; a response-save failure is shown. Cancel, timeout,
+and restart do not resend automatically. **Clear history…** confirms before
+deleting question logs. Deletion is refused while a question is running.
 
-On smaller screens, open **Ask**, type your question and press **Send to Codex**. Each explicit submit authorizes only that question and its displayed case/source scope; there is no preparation step or consent checkbox. This feature uses the existing Inference/ASM completion-only adapter with Codex, `gpt-6.1-terra`, medium reasoning. It has no editing or shell tools. Authentication and model access must already work in the operator's existing Codex setup; no fallback provider is used.
+## Use the command interface
 
-An answer appears as a single-line preview in the same bar. Open it to read the explanation and source links. The floating panel does not move or disable the case; Escape and the Close button dismiss it. Explanations are generated answers, not formal evidence or recorded human conclusions. An answer to an older case is labeled accordingly. The response metadata, when supplied by the adapter, records what it reports; a requested model setting alone is not evidence that a provider ran it.
-
-**History** recalls local questions without a provider call. Search within this session or all questions, open an earlier answer, copy/export that question, or explicitly ask a follow-up using its historical case. **Ask using current case** starts from the present workspace instead. Typing, opening context, recalling history and reloading never send a question. Inspecting, answering, recalling and exporting never save pending events or alter review notes.
-
-Application prompts, selected context, visible answers, errors and request lifecycle events are written to ignored `tmp/review_studio/questions/<trace-id>/events.jsonl`, with owner-only permissions. Logs can contain source and question text; credentials and private provider reasoning are excluded. A log-write failure prevents dispatch, and a response-save failure is shown explicitly. Cancel, timeout and restart do not trigger automatic resends. **Clear history…** deletes only question logs after confirmation and refuses while a question is running.
-
-The controlled question browser suite starts and stops its own explicit local fixture on port 4001:
-
-```sh
-cd apps/review_web/test/browser
-npm run test:questions
-```
-
-It exercises actual UI, Inference request construction and local persistence with a controlled completion adapter. It makes no provider calls and does not measure live model quality. The ordinary `npm test` suite still requires the normal Phoenix server and real compatible snapshot IDs.
-
-## Use the same operations from a command
-
-Write a bounded JSON request file, then run:
+Write a JSON request file, then run this from the repository root:
 
 ```sh
 uv run --locked python scripts/local_run.py --cwd apps/review_web \
   mix run --no-start scripts/explore.exs -- /absolute/path/to/request.json
 ```
 
-Supported requests include:
+Read a claim:
 
 ```json
 {"operation":"read_claim","slug":"po_exposure_retain"}
 ```
 
+Run a request through the ledger:
+
 ```json
 {"operation":"step","mode":"ledger","before":{"amount_limit":100,"hold_limit":2,"used_amount":0,"used_holds":0,"entries":[]},"event":{"type":"request","key":11,"amount":100}}
 ```
 
-For clause observations, send `{"operation":"explain_claim","slug":"po_a2","witness":{"before":...,"event":...,"output":...}}` with complete typed values. The command calls the same source-bound reading and original evaluator operations as the screen, exposing `condition_outlines` per observed binding and phase as well as original nodes and paths. Unsupported groupings remain generic and missing links unresolved. No HTTP listener is opened.
+For clause observations, use `explain_claim` with a `slug` and a `witness`
+containing complete `before`, `event`, and `output` values. The command uses
+the same evaluator and source readings as the screen, in its own scratch
+store. Request files are limited to 64,000 bytes. It opens no HTTP listener
+and makes no model request.
 
 ## Check changes
 
@@ -258,8 +284,31 @@ uv run --locked python scripts/local_run.py --cwd apps/review_web mix assets.bui
 python3 -m unittest discover -s apps/review_web/scripts -p 'test_*.py' -v
 ```
 
-`precommit` completes warnings-as-errors compilation, formatting, strict Credo, Dialyzer and Phoenix tests. With Phoenix running, execute `npm ci`, `npx playwright install chromium` and `npm test` in `test/browser`. The Claim Lens browser checks are in
-`test/browser/0810_claim_lens.spec.cjs`. Supply real compatible `PART3_TEST_BASELINE_ID` and `PART3_TEST_PROPOSAL_ID` values to run the isolated-source browser case.
+`precommit` runs compilation with warnings treated as errors, formatting,
+strict Credo, Dialyzer, and Phoenix tests.
+
+With Phoenix running, use a separate terminal for browser checks:
+
+```sh
+cd apps/review_web/test/browser
+npm ci
+npx playwright install chromium
+npm test
+```
+
+Supply real compatible `PART3_TEST_BASELINE_ID` and `PART3_TEST_PROPOSAL_ID`
+values for the isolated-source comparison case. Lens checks live in
+`test/browser/0810_claim_lens.spec.cjs`.
+
+For help interactions, run `npm run test:presentation` from the browser-test
+directory. It loads the app's help JavaScript and glossary into local browser
+fixtures. These checks need no Phoenix server; the normal `npm test` suite
+exercises the rendered LiveView screens.
+
+From the browser-test directory, `npm run test:questions` starts and stops its
+own controlled Phoenix fixture on port 4001. It checks question submission and
+local persistence without provider calls; it does not measure live answer
+quality.
 
 ## License
 

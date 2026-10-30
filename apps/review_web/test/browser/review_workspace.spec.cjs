@@ -14,7 +14,7 @@ test('opens with the rule, proof and experiment instead of sign-off controls',as
  await expect(page.locator('#policy-anchor')).toContainText('all remaining capacity');await expect(page.locator('#proof-script')).toBeVisible();
  await expect(page.locator('#tool-drawer,[role=dialog]:visible,#review-document > details')).toHaveCount(0);await expect(page.locator('#decision-docket button')).toHaveCount(3);
  await expect(page.locator('#review-document')).not.toContainText('no policy approval');await expect(page.locator('#review-document')).not.toContainText('Exact-fit admission');
- await expect(page.locator('#ledger-output h3')).toHaveText('Code returned');await expect(page.locator('#hypothetical-output h3')).toHaveText('What if it returned…');
+ await expect(page.locator('#ledger-output h3')).toHaveText('Code returned');await expect(page.locator('#hypothetical-output h3')).toHaveText('Proposed output · not run');
 });
 
 test('nearby amounts update coverage and output without saving a trace',async({page})=>{
@@ -57,7 +57,7 @@ test('inline alternative edits and notes preserve live checks and the scratch in
 
 test('run through an unsaved request, dispatch and timeout, then save once',async({page})=>{
  await open(page);const initial=await saved(page);await page.locator('#review-amount').fill('99');
- await run(page,'dispatch');await expect(page.locator('#ledger-output')).toContainText('Authorization pending');await run(page,'timeout');await expect(page.locator('#ledger-output')).toContainText('Awaiting confirmation');
+ await run(page,'dispatch');await expect(page.locator('#ledger-output')).toContainText('Authorization pending');await run(page,'timeout');await expect(page.locator('#ledger-output')).toContainText('Outcome unknown');
  expect((await saved(page)).steps).toEqual(initial.steps);await page.locator('#add-observation').click();await page.locator('#note_text').fill('Review the unsaved authorization.');await page.locator('#note-form button').click();await inspect(page,'record');await expect(page.locator('#review-history')).toContainText('Review the unsaved authorization.');expect((await saved(page)).steps).toEqual(initial.steps);await page.locator('#append-preview').click();await expect(page.locator('#append-preview')).toBeDisabled();
  const recorded=await saved(page);expect(recorded.steps.length).toBe(initial.steps.length+3);expect(recorded.steps.at(-1).before.used_amount).toBe(99);
  await page.locator('#timeline button').nth(1).click();await expect(page.locator('#ledger-output')).toContainText('100¢ reserved');
@@ -65,7 +65,7 @@ test('run through an unsaved request, dispatch and timeout, then save once',asyn
 
 test('dependencies add their exact source while the proof stays available',async({page})=>{
  await open(page,'po_exposure_retain');await page.locator('#lemma-links button').first().click();await expect(page.locator('#inline-source pre')).toContainText('theorem');await expect(page.locator('#proof-script')).toBeVisible();
- await inspect(page,'artifacts');await expect(page.locator('#goal-state-status')).toContainText('unavailable');await expect(page.locator('#formal-status')).toHaveText('not_supplied');
+ await inspect(page,'artifacts');await expect(page.locator('#goal-state-status')).toContainText('unavailable');await expect(page.locator('#formal-status')).toHaveText('Not supplied');
 });
 
 test('a worked cancellation case is available when the current case has no eligible entry',async({page})=>{

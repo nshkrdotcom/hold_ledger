@@ -19,7 +19,7 @@ test('field differences update with unsaved edits and clear when restored', asyn
   await expect(page.locator('#output-differences')).toContainText('Reserved');
   await expect(page.locator('#output-differences')).toContainText('Entry');
   await expect(page.locator('#output-differences')).toContainText('Result');
-  await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects alternative');
+  await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects proposed output');
   await page.locator('#edit-candidate').click();
   await page.getByRole('button', {name: 'Reset to code result', exact: true}).click();
   await expect(page.locator('#same-output')).toHaveText('Same as code result.');
@@ -54,9 +54,9 @@ test('applicability, code acceptance, alternative acceptance and accounting stay
   await open(page, 'po_exposure_retain');
   await expect(page.locator('#applicability-row')).toContainText('Applies');
   await expect(page.locator('#selected-law-row td').first()).toHaveText('Accepts code result');
-  await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects alternative');
+  await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects proposed output');
   await expect(page.locator('#validity-row td').last()).toHaveText('Accounting balances');
-  await expect(page.locator('#review-help')).toContainText('not a policy judgment');
+  await expect(page.locator('#review-help')).toContainText('not automatically a defect');
 });
 
 test('source-bound proof passage and observed clause select each other by keyboard', async ({page}) => {
@@ -74,12 +74,12 @@ test('source-bound proof passage and observed clause select each other by keyboa
   await expect(page.locator('#dissector .selected-clause')).toHaveCount(1);
   await expect(source.locator('.active-proof-line').first()).toBeVisible();
   await page.locator('#inspector-tools [phx-value-view=artifacts]').click();
-  await expect(page.locator('#formal-status')).toHaveText('not_supplied');
+  await expect(page.locator('#formal-status')).toHaveText('Not supplied');
 });
 
 test('unsupported links and non-executable Lean claims remain explicit', async ({page}) => {
   await open(page, 'po_exposure_model');
-  await expect(page.locator('#links-unsupported')).toContainText('No reviewed proof correspondence');
+  await expect(page.locator('#links-unsupported')).toContainText('This claim has no reviewed clause-to-proof links yet');
   await expect(page.locator('#dissector')).toContainText('Native Lean statement');
   await expect(page.locator('#proof-panel')).toBeVisible();
   await expect(page.locator('#nearby-observation')).toBeVisible();
@@ -161,7 +161,7 @@ test('200 percent effective desktop viewport keeps editing and evidence accessib
   const page = await context.newPage();
   try {
     await open(page, 'po_exposure_retain');
-    await expect(page.locator('#selected-law-row')).toContainText('Rejects alternative');
+    await expect(page.locator('#selected-law-row')).toContainText('Rejects proposed output');
     await page.locator('#edit-candidate').click();
     await page.locator('#alternative-counter input').fill('7');
     await expect(page.locator('#validity-row')).toContainText('Accounting does not balance');

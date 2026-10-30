@@ -226,7 +226,11 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
 
       _ ->
         {:noreply,
-         assign(socket, error: "History couldn't be cleared while a question is running.")}
+         assign(socket,
+           error:
+             "Question history could not be cleared. A question may still be running, " <>
+               "or the history files may be unavailable."
+         )}
     end
   end
 
@@ -258,11 +262,11 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
       "Nothing was sent: the included case and conversation exceed the 96 KiB context limit. Start a new question without earlier answers or use a smaller case."
 
   defp context_error(:stale_case_sources),
-    do: "The source files changed since this case was opened. Reopen the rule before sending."
+    do: "The source files changed since this case was opened. Reopen the claim before sending."
 
   defp context_error(_),
     do:
-      "The selected source context could not be read. Reopen the rule; nothing was sent. See technical details."
+      "Your question wasn't sent because its source could not be read. Reopen the claim. Technical details are below."
 
   defp load_history(socket) do
     conversation = if socket.assigns.history_scope == "case", do: socket.assigns.context.doc["id"]
@@ -405,7 +409,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           >Close</button>
         </header>
         <p :if={@health != :ok} role="alert">
-          The local question log is unavailable. Questions won't be sent.
+          Question history is unavailable, so the app cannot send a question.
         </p>
         <p :if={@error} role="alert">{@error}</p>
         <details :if={@error && @error_detail} id="question-error-details">
@@ -465,7 +469,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
             maxlength="4096"
           />
           <p :if={@previous != []} class="scope-note">
-            The selected earlier question and generated answer will be included, using that question’s case. Review Context before sending.
+            This follow-up includes the earlier question and answer, using that question’s case. Review Context before sending.
           </p>
           <input type="hidden" name="question[context_id]" value={@send_context_id} />
           <p class="scope-note">Sends this question, case and included source to Codex.</p>
@@ -482,7 +486,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
         <details :if={(@packet || @active) && !@history_open} id="question-context">
           <summary>Context · {(@packet || @active["packet"])["model"]} · medium</summary>
           <p>
-            Shares the question, selected case, policy, core source and reviewed proof passages listed here. Logs remain local.
+            Codex receives your question, the selected case, and the sources listed here. The app saves a local question history.
           </p>
           <p><code>{(@packet || @active["packet"])["digest"]}</code></p>
           <p :for={source <- (@packet || @active["packet"])["context"]["sources"]}>
@@ -493,7 +497,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
             <summary>Exact application prompt</summary><pre>{Jason.encode!((@packet || @active["packet"])["messages"], pretty: true)}</pre>
           </details>
           <p>
-            Other repository sources, external attestations and private review notes are not included.
+            Only the listed sources are included. Private review notes stay out of the request.
           </p>
         </details>
         <section :if={@history_open} id="question-history-list">
@@ -546,7 +550,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           >Older questions</button>
         </div>
         <p :if={@history_open && @history == []} class="scope-note">
-          No local questions yet.
+          No questions found.
         </p>
         <div :if={@history_open} class="question-actions">
           <button phx-click="new" phx-target={@myself}>New question</button>

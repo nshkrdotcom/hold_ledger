@@ -16,49 +16,49 @@ defmodule HoldLedgerReviewWeb.Education do
   @families [
     %{
       id: "Foundations",
-      description: "The bookkeeping pieces other statements use",
+      description: "Find entries, preserve identities and count held capacity.",
       question: "Can we find, replace and count holds correctly?",
       number: "01"
     },
     %{
       id: "Admission",
-      description: "Starting states, requests, duplicate keys and exact fit",
+      description: "Admit eligible requests and recognize repeated keys.",
       question: "When must a new request be admitted?",
       number: "02"
     },
     %{
       id: "Single-step safety",
-      description: "What one modeled event may do",
+      description: "Keep the account valid as each event is handled.",
       question: "Does a valid state stay valid after an event?",
       number: "03"
     },
     %{
       id: "Identity & lifecycle",
-      description: "Timeouts, final decisions, request IDs and external effects",
+      description: "Keep the right capacity through timeouts and final results.",
       question: "Can an old or uncertain hold be mishandled?",
       number: "04"
     },
     %{
       id: "Histories",
-      description: "Safety over finite event and journal sequences",
+      description: "Follow a finite sequence of events or journal entries.",
       question: "Do safe steps compose into safe histories?",
       number: "05"
     },
     %{
       id: "Attempts",
-      description: "Runtime attempt slots, retirement and persistence models",
+      description: "Track active work and retire attempts without losing identity.",
       question: "Can late or concurrent attempts interfere?",
       number: "06"
     },
     %{
       id: "Processor & exposure",
-      description: "Modeled remote authorization, fencing and reserved capacity",
+      description: "Relate local holds to possible remote authorizations.",
       question: "What could still be live outside the ledger?",
       number: "07"
     },
     %{
       id: "Composite & recovery",
-      description: "Ledger state, pending voids and committed replay",
+      description: "Recover both ledger state and unfinished void work.",
       question: "Can state and outstanding work recover together?",
       number: "08"
     }
@@ -71,44 +71,44 @@ defmodule HoldLedgerReviewWeb.Education do
       title: "Respect available capacity",
       nutshell:
         "Fresh requests that fit the money and slot limits must be admitted, including an exact fit.",
-      safe: "100 cents requested with 100 cents free and an open slot is admitted.",
-      unsafe: "A strict less-than guard silently excludes the exact-fit request.",
+      safe: "With 100¢ free and an open slot, a new request for 100¢ is admitted.",
+      unsafe: "Using < instead of <= rejects the exact fit. The remaining state can still be valid.",
       slugs: ~w(po_a2 po_a4_duplicate po_a4_conflict po_i)
     },
     %{
       id: "uncertainty",
       number: "02",
       title: "Treat silence as uncertainty",
-      nutshell: "A timeout cannot release a possibly live remote authorization.",
-      safe: "A sent hold becomes unknown and still consumes capacity.",
-      unsafe: "The server treats a missing reply as a decline and frees the same capacity.",
+      nutshell: "A missing reply leaves the authorization's outcome unknown. Its capacity stays held.",
+      safe: "A 100¢ sent hold becomes unknown after a timeout and still uses 100¢ and one slot.",
+      unsafe: "The timeout frees 100¢, allowing another request while the first authorization may still be live.",
       slugs: ~w(po_b1_timeout po_b2 po_b7 po_exposure_retain)
     },
     %{
       id: "identity",
       number: "03",
       title: "Remember who requested what",
-      nutshell: "Repeated keys preserve their original amount and cannot be reused as new holds.",
-      safe: "A retry uses the same identity and amount.",
-      unsafe: "The retry creates another remotely live authorization ID.",
+      nutshell: "The same key keeps its original amount, including after the hold has finished.",
+      safe: "Request 11 for 100¢ returns duplicate when repeated. The same key for 50¢ returns conflict.",
+      unsafe: "A repeated request creates a second hold, or a conflicting amount replaces the first one.",
       slugs: ~w(l2_identity po_b6 po_a4_duplicate po_a4_conflict)
     },
     %{
       id: "terminal",
       number: "04",
       title: "Make final results final",
-      nutshell: "Declined and voided holds cannot be revived by late events.",
-      safe: "A terminal record remains remembered after capacity is released.",
-      unsafe: "A delayed authorization resuscitates a voided request.",
+      nutshell: "The ledger keeps declined and voided records and ignores late results for those holds.",
+      safe: "A late approval for a locally voided key leaves its terminal record unchanged.",
+      unsafe: "The ledger revives the finished hold. Preventing revival at the processor also needs remote fencing.",
       slugs: ~w(po_b5_declined po_b5_voided po_terminal_fence)
     },
     %{
       id: "effects",
       number: "05",
-      title: "Request the right remote work",
+      title: "Request the right outside work",
       nutshell: "Authorization and void effects must correspond to the correct key and amount.",
-      safe: "A void request emits the matching remote-void intent while retaining capacity.",
-      unsafe: "The hold stays reserved but the required void effect is omitted.",
+      safe: "Voiding authorized hold 11 requests a void for key 11 and keeps its capacity held.",
+      unsafe: "The state changes to voiding, but the output omits the requested void effect.",
       slugs: ~w(po_b3 po_b1_void po_exposure_retain)
     },
     %{
@@ -116,9 +116,9 @@ defmodule HoldLedgerReviewWeb.Education do
       number: "06",
       title: "Recover state with pending work",
       nutshell:
-        "Journal replay and pending void work must remain consistent with the modeled composite state.",
-      safe: "Committed operations reconstruct the modeled composite state.",
-      unsafe: "Recovery loses a required pending void or forgets a held amount.",
+        "Recovery must restore the ledger together with the void work it still owes.",
+      safe: "Replaying the committed prefix restores the corresponding ledger state and pending voids.",
+      unsafe: "Recovery restores a voiding hold but loses the record of the void still owed.",
       slugs: ~w(po_c2 po_composite_recovery po_composite_open po_composite_recovery_valid)
     }
   ]
@@ -126,56 +126,56 @@ defmodule HoldLedgerReviewWeb.Education do
   @components [
     %{
       id: "policy",
-      title: "Independent policy",
-      role: "Defines what the model should do",
+      title: "Policy",
+      role: "Sets the required behavior",
       path: "guides/specification.md",
       explanation:
-        "Human-authored policy is the anchor for judging whether a mathematically checked statement is the right statement.",
+        "The policy says when a request must be admitted and when held capacity may be released. Start here when deciding whether a claim asks the right question.",
       link: "/guarantees"
     },
     %{
       id: "ledger",
-      title: "Pure Ledger",
-      role: "Computes a state transition",
+      title: "Ledger",
+      role: "Handles one input event",
       path: "lib/hold_ledger/ledger.ex",
       explanation:
-        "Ledger.step/2 receives state and an event, then returns next state, a result and requested effects, without actually contacting a processor.",
+        "Ledger.step/2 takes the account state and an event. It returns the next state, a result and any requested effects. For a dispatch, that includes the authorization to request outside the ledger.",
       link: "/repository"
     },
     %{
       id: "spec",
-      title: "Behavioral Spec",
-      role: "An independent behavioral reference",
+      title: "Independent Spec",
+      role: "Describes the expected result",
       path: "lib/hold_ledger/spec.ex",
       explanation:
-        "The Spec is separately implemented so comparing Ledger against Spec is not simply asking Ledger to validate itself.",
+        "Spec computes expected behavior separately from Ledger. Claims can compare the two, and reviewers can follow a named predicate such as request_eligible? to see which inputs it includes.",
       link: "/proofs"
     },
     %{
       id: "laws",
-      title: "Laws and claims",
-      role: "State exact verification obligations",
+      title: "Claims",
+      role: "State exactly what is checked",
       path: "test/laws/ and verification/laws.json",
       explanation:
-        "Elixir/Lynx law groups include requires and expects. Native Lean groups express properties of models and histories instead.",
+        "An Elixir law states its input conditions in requires and its promised result in expects. Lean-only claims state properties directly about the repository's models and histories.",
       link: "/atlas"
     },
     %{
       id: "runtime",
       title: "Journal and runtime",
-      role: "Persist and dispatch requested work",
+      role: "Record inputs and perform outside work",
       path: "lib/hold_ledger/",
       explanation:
-        "Runtime manages durable input and external effects. A pure-state proof is not automatically a proof of disk persistence or networking.",
+        "The runtime syncs inputs to the journal before applying them and dispatching requested effects. Storage durability, crashes and network delivery need evidence beyond the pure transition.",
       link: "/assurance"
     },
     %{
       id: "processor",
       title: "External processor",
-      role: "May accept, decline or void",
-      path: "Modeled interface and external trust contract",
+      role: "Owns the remote authorization",
+      path: "guides/processors.md",
       explanation:
-        "The model can assume processor properties such as terminal fencing; real processor compliance requires separate evidence.",
+        "The processor can approve, decline or void an authorization. The model relies on properties such as permanent terminal fencing; a real adapter must establish that its processor honors them.",
       link: "/assurance"
     }
   ]
@@ -186,49 +186,49 @@ defmodule HoldLedgerReviewWeb.Education do
       label: "Reserved",
       description: "Accepted locally, not yet dispatched.",
       detail:
-        "The amount and slot are held. Because no remote request has been sent, a local cancellation can release them without a remote void effect."
+        "The amount and slot are held. A cancellation before dispatch releases both locally, with no remote void requested."
     },
     %{
       id: "sent",
       label: "Sent",
-      description: "The authorization may now be live remotely.",
+      description: "Dispatch is recorded; the remote outcome is pending.",
       detail:
-        "A sent request retains its reservation. A network acknowledgment is not an approval or decline."
+        "The ledger has requested authorization and keeps the amount and slot held. This state alone does not establish delivery, approval or decline."
     },
     %{
       id: "unknown",
       label: "Unknown",
-      description: "The remote outcome is not established.",
+      description: "The authorization's outcome is unknown.",
       detail:
-        "A timeout does not mean the processor declined. This hold still consumes amount and slot capacity."
+        "A timeout or restart can leave the outcome uncertain. The authorization may still be live, so the amount and slot stay held."
     },
     %{
       id: "authorized",
       label: "Authorized",
       description: "A trusted approval was received.",
       detail:
-        "Capacity stays reserved until a permitted terminal transition, such as confirmed cancellation."
+        "The processor approved the authorization. Its amount and slot stay held, including while an ensuing void is awaiting confirmation."
     },
     %{
       id: "voiding",
       label: "Voiding",
-      description: "Remote cancellation was requested.",
+      description: "A void has been requested and is awaiting confirmation.",
       detail:
-        "The request to void is an effect intent. It is not terminal evidence. Keep the reservation in place."
+        "The authorized hold keeps its amount and slot. Requesting a void does not establish that it happened; release waits for trusted confirmation."
     },
     %{
       id: "declined",
       label: "Declined",
-      description: "A trusted negative result is final.",
+      description: "The processor declined the authorization.",
       detail:
-        "The capacity can be released, while the original identity and amount remain remembered."
+        "The amount and slot are released. The ledger remembers the key and original amount, so a late reply cannot turn this record into a new hold."
     },
     %{
       id: "voided",
       label: "Voided",
-      description: "Cancellation has been confirmed.",
+      description: "The hold has been cancelled and uses no capacity.",
       detail:
-        "Release the reservation only after the modeled terminal condition. Retain the identity so late replay cannot create a new hold."
+        "Cancellation before dispatch is local. After an authorized hold enters voiding, cancellation must be confirmed. Both paths retain the key and original amount in a voided record."
     }
   ]
 
@@ -240,6 +240,37 @@ defmodule HoldLedgerReviewWeb.Education do
   def title(slug), do: get_in(@meta_by_slug, [slug, "title"])
   def term(id), do: Enum.find(@terms, &(&1["id"] == id))
   def editorial_slugs, do: Map.keys(@meta_by_slug) |> Enum.sort()
+
+  def search_terms(query) do
+    needle = query |> String.slice(0, 100) |> String.trim() |> String.downcase()
+
+    Enum.filter(@terms, fn term ->
+      text = Enum.map_join(~w(id term short detail example), " ", &(term[&1] || ""))
+      String.contains?(String.downcase(text), needle)
+    end)
+  end
+
+  def claim_summary(claim) do
+    sources =
+      [claim["education_source_path"] | Enum.map(claim["provenance"] || [], & &1["path"])]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> Enum.join("\n")
+
+    Enum.join(
+      [
+        "#{claim["title"]} (#{claim["slug"]})",
+        "Scenario: #{claim["scenario"]}",
+        "Must happen: #{claim["must_happen"]}",
+        "Wrong behavior: #{claim["wrong_behavior"]}",
+        "Why another check may miss it: #{claim["why_others_miss"]}",
+        "Scope: #{claim["does_not_cover"]}",
+        "Registered claim. Registration does not establish formal acceptance.",
+        "Sources:\n#{sources}"
+      ],
+      "\n\n"
+    )
+  end
 
   @doc "Returns the live registry combined with editorial titles. No checker status is inferred."
   def claims do

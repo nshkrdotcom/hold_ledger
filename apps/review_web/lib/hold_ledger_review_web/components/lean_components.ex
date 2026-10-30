@@ -11,26 +11,27 @@ defmodule HoldLedgerReviewWeb.LeanComponents do
     ~H"""
     <section class="instrument" id="assumptions">
       <header>
-        <span class="section-number">04</span><h2>Scope & assumptions</h2>
+        <span class="section-number">04</span><h2>Assumptions to check</h2>
       </header>
       <blockquote :if={@reading["policy"]["quote"]} id="policy-quote">
         {@reading["policy"]["quote"]}
       </blockquote>
-      <a href={source_url(@reading, "guides/specification.md")} target="_blank" rel="noopener">Governing specification:{@reading[
+      <a href={source_url(@reading, "guides/specification.md")} target="_blank" rel="noopener">Payment policy:{@reading[
         "policy"
       ]["line"]} ↗</a>
       <p :if={@reading["omits"]} class="omission" id="omission">{@reading["omits"]}</p>
       <dl :if={@show_status} class="evidence-status">
         <dt>Focused Lean elaboration</dt><dd id="focused-status">{@reading["focused"]["status"]}</dd><dt>
-          Required full gate
+          Full verification report
         </dt><dd id="formal-status">{@reading["formal"]["status"]}</dd><dt>
-          Theorem axiom footprint
-        </dt><dd>Read matching export; not inferred from source</dd><dt>Checker configurations</dt><dd>
+          Axioms used by this theorem
+        </dt><dd>Read the matching proof export.</dd><dt>Checker configurations</dt><dd>
           Lean default · Lean paranoid · lean4lean · nanoda · con-leche · con-ron
         </dd>
       </dl>
-      <h3>Coupled model’s deployment premises</h3><p>
-        Processor outcomes, persistent identity and terminal fencing are premises of the coupled exposure model.
+      <h3>Processor and storage guarantees</h3><p>
+        The processor must recognize repeated keys, report outcomes accurately, and keep a confirmed cancellation final.
+        The runtime also relies on durable journal writes. Use these contracts to check the assumptions behind the model.
       </p>
       <div class="source-links">
         <a
@@ -52,7 +53,7 @@ defmodule HoldLedgerReviewWeb.LeanComponents do
         >Runtime / storage ↗</a>
       </div>
       <p class="scope-note">
-        Pure hold model; not settlement or physical durability. Source references are not kernel dependency footprints.
+        The model tracks authorization capacity. Real processor behavior and journal durability need separate evidence.
       </p>
       <button phx-click="refresh_evidence" class="text-button">Refresh evidence</button>
     </section>

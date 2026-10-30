@@ -6,13 +6,13 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
     "po_a4_conflict" => "Reject a reused identity with a different amount",
     "po_b1_void" => "Keep the account consistent during cancellation",
     "po_b1_timeout" => "Keep the account consistent after a timeout",
-    "po_exposure_retain" => "Keep money reserved until cancellation is confirmed",
+    "po_exposure_retain" => "Keep issued holds reserved until a final result",
     "po_exposure_model" => "Follow the ledger and the payment processor",
     "po_s" => "Keep the ledger consistent"
   }
   def title(law) do
     @titles[law["slug"]] || HoldLedgerReviewWeb.Education.title(law["slug"]) ||
-      (law["title"] || law["slug"] || "Ledger rule")
+      (law["title"] || law["slug"] || "Ledger claim")
       |> String.split(" · ")
       |> List.last()
       |> String.capitalize()
@@ -24,9 +24,9 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
 
   def policy(%{"slug" => "po_exposure_retain"}),
     do:
-      "Requesting cancellation does not release the money. Keep it reserved until trusted confirmation arrives."
+      "An issued hold keeps its capacity until a trusted decline or void confirmation releases it."
 
-  def policy(reading), do: reading["policy"]["quote"] || "Read the rule and try a concrete case."
+  def policy(reading), do: reading["policy"]["quote"] || "Read the claim and try a concrete case."
 
   def result(value),
     do:
@@ -36,8 +36,8 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
           "insufficient_amount" => "Not enough available money",
           "insufficient_holds" => "No free hold slot",
           "voiding" => "Cancellation requested",
-          "voided" => "Cancellation confirmed",
-          "dispatched" => "Authorization sent",
+          "voided" => "Hold cancelled",
+          "dispatched" => "Authorization requested",
           "marked_unknown" => "Outcome unknown"
         },
         value,
@@ -50,7 +50,7 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
         %{
           "reserved" => "Reserved",
           "sent" => "Authorization pending",
-          "unknown" => "Awaiting confirmation",
+          "unknown" => "Outcome unknown",
           "authorized" => "Authorized",
           "voiding" => "Waiting for cancellation",
           "voided" => "Cancelled",
@@ -60,16 +60,23 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
         value
       )
 
+  def state_hint(value) do
+    case HoldLedgerReviewWeb.Education.term(value) do
+      nil -> nil
+      term -> term["short"]
+    end
+  end
+
   def action(%{"type" => "void", "key" => key}), do: "Cancel hold #{key}"
 
   def action(%{"type" => "authorize", "key" => key, "amount" => amount}),
     do: "Authorize #{amount}¢ for request #{key}"
 
-  def check("allows_here"), do: "Rule accepts this alternative"
-  def check("catches"), do: "Rule rejects this alternative"
-  def check("doesnt_apply"), do: "Rule does not apply"
-  def check("not_probed"), do: "Not checked for this event"
-  def check(_), do: "Could not evaluate"
+  def check("allows_here"), do: "Claim would accept this output. Intended?"
+  def check("catches"), do: "Claim rejects this output"
+  def check("doesnt_apply"), do: "Claim says nothing about this input"
+  def check("not_probed"), do: "No check wired up for this event"
+  def check(_), do: "Check unavailable"
 
   def applicability(%{"explanation" => %{"bindings" => bindings, "complete" => complete}})
       when is_list(bindings) do
@@ -90,7 +97,7 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
         "Applies (#{count} of #{length(values)} bindings)"
 
       Enum.all?(values, &(&1 == false)) ->
-        "Does not apply"
+        "Claim says nothing about this input"
 
       true ->
         "Could not evaluate"
@@ -118,7 +125,7 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
       )
   end
 
-  defp code_result([], _), do: "Not applicable"
+  defp code_result([], _), do: "Outside this claim's input"
 
   defp code_result(_, values) do
     cond do
@@ -128,9 +135,10 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
     end
   end
 
-  def candidate_acceptance(%{"law_status" => "allows_here"}), do: "Accepts alternative"
-  def candidate_acceptance(%{"law_status" => "catches"}), do: "Rejects alternative"
-  def candidate_acceptance(%{"law_status" => "doesnt_apply"}), do: "Not applicable"
+  def candidate_acceptance(%{"law_status" => "allows_here"}), do: "Accepts proposed output"
+  def candidate_acceptance(%{"law_status" => "catches"}), do: "Rejects proposed output"
+  def candidate_acceptance(%{"law_status" => "doesnt_apply"}),
+    do: "Outside this claim's input"
   def candidate_acceptance(%{"law_status" => "not_probed"}), do: "Not checked"
   def candidate_acceptance(_), do: "Unavailable"
 
@@ -141,15 +149,47 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
 
   def probe_reason(":outside_initial_probe_scope", "l2_identity"),
     do:
-      "This law checks that set_status/3 preserves existing request IDs and amounts. " <>
-        "It is not evaluated as a Ledger.step/2 event."
+      "This claim checks whether set_status/3 keeps existing request IDs and amounts. " <>
+        "Read the helper's source; this event check calls Ledger.step/2."
 
   def probe_reason(":outside_initial_probe_scope", _),
-    do: "This law is outside the event checks supported by the step probe. Read its source below."
+    do: "No event check is available for this claim. Read its source below."
 
   def probe_reason(reason, _), do: reason
 
   def accounting(true), do: "Accounting balances"
   def accounting(false), do: "Accounting does not balance"
   def accounting(_), do: "Unavailable"
+
+  def evidence_status("source_declaration_not_elaborated_evidence"),
+    do: "Source text · not proof-check evidence"
+
+  def evidence_status("missing_or_ambiguous_declaration"),
+    do: "Declaration unavailable or ambiguous"
+
+  def evidence_status("missing_or_stale"), do: "Missing or out of date"
+  def evidence_status("not_supplied"), do: "Not supplied"
+  def evidence_status("current"), do: "Matches the reviewed source"
+  def evidence_status("stale"), do: "Out of date for this source"
+  def evidence_status("elaborated"), do: "Focused elaboration completed · not full acceptance"
+  def evidence_status("full_catalog_checked"), do: "Full required catalog checked"
+  def evidence_status("selected_checked"), do: "Selected scope checked · not full catalog"
+  def evidence_status("development_only"), do: "Development checks only"
+  def evidence_status("failed"), do: "Verification failed"
+  def evidence_status("incomplete"), do: "Verification incomplete or unavailable"
+  def evidence_status(_), do: "Unavailable · inspect the verification record"
+
+  def dollar_gloss(cents) when is_integer(cents) do
+    sign = if cents < 0, do: "-", else: ""
+    amount = abs(cents)
+    fraction = amount |> rem(100) |> Integer.to_string() |> String.pad_leading(2, "0")
+    sign <> "$" <> Integer.to_string(div(amount, 100)) <> "." <> fraction
+  end
+
+  def state_tuple(state) do
+    case HoldLedgerReview.TermCodec.decode_state(state) do
+      {:ok, tuple} -> inspect(tuple, pretty: true, limit: :infinity)
+      {:error, _} -> "The state cannot be displayed as a ledger tuple."
+    end
+  end
 end

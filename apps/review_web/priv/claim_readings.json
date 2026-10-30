@@ -41,7 +41,7 @@
         "reason": "The remaining arithmetic goals follow from the capacity inequalities already obtained."
       }
     ],
-    "omits": "This admission law does not establish processor behavior, journal durability or every later transition.",
+    "omits": "This claim covers admission. Processor behavior, journal durability, and later events need other evidence.",
     "connections": [
       {
         "id": "capacity-amount",
@@ -161,7 +161,7 @@
         "reason": "The final lemma covers the remaining transition cases and requires the entry to remain exposed."
       }
     ],
-    "omits": "A locally consistent released state can still violate retention. Applicability to remote authorizations additionally depends on the coupled environment model.",
+    "omits": "A released hold can still have correct totals. Relating the ledger to real processor exposure also depends on the environment assumptions.",
     "connections": [
       {
         "id": "retain-valid",
@@ -288,7 +288,7 @@
         "reason": "The proof considers encoded keys and lookup outcomes for the timeout transition."
       }
     ],
-    "omits": "Validity alone does not require retention: a released entry with correctly reduced counters can be valid.",
+    "omits": "Correct totals can accompany an early release. Use the retention claim to check whether the money must stay held.",
     "connections": [
       {
         "id": "timeout-valid-before",
@@ -344,6 +344,6 @@
       "test/support/lean/Lifecycle.lean": "f7cd8a71ce6c7c755956f91c6999746be81339b458b59c3a00ffe619ca866e1e"
     },
     "steps": [],
-    "omits": "This law demands validity. Compare its result on a coherent early release with po_exposure_retain, which demands continued exposure."
+    "omits": "This claim checks that the account stays valid after cancellation. Compare po_exposure_retain to check whether a hold must stay reserved."
   }
 }
