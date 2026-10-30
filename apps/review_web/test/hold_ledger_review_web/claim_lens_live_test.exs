@@ -8,6 +8,9 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     assert has_element?(view, "#lens-confirm[disabled]")
     assert has_element?(view, "#lens-case-brief", "Challenged output")
     assert has_element?(view, "#lens-evidence-drawer")
+    assert has_element?(view, "#lens-demo-scope", "2 guided examples")
+    assert has_element?(view, "#lens-demo-scope a[href='/lens/po_a2']")
+    assert has_element?(view, "#lens-demo-scope a[href='/lens/po_exposure_retain']")
     refute has_element?(view, "#lens-policy-verdict")
     refute has_element?(view, "#lens-near-misses")
 
@@ -246,10 +249,16 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     assert has_element?(view, "#lens-initial-answer")
   end
 
-  test "case lab exposes direct navigation into claim lens", %{conn: conn} do
-    {:ok, doc} = HoldLedgerReview.Contrast.create("po_a2")
-    {:ok, view, _} = live(conn, "/claims/po_a2/#{doc["id"]}")
-    assert has_element?(view, "#case-review-modes a[href='/lens/po_a2']", "Claim Lens")
-    assert has_element?(view, "#case-review-modes a[href$='compare=open']", "Compare versions")
+  test "case lab always links to a working guided example", %{conn: conn} do
+    for {slug, example} <- [
+          {"po_a2", "po_a2"},
+          {"po_exposure_retain", "po_exposure_retain"},
+          {"l2_identity", "po_a2"}
+        ] do
+      {:ok, doc} = HoldLedgerReview.Contrast.create(slug)
+      {:ok, view, _} = live(conn, "/claims/#{slug}/#{doc["id"]}")
+      assert has_element?(view, "#case-review-modes a[href='/lens/#{example}']", "2 examples")
+      assert has_element?(view, "#case-review-modes a[href$='compare=open']", "Compare versions")
+    end
   end
 end

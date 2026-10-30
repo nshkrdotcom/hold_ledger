@@ -262,6 +262,22 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
               <a href={~p"/claims/#{@study.slug}?compare=open"}>Compare versions</a>
             </nav>
           </div>
+          <div id="lens-demo-scope" class="lens-demo-scope">
+            <strong>Claim Lens · 2 guided examples</strong>
+            <p>
+              These two demos use real claims and curated cases to show the review workflow.
+              Other claims are available in Case Lab; this guided flow is only built for these two.
+            </p>
+            <nav aria-label="Choose a guided example">
+              <a
+                :for={study <- @studies}
+                href={lens_path(study.slug, @mode)}
+                aria-current={if(study.slug == @study.slug, do: "page")}
+              >
+                {study.title}
+              </a>
+            </nav>
+          </div>
           <div class="lens-hero-content">
             <div>
               <span class="lens-overline">SPECIFICATION REVIEW / 001</span>
@@ -326,7 +342,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
           <aside class="lens-rail" aria-label="Claim and witness selection">
             <section class="lens-panel lens-index" id="lens-study-picker">
               <span class="lens-step">01 / Review subject</span>
-              <h2>Which promise?</h2>
+              <h2>Choose an example</h2>
               <nav aria-label="Curated obligations" class="lens-choice-stack">
                 <a
                   :for={study <- @studies}
@@ -339,7 +355,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 </a>
               </nav>
               <p class="lens-footnote">
-                Two curated source-bound laws, not the full 49-claim catalog.
+                These are the only two guided examples. Browse the full 49-claim catalog in Case Lab.
                 <a href={~p"/claims/#{@study.slug}"}>All claims in Case Lab</a>
               </p>
             </section>

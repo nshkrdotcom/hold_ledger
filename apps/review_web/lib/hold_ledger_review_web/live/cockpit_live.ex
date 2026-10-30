@@ -1453,12 +1453,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       <:tools :if={@doc && @reading}>
         <nav class="lens-modes case-mode-nav" id="case-review-modes" aria-label="Review experiences">
           <a href={~p"/claims/#{@slug}/#{@doc["id"]}"} aria-current="page">Case Lab</a>
-          <a :if={@slug in ~w(po_a2 po_exposure_retain)} href={~p"/lens/#{@slug}"}>Review first · Claim Lens</a>
-          <span
-            :if={@slug not in ~w(po_a2 po_exposure_retain)}
-            class="lens-mode-unavailable"
-            title="Curated for exact-fit and retention only"
-          >Claim Lens · two studies</span>
+          <a href={~p"/lens/#{if @slug in ~w(po_a2 po_exposure_retain), do: @slug, else: "po_a2"}"}>
+            Claim Lens · 2 examples
+          </a>
           <a href={~p"/claims/#{@slug}/#{@doc["id"]}?compare=open"}>Compare versions</a>
         </nav>
         <.live_component

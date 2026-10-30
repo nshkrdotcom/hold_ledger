@@ -34,6 +34,11 @@ concrete executions, semantic-gap experiments, and the existing trusted local
 source-comparison workflow. **Compare versions** opens the Case Lab's snapshot
 chooser; it is not a new diff engine or an automatic proof run.
 
+The header's **Claim Lens · 2 examples** link always opens a working example.
+It keeps the current claim when that claim has a guided example, otherwise it
+opens exact-fit admission. A notice at the top of Lens explains the demo scope
+and links directly to both examples. The full claim catalog remains in Case Lab.
+
 Claim Lens is a *separate*, compact LiveView for reading a formal obligation
 against an independently stated requirement. Choose a fixed real-world-inspired
 witness, select a curated hypothetical precondition edit, and compare:

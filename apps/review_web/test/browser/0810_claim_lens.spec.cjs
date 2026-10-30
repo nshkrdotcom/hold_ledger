@@ -107,6 +107,12 @@ test('keyboard decisions and drafts reset across study navigation and reload', a
 
   await page.goto('/claims/l2_identity');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  await expect(page.locator('#case-review-modes a[href^="/lens/"]')).toHaveCount(0);
-  await expect(page.locator('.lens-mode-unavailable')).toContainText('two studies');
+  const lens = page.locator('#case-review-modes a[href="/lens/po_a2"]');
+  await expect(lens).toHaveText('Claim Lens · 2 examples');
+  await lens.click();
+  await expect(page).toHaveURL(/\/lens\/po_a2$/);
+  await expect(page.locator('#lens-demo-scope')).toContainText('2 guided examples');
+  await page.locator('#lens-demo-scope a[href="/lens/po_exposure_retain"]').click();
+  await expect(page).toHaveURL(/\/lens\/po_exposure_retain$/);
+  await expect(page.locator('#lens-feedback-withheld')).toBeVisible();
 });
