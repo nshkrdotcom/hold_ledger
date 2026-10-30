@@ -123,7 +123,9 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
                 Proposed-output path
               </button>
             </h3>
-            <p class="scope-note">Starts with your proposed output. Later events run from that state.</p>
+            <p class="scope-note">
+              Starts with your proposed output. Later events run from that state.
+            </p>
             <div class="branch-steps">
               <.timeline_step
                 :for={{step, index} <- Enum.with_index(@fork.alternative, length(@fork.shared) + 1)}
@@ -304,7 +306,9 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         <table id="coupled-local-after">
           <caption>Local ledger</caption><thead>
             <tr>
-              <th scope="col">Request ID</th><th scope="col">Amount (¢)</th><th scope="col">Known locally</th>
+              <th scope="col">Request ID</th><th scope="col">Amount (¢)</th><th scope="col">
+                Known locally
+              </th>
             </tr>
           </thead><tbody>
             <tr :for={entry <- @recorded["ledger"]["entries"]}>
@@ -319,7 +323,9 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         <table id="coupled-remote-after">
           <caption>Modeled processor</caption><thead>
             <tr>
-              <th scope="col">Request ID</th><th scope="col">Amount (¢)</th><th scope="col">Processor state</th>
+              <th scope="col">Request ID</th><th scope="col">Amount (¢)</th><th scope="col">
+                Processor state
+              </th>
             </tr>
           </thead><tbody>
             <tr :for={entry <- @recorded["remote"]}>
@@ -332,8 +338,11 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         <details class="coupled-reading" id="coupled-event-guide">
           <summary>When can these states differ?</summary>
           <p>
-            Dispatch records an authorization request as
-            <button type="button" class="edu-term-button" data-edu-term="issued">issued</button>.
+            Dispatch records an authorization request as <button
+              type="button"
+              class="edu-term-button"
+              data-edu-term="issued"
+            >issued</button>.
             Issuing a request does not establish delivery or approval. Authorization delivery records
             the processor's decision; a later observation updates the ledger.
           </p>

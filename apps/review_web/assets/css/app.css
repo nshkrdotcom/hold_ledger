@@ -1668,6 +1668,9 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
 
 #claim-lens .lens-hero {padding: 1.5rem; border: 1px solid #dce2eb; border-radius: 14px; background: #fff; color: #25324a; box-shadow: none}
 #claim-lens .lens-hero-top {margin-bottom: 1rem}
+#claim-lens .lens-modes {background: #fff; border-color: #dce2eb}
+#claim-lens .lens-modes a {color: #584380}
+#claim-lens .lens-modes a:hover {background: #f1edf9; color: #473575}
 #claim-lens .lens-kicker {color: #6b5b91; font-size: .76rem; font-weight: 650; letter-spacing: 0; text-transform: none}
 #claim-lens .lens-hero-content {grid-template-columns: minmax(0, 1fr) minmax(180px, .35fr); gap: 1.5rem; margin: 1.2rem 0}
 #claim-lens .lens-hero h1 {color: #25324a; font-size: clamp(1.7rem, 3vw, 2.6rem); line-height: 1.16; max-width: 800px; margin: 0 0 .65rem; letter-spacing: -.03em}
@@ -1684,8 +1687,8 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
 #lens-exercise-modes a {padding: .8rem 1rem; border: 1px solid #dce2eb; border-radius: 8px; background: #fff; color: #3c485e}
 #lens-exercise-modes a[aria-current="page"] {background: #f1edf9; border-color: #b6a4d3; color: #473575}
 #lens-exercise-modes strong {font-size: .86rem}
-#lens-exercise-modes small {font-size: .74rem; line-height: 1.5}
-#lens-challenge-scope {color: #6b7689; font-size: .75rem; line-height: 1.6; margin: .8rem 0}
+#lens-exercise-modes small {color: #59687c; font-size: .74rem; line-height: 1.5}
+#claim-lens #lens-challenge-scope {color: #59687c; font-size: .75rem; line-height: 1.6; margin: .8rem 0}
 #claim-lens .lens-trust-strip {background: transparent; padding: .6rem 0; border: 0; gap: .7rem 1.4rem; font-size: .72rem; color: #67758b; flex-wrap: wrap}
 #claim-lens .lens-trust-strip b {color: #49566e}
 #claim-lens .lens-panel {border-color: #dce2eb; border-radius: 11px; box-shadow: none}
@@ -1696,6 +1699,9 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
 #claim-lens .lens-evidence {font-size: .69rem; letter-spacing: 0; text-transform: none; white-space: normal}
 #lens-evidence-legend {margin: .3rem 0 0; padding: .3rem 0; background: transparent; border: 0}
 #lens-evidence-legend > summary {color: #655477}
+#lens-evidence-legend .lens-legend-list {background: #f5f6fa; color: #59687c}
+#lens-evidence-legend .lens-legend-list strong {color: #443867}
+#lens-evidence-legend p {color: #59687c}
 #claim-lens .lens-layout {margin-top: 1.25rem; gap: 1.1rem}
 #claim-lens .lens-choice-stack button,#claim-lens .lens-choice-stack a {line-height: 1.55}
 

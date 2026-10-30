@@ -52,7 +52,8 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
   end
 
   test "general pages and missing claims do not invent a selected claim", %{conn: conn} do
-    for path <- ~w(/ /start /system /proofs /assurance /repository /glossary /atlas /atlas/missing) do
+    for path <-
+          ~w(/ /start /system /proofs /assurance /repository /glossary /atlas /atlas/missing) do
       {:ok, view, _} = live(conn, path)
       refute has_element?(view, "#claim-navigation")
     end
@@ -97,7 +98,14 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     refute has_element?(profile, "a[href='/repository#review-exercises']")
 
     {:ok, repository, _} = live(conn, "/repository")
-    assert length(repository |> render() |> LazyHTML.from_fragment() |> LazyHTML.query(".edu-example-card")) == 18
+
+    assert Enum.count(
+             repository
+             |> render()
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query(".edu-example-card")
+           ) == 18
+
     assert has_element?(repository, "#example-p08", "Correct local cancellation")
     assert has_element?(repository, "#example-p08 pre", "reserved")
     assert has_element?(repository, "a[href='#mutation-example-directory']")
@@ -109,7 +117,12 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
       {:ok, profile, _} = live(conn, "/atlas/" <> slug)
       assert has_element?(profile, "#edu-claim-profile", "Registered claim")
       assert has_element?(profile, "#edu-claim-editorial", "Editorial draft")
-      assert has_element?(profile, "#edu-claim-editorial", "Owner review of this explanation is not recorded here.")
+
+      assert has_element?(
+               profile,
+               "#edu-claim-editorial",
+               "Owner review of this explanation is not recorded here."
+             )
     end
   end
 
@@ -117,11 +130,15 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     conn: conn
   } do
     for {path, id, host} <- [
-          {"/start", "edu-hold-primer", "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"},
+          {"/start", "edu-hold-primer",
+           "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"},
           {"/system", "edu-retry-primer", "https://docs.stripe.com/api/idempotent_requests"},
-          {"/proofs", "edu-statement-primer", "https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/"},
-          {"/proofs", "edu-domain-primer", "https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/"},
-          {"/assurance", "edu-kernel-primer", "https://lean-lang.org/doc/reference/latest/ValidatingProofs/"}
+          {"/proofs", "edu-statement-primer",
+           "https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/"},
+          {"/proofs", "edu-domain-primer",
+           "https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/"},
+          {"/assurance", "edu-kernel-primer",
+           "https://lean-lang.org/doc/reference/latest/ValidatingProofs/"}
         ] do
       {:ok, view, _} = live(conn, path)
       assert has_element?(view, "##{id} a[href='#{host}']")

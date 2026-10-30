@@ -146,7 +146,7 @@ test('coupled model separates remote delivery, observation and terminal fencing'
   await inspect(page);
   await expect(page.locator('#remote-state')).toBeVisible();
   for(const type of ['request','dispatch','authorize','timeout']) await event(page,type,'11');
-  await expect(page.locator('#remote-state')).toContainText('Outcome unknown');await expect(page.locator('#remote-state')).toContainText('approved');
+  await expect(page.locator('#remote-state')).toContainText('Outcome unknown');await expect(page.locator('#coupled-remote-after')).toContainText('Approved');
   await event(page,'observe','11');await expect(page.locator('#coupled-local-after')).toContainText('Authorized');
   await event(page,'void','11');await event(page,'remote_void','11');
   await expect(page.locator('#amount-counter')).toHaveText('100¢ / 100¢');

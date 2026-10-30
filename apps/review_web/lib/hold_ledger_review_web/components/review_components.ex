@@ -665,7 +665,9 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
                 {@result.local}¢
               </td>
             </tr><tr>
-              <th scope="row">Remote authorization for this key</th><td id="premise-remote">{@result.remote}¢</td>
+              <th scope="row">Remote authorization for this key</th><td id="premise-remote">
+                {@result.remote}¢
+              </td>
             </tr><tr>
               <th scope="row">Does the ledger cover this authorization?</th><td id="premise-covered">
                 {answer(@result.covered)}

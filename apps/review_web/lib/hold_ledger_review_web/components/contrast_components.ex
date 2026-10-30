@@ -220,10 +220,14 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       </div>
       <div :if={@case} id="active-predicate-result" role="status">
         <table id="contrast-matrix">
-          <caption class="sr-only">Coverage, output acceptance and accounting for the selected case</caption>
+          <caption class="sr-only">
+            Coverage, output acceptance and accounting for the selected case
+          </caption>
           <thead>
             <tr>
-              <th scope="col">Check</th><th scope="col">Code returned</th><th scope="col">Proposed output · not run</th>
+              <th scope="col">Check</th><th scope="col">Code returned</th><th scope="col">
+                Proposed output · not run
+              </th>
             </tr>
           </thead>
           <tbody>

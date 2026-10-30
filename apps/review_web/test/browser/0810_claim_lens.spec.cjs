@@ -28,7 +28,7 @@ for (const width of [1280, 390]) {
     await page.locator('#lens-witness-exact').click();
     await page.locator('#lens-variation-proof_only').click();
     await expect(page.locator('#lens-gap')).toContainText('No claim-level change');
-    await expect(page.locator('#lens-evidence-status')).toContainText('Not run / unavailable');
+    await expect(page.locator('#lens-evidence-status dt').filter({hasText: 'Proof check for proposed change'}).locator('+ dd')).toHaveText('Not run');
     await expect(page.locator('#lens-evidence-status')).toContainText('Not collected / unavailable');
     await expect(page.getByRole('main')).toHaveCount(1);
     await expect(page.locator('.lens-layout')).toHaveCSS('grid-template-columns',
@@ -116,3 +116,43 @@ test('keyboard decisions and drafts reset across study navigation and reload', a
   await expect(page).toHaveURL(/\/lens\/po_exposure_retain$/);
   await expect(page.locator('#lens-feedback-withheld')).toBeVisible();
 });
+
+async function expectReadable(locator) {
+  const ratio = await locator.evaluate(node => {
+    const rgb = value => value.match(/[\d.]+/g).map(Number);
+    const luminance = channels => channels.slice(0, 3).map(channel => {
+      const value = channel / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const foreground = luminance(rgb(getComputedStyle(node).color));
+    let background = [255, 255, 255];
+    for (let parent = node; parent; parent = parent.parentElement) {
+      const color = rgb(getComputedStyle(parent).backgroundColor);
+      if (color.length === 3 || color[3] === 1) { background = color; break; }
+    }
+    const behind = luminance(background);
+    return (Math.max(foreground, behind) + 0.05) / (Math.min(foreground, behind) + 0.05);
+  });
+  expect(ratio).toBeGreaterThanOrEqual(4.5);
+}
+
+for (const width of [1440, 390]) {
+  test(`Lens controls and disclosed evidence stay readable at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900});
+    await page.goto('/lens/po_a2');
+    await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+    const compare = page.locator('#lens-modes a');
+    await expectReadable(compare);
+    await compare.hover();
+    await expectReadable(compare);
+    await expectReadable(page.locator('#lens-exercise-modes a:not([aria-current]) small'));
+    await expectReadable(page.locator('#lens-challenge-scope'));
+    const disclosure = page.locator('#lens-evidence-legend summary');
+    await disclosure.focus();
+    await disclosure.press('Enter');
+    await expect(page.locator('.lens-legend-list')).toBeVisible();
+    await expectReadable(page.locator('.lens-legend-list'));
+    await expectReadable(page.locator('.lens-legend-list strong').first());
+    await expectReadable(page.locator('#lens-evidence-legend p'));
+  });
+}

@@ -249,7 +249,9 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     assert has_element?(view, "#lens-initial-answer")
   end
 
-  test "claim navigation keeps the active case and offers only its own guided study", %{conn: conn} do
+  test "claim navigation keeps the active case and offers only its own guided study", %{
+    conn: conn
+  } do
     for slug <- ~w(po_a2 po_exposure_retain l2_identity) do
       {:ok, doc} = HoldLedgerReview.Contrast.create(slug)
       {:ok, view, _} = live(conn, "/claims/#{slug}/#{doc["id"]}")

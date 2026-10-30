@@ -51,7 +51,8 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
       </header>
       <p :if={@bindings != []} id="condition-values-guide" class="scope-note">
         These values come from the selected input and output. Expand a condition to inspect its comparison.
-        If <code>requires</code> is false for these values, the claim makes no promise for this combination.
+        If <code>requires</code>
+        is false for these values, the claim makes no promise for this combination.
       </p>
       <details
         :if={@source_requested || @bindings == []}

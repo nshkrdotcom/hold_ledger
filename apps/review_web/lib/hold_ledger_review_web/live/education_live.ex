@@ -534,7 +534,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     >
       <p>An authorization hold reserves an amount for possible later capture.</p>
       <p>
-        Read the opening explanation of <a href="https://docs.stripe.com/payments/place-a-hold-on-a-payment-method">Stripe's authorization holds</a>
+        Read the opening explanation of
+        <a href="https://docs.stripe.com/payments/place-a-hold-on-a-payment-method">Stripe's authorization holds</a>
         and the difference between authorization and capture. Skip the API examples,
         timing tables and capture options for this walkthrough.
       </p>
@@ -654,7 +655,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       answer="No. This ledger retries with the same request key and amount. A new worker attempt can have its own attempt ID while still referring to that same hold."
     >
       <p>
-        Read the opening paragraphs of <a href="https://docs.stripe.com/api/idempotent_requests">Stripe's idempotent requests</a>
+        Read the opening paragraphs of
+        <a href="https://docs.stripe.com/api/idempotent_requests">Stripe's idempotent requests</a>
         about connection errors, keeping the key and unchanged parameters. The API examples can wait.
       </p>
       <p class="edu-source-note">
@@ -942,8 +944,12 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <summary>Input and source details</summary>
         <div>
           <dl :if={@example["kind"] == "mutation"} class="edu-example-input">
-            <div><dt>Starting state</dt><dd><code>{@example["before"]}</code></dd></div>
-            <div><dt>Event</dt><dd><code>{@example["event"]}</code></dd></div>
+            <div>
+              <dt>Starting state</dt><dd><code>{@example["before"]}</code></dd>
+            </div>
+            <div>
+              <dt>Event</dt><dd><code>{@example["event"]}</code></dd>
+            </div>
           </dl>
           <p :if={@example["fixture_path"]} class="edu-source-note">
             Existing source fixture · not executed here<br />
@@ -1044,7 +1050,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       </p>
       <section class="edu-related-examples" id="edu-related-examples">
         <div class="edu-section-head">
-          <div><h2>Examples for this claim</h2></div>
+          <div>
+            <h2>Examples for this claim</h2>
+          </div>
         </div>
         <p :if={@examples != []} class="edu-source-note">
           M identifies a deliberate source fault outside the default implementation.
@@ -1169,8 +1177,10 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       answer="P must hold. If the input does not satisfy the premise, this implication makes no promise about Q for that input."
     >
       <p>
-        Read sections 3.1–3.3 of Lean's <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/">Propositions and Proofs</a>
-        to recognize <code>Prop</code>, implication <code>→</code> and conjunction <code>∧</code>.
+        Read sections 3.1–3.3 of Lean's
+        <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/">Propositions and Proofs</a>
+        to recognize <code>Prop</code>, implication <code>→</code>
+        and conjunction <code>∧</code>.
         Skip constructing the proofs and exercises on the first pass.
       </p>
     </.reading_note>
@@ -1223,8 +1233,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       answer="All values of the stated type α. Further premises can limit which inputs receive the promised conclusion. Check both against the payment requirement."
     >
       <p>
-        Read the opening of section 4.1, “The Universal Quantifier,” in
-        <a href="https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/">Quantifiers and Equality</a>.
+        Read the opening of section 4.1, “The Universal Quantifier,” in <a href="https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/">Quantifiers and Equality</a>.
         Skip equality proofs and the remaining chapter for now.
       </p>
     </.reading_note>
@@ -1271,7 +1280,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           answer="The n : Nat annotation gives the input type. The Nat after the parentheses gives the result type. The expression after := is the function body."
         >
           <p>
-            Read the first annotations in <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Types/">Types</a>
+            Read the first annotations in
+            <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Types/">Types</a>
             and the first examples in <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Functions-and-Definitions/">Functions and Definitions</a>.
             Focus on <code>:</code>, <code>:=</code>, arguments and result types; skip the exercises and later features.
           </p>
@@ -1584,7 +1594,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     </section>
     <section class="edu-example-directory" id="mutation-example-directory">
       <div class="edu-section-head">
-        <div><p class="edu-eyebrow">M1–M10 · deliberate source faults</p><h2>Mutation examples</h2></div>
+        <div>
+          <p class="edu-eyebrow">M1–M10 · deliberate source faults</p><h2>Mutation examples</h2>
+        </div>
       </div>
       <p class="edu-source-note">
         Each M example changes a source implementation outside the default ledger. Read the
@@ -1597,7 +1609,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     </section>
     <section class="edu-example-directory" id="policy-exercise-directory">
       <div class="edu-section-head">
-        <div><p class="edu-eyebrow">P01–P08 · payment-policy exercises</p><h2>Policy exercises</h2></div>
+        <div>
+          <p class="edu-eyebrow">P01–P08 · payment-policy exercises</p><h2>Policy exercises</h2>
+        </div>
       </div>
       <p class="edu-source-note">
         Each P example pairs an input with a proposed output for review against the policy.
@@ -1683,9 +1697,13 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       <div class="edu-reading-directory-grid">
         <article>
           <h2>Payment holds and retries</h2>
-          <p>Start with the <a href="/start">100¢ walkthrough</a> and the <a href="/system">system guide</a>.</p>
           <p>
-            Read the opening of Stripe's <a href="https://docs.stripe.com/payments/place-a-hold-on-a-payment-method">authorization holds</a>
+            Start with the <a href="/start">100¢ walkthrough</a>
+            and the <a href="/system">system guide</a>.
+          </p>
+          <p>
+            Read the opening of Stripe's
+            <a href="https://docs.stripe.com/payments/place-a-hold-on-a-payment-method">authorization holds</a>
             and <a href="https://docs.stripe.com/api/idempotent_requests">idempotent requests</a>.
             Focus on authorization versus capture and retrying with the same key. Skip API examples.
           </p>
@@ -1697,17 +1715,21 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           <h2>Formal statements</h2>
           <p>Start with the <a href="/proofs">statement-reading guide</a>.</p>
           <p>
-            Read sections 3.1–3.3 of <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/">Propositions and Proofs</a>
+            Read sections 3.1–3.3 of
+            <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/">Propositions and Proofs</a>
             and the opening of 4.1 in <a href="https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/">Quantifiers and Equality</a>.
-            Focus on <code>Prop</code>, <code>→</code>, <code>∧</code> and <code>∀</code>; skip constructing proofs.
+            Focus on <code>Prop</code>, <code>→</code>, <code>∧</code>
+            and <code>∀</code>; skip constructing proofs.
           </p>
         </article>
         <article>
           <h2>Lean syntax</h2>
           <p>
-            Read the first annotations in <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Types/">Types</a>
+            Read the first annotations in
+            <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Types/">Types</a>
             and the first examples in <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Functions-and-Definitions/">Functions and Definitions</a>.
-            Focus on arguments, result types, <code>:</code> and <code>:=</code>. Exercises and later language features can wait.
+            Focus on arguments, result types, <code>:</code>
+            and <code>:=</code>. Exercises and later language features can wait.
           </p>
         </article>
         <article>
