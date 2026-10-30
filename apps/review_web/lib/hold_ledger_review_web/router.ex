@@ -13,6 +13,7 @@ defmodule HoldLedgerReviewWeb.Router do
   scope "/", HoldLedgerReviewWeb do
     pipe_through :browser
     live "/", CockpitLive, :index
+    live "/lens/:slug", ClaimLensLive, :show
     live "/claims/:slug", CockpitLive, :claim
     live "/claims/:slug/:id", CockpitLive, :show
     get "/claims/:slug/source/:source_id/:sha", CockpitController, :source

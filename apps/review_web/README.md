@@ -25,6 +25,49 @@ uv run --locked python scripts/local_run.py --cwd apps/review_web mix phx.server
 
 Open [localhost:4000](http://localhost:4000). All amounts are integer cents: `100` means one dollar.
 
+## Explore the Claim Lens
+
+Open [Claim Lens: exact-fit admission](http://localhost:4000/lens/po_a2) or
+[Claim Lens: retention](http://localhost:4000/lens/po_exposure_retain).
+Use the **Case Lab / Claim Lens / Compare versions** links to switch between
+concrete executions, semantic-gap experiments, and the existing trusted local
+source-comparison workflow. **Compare versions** opens the Case Lab's snapshot
+chooser; it is not a new diff engine or an automatic proof run.
+
+Claim Lens is a *separate*, compact LiveView for reading a formal obligation
+against an independently stated requirement. Choose a fixed real-world-inspired
+witness, select a curated hypothetical precondition edit, and compare:
+
+- the hand-reviewed expectation from `guides/specification.md`, including its
+  source location;
+- the **unchanged, source-bound** Elixir law's pointwise response to an
+  unexecuted candidate result;
+- a transparently modeled *hypothetical* precondition with the existing
+  promise. The UI never rewrites the law or claims the hypothetical was proved.
+
+Exact-fit admission demonstrates how adding `amount < remaining` to
+`po_a2`'s precondition excludes the 100¢ boundary even though the original
+claim rejects a mistaken `:insufficient_amount` output there. Retention shows
+that removing `not Spec.release_evidence?(event, key)` from
+`po_exposure_retain` would demand retention even after a legitimate terminal
+confirmation. The latter is a counterexample to the *hypothetical assertion*,
+not a flaw in the original ledger. A **proof-body-only control** avoids
+teaching reviewers to flag harmless edits merely because a proof changed.
+
+Select a clause to see its reviewed, digest-validated Elixir ↔ Lean **source
+reading** relationship, matching observed condition path when available, and
+related Lean source excerpts. The panel distinctly labels live pointwise
+checks, Lean text, focused elaboration, and the actual full-gate provenance.
+It does **not** manufacture interactive tactic states, kernel dependencies,
+formal acceptance for edited claims, or independent policy approvals. The
+human-classification and explanation fields are ephemeral local drafts:
+**they are not saved, transmitted, or added to review notes**. The named mutant
+patch and test paths are review references, not tests run by the browser.
+
+See `apps/review_web/docs/claim_lens_plan.md` for the scoped UI design,
+evidence contract, review tasks, known limitations, and QA checks. Both pages remain
+read-only with respect to Ledger, Spec, law sources, snapshots and formal reports.
+
 ## Try a case
 
 Choose a rule. The header presents a source-linked requirement summary. **Read full claim** expands the actual `requires` and `expects`, or names a native Lean-only declaration. For exact-fit admission, an explicitly labeled **illustrative example** compares `amount <= remaining` with `amount < remaining`: a request using all available capacity is covered by the first and excluded by the second. Standalone law review has no fabricated source change; real baseline/proposal comparisons show their own full source-change list.
@@ -141,13 +184,15 @@ From the repository root:
 ```sh
 uv run --locked python scripts/local_run.py mix test test/claim_source_parity_test.exs
 uv run --locked python scripts/local_run.py mix test --exclude laws
+uv run --locked python scripts/local_run.py --cwd apps/review_web mix test test/hold_ledger_review/claim_lens_test.exs test/hold_ledger_review_web/claim_lens_live_test.exs
 uv run --locked python scripts/local_run.py --cwd apps/review_web mix precommit
 uv run --locked python scripts/local_run.py --cwd apps/review_web mix docs --warnings-as-errors
 uv run --locked python scripts/local_run.py --cwd apps/review_web mix assets.build
 python3 -m unittest discover -s apps/review_web/scripts -p 'test_*.py' -v
 ```
 
-`precommit` completes warnings-as-errors compilation, formatting, strict Credo, Dialyzer and Phoenix tests. With Phoenix running, execute `npm ci`, `npx playwright install chromium` and `npm test` in `test/browser`. Supply real compatible `PART3_TEST_BASELINE_ID` and `PART3_TEST_PROPOSAL_ID` values to run the isolated-source browser case.
+`precommit` completes warnings-as-errors compilation, formatting, strict Credo, Dialyzer and Phoenix tests. With Phoenix running, execute `npm ci`, `npx playwright install chromium` and `npm test` in `test/browser`. The Claim Lens browser checks are in
+`test/browser/0810_claim_lens.spec.cjs`. Supply real compatible `PART3_TEST_BASELINE_ID` and `PART3_TEST_PROPOSAL_ID` values to run the isolated-source browser case.
 
 ## License
 
