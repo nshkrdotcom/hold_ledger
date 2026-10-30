@@ -256,12 +256,12 @@
       "id": "claim",
       "term": "Claim",
       "short": "A registered statement about the behavior covered by the verification work.",
-      "detail": "The catalog contains 35 Elixir laws and 14 Lean-only claims. Some registered claims include more than one theorem. Proof results are attached to exact source and checks separately.",
+      "detail": "The catalog registers Elixir laws and claims written directly in Lean. Some entries include more than one theorem. Proof results are attached to exact source and completed checks separately.",
       "example": "po_b1_void concerns next-state validity; po_exposure_retain protects an issued hold from premature release.",
       "link": "/atlas",
       "source_path": "verification/laws.json",
       "aliases": [
-        "obligation",
+        "proof obligation",
         "group"
       ]
     },
@@ -419,16 +419,18 @@
     },
     {
       "id": "hypothetical",
-      "term": "Hypothetical",
-      "short": "A proposed change or output used to explore what a claim would allow.",
-      "detail": "The proposed output is not run as ledger code. Checking the claim against it answers a local review question, not whether an edited implementation or proof passed.",
+      "term": "Proposed output",
+      "short": "A next state, result and effects supplied for inspection instead of returned by the code.",
+      "detail": "Checking this output asks what the selected claim permits. It does not show that the implementation produced it. A proposed claim change is different: it edits the conditions or promise being reviewed.",
       "example": "Propose a voided output for an authorized 100¢ cancellation and compare validity with exposure retention.",
       "link": "/lens/po_a2",
       "source_path": "guides/payment_hold_review_exercises.md",
       "aliases": [
-        "proposed output",
+        "hypothetical",
+        "hypothetical output",
         "candidate",
-        "alternative"
+        "alternative",
+        "proposed output"
       ]
     },
     {
@@ -526,6 +528,81 @@
       "example": "For a proposed timeout-release change, explain what terminal evidence is missing and which retention requirement the change would alter.",
       "link": "/lens/po_exposure_retain",
       "source_path": "guides/human_review.md"
+    },
+    {
+      "id": "attempt",
+      "term": "Attempt",
+      "short": "One local try at an authorization, void or lookup, with its own attempt ID.",
+      "detail": "An attempt starts running and may pass through stopping. It waits in committing for a persistence acknowledgment before retiring. Its ID identifies local work; the hold’s request key identifies the authorization and stays the same across retries.",
+      "example": "Attempt 1 and a later attempt 2 can both authorize hold 11. A late message for retired attempt 1 must not affect attempt 2.",
+      "link": "/system",
+      "source_path": "lib/hold_ledger/attempts.ex",
+      "aliases": [
+        "attempt ID",
+        "worker attempt"
+      ]
+    },
+    {
+      "id": "poison",
+      "term": "Poisoned",
+      "short": "A state that refuses new work after persistence could not be safely acknowledged.",
+      "detail": "An append or sync failure can leave an unacknowledged record on disk. The runtime marks the writer and attempt lifecycle poisoned so new commits and attempts cannot proceed as though that record were absent.",
+      "example": "A poisoned lifecycle with no active workers still refuses to start an authorization for hold 11.",
+      "link": "/system",
+      "source_path": "guides/runtime.md",
+      "aliases": [
+        "poison",
+        "poisoned lifecycle"
+      ]
+    },
+    {
+      "id": "obligation",
+      "term": "Void obligation",
+      "short": "A durable record of remote cancellation work still owed for one hold.",
+      "detail": "The record stores the hold key, durable attempt count and last outcome. Each voiding hold has exactly one. Confirmation removes it together with releasing the hold. A proof obligation is a separate use of the word: a statement required by verification.",
+      "example": "{11, 1, {:error, :timeout}} records one attempt and a timeout; cancellation work for hold 11 is still pending.",
+      "link": "/system",
+      "source_path": "lib/hold_ledger/outbox.ex",
+      "aliases": [
+        "obligation",
+        "pending void work",
+        "pending cancellation"
+      ]
+    },
+    {
+      "id": "oracle",
+      "term": "Independent reference (oracle)",
+      "short": "A separately implemented description of the complete result expected for an input.",
+      "detail": "Claims can compare an implementation with this reference. Agreement adds precision beyond checking a valid state, but both versions still need review against the payment policy.",
+      "example": "Spec.expected_composite_step checks the next ledger, pending work, result and effects for cancellation of hold 11.",
+      "link": "/proofs",
+      "source_path": "lib/hold_ledger/spec.ex",
+      "aliases": [
+        "oracle",
+        "independent reference"
+      ]
+    },
+    {
+      "id": "fold",
+      "term": "Fold",
+      "short": "Apply events in order, giving each event the state returned by the previous one.",
+      "detail": "A history fold repeats the single-step operation through a finite list. Ledger.run returns the final state and discards effect descriptions; replay does not execute old authorization requests again.",
+      "example": "Request hold 11, dispatch it, then time out: the final hold is unknown and its capacity remains occupied.",
+      "link": "/system",
+      "source_path": "lib/hold_ledger/ledger.ex"
+    },
+    {
+      "id": "issued",
+      "term": "Issued",
+      "short": "An authorization intent has been recorded for a key and amount; delivery is still separate.",
+      "detail": "Dispatch emits an authorization request, and the coupled model records that identity as issued. Issuing does not establish delivery or approval. Authorization delivery carries the processor’s decision; a later observation updates the ledger.",
+      "example": "Dispatching hold 11 records {11, 100, :issued} in the environment while the ledger says sent, before any remote approval.",
+      "link": "/system",
+      "source_path": "lib/hold_ledger/environment.ex",
+      "aliases": [
+        "issued identity",
+        "issued authorization"
+      ]
     }
   ]
 }

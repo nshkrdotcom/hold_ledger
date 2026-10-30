@@ -10,7 +10,7 @@ async function run(page,type,key='11'){
 async function saved(page){const id=new URL(page.url()).pathname.split('/').at(-1);return (await (await page.request.get('/sessions/'+id+'/export')).json()).trace}
 
 test('opens with the rule, proof and experiment instead of sign-off controls',async({page})=>{
- await open(page);await expect(page.locator('h1')).toHaveText('Accept requests that fit available capacity');
+ await open(page);await expect(page.locator('h1')).toHaveText('Admit a request that fits exactly');
  await expect(page.locator('#policy-anchor')).toContainText('all remaining capacity');await expect(page.locator('#proof-script')).toBeVisible();
  await expect(page.locator('#tool-drawer,[role=dialog]:visible,#review-document > details')).toHaveCount(0);await expect(page.locator('#decision-docket button')).toHaveCount(3);
  await expect(page.locator('#review-document')).not.toContainText('no policy approval');await expect(page.locator('#review-document')).not.toContainText('Exact-fit admission');

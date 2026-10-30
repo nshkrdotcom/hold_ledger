@@ -51,6 +51,92 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     end
   end
 
+  test "general pages and missing claims do not invent a selected claim", %{conn: conn} do
+    for path <- ~w(/ /start /system /proofs /assurance /repository /glossary /atlas /atlas/missing) do
+      {:ok, view, _} = live(conn, path)
+      refute has_element?(view, "#claim-navigation")
+    end
+
+    {:ok, profile, _} = live(conn, "/atlas/po_a2")
+    assert has_element?(profile, "#claim-navigation a[href='/atlas/po_a2'][aria-current='page']")
+    assert has_element?(profile, "#claim-navigation a[href='/claims/po_a2']")
+    assert has_element?(profile, "#claim-navigation a[href='/lens/po_a2']")
+
+    {:ok, other, _} = live(conn, "/atlas/po_composite_recovery")
+    assert has_element?(other, "#claim-navigation a[href='/claims/po_composite_recovery']")
+    refute has_element?(other, "#claim-navigation a[href^='/lens/']")
+  end
+
+  test "example readings retain source order and the existing correct-control fixture" do
+    assert Enum.map(Education.examples(), & &1["id"]) ==
+             ~w(M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 P01 P02 P03 P04 P05 P06 P07 P08)
+
+    assert Enum.map(Education.examples(~w(P08 M4 P04)), & &1["id"]) == ~w(M4 P04 P08)
+
+    [example] = Education.examples(["P08"])
+    assert example["correct_control"]
+    fixture = Jason.decode!(example["fixture_json"])
+    assert get_in(fixture, ["before", "entries", Access.at(0), "status"]) == "reserved"
+    assert fixture["output"]["result"] == "voided"
+    assert fixture["output"]["effects"] == []
+  end
+
+  test "related examples expose their meaning and input without circular directory links", %{
+    conn: conn
+  } do
+    {:ok, profile, _} = live(conn, "/atlas/po_a2")
+    assert has_element?(profile, "#example-m4 h3", "M4")
+    assert has_element?(profile, "#example-m5")
+    assert has_element?(profile, "#example-p04", "Proposed output · not run")
+    assert has_element?(profile, "#example-m4", "Expected from the source")
+    assert has_element?(profile, "#example-m4 details summary", "Input and source details")
+    assert has_element?(profile, "#example-m4 code", "{:request, 11, 100}")
+    assert has_element?(profile, "#example-p04 pre", "insufficient_amount")
+    assert has_element?(profile, "#example-p04 code", "apps/review_web/priv/scenarios/P04.json")
+    refute has_element?(profile, "a[href='/repository#mutation-examples']")
+    refute has_element?(profile, "a[href='/repository#review-exercises']")
+
+    {:ok, repository, _} = live(conn, "/repository")
+    assert length(repository |> render() |> LazyHTML.from_fragment() |> LazyHTML.query(".edu-example-card")) == 18
+    assert has_element?(repository, "#example-p08", "Correct local cancellation")
+    assert has_element?(repository, "#example-p08 pre", "reserved")
+    assert has_element?(repository, "a[href='#mutation-example-directory']")
+    assert has_element?(repository, "a[href='#policy-exercise-directory']")
+  end
+
+  test "editorial draft status stays separate from catalog registration", %{conn: conn} do
+    for slug <- ~w(po_a2 po_composite_recovery) do
+      {:ok, profile, _} = live(conn, "/atlas/" <> slug)
+      assert has_element?(profile, "#edu-claim-profile", "Registered claim")
+      assert has_element?(profile, "#edu-claim-editorial", "Editorial draft")
+      assert has_element?(profile, "#edu-claim-editorial", "Owner review of this explanation is not recorded here.")
+    end
+  end
+
+  test "background reading and optional self-checks appear where the ideas are used", %{
+    conn: conn
+  } do
+    for {path, id, host} <- [
+          {"/start", "edu-hold-primer", "https://docs.stripe.com/payments/place-a-hold-on-a-payment-method"},
+          {"/system", "edu-retry-primer", "https://docs.stripe.com/api/idempotent_requests"},
+          {"/proofs", "edu-statement-primer", "https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/"},
+          {"/proofs", "edu-domain-primer", "https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/"},
+          {"/assurance", "edu-kernel-primer", "https://lean-lang.org/doc/reference/latest/ValidatingProofs/"}
+        ] do
+      {:ok, view, _} = live(conn, path)
+      assert has_element?(view, "##{id} a[href='#{host}']")
+      assert has_element?(view, "##{id} details.edu-self-check summary")
+    end
+
+    {:ok, overview, _} = live(conn, "/")
+    assert has_element?(overview, "#edu-overview-lesson", "A ledger can refuse every request")
+
+    {:ok, glossary, html} = live(conn, "/glossary")
+    assert has_element?(glossary, "#edu-reading-directory")
+    [before_results, _] = String.split(html, "id=\"edu-glossary-results\"", parts: 2)
+    assert before_results =~ "id=\"edu-reading-directory\""
+  end
+
   test "the introductory story changes on selection, always labels the example", %{conn: conn} do
     {:ok, view, _} = live(conn, "/start")
     assert has_element?(view, "#edu-story", "Example walkthrough")

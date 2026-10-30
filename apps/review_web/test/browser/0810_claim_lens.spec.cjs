@@ -107,9 +107,9 @@ test('keyboard decisions and drafts reset across study navigation and reload', a
 
   await page.goto('/claims/l2_identity');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  const lens = page.locator('#case-review-modes a[href="/lens/po_a2"]');
-  await expect(lens).toHaveText('Claim Lens · 2 examples');
-  await lens.click();
+  await expect(page.locator('#claim-navigation a[href^="/lens/"]')).toHaveCount(0);
+  await expect(page.locator('#decision-docket')).toContainText('Mark reviewed');
+  await page.getByRole('navigation', {name: 'Main navigation'}).getByRole('link', {name: 'Practice a review'}).click();
   await expect(page).toHaveURL(/\/lens\/po_a2$/);
   await expect(page.locator('#lens-demo-scope')).toContainText('Two reviews to practice');
   await page.locator('#lens-demo-scope a[href="/lens/po_exposure_retain"]').click();

@@ -1449,13 +1449,14 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       )
 
     ~H"""
-    <Layouts.app flash={@flash} review_stage="challenge" review_claim={@slug || "po_a2"}>
+    <Layouts.app
+      flash={@flash}
+      review_stage="challenge"
+      review_claim={if(@doc && @reading, do: @slug)}
+      review_case={@doc && @doc["id"]}
+    >
       <:tools :if={@doc && @reading}>
         <nav class="lens-modes case-mode-nav" id="case-review-modes" aria-label="Review experiences">
-          <a href={~p"/claims/#{@slug}/#{@doc["id"]}"} aria-current="page">Case Lab</a>
-          <a href={~p"/lens/#{if @slug in ~w(po_a2 po_exposure_retain), do: @slug, else: "po_a2"}"}>
-            Claim Lens · 2 examples
-          </a>
           <a href={~p"/claims/#{@slug}/#{@doc["id"]}?compare=open"}>Compare versions</a>
         </nav>
         <.live_component
@@ -1556,7 +1557,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 />
                 <.input_strip case={@case_data} preview={@preview} />
                 <p :if={@preview || @experiment} id="scratch-status" class="scratch-label">
-                  Unsaved experiment <button phx-click="reset_experiment">Reset</button>
+                  <strong>Unsaved experiment</strong>
+                  <span>Save to timeline keeps these changes in this review session. Reset returns to the saved timeline.</span>
+                  <button phx-click="reset_experiment">Reset</button>
                 </p>
                 <.contrast
                   case={@case_data}

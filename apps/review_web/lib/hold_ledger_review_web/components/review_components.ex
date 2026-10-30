@@ -83,6 +83,10 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         <summary data-edu-hint="Expand the source-bound law precondition and postcondition; native Lean-only groups use theorem declarations instead.">
           Read full claim · requires / expects
         </summary>
+        <p :if={@slug == "po_exposure_retain"} id="retention-check-scope" class="scope-note">
+          This claim keeps the same request ID and amount in a holding status until its release evidence.
+          The accounting check separately asks whether the counters match those entries.
+        </p>
         <dl :if={@reading["contract"]["status"] == "source_read"}>
           <div>
             <dt>
@@ -174,6 +178,10 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       </div>
       <div :if={@show_sources} id="source-comparison" class="source-chooser">
         <p>Choose two trusted local versions to run this case in separate processes.</p>
+        <p class="scope-note">
+          Compare what the claim covers, what outputs it permits, and what the code returns.
+          A difference needs review against the policy before you call it a defect.
+        </p>
         <.form for={@compare_form} id="compare-form" phx-submit="compare" class="form-row">
           <.input
             field={@compare_form[:baseline]}
@@ -609,6 +617,10 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
       <header class="review-section-heading">
         <h2>Can a cancelled hold reappear?</h2><span class="type-badge">Processor model</span>
       </header>
+      <p id="processor-assumption-guide" class="scope-note">
+        This case uses a simulated processor. Change whether it remembers cancellations
+        to see what a delayed authorization could do after capacity has been released locally.
+      </p>
       <.form
         :if={@entries != []}
         for={to_form(%{"key" => @selected_key})}
@@ -639,21 +651,23 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           aria-checked={to_string(@fencing)}
           phx-click="toggle_assumption"
           phx-value-name="fencing"
+          data-edu-term="terminal-fence"
+          aria-describedby="processor-assumption-guide"
         >Processor remembers cancellations: {if @fencing, do: "on", else: "off"}</button>
         <table>
           <thead>
             <tr>
-              <th>Same identity</th><th>After delayed delivery</th>
+              <th scope="col">Same request ID</th><th scope="col">After delayed delivery</th>
             </tr>
           </thead><tbody>
             <tr>
-              <th>Money reserved locally</th><td id="premise-local">
+              <th scope="row">Money reserved locally</th><td id="premise-local">
                 {@result.local}¢
               </td>
             </tr><tr>
-              <th>Remote authorization for this key</th><td id="premise-remote">{@result.remote}¢</td>
+              <th scope="row">Remote authorization for this key</th><td id="premise-remote">{@result.remote}¢</td>
             </tr><tr>
-              <th>Does the ledger cover this authorization?</th><td id="premise-covered">
+              <th scope="row">Does the ledger cover this authorization?</th><td id="premise-covered">
                 {answer(@result.covered)}
               </td>
             </tr>

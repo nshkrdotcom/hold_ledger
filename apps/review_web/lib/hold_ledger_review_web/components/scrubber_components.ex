@@ -66,7 +66,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         id="timeline"
         class="fork-timeline"
         role="group"
-        aria-label="Code and alternative timeline"
+        aria-label="Code path and proposed-output path"
       >
         <div class="shared-history" aria-label="Shared history before the fork">
           <span class="timeline-caption">Shared history</span>
@@ -92,11 +92,12 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           />
         </div>
         <p class="fork-label" id="fork-origin">
-          Two recorded outcomes from the same event. Select a step to inspect its state and claim checks.
+          Both paths share the history above. One follows the code's result; the other starts with the output you proposed.
         </p>
         <div class="timeline-branches">
           <section class="timeline-branch code-branch" id="code-branch" aria-label="Code path">
             <h3><span class="branch-marker" aria-hidden="true">A</span> Code path</h3>
+            <p class="scope-note">Starts with the code's output for the event at the fork.</p>
             <div class="branch-steps">
               <.timeline_step
                 :for={{step, index} <- Enum.with_index(@fork.code, length(@fork.shared) + 1)}
@@ -114,9 +115,15 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           <section
             class="timeline-branch alternative-branch"
             id="alternative-branch"
-            aria-label="Alternative path"
+            aria-label="Proposed-output path"
           >
-            <h3><span class="branch-marker" aria-hidden="true">B</span> Alternative path</h3>
+            <h3>
+              <span class="branch-marker" aria-hidden="true">B</span>
+              <button type="button" class="edu-term-button" data-edu-term="hypothetical">
+                Proposed-output path
+              </button>
+            </h3>
+            <p class="scope-note">Starts with your proposed output. Later events run from that state.</p>
             <div class="branch-steps">
               <.timeline_step
                 :for={{step, index} <- Enum.with_index(@fork.alternative, length(@fork.shared) + 1)}
@@ -254,12 +261,20 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
       <table :if={@ledger["entries"] != []} id="entries">
         <thead>
           <tr>
-            <th>Request ID</th><th>Amount</th><th>Hold state</th>
+            <th scope="col">
+              <button type="button" class="edu-term-button" data-edu-term="request-id">Request ID</button>
+            </th>
+            <th scope="col">Amount (¢)</th>
+            <th scope="col">
+              <button type="button" class="edu-term-button" data-edu-term="hold">Hold state</button>
+            </th>
           </tr>
         </thead><tbody>
           <tr :for={entry <- @ledger["entries"]}>
             <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>
-              {ReviewCopy.state(entry["status"])}
+              <button type="button" class="edu-term-button" data-edu-term={entry["status"]}>
+                {ReviewCopy.state(entry["status"])}
+              </button>
             </td>
           </tr>
           <tr :if={@ledger["entries"] == []}>
@@ -276,21 +291,27 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         <p>Each entry contains its request ID, amount in cents and hold state.</p>
       </details>
       <div :if={@doc["mode"] == "exposure"} id="remote-state">
-        <h3>After selected coupled event</h3>
+        <h3>Ledger and processor after this event</h3>
+        <p class="scope-note" id="coupled-state-guide">
+          The processor can approve a request before its reply reaches the ledger.
+          These two views show what each side knows in this simulated case.
+        </p>
         <p id="coupled-amount-counter">
           {@recorded["ledger"]["used_amount"]}¢ / {@recorded["ledger"]["amount_limit"]}¢ reserved · {length(
             @recorded["obligations"]
-          )} pending voids
+          )} pending cancellations
         </p>
         <table id="coupled-local-after">
-          <caption>Local result</caption><thead>
+          <caption>Local ledger</caption><thead>
             <tr>
-              <th>Identity</th><th>Amount</th><th>Status</th>
+              <th scope="col">Request ID</th><th scope="col">Amount (¢)</th><th scope="col">Known locally</th>
             </tr>
           </thead><tbody>
             <tr :for={entry <- @recorded["ledger"]["entries"]}>
               <td>{entry["key"]}</td><td>{entry["amount"]}¢</td><td>
-                {ReviewCopy.state(entry["status"])}
+                <button type="button" class="edu-term-button" data-edu-term={entry["status"]}>
+                  {ReviewCopy.state(entry["status"])}
+                </button>
               </td>
             </tr>
           </tbody>
@@ -298,7 +319,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         <table id="coupled-remote-after">
           <caption>Modeled processor</caption><thead>
             <tr>
-              <th>Identity</th><th>Amount</th><th>Status</th>
+              <th scope="col">Request ID</th><th scope="col">Amount (¢)</th><th scope="col">Processor state</th>
             </tr>
           </thead><tbody>
             <tr :for={entry <- @recorded["remote"]}>
@@ -308,6 +329,19 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             </tr>
           </tbody>
         </table>
+        <details class="coupled-reading" id="coupled-event-guide">
+          <summary>When can these states differ?</summary>
+          <p>
+            Dispatch records an authorization request as
+            <button type="button" class="edu-term-button" data-edu-term="issued">issued</button>.
+            Issuing a request does not establish delivery or approval. Authorization delivery records
+            the processor's decision; a later observation updates the ledger.
+          </p>
+          <p>
+            Cancelling an authorized hold leaves it waiting for cancellation locally.
+            Even after a remote void, the ledger holds capacity until it receives the confirmation.
+          </p>
+        </details>
       </div>
     </section>
     """
@@ -342,7 +376,8 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             field={@event_form[:key]}
             type="number"
             disabled={@event_form[:type].value == "restart"}
-            label="Identity"
+            label="Request ID"
+            data-edu-term="request-id"
             min="0"
             max="1000000"
           />
@@ -351,6 +386,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             type="number"
             disabled={@event_form[:type].value != "request"}
             label="Amount (¢)"
+            data-edu-hint="Amounts are whole cents: 100 means $1.00. A new request must fit the available amount and a free hold slot."
             min="1"
             max="1000000"
           />
@@ -368,10 +404,14 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             id="apply-event-pair"
             phx-click="apply_event_pair"
             disabled={!Trace.current?(@doc)}
+            aria-describedby="pair-event-guide"
           >
             Run on both paths
           </button>
         </.form>
+        <p :if={@fork && @doc["mode"] == "ledger"} id="pair-event-guide" class="scope-note">
+          Run this event from the end of each path, then compare the results and reserved amount.
+        </p>
       </div>
       <button id="coupled-model" phx-click="coupled" class="text-button">Open coupled processor case</button>
     </section>

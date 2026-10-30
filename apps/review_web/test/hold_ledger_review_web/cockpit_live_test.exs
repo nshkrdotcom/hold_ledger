@@ -61,6 +61,9 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     tab(view, "clauses")
     assert has_element?(view, "#dissector")
     assert has_element?(view, ".condition-group")
+    assert has_element?(view, "#condition-values-guide", "selected input and output")
+    assert has_element?(view, "#contrast-matrix caption")
+    assert has_element?(view, "#contrast-matrix th[scope='col']", "Proposed output")
   end
 
   test "validity law permits the same candidate rejected by retention", %{conn: conn} do

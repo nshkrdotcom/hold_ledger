@@ -49,6 +49,10 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
       <header>
         <span class="section-number">02</span><h2>Conditions and proof</h2>
       </header>
+      <p :if={@bindings != []} id="condition-values-guide" class="scope-note">
+        These values come from the selected input and output. Expand a condition to inspect its comparison.
+        If <code>requires</code> is false for these values, the claim makes no promise for this combination.
+      </p>
       <details
         :if={@source_requested || @bindings == []}
         id="condition-source"

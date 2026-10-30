@@ -1,7 +1,8 @@
 """Check the educational catalog's coverage and source references without BEAM.
 
-These checks validate navigation data and provenance. They do not judge the
-meaning of the prose, evaluate laws, or establish formal proof acceptance.
+These checks validate navigation data, example structure and provenance. They
+do not judge prose truth, run examples, evaluate laws, record owner review, or
+establish formal proof acceptance.
 Run from any directory: python3 apps/review_web/scripts/test_education_content.py
 """
 
@@ -42,6 +43,12 @@ TERM_IDS = set(
     "induction axiom omega aesop cases sorry proof-status source-identity "
     "proof-dependency pointwise hypothetical assumption journal replay "
     "composite terminal-fence coverage vacuity effect-intent policy-gap review".split()
+) | {"attempt", "poison", "obligation", "oracle", "fold", "issued"}
+EXAMPLE_IDS = [f"M{number}" for number in range(1, 11)] + [
+    f"P{number:02}" for number in range(1, 9)
+]
+EXAMPLE_COPY_FIELDS = (
+    "title", "summary", "expected_output", "challenge", "lesson",
 )
 REFERENCE_ROUTES = {
     "/start", "/system", "/guarantees", "/proofs", "/assurance",
@@ -60,6 +67,8 @@ class EducationContentTest(unittest.TestCase):
         cls.claim_file = read_json(PRIV / "education_claims.json")
         cls.claims = cls.claim_file["claims"]
         cls.terms = read_json(PRIV / "education_glossary.json")["terms"]
+        cls.example_file = read_json(PRIV / "education_examples.json")
+        cls.examples = cls.example_file["examples"]
 
     def source_path(self, value):
         self.assertIsInstance(value, str)
@@ -86,7 +95,7 @@ class EducationContentTest(unittest.TestCase):
                 for field in COPY_FIELDS:
                     self.assertIsInstance(claim.get(field), str, field)
                     self.assertTrue(claim[field].strip(), field)
-                self.assertEqual(claim["risk"], claim["wrong_behavior"])
+                self.assertNotIn("risk", claim, "Use wrong_behavior as the single copy source")
         # Copying a family-level warning loses the individual claim's example.
         for field in ("scenario", "wrong_behavior"):
             values = [claim.get(field) for claim in self.claims]
@@ -175,6 +184,72 @@ class EducationContentTest(unittest.TestCase):
                     self.assertTrue(term[field].strip(), field)
                 self.assertIn(term["link"], REFERENCE_ROUTES)
                 self.source_path(term.get("source_path"))
+
+    def test_examples_cover_the_named_mutations_and_policy_exercises(self):
+        self.assertEqual(self.example_file.get("schema"), 1)
+        self.assertEqual([example["id"] for example in self.examples], EXAMPLE_IDS)
+        by_id = {example["id"]: example for example in self.examples}
+        registered = {law["slug"] for law in self.catalog}
+        referenced = set()
+
+        for claim in self.claims:
+            with self.subTest(claim=claim["slug"]):
+                for example_id in claim["named_mutants"] + claim["exercise_ids"]:
+                    self.assertIn(example_id, by_id)
+                    referenced.add(example_id)
+                for example_id in claim["named_mutants"]:
+                    self.assertEqual(by_id[example_id]["target_slug"], claim["slug"])
+                    self.assertTrue(
+                        any(
+                            ref["kind"] == "mutant"
+                            and ref["reference"] == example_id
+                            and ref["path"] in by_id[example_id]["source_paths"]
+                            for ref in claim["provenance"]
+                        )
+                    )
+        self.assertEqual(referenced, set(EXAMPLE_IDS))
+
+        for example in self.examples:
+            with self.subTest(example=example["id"]):
+                for field in EXAMPLE_COPY_FIELDS:
+                    self.assertIsInstance(example.get(field), str, field)
+                    self.assertTrue(example[field].strip(), field)
+                self.assertIsInstance(example.get("source_paths"), list)
+                self.assertTrue(example["source_paths"])
+                self.assertEqual(
+                    len(example["source_paths"]), len(set(example["source_paths"]))
+                )
+                for path in example["source_paths"]:
+                    self.source_path(path)
+
+                if example["id"].startswith("M"):
+                    self.assertEqual(example["kind"], "mutation")
+                    for field in ("before", "event"):
+                        self.assertIsInstance(example.get(field), str, field)
+                        self.assertTrue(example[field].strip(), field)
+                    self.assertIn(example.get("target_slug"), registered)
+                    self.assertNotIn("fixture_path", example)
+                else:
+                    self.assertEqual(example["kind"], "exercise")
+                    fixture_path = (
+                        f"apps/review_web/priv/scenarios/{example['id']}.json"
+                    )
+                    self.assertEqual(example.get("fixture_path"), fixture_path)
+                    fixture = read_json(self.source_path(fixture_path))
+                    self.assertTrue({"before", "event", "output"} <= fixture.keys())
+                    for field in ("before", "event", "output", "target_slug"):
+                        self.assertNotIn(field, example, "Read the unchanged fixture")
+
+        self.assertEqual(
+            [example["id"] for example in self.examples if example.get("correct_control")],
+            ["P08"],
+        )
+        self.assertIs(by_id["P08"]["correct_control"], True)
+
+    def test_obligation_help_distinguishes_pending_work_from_proof_claims(self):
+        by_id = {term["id"]: term for term in self.terms}
+        self.assertNotIn("obligation", by_id["claim"].get("aliases", []))
+        self.assertIn("proof obligation", by_id["claim"].get("aliases", []))
 
 
 if __name__ == "__main__":

@@ -3,14 +3,17 @@ defmodule HoldLedgerReviewWeb.Education do
   Source-catalog-backed educational navigation. This is editorial interpretation,
   never an independent specification, proof result, or kernel dependency graph.
   """
-  alias HoldLedgerReview.ProofReading
+  alias HoldLedgerReview.{Config, ProofReading}
 
   @metadata_path Path.expand("../../priv/education_claims.json", __DIR__)
   @glossary_path Path.expand("../../priv/education_glossary.json", __DIR__)
+  @examples_path Path.expand("../../priv/education_examples.json", __DIR__)
   @external_resource @metadata_path
   @external_resource @glossary_path
+  @external_resource @examples_path
   @metadata Jason.decode!(File.read!(@metadata_path))["claims"]
   @terms Jason.decode!(File.read!(@glossary_path))["terms"]
+  @examples Jason.decode!(File.read!(@examples_path))["examples"]
   @meta_by_slug Map.new(@metadata, &{&1["slug"], &1})
 
   @families [
@@ -248,6 +251,29 @@ defmodule HoldLedgerReviewWeb.Education do
   def term(id), do: Enum.find(@terms, &(&1["id"] == id))
   def editorial_slugs, do: Map.keys(@meta_by_slug) |> Enum.sort()
 
+  @doc "Authored examples in source order, with existing fixture text for reading only."
+  def examples, do: Enum.map(@examples, &example_source/1)
+
+  def examples(ids) when is_list(ids) do
+    requested = MapSet.new(ids)
+
+    @examples
+    |> Enum.filter(&MapSet.member?(requested, &1["id"]))
+    |> Enum.map(&example_source/1)
+  end
+
+  defp example_source(%{"fixture_path" => path} = example) do
+    source =
+      case File.read(Path.join(Config.root(), path)) do
+        {:ok, text} -> text
+        {:error, _} -> nil
+      end
+
+    Map.put(example, "fixture_json", source)
+  end
+
+  defp example_source(example), do: example
+
   def search_terms(query) do
     needle = query |> String.slice(0, 100) |> String.trim() |> String.downcase()
 
@@ -278,6 +304,7 @@ defmodule HoldLedgerReviewWeb.Education do
         "Wrong behavior: #{claim["wrong_behavior"]}",
         "Why another check may miss it: #{claim["why_others_miss"]}",
         "Scope: #{claim["does_not_cover"]}",
+        "Editorial draft. Owner review of this explanation is not recorded here.",
         "Registered claim. Registration does not establish formal acceptance.",
         "Sources:\n#{sources}"
       ],

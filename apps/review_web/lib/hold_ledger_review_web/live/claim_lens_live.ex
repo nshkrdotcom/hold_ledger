@@ -251,8 +251,8 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
     ~H"""
     <Layouts.app
       flash={@flash}
-      review_stage="decision"
-      review_claim={if(@study, do: @study.slug, else: "po_a2")}
+      review_stage="practice"
+      review_claim={if(@study && @observation && @reading, do: @study.slug)}
     >
       <section :if={!@study || !@observation || !@reading} id="lens-unavailable" role="status">
         Source-bound Claim Lens reading is unavailable.
@@ -271,8 +271,6 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
           <div class="lens-hero-top">
             <span class="lens-kicker">Claim Lens</span>
             <nav id="lens-modes" class="lens-modes" aria-label="Review experiences">
-              <a href={~p"/claims/#{@study.slug}"}>Case Lab</a>
-              <a href={~p"/lens/#{@study.slug}"} aria-current="page">Claim Lens</a>
               <a href={~p"/claims/#{@study.slug}?compare=open"}>Compare versions</a>
             </nav>
           </div>
@@ -288,14 +286,14 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 href={lens_path(study.slug, @mode)}
                 aria-current={if(study.slug == @study.slug, do: "page")}
               >
-                {study.title}
+                {ReviewCopy.title(%{"slug" => study.slug})}
               </a>
             </nav>
           </div>
           <div class="lens-hero-content">
             <div>
               <h1>Does the claim cover the policy?</h1>
-              <p>Read the requirement and proposed change. Try the selected case, record
+              <p>Read the requirement and proposed claim change. Try the selected case, record
                 your judgment, then compare it with the explanation.</p>
             </div>
             <div class="lens-hero-aside" aria-label="Review scope">
@@ -322,7 +320,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
           <div class="lens-trust-strip" aria-label="Evidence boundaries">
             <span><b>Policy</b> Required behavior</span>
             <span><b>Single-case check</b> This input and output</span>
-            <span><b>Proposed change</b> Not checked by Lean</span>
+            <span><b>Proposed claim change</b> Not checked by Lean</span>
           </div>
           <details id="lens-evidence-legend" class="lens-details lens-legend">
             <summary data-edu-hint="Distinguish policy, a single-case result, source reading, checked artifacts, and unverified external assumptions.">
@@ -357,14 +355,14 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
             <section class="lens-panel lens-index" id="lens-study-picker">
               <span class="lens-step">01 / Review subject</span>
               <h2>Choose an example</h2>
-              <nav aria-label="Curated obligations" class="lens-choice-stack">
+              <nav aria-label="Practice studies" class="lens-choice-stack">
                 <a
                   :for={study <- @studies}
                   href={lens_path(study.slug, @mode)}
                   aria-current={if(study.slug == @study.slug, do: "page")}
                   class={["lens-study-link", study.slug == @study.slug && "selected"]}
                 >
-                  <strong>{study.title}</strong>
+                  <strong>{ReviewCopy.title(%{"slug" => study.slug})}</strong>
                   <small :if={@feedback?}>{study.question}</small>
                 </a>
               </nav>
@@ -406,10 +404,10 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
           <div class="lens-main">
             <section class="lens-panel lens-policy" id="lens-policy">
               <div class="lens-panel-head">
-                <span class="lens-step">03 / Independent intent</span>
+                <span class="lens-step">03 / Payment requirement</span>
                 <span class="lens-evidence lens-provenance" data-kind="policy">Policy Requirement</span>
               </div>
-              <h2>{@study.title}</h2>
+              <h2>{ReviewCopy.title(%{"slug" => @study.slug})}</h2>
               <blockquote>{@study.policy}</blockquote>
               <p class="lens-footnote">
                 {@study.policy_section} ·
@@ -424,8 +422,8 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
 
             <section class="lens-panel lens-perturb" id="lens-perturbation">
               <div class="lens-panel-head">
-                <span class="lens-step">04 / Contract boundary</span>
-                <span class="lens-evidence lens-provenance" data-kind="hypothetical">HYPOTHETICAL: Unchecked by Lean</span>
+                <span class="lens-step">04 / Proposed claim change</span>
+                <span class="lens-evidence lens-provenance" data-kind="hypothetical">Not checked by Lean</span>
               </div>
               <h2>
                 <button
@@ -435,7 +433,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   title="Explain this concept"
                 >What if the precondition changed?</button>
               </h2>
-              <div class="lens-variations" role="group" aria-label="Hypothetical edit">
+              <div class="lens-variations" role="group" aria-label="Proposed claim change">
                 <button
                   :for={variation <- @study.variations}
                   data-edu-hint="Select an illustrative contract edit. All changes here are hypothetical and unchecked by Lean."
@@ -720,7 +718,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                       if @observation.alternative.status == :doesnt_apply, do: "excluded"
                     }
                   >
-                    <span class="lens-evidence lens-provenance" data-kind="hypothetical">Hypothetical · unchecked by Lean</span>
+                    <span class="lens-evidence lens-provenance" data-kind="hypothetical">Proposed claim · not checked by Lean</span>
                     <strong>{verdict_label(@observation.alternative.status)}</strong>
                     <p>
                       {hypothetical_description(@observation)}
@@ -765,7 +763,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                     <h3>Computed result</h3><pre tabindex="0">{Jason.encode!(@observation.actual, pretty: true)}</pre>
                   </div>
                   <div>
-                    <h3>Alternative (not run)</h3><pre tabindex="0">{Jason.encode!(@observation.candidate, pretty: true)}</pre>
+                    <h3>Proposed output · not run</h3><pre tabindex="0">{Jason.encode!(@observation.candidate, pretty: true)}</pre>
                   </div>
                 </div>
               </details>
@@ -960,8 +958,8 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   >What is actually checked?</button>
                 </h2>
                 <dl class="lens-evidence-grid">
-                  <dt>Pointwise baseline</dt><dd>
-                    Audited Elixir law · {@observation.baseline.bindings_tested} source binding(s)
+                  <dt>Current claim on this case</dt><dd>
+                    Elixir evaluator · {@observation.baseline.bindings_tested} combinations of values checked
                   </dd>
                   <dt>Law source SHA-256</dt><dd>
                     <code>{String.slice(@observation.baseline[:source_sha256] || "", 0, 16)}</code>
@@ -976,7 +974,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   <dt>Required formal gate</dt><dd id="lens-formal-status">
                     {evidence_label(@reading["formal"]["status"])}
                   </dd>
-                  <dt>Hypothetical edit proof</dt><dd>Not run / unavailable</dd>
+                  <dt>Proof check for proposed change</dt><dd>Not run</dd>
                   <dt>Lean tactic goals</dt><dd>Not collected / unavailable</dd>
                 </dl>
                 <p class="lens-footnote">
@@ -1147,7 +1145,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
     """
     # Hold Ledger · provisional human review
 
-    - Study: #{study.slug} · #{study.title}
+    - Study: #{study.slug} · #{ReviewCopy.title(%{"slug" => study.slug})}
     - Classification: #{decision_label(review.decision)}
     - Policy anchor: #{review.policy_anchor}
     - Contract clause: #{review.contract_clause}

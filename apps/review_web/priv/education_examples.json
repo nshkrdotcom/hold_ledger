@@ -1,0 +1,288 @@
+{
+  "schema": 1,
+  "examples": [
+    {
+      "id": "M1",
+      "kind": "mutation",
+      "title": "Reuse a finished request key",
+      "summary": "Key 11 is already remembered as voided for 300¢. The same key requests 300¢ again.",
+      "before": "{1000, 3, 0, 0, [{11, 300, :voided}]}",
+      "event": "{:request, 11, 300}",
+      "expected_output": "Return duplicate, leave the entire state unchanged and request no effects. Key 11 remains voided and the used totals stay zero.",
+      "challenge": "The deliberate source patch treats a declined or voided key as fresh, so this request can append another entry for key 11.",
+      "lesson": "Available capacity does not make an old identity new. Released keys must remain remembered.",
+      "target_slug": "po_a4_duplicate",
+      "source_paths": [
+        "mutants/01_terminal_replay/README.md",
+        "mutants/01_terminal_replay/counterexample_test.exs",
+        "mutants/01_terminal_replay/mutant.patch"
+      ]
+    },
+    {
+      "id": "M2",
+      "kind": "mutation",
+      "title": "Free counters after a timeout",
+      "summary": "Hold 11 was sent for 300¢ and still uses one slot. Its authorization reply times out.",
+      "before": "{1000, 3, 300, 1, [{11, 300, :sent}]}",
+      "event": "{:timeout, 11}",
+      "expected_output": "Change hold 11 to unknown while retaining 300¢ and one slot. Return marked_unknown and no effects.",
+      "challenge": "The deliberate patch keeps the unknown entry but subtracts its 300¢ and slot, leaving both used counters at zero.",
+      "lesson": "The entry and counters must agree. P06 presents this same kind of proposed output; P03 instead invents a terminal decline.",
+      "target_slug": "po_b1_timeout",
+      "source_paths": [
+        "mutants/02_timeout_release/README.md",
+        "mutants/02_timeout_release/counterexample_test.exs",
+        "mutants/02_timeout_release/mutant.patch"
+      ]
+    },
+    {
+      "id": "M3",
+      "kind": "mutation",
+      "title": "Retry under a different key",
+      "summary": "Hold 11 is unknown for 300¢. Retry its authorization using the stored identity and amount.",
+      "before": "{1000, 3, 300, 1, [{11, 300, :unknown}]}",
+      "event": "{:retry, 11}",
+      "expected_output": "Change hold 11 to sent, retain 300¢ and one slot, return retried and request {:authorize, 11, 300}.",
+      "challenge": "The deliberate patch requests authorization for key 12 instead, while the ledger entry still belongs to key 11.",
+      "lesson": "Retrying the same hold must preserve its remote identity. Correct local counters do not establish that the requested effect names the right key.",
+      "target_slug": "po_b3",
+      "source_paths": [
+        "mutants/03_retry_identity/README.md",
+        "mutants/03_retry_identity/counterexample_test.exs",
+        "mutants/03_retry_identity/mutant.patch"
+      ]
+    },
+    {
+      "id": "M4",
+      "kind": "mutation",
+      "title": "Refuse an exact-fit request",
+      "summary": "An empty account has a 100¢ limit and one slot. Fresh key 11 requests exactly 100¢.",
+      "before": "{100, 1, 0, 0, []}",
+      "event": "{:request, 11, 100}",
+      "expected_output": "Reserve 100¢ and one slot for key 11, record reserved status, return admitted and request no effects.",
+      "challenge": "The deliberate patch changes the amount rejection test from > to >=, so equality is refused as insufficient_amount.",
+      "lesson": "A rejected exact-fit request leaves a valid empty ledger but violates required admission.",
+      "target_slug": "po_a2",
+      "source_paths": [
+        "mutants/04_exact_fit/README.md",
+        "mutants/04_exact_fit/counterexample_test.exs",
+        "mutants/04_exact_fit/mutant.patch"
+      ]
+    },
+    {
+      "id": "M5",
+      "kind": "mutation",
+      "title": "Refuse every eligible request",
+      "summary": "An empty account has 1000¢ of capacity and three slots. Fresh key 22 requests only 100¢.",
+      "before": "{1000, 3, 0, 0, []}",
+      "event": "{:request, 22, 100}",
+      "expected_output": "Add key 22 as a reserved 100¢ hold, set used totals to 100¢ and one slot, return admitted and request no effects.",
+      "challenge": "The deliberate patch replaces the successful admission branch with insufficient_amount and an unchanged state.",
+      "lesson": "Refusing every request can preserve all upper bounds. A separate admission claim requires useful service for eligible inputs.",
+      "target_slug": "po_a2",
+      "source_paths": [
+        "mutants/05_always_reject/README.md",
+        "mutants/05_always_reject/counterexample_test.exs",
+        "mutants/05_always_reject/mutant.patch"
+      ]
+    },
+    {
+      "id": "M6",
+      "kind": "mutation",
+      "title": "Treat acknowledgment as approval",
+      "summary": "Hold 11 is sent for 300¢. A transport acknowledgment arrives without an approval result.",
+      "before": "{1000, 3, 300, 1, [{11, 300, :sent}]}",
+      "event": "{:transport_ack, 11}",
+      "expected_output": "Leave the entire state unchanged, return stale and request no effects. Hold 11 remains sent with 300¢ and one slot held.",
+      "challenge": "The deliberate patch changes the sent entry to authorized and returns authorized when it receives only the acknowledgment.",
+      "lesson": "Delivery acknowledgment supplies no processor approval. Sent and authorized use the same capacity, so accounting alone misses this error.",
+      "target_slug": "po_b4",
+      "source_paths": [
+        "mutants/06_ack_result/README.md",
+        "mutants/06_ack_result/counterexample_test.exs",
+        "mutants/06_ack_result/mutant.patch"
+      ]
+    },
+    {
+      "id": "M7",
+      "kind": "mutation",
+      "title": "Forget the cancellation request",
+      "summary": "Hold 11 is authorized for 300¢. Ask to cancel it at the processor.",
+      "before": "{1000, 3, 300, 1, [{11, 300, :authorized}]}",
+      "event": "{:void, 11}",
+      "expected_output": "Set hold 11 to voiding, retain 300¢ and one slot, return voiding and request {:void, 11}.",
+      "challenge": "The deliberate patch keeps the expected state and result but removes the required void effect.",
+      "lesson": "Retaining capacity addresses exposure while the effect requests the unfinished cancellation. P02 isolates the missing-effect error.",
+      "target_slug": "po_b3",
+      "source_paths": [
+        "mutants/07_void_effect/README.md",
+        "mutants/07_void_effect/counterexample_test.exs",
+        "mutants/07_void_effect/mutant.patch"
+      ]
+    },
+    {
+      "id": "M8",
+      "kind": "mutation",
+      "title": "Increase used amount on decline",
+      "summary": "Hold 11 is sent for 300¢ and occupies one slot. Its processor result is declined.",
+      "before": "{1000, 3, 300, 1, [{11, 300, :sent}]}",
+      "event": "{:processor_result, 11, :declined}",
+      "expected_output": "Keep key 11 and its 300¢ amount with declined status, reduce both used counters to zero, return declined and request no effects.",
+      "challenge": "The deliberate patch adds 300¢ instead of subtracting it. Used amount becomes 600¢ even though the declined entry holds no capacity.",
+      "lesson": "A correct terminal label does not repair incorrect counters. The next-state validity claim checks their agreement.",
+      "target_slug": "po_b1_processor_result",
+      "source_paths": [
+        "mutants/08_decline_accounting/README.md",
+        "mutants/08_decline_accounting/counterexample_test.exs",
+        "mutants/08_decline_accounting/mutant.patch"
+      ]
+    },
+    {
+      "id": "M9",
+      "kind": "mutation",
+      "title": "Keep sent status after restart",
+      "summary": "Hold 11 was sent for 300¢ before the process restarted. No terminal outcome is available.",
+      "before": "{1000, 3, 300, 1, [{11, 300, :sent}]}",
+      "event": ":restart",
+      "expected_output": "Change hold 11 from sent to unknown, retain 300¢ and one slot, return restarted and request no effects.",
+      "challenge": "The deliberate patch leaves the entry sent instead of recording the uncertainty introduced by restart.",
+      "lesson": "Both statuses use the same capacity, so this fault can pass a validity-only restart check. The restart claim also requires that no sent entries remain.",
+      "target_slug": "po_b7",
+      "source_paths": [
+        "mutants/09_restart_unknown/README.md",
+        "mutants/09_restart_unknown/counterexample_test.exs",
+        "mutants/09_restart_unknown/mutant.patch"
+      ]
+    },
+    {
+      "id": "M10",
+      "kind": "mutation",
+      "title": "Release before cancellation is confirmed",
+      "summary": "Hold 1 is authorized for the account’s full 100¢. Request cancellation, then try another 100¢ request under key 2.",
+      "before": "{100, 2, 100, 1, [{1, 100, :authorized}]}",
+      "event": "{:void, 1}",
+      "expected_output": "Set hold 1 to voiding, retain 100¢ and one slot, return voiding and request {:void, 1}. A following {:request, 2, 100} must return insufficient_amount.",
+      "challenge": "The deliberate patch returns voided and frees both counters while still requesting the remote void. The old authorization may remain live.",
+      "lesson": "Requesting cancellation does not establish completion. P05 presents this patch-shaped proposal; P01 also omits the effect.",
+      "target_slug": "po_exposure_retain",
+      "source_paths": [
+        "mutants/10_premature_void_release/README.md",
+        "mutants/10_premature_void_release/counterexample_test.exs",
+        "mutants/10_premature_void_release/mutant.patch"
+      ]
+    },
+    {
+      "id": "P01",
+      "kind": "exercise",
+      "title": "Cancel an approved hold too early",
+      "summary": "Hold 1 is authorized for 100¢, using all the amount capacity. Request its cancellation.",
+      "expected_output": "Keep 100¢ and one slot held, change hold 1 to voiding, return voiding and request {:void, 1}.",
+      "challenge": "The proposed output marks hold 1 voided, frees both counters, returns voided and requests no remote work.",
+      "lesson": "The proposal has two defects: premature release and missing work. Its supplied voided result lets both validity and the effects predicate accept the proposal; retention rejects it.",
+      "fixture_path": "apps/review_web/priv/scenarios/P01.json",
+      "source_paths": [
+        "guides/payment_hold_review_exercises.md",
+        "guides/specification.md"
+      ]
+    },
+    {
+      "id": "P02",
+      "kind": "exercise",
+      "title": "Keep capacity, omit cancellation work",
+      "summary": "Hold 1 is authorized for 100¢. Request cancellation while its processor authorization may still be live.",
+      "expected_output": "Set hold 1 to voiding, retain 100¢ and one slot, return voiding and request {:void, 1}.",
+      "challenge": "The proposed output retains the right hold and counters but supplies an empty effects list.",
+      "lesson": "This proposal isolates the missing effect. Validity and retention permit it, while the effects predicate requires the void request. Emitting that request would still not prove delivery.",
+      "fixture_path": "apps/review_web/priv/scenarios/P02.json",
+      "source_paths": [
+        "guides/payment_hold_review_exercises.md",
+        "guides/specification.md"
+      ]
+    },
+    {
+      "id": "P03",
+      "kind": "exercise",
+      "title": "Invent a decline after silence",
+      "summary": "Hold 1 was sent for 100¢. Its reply times out before the ledger receives a trusted result.",
+      "expected_output": "Change hold 1 to unknown, retain 100¢ and one slot, return marked_unknown and request no effects.",
+      "challenge": "The proposed output marks the hold declined, frees both counters and returns declined.",
+      "lesson": "A timeout establishes uncertainty. An invented terminal status can have internally consistent counters while violating retention. A second request could use capacity still held remotely.",
+      "fixture_path": "apps/review_web/priv/scenarios/P03.json",
+      "source_paths": [
+        "guides/payment_hold_review_exercises.md",
+        "guides/specification.md"
+      ]
+    },
+    {
+      "id": "P04",
+      "kind": "exercise",
+      "title": "Refuse a request that fits exactly",
+      "summary": "An empty account has a 100¢ limit and one slot. Fresh key 11 requests exactly 100¢.",
+      "expected_output": "Add a reserved 100¢ entry for key 11, use 100¢ and one slot, return admitted and request no effects.",
+      "challenge": "The proposed output returns insufficient_amount and leaves the account empty.",
+      "lesson": "Keeping a valid state is insufficient when the requirement says an eligible request must be accepted.",
+      "fixture_path": "apps/review_web/priv/scenarios/P04.json",
+      "source_paths": [
+        "guides/payment_hold_review_exercises.md",
+        "guides/specification.md"
+      ]
+    },
+    {
+      "id": "P05",
+      "kind": "exercise",
+      "title": "Send the void, release too early",
+      "summary": "Hold 1 is authorized for 100¢. Its cancellation has been requested, but no confirmation has arrived.",
+      "expected_output": "Keep hold 1 voiding with 100¢ and one slot held, return voiding and request {:void, 1}.",
+      "challenge": "The proposed output supplies the void effect but marks the hold voided and immediately frees both counters.",
+      "lesson": "This proposal matches the shape of the M10 source fault. A requested effect does not establish completion. Both retention and effects consistency reject it.",
+      "fixture_path": "apps/review_web/priv/scenarios/P05.json",
+      "source_paths": [
+        "guides/payment_hold_review_exercises.md",
+        "guides/specification.md"
+      ]
+    },
+    {
+      "id": "P06",
+      "kind": "exercise",
+      "title": "Keep the unknown label, free its counters",
+      "summary": "Hold 1 is sent for 100¢ and one slot. Process a timeout for that hold.",
+      "expected_output": "Keep 100¢ and one slot counted, change the entry to unknown, return marked_unknown and request no effects.",
+      "challenge": "The proposed output keeps the unknown entry but sets both used counters to zero.",
+      "lesson": "The retention predicate accepts the same key and amount in unknown status; validity rejects the counters. This is the shape of the M2 fault, not P03’s invented decline.",
+      "fixture_path": "apps/review_web/priv/scenarios/P06.json",
+      "source_paths": [
+        "guides/payment_hold_review_exercises.md",
+        "guides/specification.md"
+      ]
+    },
+    {
+      "id": "P07",
+      "kind": "exercise",
+      "title": "Change an unrelated hold",
+      "summary": "Hold 1 is authorized for 50¢ and hold 2 is sent for 100¢. Their account permits 250¢ and three slots. Only hold 2 times out.",
+      "expected_output": "Keep hold 1 authorized, change hold 2 to unknown, retain totals of 150¢ and two slots, return marked_unknown and request no effects.",
+      "challenge": "The proposed output also marks hold 1 voided and reduces the totals to 100¢ and one slot.",
+      "lesson": "The proposal has consistent totals and preserves both keys and amounts. Check retention for protected key 1 even though the event targets key 2.",
+      "fixture_path": "apps/review_web/priv/scenarios/P07.json",
+      "source_paths": [
+        "guides/payment_hold_review_exercises.md",
+        "guides/specification.md"
+      ]
+    },
+    {
+      "id": "P08",
+      "kind": "exercise",
+      "title": "Cancel before dispatch",
+      "summary": "Hold 1 reserves 100¢ locally and has never been dispatched. Request its cancellation.",
+      "expected_output": "Mark hold 1 voided, release 100¢ and one slot, return voided and request no remote work. Keep key 1 and its original amount remembered.",
+      "challenge": "The proposed output does exactly this. It is the correct local-cancellation control case.",
+      "lesson": "A rule that always waits for remote confirmation would wrongly reject this local cancellation. A fresh request under key 2 can now fit; the post-dispatch retention precondition does not apply.",
+      "fixture_path": "apps/review_web/priv/scenarios/P08.json",
+      "source_paths": [
+        "guides/payment_hold_review_exercises.md",
+        "guides/specification.md"
+      ],
+      "correct_control": true
+    }
+  ]
+}

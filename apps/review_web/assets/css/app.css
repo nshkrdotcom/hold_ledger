@@ -1571,13 +1571,13 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
 #global-header .site-tools {max-width: 1480px; padding: 0 clamp(1rem, 2.3vw, 2.2rem) .65rem; margin: auto}
 #global-header .site-tools:empty {display: none}
 
-#review-steps {display: flex; align-items: center; gap: 1.3rem; margin: 0 0 .8rem; padding: .65rem 0; border-bottom: 1px solid #e1e5ed; color: #647084}
-#review-steps > span {font-size: .7rem; white-space: nowrap}
-#review-steps ol {display: flex; flex-wrap: wrap; align-items: center; gap: .2rem; list-style: none; padding: 0; margin: 0}
-#review-steps li {margin: 0}
-#review-steps a {display: block; padding: .35rem .55rem; color: #606b7c; font-size: .72rem; text-decoration: none; border-radius: 5px}
-#review-steps a:hover {color: #433776; background: #f0edf7}
-#review-steps a[aria-current="step"] {color: #433776; background: #eeebf6; font-weight: 750}
+#claim-navigation {display: flex; align-items: center; gap: 1.3rem; margin: 0 0 .8rem; padding: .65rem 0; border-bottom: 1px solid #e1e5ed; color: #647084}
+#claim-navigation > span {font-size: .75rem; white-space: nowrap}
+#claim-navigation ul {display: flex; flex-wrap: wrap; align-items: center; gap: .2rem; list-style: none; padding: 0; margin: 0}
+#claim-navigation li {margin: 0}
+#claim-navigation a {display: block; min-height: 36px; padding: .4rem .65rem; color: #606b7c; font-size: .8rem; text-decoration: none; border-radius: 5px}
+#claim-navigation a:hover {color: #433776; background: #f0edf7}
+#claim-navigation a[aria-current="page"] {color: #433776; background: #eeebf6; font-weight: 750}
 
 #edu-tooltip {width: min(340px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 1rem; border: 1px solid #cbd4e2; border-radius: 10px; box-shadow: 0 10px 32px #1f293723; background: #fff; z-index: 210}
 #edu-tooltip strong {font-size: .9rem; color: #25324a}
@@ -1708,9 +1708,9 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
   #global-header .global-nav {order: 3; flex: 1 0 100%; justify-content: flex-start; flex-wrap: wrap}
 }
 @media (max-width: 760px) {
-  #review-steps {gap: .3rem; align-items: flex-start; flex-direction: column}
-  #review-steps ol {width: 100%; gap: .1rem}
-  #review-steps a {padding: .4rem .5rem; font-size: .7rem}
+  #claim-navigation {gap: .3rem; align-items: flex-start; flex-direction: column}
+  #claim-navigation ul {width: 100%; gap: .1rem}
+  #claim-navigation a {padding: .4rem .55rem; font-size: .78rem}
   #claim-lens .lens-hero {padding: 1rem}
   #claim-lens .lens-hero-content {grid-template-columns: 1fr; gap: .6rem}
   #claim-lens .lens-hero-aside {padding: .75rem; display: flex; flex-wrap: wrap; gap: .35rem .6rem}
@@ -1731,8 +1731,9 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
   #global-header .global-nav {position: relative}
   #global-header .reference-nav {position: static}
   #global-header .reference-nav > div {right: auto; left: 0}
-  #review-steps ol {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))}
-  #review-steps a {min-height: 32px; text-align: center}
+  #claim-navigation ul {display: flex; gap: .25rem}
+  #claim-navigation li {flex: 1 1 auto}
+  #claim-navigation a {min-height: 38px; text-align: center}
   #review-comparison {padding: .8rem}
   #contrast .output {padding: .8rem}
   #contrast-matrix th,#contrast-matrix td {padding: .55rem .3rem; font-size: .72rem}
@@ -1746,7 +1747,7 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
 /* Keep the initial case check visible beside the input on desktop. */
 @media (min-width: 1101px) {
   #global-header .site-header-main {padding-top: .6rem; padding-bottom: .6rem}
-  #review-steps {padding-top: .3rem; padding-bottom: .3rem; margin-bottom: .5rem}
+  #claim-navigation {padding-top: .3rem; padding-bottom: .3rem; margin-bottom: .5rem}
   #review-document .edu-workbench-intro {padding-bottom: .4rem}
   #review-document .edu-workbench-intro > div {display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .7rem}
   #review-document .edu-workbench-intro p {margin: 0}
@@ -1760,11 +1761,104 @@ html[data-edu-guidance="focused"] .edu-inline-hint {display:none}
   #contrast-matrix th,#contrast-matrix td {padding: .4rem; line-height: 1.45}
 }
 
-#review-steps li {min-width: 0}
-#review-steps a {overflow-wrap: anywhere}
+#claim-navigation li {min-width: 0}
+#claim-navigation a {overflow-wrap: anywhere}
 #dissector .segmented {flex-wrap: wrap}
 #alternative-counter input {min-width: 0; max-width: 100%}
 
 @media (min-width: 651px) and (max-width: 1000px) {
   #review-comparison {grid-template-columns: repeat(2, minmax(0, 1fr))}
+}
+
+/* Keep the example, its meaning and its source within the same reading area. */
+.edu-overview-lesson {display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .2rem 2rem; align-items: center; padding: 1.2rem 1.5rem; margin: 1.1rem 0 2.5rem; border: 1px solid var(--edu-line); border-left: 3px solid #8baeb1; border-radius: 9px; background: #f4f8f8}
+.edu-overview-lesson .edu-eyebrow {grid-column: 1 / -1; margin-bottom: .2rem}
+.edu-root .edu-overview-lesson p {margin: 0; font-size: .98rem; max-width: 82ch}
+.edu-overview-lesson > a {font-size: .84rem; font-weight: 650; white-space: nowrap}
+.edu-editorial-status {display: flex; flex-wrap: wrap; gap: .4rem .75rem; align-items: baseline; margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--edu-line)}
+.edu-editorial-status > span {flex: 0 0 auto; padding: .2rem .5rem; border-radius: 4px; background: #f0f1f4; color: #59677a; font-size: .75rem; font-weight: 600}
+.edu-root .edu-editorial-status p {flex: 1 1 24rem; margin: 0; font-size: .79rem; line-height: 1.6; color: #687783}
+.edu-related-examples,.edu-example-directory {margin: 2rem 0; scroll-margin-top: 1.2rem}
+.edu-related-examples > .edu-section-head,.edu-example-directory > .edu-section-head {margin-bottom: .5rem}
+.edu-root .edu-related-examples > .edu-source-note,.edu-root .edu-example-directory > .edu-source-note {max-width: 95ch; margin: .5rem 0 1rem; font-size: .84rem}
+.edu-example-grid {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start}
+.edu-example-card {min-width: 0; padding: 1.3rem; border: 1px solid var(--edu-line); border-radius: 11px; background: #fff; scroll-margin-top: 1.2rem}
+.edu-example-card:target {outline: 2px solid #7b9fa3; outline-offset: 3px}
+.edu-example-heading {margin-bottom: .8rem}
+.edu-root .edu-example-heading .edu-eyebrow {margin-bottom: .4rem; color: #6a7d89; font-size: .65rem}
+.edu-example-heading h3 {font-size: 1.12rem; line-height: 1.4; margin: 0; overflow-wrap: anywhere}
+.edu-example-heading h3 > span {font-size: .8rem; font-weight: 650; color: #607a83; margin-right: .4rem; white-space: nowrap}
+.edu-example-control {display: inline-block; margin-top: .6rem; padding: .22rem .5rem; border: 1px solid #c6d8d2; border-radius: 4px; color: #3f6258; background: #f0f6f3; font-size: .74rem; line-height: 1.4}
+.edu-root .edu-example-summary {font-size: .92rem; line-height: 1.65; margin: 0 0 1rem}
+.edu-example-contrast {display: grid; grid-template-columns: minmax(0, 1fr); gap: .85rem; margin: 0}
+.edu-example-contrast > div {min-width: 0; padding-left: .85rem; border-left: 2px solid #b8d1c8}
+.edu-example-contrast > div + div {border-left-color: #c7bfd5}
+.edu-example-contrast dt {font-size: .75rem; line-height: 1.5; color: #4b6c70; font-weight: 650; margin-bottom: .25rem}
+.edu-example-contrast dd {margin: 0; color: var(--edu-secondary); font-size: .88rem; line-height: 1.65; overflow-wrap: anywhere}
+.edu-root .edu-example-lesson {font-size: .84rem; line-height: 1.65; color: #536978; margin: 1rem 0 0; padding-top: .9rem; border-top: 1px solid #e5ebee}
+.edu-example-source {margin-top: 1rem; min-width: 0; border-top: 1px solid #e5ebee}
+.edu-example-source > summary {cursor: pointer; padding: .7rem 0 .1rem; color: var(--edu-indigo); font-size: .8rem; font-weight: 600; line-height: 1.55}
+.edu-example-source > div {padding-top: .6rem; min-width: 0}
+.edu-example-input {margin: .25rem 0 .8rem}
+.edu-example-input > div {display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: .6rem; align-items: baseline; margin: .5rem 0}
+.edu-example-input dt {font-size: .76rem; color: #637783}
+.edu-example-input dd {margin: 0; min-width: 0}
+.edu-example-input code {font-size: .76rem}
+.edu-example-paths {padding-left: 1.1rem; margin: .5rem 0 0}
+.edu-example-paths li {padding: .15rem 0; font-size: .8rem; overflow-wrap: anywhere}
+.edu-root .edu-example-source .edu-source-note {margin: .6rem 0 .4rem; font-size: .76rem}
+.edu-root .edu-example-source pre {margin: .5rem 0 .8rem; padding: .9rem; max-height: 24rem; overflow: auto; font-size: .75rem; line-height: 1.6}
+
+.edu-reading-note {display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(15rem, 1fr); gap: 1rem 1.5rem; align-items: start; margin: 1.6rem 0; padding: 1.15rem 1.3rem; background: #f5f8f9; border: 1px solid #dbe6e8; border-radius: 9px; min-width: 0}
+.edu-reading-note > div {min-width: 0}
+.edu-root .edu-reading-note-label {font-size: .69rem; letter-spacing: .02em; color: #607b87; margin: 0 0 .35rem; font-weight: 650}
+.edu-root .edu-reading-note h2 {font-size: 1.05rem; line-height: 1.4; margin: 0 0 .6rem; letter-spacing: -.015em}
+.edu-root .edu-reading-note p {font-size: .85rem; line-height: 1.65; margin: 0 0 .6rem}
+.edu-root .edu-reading-note p:last-child {margin-bottom: 0}
+.edu-root .edu-reading-note .edu-source-note {font-size: .76rem; margin-top: .65rem}
+.edu-self-check {min-width: 0; border-left: 1px solid #cadbde; padding-left: 1.1rem}
+.edu-self-check > summary {cursor: pointer; font-size: .83rem; color: #3c5e70; line-height: 1.6}
+.edu-self-check > summary > span {display: block; font-size: .71rem; color: #6b7f8c; margin-bottom: .25rem}
+.edu-root .edu-self-check > p {margin: .8rem 0 0; font-size: .83rem}
+.edu-disclosure-content .edu-reading-note {margin: 1.2rem 0; grid-template-columns: minmax(0, 1fr)}
+.edu-disclosure-content .edu-self-check {border-left: 0; border-top: 1px solid #cadbde; padding: .8rem 0 0}
+.edu-reading-directory {margin: .8rem 0 1.5rem}
+.edu-reading-directory > summary {padding: .8rem 1rem; font-size: .84rem}
+.edu-reading-directory-grid {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 2rem; padding: 1.3rem}
+.edu-reading-directory-grid article {min-width: 0}
+.edu-root .edu-reading-directory-grid h2 {font-size: 1rem; margin: 0 0 .65rem}
+.edu-root .edu-reading-directory-grid p {font-size: .84rem; line-height: 1.65; margin-bottom: .6rem}
+.edu-root .edu-reading-directory-grid .edu-source-note {font-size: .75rem; margin: .7rem 0 0}
+
+/* These explanations belong to existing controls and do not add a workflow. */
+#scratch-status {display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .65rem; padding: .55rem .7rem; background: #f7f4fb; border: 1px solid #e3daee; border-radius: 6px; line-height: 1.5}
+#scratch-status strong {font-size: .78rem; font-weight: 650}
+#scratch-status > span {flex: 1 1 17rem; font-size: .75rem; color: #695d7c}
+#scratch-status button {flex: 0 0 auto; min-height: 32px; padding: .25rem .5rem}
+.timeline-branch h3 {flex-wrap: wrap; line-height: 1.4}
+.timeline-branch h3 .branch-marker {flex: 0 0 1.35rem}
+.timeline-branch > .scope-note {font-size: .73rem; line-height: 1.5; margin: -.15rem 0 .7rem}
+#condition-values-guide,#pair-event-guide,#coupled-state-guide {font-size: .76rem; line-height: 1.55; margin: .5rem 0}
+#coupled-event-guide {border-top: 1px solid #dde2e9; margin-top: .75rem; padding-top: .55rem}
+#coupled-event-guide > summary {cursor: pointer; color: #59477e; font-size: .79rem; font-weight: 550; line-height: 1.5}
+#coupled-event-guide p,#coupled-event-guide li {font-size: .76rem; line-height: 1.6}
+#coupled-event-guide dl {margin: .7rem 0 0}
+#coupled-event-guide dl > div {min-width: 0; margin: .5rem 0}
+#coupled-event-guide dt {font-size: .76rem; font-weight: 650}
+#coupled-event-guide dd {font-size: .76rem; line-height: 1.6; margin: .2rem 0 0}
+
+@media (max-width: 950px) {
+  .edu-example-grid {grid-template-columns: minmax(0, 1fr)}
+  .edu-reading-note {grid-template-columns: minmax(0, 1fr)}
+  .edu-self-check {border-left: 0; border-top: 1px solid #cadbde; padding: .8rem 0 0}
+  .edu-overview-lesson {grid-template-columns: minmax(0, 1fr); gap: .5rem}
+}
+@media (max-width: 600px) {
+  .edu-overview-lesson,.edu-example-card,.edu-reading-note {padding: 1rem}
+  .edu-overview-lesson > a {white-space: normal}
+  .edu-example-heading h3 {font-size: 1.05rem}
+  .edu-example-input > div {grid-template-columns: minmax(0, 1fr); gap: .15rem}
+  .edu-reading-directory-grid {grid-template-columns: minmax(0, 1fr); padding: 1rem; gap: 1.1rem}
+  #scratch-status > span {flex-basis: 100%; order: 3}
+  #scratch-status button {margin-left: auto}
 }

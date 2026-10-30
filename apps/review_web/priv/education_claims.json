@@ -11,7 +11,6 @@
       "wrong_behavior": "Return key 11’s entry when the lookup asks for key 22, or report a stored key as missing.",
       "why_others_miss": "The list can be well formed and its totals correct while a lookup picks the wrong entry.",
       "does_not_cover": "The input list must be proper and have unique keys. The lookup query itself is not restricted to integers.",
-      "risk": "Return key 11’s entry when the lookup asks for key 22, or report a stored key as missing.",
       "provenance": [
         {
           "kind": "claim",
@@ -37,7 +36,6 @@
       "wrong_behavior": "Change key 11’s amount to 50¢, or drop key 22 while replacing key 11’s status.",
       "why_others_miss": "A list can still contain unique, well-formed entries after an amount has been overwritten.",
       "does_not_cover": "This helper claim preserves keys and amounts. It does not decide which status a payment event should choose.",
-      "risk": "Change key 11’s amount to 50¢, or drop key 22 while replacing key 11’s status.",
       "provenance": [
         {
           "kind": "claim",
@@ -63,7 +61,6 @@
       "wrong_behavior": "Stop counting the 100¢ but leave its slot occupied when the entry becomes declined.",
       "why_others_miss": "Keeping the key, amount and list shape says nothing about the sum and count calculated from the statuses.",
       "does_not_cover": "These are totals calculated from the entry list. Updating a state’s stored counters is checked by the state-validity claims.",
-      "risk": "Stop counting the 100¢ but leave its slot occupied when the entry becomes declined.",
       "provenance": [
         {
           "kind": "claim",
@@ -89,7 +86,6 @@
       "wrong_behavior": "Append a second copy of key 11 instead of replacing its status in the existing entry.",
       "why_others_miss": "The original key and amount would still be present, so identity preservation alone would miss the duplicate.",
       "does_not_cover": "The replacement status must be known and the key must already exist. Account limits and cached counters are outside this helper claim.",
-      "risk": "Append a second copy of key 11 instead of replacing its status in the existing entry.",
       "provenance": [
         {
           "kind": "claim",
@@ -115,7 +111,6 @@
       "wrong_behavior": "Add the reserved entry but omit its 100¢ from the calculated holding total.",
       "why_others_miss": "Lookup and status-replacement claims do not describe what happens when a fresh entry is added.",
       "does_not_cover": "This is a claim about constructing an entry list. PO-A2 separately checks whether a fresh request fits the account’s limits.",
-      "risk": "Add the reserved entry but omit its 100¢ from the calculated holding total.",
       "provenance": [
         {
           "kind": "claim",
@@ -141,7 +136,6 @@
       "wrong_behavior": "Treat the newly unknown 100¢ entry as free when calculating the post-restart holding total.",
       "why_others_miss": "Both sent and unknown are well-formed statuses; checking list structure alone would not catch a changed total.",
       "does_not_cover": "This claim checks calculated totals. PO-B7 also checks that restart leaves no sent entries and preserves the stored counters.",
-      "risk": "Treat the newly unknown 100¢ entry as free when calculating the post-restart holding total.",
       "provenance": [
         {
           "kind": "claim",
@@ -167,7 +161,6 @@
       "wrong_behavior": "Initialize the account with 100¢ marked used even though there are no holding entries.",
       "why_others_miss": "Step-preservation claims start by assuming a valid state. They do not establish that initialization provides one.",
       "does_not_cover": "The written conclusion checks validity. The separate policy describes the exact empty starting state and rejection of invalid arguments.",
-      "risk": "Initialize the account with 100¢ marked used even though there are no holding entries.",
       "provenance": [
         {
           "kind": "claim",
@@ -193,7 +186,6 @@
       "wrong_behavior": "Admit the extra 50¢ and leave the account using 150¢ against its 100¢ limit.",
       "why_others_miss": "PO-A2 requires admission for requests that fit. This claim also covers over-capacity requests and malformed key or amount arguments.",
       "does_not_cover": "A valid result can still be the wrong policy result. In particular, refusing every request would satisfy validity alone.",
-      "risk": "Admit the extra 50¢ and leave the account using 150¢ against its 100¢ limit.",
       "provenance": [
         {
           "kind": "claim",
@@ -223,10 +215,9 @@
       "family": "Admission",
       "scenario": "An empty account has a 100¢ limit and one free slot. Fresh key 11 requests 100¢.",
       "must_happen": "Return admitted, add key 11 as reserved, increase the used amount by 100¢ and the hold count by one, and request no outside work.",
-      "wrong_behavior": "Return insufficient_amount because the admission check rejects an exact fit. M4 makes this mistake; M5 refuses every eligible request.",
+      "wrong_behavior": "Return insufficient_amount for the exact fit, as in the M4 boundary-rejection mutation. The M5 always-reject mutation refuses every eligible request.",
       "why_others_miss": "Refusing the request leaves an empty, valid state. A validity check alone does not require the service to admit an eligible request.",
       "does_not_cover": "The promise applies when request_eligible? holds: a valid account, fresh integer key, positive integer amount, free slot and sufficient amount capacity.",
-      "risk": "Return insufficient_amount because the admission check rejects an exact fit. M4 makes this mistake; M5 refuses every eligible request.",
       "provenance": [
         {
           "kind": "claim",
@@ -272,7 +263,6 @@
       "wrong_behavior": "Return not_found for key 22 while changing key 11 or requesting an authorization anyway.",
       "why_others_miss": "Those changes could leave a valid state. This claim requires exact state equality and no outside work.",
       "does_not_cover": "The condition uses the result returned by the code. Other claims and the policy decide whether that result was the right one.",
-      "risk": "Return not_found for key 22 while changing key 11 or requesting an authorization anyway.",
       "provenance": [
         {
           "kind": "claim",
@@ -295,10 +285,9 @@
       "family": "Admission",
       "scenario": "Key 11 is remembered as voided for 300¢. The same key requests 300¢ again.",
       "must_happen": "Return duplicate with the entire state unchanged and no requested effects, regardless of the remembered status.",
-      "wrong_behavior": "Create another hold under the voided key and reserve its 300¢ again, as M1 attempts.",
+      "wrong_behavior": "Create another hold under the voided key and reserve its 300¢ again, as in the M1 terminal-key-reuse mutation.",
       "why_others_miss": "A capacity check can find enough free space after release. It does not establish whether this identity has already been used.",
       "does_not_cover": "The new request uses an integer key and the original positive integer amount. A different positive amount belongs to the conflict claim.",
-      "risk": "Create another hold under the voided key and reserve its 300¢ again, as M1 attempts.",
       "provenance": [
         {
           "kind": "claim",
@@ -338,7 +327,6 @@
       "wrong_behavior": "Overwrite key 11’s 100¢ with 50¢, or report insufficient_amount instead of the required conflict.",
       "why_others_miss": "Both refusal results could leave the state valid. This claim checks the exact result and the unchanged state.",
       "does_not_cover": "The incoming amount must be a different positive integer. Malformed requests are handled by the event policy.",
-      "risk": "Overwrite key 11’s 100¢ with 50¢, or report insufficient_amount instead of the required conflict.",
       "provenance": [
         {
           "kind": "claim",
@@ -364,7 +352,6 @@
       "wrong_behavior": "Count the 100¢ a second time when its status changes from reserved to sent.",
       "why_others_miss": "An authorization request can name the right key and amount even when the stored counters are wrong.",
       "does_not_cover": "Validity does not require the precise sent transition or its authorization request. Read the effects claim and event policy for those details.",
-      "risk": "Count the 100¢ a second time when its status changes from reserved to sent.",
       "provenance": [
         {
           "kind": "claim",
@@ -387,10 +374,9 @@
       "family": "Single-step safety",
       "scenario": "Key 11 is sent for 300¢. Its authorization reply times out.",
       "must_happen": "The next state must still have counters that match its holding entries and respect both limits.",
-      "wrong_behavior": "Keep key 11 as unknown but subtract its 300¢ and one slot from the counters. This is M2’s fault.",
+      "wrong_behavior": "Keep key 11 as unknown but subtract its 300¢ and one slot from the counters, as in the M2 timeout-accounting mutation.",
       "why_others_miss": "PO-B2 can preserve an unknown entry’s key and amount without checking the stored counters. This validity claim checks their agreement.",
       "does_not_cover": "Changing the entry to declined and releasing it can be internally valid. The retention claim is needed to reject that invented terminal result.",
-      "risk": "Keep key 11 as unknown but subtract its 300¢ and one slot from the counters. This is M2’s fault.",
       "provenance": [
         {
           "kind": "claim",
@@ -436,7 +422,6 @@
       "wrong_behavior": "Leave both holding entries in place but reset the used counters to zero on restart.",
       "why_others_miss": "Removing every sent label would not catch counters that no longer match the remaining unknown and authorized entries.",
       "does_not_cover": "Leaving a sent entry unchanged can still satisfy validity. PO-B7 checks that restart actually removes sent statuses.",
-      "risk": "Leave both holding entries in place but reset the used counters to zero on restart.",
       "provenance": [
         {
           "kind": "claim",
@@ -462,7 +447,6 @@
       "wrong_behavior": "Add another 100¢ and another slot to the counters even though the same entry is being retried.",
       "why_others_miss": "Reusing the correct key in the authorization request does not by itself check the account’s stored totals.",
       "does_not_cover": "A valid next state can accompany an incorrect requested effect. PO-B3 checks that retry requests the original identity and amount.",
-      "risk": "Add another 100¢ and another slot to the counters even though the same entry is being retried.",
       "provenance": [
         {
           "kind": "claim",
@@ -485,10 +469,9 @@
       "family": "Single-step safety",
       "scenario": "Key 11 is sent for 300¢. The processor returns declined.",
       "must_happen": "Handling the result must leave a valid state, with used counters matching the remaining holding entries.",
-      "wrong_behavior": "Increase used amount when the 300¢ hold is declined, as M8 does.",
+      "wrong_behavior": "Increase used amount when the 300¢ hold is declined, as in the M8 decline-accounting mutation.",
       "why_others_miss": "A declined entry can keep its correct key and amount while the cached amount total moves in the wrong direction.",
       "does_not_cover": "Validity alone does not choose between approved and declined behavior. The event policy and independent reference specify the full result.",
-      "risk": "Increase used amount when the 300¢ hold is declined, as M8 does.",
       "provenance": [
         {
           "kind": "claim",
@@ -520,8 +503,7 @@
       "must_happen": "The returned state must have well-formed entries, correct holding totals and counters within the limits.",
       "wrong_behavior": "Mark key 11 voiding while reporting that its 100¢ and one slot are free.",
       "why_others_miss": "Remembering the key and requesting the right remote void do not ensure that the stored totals still count the hold.",
-      "does_not_cover": "A voided entry with zero used counters is also valid. This claim alone therefore permits P01’s premature release; retention supplies the missing requirement.",
-      "risk": "Mark key 11 voiding while reporting that its 100¢ and one slot are free.",
+      "does_not_cover": "A voided entry with zero used counters is also valid. This claim alone therefore permits the P01 early-cancellation proposal; retention supplies the missing requirement.",
       "provenance": [
         {
           "kind": "claim",
@@ -572,7 +554,6 @@
       "wrong_behavior": "Drop the unknown entry or mark it declined just because another event was processed.",
       "why_others_miss": "A released terminal entry can produce perfectly consistent totals while losing the unresolved status this claim protects.",
       "does_not_cover": "Its own approved or declined processor result is excluded. The conclusion does not freeze global counters or check their accuracy.",
-      "risk": "Drop the unknown entry or mark it declined just because another event was processed.",
       "provenance": [
         {
           "kind": "claim",
@@ -595,10 +576,9 @@
       "family": "Identity & lifecycle",
       "scenario": "Key 11 is authorized for 300¢. Cancelling it returns voiding while retaining the hold.",
       "must_happen": "A voiding result must request the void for key 11. Dispatched and retried results must request authorization with the stored key and amount.",
-      "wrong_behavior": "Omit the required void request, as M7 does, or retry under a different authorization key, as M3 does.",
-      "why_others_miss": "A valid state that retains the hold can still omit the remote work. That is the gap exposed by P02.",
-      "does_not_cover": "The predicate branches on the supplied result. P01’s voided result with no effects passes it; retention rejects that premature release. Delivery is a separate concern.",
-      "risk": "Omit the required void request, as M7 does, or retry under a different authorization key, as M3 does.",
+      "wrong_behavior": "Omit the required void request, as in the M7 missing-effect mutation, or retry under a different key, as in the M3 retry-identity mutation.",
+      "why_others_miss": "A valid state that retains the hold can still omit the remote work. The P02 missing-cancellation exercise isolates that mistake.",
+      "does_not_cover": "The predicate branches on the supplied result. The P01 early-cancellation proposal returns voided with no effects and passes it; retention rejects that premature release. Delivery remains a separate concern.",
       "provenance": [
         {
           "kind": "claim",
@@ -656,7 +636,6 @@
       "wrong_behavior": "Let an event-dispatch branch produce entries whose holding amount differs from the stored used amount.",
       "why_others_miss": "Operation-specific checks do not alone describe the single dispatcher through which arbitrary event terms pass.",
       "does_not_cover": "This is a state-validity promise. Exact results, required admission, retained identities and requested effects need their own claims.",
-      "risk": "Let an event-dispatch branch produce entries whose holding amount differs from the stored used amount.",
       "provenance": [
         {
           "kind": "claim",
@@ -701,7 +680,6 @@
       "wrong_behavior": "Fold the list using an outdated intermediate state so that the final counters no longer match its entries.",
       "why_others_miss": "One-step preservation addresses individual transitions. This claim also covers how Ledger.run composes them.",
       "does_not_cover": "The list must be proper and finite. The fold discards requested effects and does not establish delivery or wall-clock progress.",
-      "risk": "Fold the list using an outdated intermediate state so that the final counters no longer match its entries.",
       "provenance": [
         {
           "kind": "claim",
@@ -727,7 +705,6 @@
       "wrong_behavior": "Combine initialization and replay incorrectly so the replayed 100¢ entry is paired with empty-account counters.",
       "why_others_miss": "PO-C1 assumes a valid starting state. This claim connects the run directly to the state made by initialization.",
       "does_not_cover": "A journal prefix is one such event list. The claim does not establish which records reached durable storage or execute their historical effects.",
-      "risk": "Combine initialization and replay incorrectly so the replayed 100¢ entry is paired with empty-account counters.",
       "provenance": [
         {
           "kind": "claim",
@@ -750,10 +727,9 @@
       "family": "Identity & lifecycle",
       "scenario": "Key 11 is sent for 300¢. A transport acknowledgment arrives without a processor approval.",
       "must_happen": "A previously non-authorized entry may become authorized only on its own approved result, starting from sent or unknown.",
-      "wrong_behavior": "Mark key 11 authorized merely because delivery was acknowledged. M6 introduces this mistake.",
+      "wrong_behavior": "Mark key 11 authorized merely because delivery was acknowledged, as in the M6 acknowledgment-as-approval mutation.",
       "why_others_miss": "Sent and authorized both consume 300¢ and one slot, so that unauthorized status change can pass accounting checks.",
       "does_not_cover": "The helper checks entries present before the event. It does not by itself rule out a fabricated new authorized entry or establish a real processor’s honesty.",
-      "risk": "Mark key 11 authorized merely because delivery was acknowledged. M6 introduces this mistake.",
       "provenance": [
         {
           "kind": "claim",
@@ -786,7 +762,6 @@
       "wrong_behavior": "Revive the declined entry as authorized when the late approved result arrives.",
       "why_others_miss": "Retaining a key and its amount does not preserve its terminal status. Correct counters can also accompany a wrongly revived entry.",
       "does_not_cover": "This protects a local terminal entry over one step. Preventing a remote processor from creating an authorization is a separate fencing requirement.",
-      "risk": "Revive the declined entry as authorized when the late approved result arrives.",
       "provenance": [
         {
           "kind": "claim",
@@ -812,7 +787,6 @@
       "wrong_behavior": "Change the voided entry back to sent or authorized in response to delayed traffic.",
       "why_others_miss": "The identity claim preserves the entry’s key and amount but permits its status to change. This claim preserves the terminal status too.",
       "does_not_cover": "Voided can follow a local cancellation before dispatch or a confirmed remote void. This local rule does not prove remote fencing.",
-      "risk": "Change the voided entry back to sent or authorized in response to delayed traffic.",
       "provenance": [
         {
           "kind": "claim",
@@ -844,8 +818,7 @@
       "must_happen": "Both original keys must remain recorded with their original amounts in the next state.",
       "wrong_behavior": "Remove key 22 or change its 50¢ amount while updating key 11.",
       "why_others_miss": "Recomputing correct counters after deleting an entry can leave a valid account while erasing a remembered identity.",
-      "does_not_cover": "The conclusion allows status changes. P07 keeps key 1 and its amount but wrongly voids it, so exposure retention is needed as well.",
-      "risk": "Remove key 22 or change its 50¢ amount while updating key 11.",
+      "does_not_cover": "The conclusion allows status changes. The P07 unrelated-hold exercise keeps key 1 and its amount but wrongly voids it, so exposure retention is needed as well.",
       "provenance": [
         {
           "kind": "claim",
@@ -881,10 +854,9 @@
       "family": "Identity & lifecycle",
       "scenario": "Key 11 is sent for 300¢ when the process restarts.",
       "must_happen": "Restart must leave no sent entries and preserve the used amount and hold count.",
-      "wrong_behavior": "Leave key 11 marked sent after restart, as M9 does, instead of acknowledging that its outcome is now uncertain.",
+      "wrong_behavior": "Leave key 11 marked sent after restart, as in the M9 unchanged-send mutation, instead of acknowledging that its outcome is now uncertain.",
       "why_others_miss": "The unchanged sent state is internally valid. A validity-only restart check therefore misses this status requirement.",
       "does_not_cover": "This is the modeled restart transition. Finding and replaying the durable journal prefix belongs to recovery and runtime handling.",
-      "risk": "Leave key 11 marked sent after restart, as M9 does, instead of acknowledging that its outcome is now uncertain.",
       "provenance": [
         {
           "kind": "claim",
@@ -917,7 +889,6 @@
       "wrong_behavior": "Finish a history with a revived terminal hold or a final state that differs from the independently defined event sequence.",
       "why_others_miss": "Validity across a history can still permit the wrong statuses or admission decisions. Reference agreement adds those behavioral requirements.",
       "does_not_cover": "The claim covers proper finite event lists. Ledger.run returns state and discards results and effects, so effect execution remains outside this conclusion.",
-      "risk": "Finish a history with a revived terminal hold or a final state that differs from the independently defined event sequence.",
       "provenance": [
         {
           "kind": "claim",
@@ -943,7 +914,6 @@
       "wrong_behavior": "Mark key 11 voided but leave its 100¢ counted as used, or subtract its slot twice.",
       "why_others_miss": "Removing a pending-work record does not by itself check the ledger’s remaining amount and count.",
       "does_not_cover": "The written law checks validity only. The event policy and composite confirmation claim describe which hold may release and how repeated confirmation behaves.",
-      "risk": "Mark key 11 voided but leave its 100¢ counted as used, or subtract its slot twice.",
       "provenance": [
         {
           "kind": "claim",
@@ -964,17 +934,26 @@
       "slug": "po_attempt_poison",
       "title": "Stop new attempts after the lifecycle is poisoned",
       "family": "Attempts",
-      "scenario": "The attempt lifecycle has been marked poisoned. A new authorization attempt is requested for key 11.",
-      "must_happen": "Return the unchanged lifecycle state and no intents when asked to start another attempt.",
-      "wrong_behavior": "Spawn another authorization worker even though the lifecycle is already poisoned.",
-      "why_others_miss": "An empty operation slot and room under the attempt limit do not make a poisoned lifecycle eligible to start work.",
-      "does_not_cover": "The law describes the pure Attempts.step response to a start event. It does not establish how the runtime detects a failure or stops existing workers.",
-      "risk": "Spawn another authorization worker even though the lifecycle is already poisoned.",
+      "scenario": "A failed journal write has left the attempt lifecycle marked poisoned. No workers are active, and a new authorization attempt is requested for hold 11.",
+      "must_happen": "The new start must leave the lifecycle unchanged and request no worker, even though the attempt limit and operation slot have room.",
+      "wrong_behavior": "Request a worker for hold 11 while the lifecycle is still marked poisoned.",
+      "why_others_miss": "Worker limits and free slots check available room. They do not establish that it is safe to start work after an uncertain journal write.",
+      "does_not_cover": "The law begins with the poison flag already set. Detecting a persistence failure and handling existing workers remain runtime responsibilities.",
       "provenance": [
         {
           "kind": "claim",
           "reference": "po_attempt_poison",
           "path": "test/laws/po_attempt_poison_test.exs"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete attempt transitions",
+          "path": "lib/hold_ledger/attempts.ex"
+        },
+        {
+          "kind": "policy",
+          "reference": "Runtime persistence failures",
+          "path": "guides/runtime.md"
         }
       ],
       "named_mutants": [],
@@ -989,7 +968,6 @@
       "wrong_behavior": "Create a remotely live authorization for key 11 after its voided record has already fenced the key.",
       "why_others_miss": "Ignoring a late reply in the local ledger does not prevent the processor from creating a remote authorization.",
       "does_not_cover": "This proves a behavior of Environment’s model. A real adapter must honor the permanent-fencing contract, including delayed delivery.",
-      "risk": "Create a remotely live authorization for key 11 after its voided record has already fenced the key.",
       "provenance": [
         {
           "kind": "claim",
@@ -1016,17 +994,21 @@
       "slug": "po_attempt_retired",
       "title": "Ignore events for an attempt that is no longer present",
       "family": "Attempts",
-      "scenario": "Attempt 7 has left the attempt list. A late result, worker-down message or deadline still names it.",
-      "must_happen": "Result, down, deadline, shutdown-result and committed events for the absent ID must leave the state unchanged and emit no intents.",
-      "wrong_behavior": "Treat the late result for attempt 7 as a reason to persist or retire it again.",
-      "why_others_miss": "The active attempts can still have unique IDs and free slots while a stale event requests work for an absent ID.",
-      "does_not_cover": "Absence is the precondition. This claim does not describe when an active attempt is allowed to retire.",
-      "risk": "Treat the late result for attempt 7 as a reason to persist or retire it again.",
+      "scenario": "Attempt 1 for hold 11 has finished and left the active list. A late worker-down message still names attempt 1.",
+      "must_happen": "The absent ID must leave the lifecycle unchanged and request no work. The same applies to late result, deadline, shutdown-result and committed events for that ID.",
+      "wrong_behavior": "Use the late message for absent attempt 1 to request persistence or retirement again.",
+      "why_others_miss": "The active list can have distinct IDs and free slots while a stale message requests work for an ID that is no longer present.",
+      "does_not_cover": "The precondition is absence from the list. It does not establish that the ID previously existed or that an active attempt was allowed to retire.",
       "provenance": [
         {
           "kind": "claim",
           "reference": "po_attempt_retired",
           "path": "test/laws/po_attempt_retired_test.exs"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete attempt transitions",
+          "path": "lib/hold_ledger/attempts.ex"
         }
       ],
       "named_mutants": [],
@@ -1036,17 +1018,21 @@
       "slug": "po_attempt_slot",
       "title": "Allow one active attempt per operation and key",
       "family": "Attempts",
-      "scenario": "An authorization attempt for key 11 is already active. Another start requests authorization for the same key.",
-      "must_happen": "Refuse the new start by returning the unchanged lifecycle state and no intents.",
-      "wrong_behavior": "Spawn a second authorization attempt for key 11 while the first still occupies that operation/key slot.",
-      "why_others_miss": "A global worker limit may still have room. The occupied-slot check prevents two attempts from competing for the same operation.",
-      "does_not_cover": "The slot is the pair of operation kind and key. An authorization and a lookup for the same key are different slots.",
-      "risk": "Spawn a second authorization attempt for key 11 while the first still occupies that operation/key slot.",
+      "scenario": "Attempt 1 is still shutting down a void for hold 11. The two-worker limit has room, but another start requests the same void operation for hold 11.",
+      "must_happen": "Return the unchanged lifecycle and no intents: attempt 1 still occupies the void/11 slot while it is stopping.",
+      "wrong_behavior": "Start attempt 2 for the same void while attempt 1 still occupies that operation and hold-key pair.",
+      "why_others_miss": "A global limit would permit a second worker here. The occupied-slot check also considers which operation and hold each worker belongs to.",
+      "does_not_cover": "The slot is the pair of operation kind and hold key. A lookup and a void for hold 11 are different slots; this refusal law does not promise that every free slot will be admitted.",
       "provenance": [
         {
           "kind": "claim",
           "reference": "po_attempt_slot",
           "path": "test/laws/po_attempt_slot_test.exs"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete attempt transitions",
+          "path": "lib/hold_ledger/attempts.ex"
         }
       ],
       "named_mutants": [],
@@ -1054,14 +1040,13 @@
     },
     {
       "slug": "po_exposure_retain",
-      "title": "Keep issued holds counted until their own release evidence",
+      "title": "Keep an issued hold until its own release evidence",
       "family": "Processor & exposure",
       "scenario": "Key 11 is authorized for 100¢. Request cancellation before a terminal confirmation has arrived.",
-      "must_happen": "The same key and amount must remain in a holding status: sent, unknown, authorized or voiding.",
-      "wrong_behavior": "Release the 100¢ immediately after requesting a remote void, as M10 does, while the old authorization may still be live.",
-      "why_others_miss": "A voided entry with released counters can be internally valid. P01 also shows that changing the supplied result can let the empty effects list pass.",
-      "does_not_cover": "The condition excludes that key’s declined result and void confirmation. Other keys can change global totals; real processor truth and fencing remain external requirements.",
-      "risk": "Release the 100¢ immediately after requesting a remote void, as M10 does, while the old authorization may still be live.",
+      "must_happen": "The same key and 100¢ amount must remain in sent, unknown, authorized or voiding status. Separate validity checks require the counters to match the holding entries.",
+      "wrong_behavior": "Release hold 11 immediately after requesting its remote void. The M10 premature-release mutation introduces this fault while the old authorization may still be live.",
+      "why_others_miss": "A voided entry with zero counters can be internally valid. The P01 early-cancellation exercise also shows how its voided result lets an empty effects list pass the effects predicate.",
+      "does_not_cover": "The condition excludes that key’s declined result and void confirmation. This conclusion protects the entry, not the stored counters: the P06 zero-counter exercise needs validity as well. Real processor truth and fencing remain external requirements.",
       "provenance": [
         {
           "kind": "claim",
@@ -1120,12 +1105,11 @@
       "slug": "po_composite_recovery",
       "title": "Replay committed work into the same combined state",
       "family": "Composite & recovery",
-      "scenario": "A committed cancellation leaves a 100¢ hold voiding and its remote void work still pending. Replay the same committed events.",
-      "must_happen": "The composite fold must reconstruct the identical modeled state, including pending obligations and their recorded metadata.",
-      "wrong_behavior": "Rebuild the ledger’s hold entries but lose the outstanding void obligation during replay.",
-      "why_others_miss": "Two recovered states can both be valid while recording different pending work. Replay equality requires the same state.",
-      "does_not_cover": "The theorem starts from a finite sequence of committed modeled transitions. It does not establish which writes a disk actually preserved.",
-      "risk": "Rebuild the ledger’s hold entries but lose the outstanding void obligation during replay.",
+      "scenario": "The accepted records for hold 11 contain a void request, one cancellation attempt and a timeout. Replay those same records after starting from the same authorized 100¢ hold.",
+      "must_happen": "Replay must reconstruct the identical combined state, including hold 11 still voiding and its record {11, 1, {:error, :timeout}}.",
+      "wrong_behavior": "Recover the voiding 100¢ hold but lose its pending work, attempt count or recorded timeout.",
+      "why_others_miss": "Two states may both have valid pending-work records while remembering different retry metadata. Exact replay equality requires the same complete state.",
+      "does_not_cover": "Committed means a finite sequence of successful modeled transitions here. The theorem does not identify which records survived on disk or prove storage durability.",
       "provenance": [
         {
           "kind": "claim",
@@ -1137,6 +1121,16 @@
           "reference": "Pending voids and composite recovery",
           "path": "guides/specification.md",
           "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete combined transitions",
+          "path": "lib/hold_ledger/composite.ex"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Pending cancellation records",
+          "path": "lib/hold_ledger/outbox.ex"
         }
       ],
       "named_mutants": [],
@@ -1146,12 +1140,11 @@
       "slug": "po_exposure_history",
       "title": "Keep one issued hold protected through a history",
       "family": "Processor & exposure",
-      "scenario": "A 100¢ authorization is sent. Timeout, retry and restart follow, with no decline or void confirmation for that key.",
-      "must_happen": "After the finite event history, the original key and amount must still be present in a protected holding status in a valid state.",
-      "wrong_behavior": "Release the old authorization’s 100¢ somewhere in the sequence despite receiving no terminal evidence for that key.",
+      "scenario": "Hold 11 is sent for 100¢. Its reply times out; retry sends it again; restart makes it unknown. No decline or void confirmation for hold 11 arrives.",
+      "must_happen": "After the finite history, key 11 and its original 100¢ must still be in a protected holding status in a valid state. This example ends unknown and still uses 100¢ and one slot.",
+      "wrong_behavior": "Release hold 11 during timeout, retry or restart without receiving its terminal release evidence.",
       "why_others_miss": "One retention step does not itself state the result of the whole fold. This theorem carries the protection through every event in the list.",
       "does_not_cover": "The history excludes that key’s declined result and void confirmation. It establishes local retention, not a promise that the processor will eventually respond.",
-      "risk": "Release the old authorization’s 100¢ somewhere in the sequence despite receiving no terminal evidence for that key.",
       "provenance": [
         {
           "kind": "claim",
@@ -1172,12 +1165,11 @@
       "slug": "po_exposure_bounds",
       "title": "Bound remote exposure using its authorization history",
       "family": "Processor & exposure",
-      "scenario": "An account allows 100¢ and one hold. A remote authorization for 100¢ can be traced to a valid local authorization request.",
-      "must_happen": "The total amount and count of remote live authorizations must stay within the account’s amount and hold limits.",
-      "wrong_behavior": "Count two independent remote authorizations against a single local 100¢ hold when retries were supposed to reuse one identity.",
-      "why_others_miss": "Local counters cannot reveal a processor that duplicates authorization identities. The theorem explicitly requires deduplication and a causal history for each remote authorization.",
-      "does_not_cover": "The bound depends on unique remote keys and histories with no terminal release evidence for authorizations still counted as live. Those processor premises need real-world support.",
-      "risk": "Count two independent remote authorizations against a single local 100¢ hold when retries were supposed to reuse one identity.",
+      "scenario": "An account permits 100¢ and one hold. Authorization for hold 11 is retried with the same key and amount; under processor deduplication, its live remote authorization is still counted once.",
+      "must_happen": "With unique remote keys and the required causal histories, live remote authorizations total at most 100¢ and occupy at most one slot in this example.",
+      "wrong_behavior": "Claim the same bound after the processor creates two independent live authorizations for key 11. That duplicate breaks this theorem’s deduplication premise.",
+      "why_others_miss": "Local counters cannot establish how a processor treats repeated requests. This theorem explicitly assumes unique remote keys and a causal history for each live authorization.",
+      "does_not_cover": "Duplicate remote identities fall outside the premises. Each live authorization also needs an issued-intent history without its terminal release evidence; real processor truth and fencing must support that assumption.",
       "provenance": [
         {
           "kind": "claim",
@@ -1198,12 +1190,11 @@
       "slug": "po_attempt_history",
       "title": "Keep attempt IDs and slots distinct across a history",
       "family": "Attempts",
-      "scenario": "Start an authorization attempt, receive its result, commit it, and then process a late worker-down event.",
-      "must_happen": "The typed finite history must preserve unique attempt IDs and operation/key slots, maintain ID bounds, and retire each ID at most once. A committing attempt ignores further completion events.",
-      "wrong_behavior": "Reuse an active attempt ID or emit a second retirement for the same ID later in the history.",
-      "why_others_miss": "Single-event refusal checks do not describe ID allocation and retirement across an entire lifecycle. This theorem also connects the typed steps to translated Attempts.step.",
-      "does_not_cover": "The history begins at the typed initial state. The theorem models events and intents; it does not schedule real workers.",
-      "risk": "Reuse an active attempt ID or emit a second retirement for the same ID later in the history.",
+      "scenario": "Attempt 1 tries to authorize hold 11, returns a result and retires after a committed event. A late worker-down message arrives. Starting again for hold 11 must use attempt 2.",
+      "must_happen": "Across the finite history, active attempt IDs and operation/key pairs stay distinct. IDs remain positive and below the next ID, each ID retires at most once, and an attempt awaiting persistence ignores further completion events.",
+      "wrong_behavior": "Reuse attempt 1 for the later start, keep two active workers in the same operation/key slot, or retire attempt 1 again after its late message.",
+      "why_others_miss": "A refusal check on one event does not describe how IDs are allocated and retired across several starts and completions. This history theorem also connects each typed step to translated Attempts.step.",
+      "does_not_cover": "The history starts at the typed initial state and uses logical events. Hold key 11 may be reused by later attempts; the theorem does not schedule workers or authenticate their messages.",
       "provenance": [
         {
           "kind": "claim",
@@ -1215,6 +1206,11 @@
           "reference": "Lifecycle history scope",
           "path": "guides/verification.md",
           "section": "Lifecycle history theorem"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete attempt transitions",
+          "path": "lib/hold_ledger/attempts.ex"
         }
       ],
       "named_mutants": [],
@@ -1224,12 +1220,11 @@
       "slug": "po_composite_init",
       "title": "Start the ledger and pending work in agreement",
       "family": "Composite & recovery",
-      "scenario": "Initialize the combined state with a 100¢ amount limit and two hold slots.",
-      "must_happen": "The result must satisfy composite validity: a valid ledger, valid obligation records and the required correspondence between voiding keys and pending void work.",
-      "wrong_behavior": "Start with an outstanding void obligation for key 11 even though the ledger contains no such hold.",
-      "why_others_miss": "An empty ledger can be valid while unrelated pending-work records are wrong. Ledger initialization checks do not inspect that second part.",
-      "does_not_cover": "The theorem takes nonnegative integer limits. It covers modeled initialization, before any journal file is read.",
-      "risk": "Start with an outstanding void obligation for key 11 even though the ledger contains no such hold.",
+      "scenario": "Open an account with a 100¢ limit and two hold slots. The initial ledger has no holds, so it must not have cancellation work recorded for hold 11.",
+      "must_happen": "The combined starting state must be valid: ledger totals agree, pending-work records have valid metadata, and their keys correspond exactly to voiding holds.",
+      "wrong_behavior": "Initialize a pending cancellation record for hold 11 even though no such hold exists.",
+      "why_others_miss": "An empty ledger can pass its own validity check while an unrelated pending-work record makes the combined state wrong.",
+      "does_not_cover": "The limits must be nonnegative integers. This theorem checks modeled initialization before reading a journal; it does not validate recovery from disk.",
       "provenance": [
         {
           "kind": "claim",
@@ -1241,6 +1236,16 @@
           "reference": "Pending voids and composite recovery",
           "path": "guides/specification.md",
           "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete combined transitions",
+          "path": "lib/hold_ledger/composite.ex"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Pending cancellation records",
+          "path": "lib/hold_ledger/outbox.ex"
         }
       ],
       "named_mutants": [],
@@ -1250,12 +1255,11 @@
       "slug": "po_composite_preservation",
       "title": "Keep pending void work paired with the ledger",
       "family": "Composite & recovery",
-      "scenario": "A 100¢ hold is voiding and has one pending void obligation. Process another composite event.",
-      "must_happen": "The next state must preserve full composite validity, including valid obligation metadata and exactly one obligation for every voiding key.",
-      "wrong_behavior": "Leave the hold voiding but remove its obligation, so the ledger remembers a cancellation that the pending-work list has forgotten.",
-      "why_others_miss": "The ledger’s counters and entries can remain valid while its outstanding work falls out of agreement.",
-      "does_not_cover": "The claim checks the combined invariant. The oracle claim compares the complete result with independently specified behavior.",
-      "risk": "Leave the hold voiding but remove its obligation, so the ledger remembers a cancellation that the pending-work list has forgotten.",
+      "scenario": "Hold 11 is voiding for 100¢. Its pending cancellation record remembers one attempt and a timeout. Process a restart while that work is unfinished.",
+      "must_happen": "The resulting ledger and pending-work list must still agree: exactly one record for every voiding key, no extra records, and valid attempt counts and outcomes.",
+      "wrong_behavior": "Leave hold 11 voiding after restart but lose the pending cancellation record that belongs to it.",
+      "why_others_miss": "The 100¢ ledger total can remain correct even when the companion list forgets which remote work is still owed.",
+      "does_not_cover": "This is a combined-validity claim. The independent-reference claim separately specifies the exact result and metadata that each event must produce.",
       "provenance": [
         {
           "kind": "claim",
@@ -1267,6 +1271,16 @@
           "reference": "Pending voids and composite recovery",
           "path": "guides/specification.md",
           "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete combined transitions",
+          "path": "lib/hold_ledger/composite.ex"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Pending cancellation records",
+          "path": "lib/hold_ledger/outbox.ex"
         }
       ],
       "named_mutants": [],
@@ -1276,12 +1290,11 @@
       "slug": "po_composite_oracle",
       "title": "Match the independent reference for a combined step",
       "family": "Composite & recovery",
-      "scenario": "Key 11 is authorized for 100¢. Apply a cancellation to both the composite implementation and its independent reference.",
-      "must_happen": "The complete step outputs must agree: next combined state, result and requested effects.",
-      "wrong_behavior": "Return a structurally valid combined state but the wrong result or different pending-void metadata from the independent reference.",
-      "why_others_miss": "Composite validity can allow several different states. Equality to the reference also specifies which transition occurred.",
-      "does_not_cover": "The comparison assumes a valid composite input. Agreement still needs review against the policy, since two implementations can share a misunderstanding.",
-      "risk": "Return a structurally valid combined state but the wrong result or different pending-void metadata from the independent reference.",
+      "scenario": "Cancel authorized hold 11 for 100¢. Compare the implementation and independent reference, including the new cancellation record and its initial attempt count of zero.",
+      "must_happen": "Both complete outputs must agree: the hold becomes voiding, the new record is {11, 0, :unattempted}, the result is voiding, and the requested effect is {:void, 11}.",
+      "wrong_behavior": "Return the right voiding hold and effect but create its cancellation record with one attempt already counted.",
+      "why_others_miss": "An attempt count of one is structurally valid. Only comparing the required transition distinguishes it from the zero attempts expected when the work is first opened.",
+      "does_not_cover": "The comparison assumes a valid combined input. Agreement with an independently written reference still needs review against the payment policy.",
       "provenance": [
         {
           "kind": "claim",
@@ -1293,6 +1306,16 @@
           "reference": "Pending voids and composite recovery",
           "path": "guides/specification.md",
           "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete combined transitions",
+          "path": "lib/hold_ledger/composite.ex"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Pending cancellation records",
+          "path": "lib/hold_ledger/outbox.ex"
         }
       ],
       "named_mutants": [],
@@ -1302,12 +1325,11 @@
       "slug": "po_composite_history",
       "title": "Keep the combined state consistent through a finite run",
       "family": "Composite & recovery",
-      "scenario": "Run a 100¢ hold through authorization, cancellation, restart and confirmation while tracking its pending void work.",
-      "must_happen": "The finite run must succeed, preserve full composite validity, correspond to committed modeled steps and agree with the independent composite run.",
-      "wrong_behavior": "Carry a stale obligation into the final state because the history fold missed the confirmation that removed it.",
-      "why_others_miss": "A correct single-step function still needs a correctly composed history fold. This claim connects both while retaining reference agreement.",
-      "does_not_cover": "The events form a finite list. Committed steps here describe the pure model, not evidence of physical journal synchronization.",
-      "risk": "Carry a stale obligation into the final state because the history fold missed the confirmation that removed it.",
+      "scenario": "Request 100¢ for hold 11, dispatch it, receive approval and request cancellation. Restart before confirmation arrives, then confirm the cancellation.",
+      "must_happen": "The finite run must keep the ledger and pending work valid and agree with the independent run. In this example, hold 11 ends voided, its 100¢ and slot are free, and no cancellation record remains.",
+      "wrong_behavior": "Reach a voided hold after confirmation but carry its old pending cancellation record into the final state.",
+      "why_others_miss": "Correct individual steps still need to be applied in order, each using the previous result. This claim covers that whole sequence and its reference agreement.",
+      "does_not_cover": "The theorem covers proper finite lists and a relation describing successful modeled steps. It does not establish physical journal synchronization or delivery of discarded effect descriptions.",
       "provenance": [
         {
           "kind": "claim",
@@ -1319,6 +1341,16 @@
           "reference": "Pending voids and composite recovery",
           "path": "guides/specification.md",
           "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete combined transitions",
+          "path": "lib/hold_ledger/composite.ex"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Pending cancellation records",
+          "path": "lib/hold_ledger/outbox.ex"
         }
       ],
       "named_mutants": [],
@@ -1328,12 +1360,11 @@
       "slug": "po_composite_confirmation",
       "title": "Finish a pending void once",
       "family": "Composite & recovery",
-      "scenario": "Key 11 is voiding for 100¢ with a matching obligation. Process its trusted confirmation, then the same confirmation again.",
-      "must_happen": "The first confirmation must return voided with no effects and a valid combined state, removing the obligation. The repeat must return stale and leave that state unchanged.",
-      "wrong_behavior": "Remove the obligation on the first confirmation, then subtract another 100¢ or another slot when the confirmation is repeated.",
-      "why_others_miss": "A validity check does not alone specify the first and repeated results. This theorem fixes the complete repeated-confirmation behavior.",
-      "does_not_cover": "The starting composite state must be valid and the hold voiding. The runtime is responsible for admitting trusted confirmations.",
-      "risk": "Remove the obligation on the first confirmation, then subtract another 100¢ or another slot when the confirmation is repeated.",
+      "scenario": "Hold 11 is voiding for 100¢, with two cancellation attempts recorded. Its trusted confirmation arrives twice.",
+      "must_happen": "The first confirmation returns voided with no effects, releases the hold and removes its pending-work record in a valid combined state. The repeat returns stale and leaves that state unchanged.",
+      "wrong_behavior": "Release the 100¢ and slot on the first confirmation, then subtract them again when the same confirmation is repeated.",
+      "why_others_miss": "Validity alone does not specify the first result, the repeated stale result or exact state equality after the repeat.",
+      "does_not_cover": "The starting combined state must be valid and hold 11 must be voiding. The runtime remains responsible for admitting only trusted confirmations.",
       "provenance": [
         {
           "kind": "claim",
@@ -1345,6 +1376,16 @@
           "reference": "Pending voids and composite recovery",
           "path": "guides/specification.md",
           "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete combined transitions",
+          "path": "lib/hold_ledger/composite.ex"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Pending cancellation records",
+          "path": "lib/hold_ledger/outbox.ex"
         }
       ],
       "named_mutants": [],
@@ -1354,12 +1395,11 @@
       "slug": "po_composite_open",
       "title": "Record the void work when cancellation begins",
       "family": "Composite & recovery",
-      "scenario": "Key 11 is authorized for 100¢ and has no pending void obligation. Request cancellation.",
-      "must_happen": "Return voiding, request the matching remote void, and append exactly one fresh obligation with zero attempts and an unattempted outcome.",
-      "wrong_behavior": "Request the remote cancellation but forget to record the outstanding work that recovery will need.",
-      "why_others_miss": "An effects check can see the correct void request while saying nothing about the companion pending-work records.",
-      "does_not_cover": "This theorem starts with a valid composite state and an authorized hold. A reserved-only cancellation follows the separate local-release path.",
-      "risk": "Request the remote cancellation but forget to record the outstanding work that recovery will need.",
+      "scenario": "Hold 11 is authorized for 100¢ and has no pending cancellation record. Request a void for hold 11.",
+      "must_happen": "Keep its capacity held, return voiding, request {:void, 11}, and append one new record {11, 0, :unattempted} in the same combined transition.",
+      "wrong_behavior": "Request the remote void and mark hold 11 voiding, but leave no record of the unfinished cancellation for recovery.",
+      "why_others_miss": "The returned effect can name the right hold while the pending-work list omits the work that still needs to be completed.",
+      "does_not_cover": "The theorem starts with a valid combined state and an authorized hold. The P08 local-cancellation exercise starts with reserved instead, so it releases locally without opening remote work.",
       "provenance": [
         {
           "kind": "claim",
@@ -1376,6 +1416,16 @@
           "kind": "exercise",
           "reference": "P08",
           "path": "guides/payment_hold_review_exercises.md"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete combined transitions",
+          "path": "lib/hold_ledger/composite.ex"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Pending cancellation records",
+          "path": "lib/hold_ledger/outbox.ex"
         }
       ],
       "named_mutants": [],
@@ -1387,12 +1437,11 @@
       "slug": "po_composite_recovery_valid",
       "title": "Preserve combined validity across committed work",
       "family": "Composite & recovery",
-      "scenario": "A valid combined state contains a voiding 100¢ hold and its obligation. Follow a finite sequence of committed transitions.",
-      "must_happen": "The final committed state must still satisfy the complete ledger-and-obligation invariant.",
-      "wrong_behavior": "Commit a sequence whose final state has two void obligations for one hold or an obligation with invalid metadata.",
-      "why_others_miss": "Replay equality alone can reconstruct the same bad state. This theorem adds the invariant required of the committed result.",
-      "does_not_cover": "It assumes a valid starting state and the modeled committed relation. Disk durability and selection of the recovered prefix need separate evidence.",
-      "risk": "Commit a sequence whose final state has two void obligations for one hold or an obligation with invalid metadata.",
+      "scenario": "Start with authorized hold 11 for 100¢ and no pending work. Follow accepted records for its void request, one attempt, a timeout and a restart.",
+      "must_happen": "The final combined state must still be valid: voiding holds and pending-work records correspond exactly, without duplicates or invalid retry metadata.",
+      "wrong_behavior": "Finish the accepted sequence with two cancellation records for hold 11 or a record whose attempt count is negative.",
+      "why_others_miss": "Reconstructing the same state does not by itself establish that the state is valid. This theorem adds the invariant to the accepted-history relation.",
+      "does_not_cover": "It assumes a valid starting state and successful modeled transitions. Choosing the recoverable journal prefix and proving disk durability require separate evidence.",
       "provenance": [
         {
           "kind": "claim",
@@ -1404,6 +1453,16 @@
           "reference": "Pending voids and composite recovery",
           "path": "guides/specification.md",
           "section": "Pending voids and composite recovery"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete combined transitions",
+          "path": "lib/hold_ledger/composite.ex"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Pending cancellation records",
+          "path": "lib/hold_ledger/outbox.ex"
         }
       ],
       "named_mutants": [],
@@ -1413,12 +1472,11 @@
       "slug": "po_exposure_model",
       "title": "Keep the ledger and modeled processor in agreement",
       "family": "Processor & exposure",
-      "scenario": "A 100¢ hold is dispatched, delivered to the modeled processor, cancelled and confirmed. Track local state alongside issued requests and remote records.",
-      "must_happen": "Initialization, each modeled step and every finite run must preserve the combined exposure invariant. The registered void-before-issue result also keeps a delayed authorization fenced.",
+      "scenario": "Dispatch hold 11 for 100¢, deliver approval at the modeled processor, then observe it locally. Request cancellation, apply the remote void and finally deliver its confirmation.",
+      "must_happen": "Initialization, every modeled step and each finite run must preserve the full combined invariant. The hold stays counted between remote void and local confirmation. A separate registered result also fences an authorization issued after a remote void.",
       "wrong_behavior": "Let a modeled delivery create a live remote authorization with no corresponding local held capacity.",
-      "why_others_miss": "The ledger and processor can each look internally consistent while disagreeing about which authorizations are live. The combined invariant checks their relationship.",
-      "does_not_cover": "The modeled environment follows explicit delivery and fencing rules. A real processor must supply evidence that it honors those rules.",
-      "risk": "Let a modeled delivery create a live remote authorization with no corresponding local held capacity.",
+      "why_others_miss": "The processor may have approved while the ledger still says sent. Separate local and remote checks cannot establish that these different states are compatible; the combined invariant checks their relationship.",
+      "does_not_cover": "The environment follows explicit delivery, truthfulness, deduplication and fencing rules. The void-before-issue result is a processor-contract lemma; real adapters still need evidence for those rules.",
       "provenance": [
         {
           "kind": "claim",
@@ -1444,7 +1502,6 @@
       "wrong_behavior": "Allow a combined state to pass its invariant while its remote records contain more live amount or authorizations than the local limits permit.",
       "why_others_miss": "A collection of structural checks is useful only if it implies the intended numeric limits. This theorem makes that implication explicit.",
       "does_not_cover": "The premise is full exposure validity. The separate exposure-bounds theorem instead takes deduplication and causal-history premises directly.",
-      "risk": "Allow a combined state to pass its invariant while its remote records contain more live amount or authorizations than the local limits permit.",
       "provenance": [
         {
           "kind": "claim",
@@ -1465,12 +1522,11 @@
       "slug": "po_attempt_persist",
       "title": "Request persistence once before retiring an attempt",
       "family": "Attempts",
-      "scenario": "Attempt 7 produces a result and enters committing. Another completion arrives before a committed event retires it.",
-      "must_happen": "The finite typed history must request persistence at most once for each attempt ID. Retirement on a committed event must have an earlier persistence request for that ID.",
-      "wrong_behavior": "Emit two persistence requests for attempt 7, or retire it without any earlier persistence request in the modeled history.",
-      "why_others_miss": "Unique active IDs and at-most-once retirement do not establish the ordering or uniqueness of persistence requests.",
-      "does_not_cover": "These are persistence intents in the lifecycle model. The theorem does not establish that a journal write or fsync actually completed.",
-      "risk": "Emit two persistence requests for attempt 7, or retire it without any earlier persistence request in the modeled history.",
+      "scenario": "Attempt 1 for hold 11 returns a result and begins waiting for persistence. A worker-down message arrives before the committed event that retires the attempt.",
+      "must_happen": "Request persistence at most once for attempt 1, despite the two completion messages. A committed event may retire it only if that ID already requested persistence earlier in the modeled history.",
+      "wrong_behavior": "Request persistence twice for attempt 1, or retire it without any earlier persistence request.",
+      "why_others_miss": "Distinct attempt IDs and at-most-once retirement do not establish that persistence was requested before retirement, or requested only once.",
+      "does_not_cover": "The guarantee covers finite typed histories from the initial lifecycle. A persistence intent is a request; the theorem does not establish a completed journal write or disk sync.",
       "provenance": [
         {
           "kind": "claim",
@@ -1482,6 +1538,11 @@
           "reference": "Lifecycle history scope",
           "path": "guides/verification.md",
           "section": "Lifecycle history theorem"
+        },
+        {
+          "kind": "editorial",
+          "reference": "Concrete attempt transitions",
+          "path": "lib/hold_ledger/attempts.ex"
         }
       ],
       "named_mutants": [],

@@ -84,6 +84,10 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
     ~H"""
     <section id="draft-tools">
       <h3>Edit the proposed output</h3>
+      <p class="scope-note">
+        Describe a different result for this input, then check whether the claim would accept it.
+        Continue from this output to run later events from the state you proposed.
+      </p>
       <div class="mutation-chips" id="candidate-mutations">
         <button phx-click="mutate_candidate" phx-value-kind="drop_effects">Remove requested effects</button>
         <button phx-click="mutate_candidate" phx-value-kind="zero_counters">Zero both totals</button>
@@ -216,9 +220,10 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       </div>
       <div :if={@case} id="active-predicate-result" role="status">
         <table id="contrast-matrix">
+          <caption class="sr-only">Coverage, output acceptance and accounting for the selected case</caption>
           <thead>
             <tr>
-              <th>Check</th><th>Code returned</th><th>Proposed output · not run</th>
+              <th scope="col">Check</th><th scope="col">Code returned</th><th scope="col">Proposed output · not run</th>
             </tr>
           </thead>
           <tbody>

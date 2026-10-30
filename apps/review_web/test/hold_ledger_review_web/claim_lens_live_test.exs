@@ -42,7 +42,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     assert has_element?(view, "#lens-policy", "An exact amount fit is admitted.")
     assert has_element?(view, "#lens-source-contract", "request_eligible?")
     assert has_element?(view, "#lens-lean-reading", "What the theorem states")
-    assert has_element?(view, "#lens-evidence-status", "Hypothetical edit proof")
+    assert has_element?(view, "#lens-evidence-status", "Proof check for proposed change")
     assert has_element?(view, "#lens-formal-status")
     assert has_element?(view, "#lens-gap", "Potential loss of required coverage")
     assert has_element?(view, "#lens-baseline-verdict", "Claim rejects this output")
@@ -249,15 +249,26 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     assert has_element?(view, "#lens-initial-answer")
   end
 
-  test "case lab always links to a working guided example", %{conn: conn} do
-    for {slug, example} <- [
-          {"po_a2", "po_a2"},
-          {"po_exposure_retain", "po_exposure_retain"},
-          {"l2_identity", "po_a2"}
-        ] do
+  test "claim navigation keeps the active case and offers only its own guided study", %{conn: conn} do
+    for slug <- ~w(po_a2 po_exposure_retain l2_identity) do
       {:ok, doc} = HoldLedgerReview.Contrast.create(slug)
       {:ok, view, _} = live(conn, "/claims/#{slug}/#{doc["id"]}")
-      assert has_element?(view, "#case-review-modes a[href='/lens/#{example}']", "2 examples")
+      assert has_element?(view, "#claim-navigation a[href='/atlas/#{slug}']", "Read claim")
+
+      assert has_element?(
+               view,
+               "#claim-navigation a[href='/claims/#{slug}/#{doc["id"]}'][aria-current='page']",
+               "Case Lab"
+             )
+
+      if slug in ~w(po_a2 po_exposure_retain) do
+        assert has_element?(view, "#claim-navigation a[href='/lens/#{slug}']", "Guided practice")
+      else
+        refute has_element?(view, "#claim-navigation a[href^='/lens/']")
+        assert has_element?(view, "#decision-docket", "Mark reviewed")
+      end
+
+      refute has_element?(view, "#review-steps")
       assert has_element?(view, "#case-review-modes a[href$='compare=open']", "Compare versions")
     end
   end

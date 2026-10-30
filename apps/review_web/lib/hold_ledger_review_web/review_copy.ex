@@ -1,21 +1,8 @@
 defmodule HoldLedgerReviewWeb.ReviewCopy do
   @moduledoc false
-  @titles %{
-    "po_a2" => "Accept requests that fit available capacity",
-    "po_a4_duplicate" => "Recognize a repeated request",
-    "po_a4_conflict" => "Reject a reused identity with a different amount",
-    "po_b1_void" => "Keep the account consistent during cancellation",
-    "po_b1_timeout" => "Keep the account consistent after a timeout",
-    "po_exposure_retain" => "Keep issued holds reserved until a final result",
-    "po_exposure_model" => "Follow the ledger and the payment processor",
-    "po_s" => "Keep the ledger consistent"
-  }
   def title(law) do
-    @titles[law["slug"]] || HoldLedgerReviewWeb.Education.title(law["slug"]) ||
-      (law["title"] || law["slug"] || "Ledger claim")
-      |> String.split(" · ")
-      |> List.last()
-      |> String.capitalize()
+    HoldLedgerReviewWeb.Education.title(law["slug"]) || law["title"] || law["slug"] ||
+      "Ledger claim"
   end
 
   def policy(%{"slug" => "po_a2"}),
@@ -49,9 +36,11 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
       Map.get(
         %{
           "reserved" => "Reserved",
+          "issued" => "Request issued",
           "sent" => "Authorization pending",
           "unknown" => "Outcome unknown",
           "authorized" => "Authorized",
+          "approved" => "Approved",
           "voiding" => "Waiting for cancellation",
           "voided" => "Cancelled",
           "declined" => "Declined"

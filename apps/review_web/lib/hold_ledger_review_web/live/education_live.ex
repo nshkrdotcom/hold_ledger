@@ -272,12 +272,6 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp active_pipeline(assigns),
     do: Enum.find(assigns.pipeline, &(&1.number == assigns.pipeline_step))
 
-  defp review_stage(action) when action in [:start, :guarantees], do: "policy"
-  defp review_stage(action) when action in [:atlas, :profile, :proofs], do: "claim"
-  defp review_stage(:assurance), do: "evidence"
-  defp review_stage(:system), do: "assumptions"
-  defp review_stage(_), do: nil
-
   @impl true
   def render(assigns) do
     assigns =
@@ -291,8 +285,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     ~H"""
     <Layouts.app
       flash={@flash}
-      review_stage={review_stage(@live_action)}
-      review_claim={(@profile && @profile["slug"]) || "po_a2"}
+      review_stage={if(@profile, do: "claim")}
+      review_claim={@profile && @profile["slug"]}
     >
       <div class="edu-root" id="education-root">
         <%= if @catalog_issue do %>
@@ -407,6 +401,15 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <p class="edu-visual-foot">A timeout leaves the capacity held.</p>
       </figure>
     </section>
+
+    <aside class="edu-overview-lesson" id="edu-overview-lesson">
+      <span class="edu-eyebrow">The review question</span>
+      <p>
+        A ledger can refuse every request and still keep its totals consistent.
+        Check whether its claims require the behavior you need.
+      </p>
+      <a href="/atlas/po_a2">Read the exact-fit claim <span aria-hidden="true">→</span></a>
+    </aside>
 
     <section class="edu-home-journeys" aria-labelledby="edu-paths-title">
       <div class="edu-section-head">
@@ -523,6 +526,19 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       heading="A missing reply still leaves money on hold."
       description="Start with one empty account, a 100¢ limit and two hold slots. Follow what happens when a payment authorization's reply goes missing."
     />
+    <.reading_note
+      id="edu-hold-primer"
+      title="What does a payment hold reserve?"
+      question="Does reserving an amount mean the payment has already been captured?"
+      answer="No. A hold reserves an amount for possible later capture. This walkthrough models the hold and its reserved capacity; it does not run a capture."
+    >
+      <p>An authorization hold reserves an amount for possible later capture.</p>
+      <p>
+        Read the opening explanation of <a href="https://docs.stripe.com/payments/place-a-hold-on-a-payment-method">Stripe's authorization holds</a>
+        and the difference between authorization and capture. Skip the API examples,
+        timing tables and capture options for this walkthrough.
+      </p>
+    </.reading_note>
     <div class="edu-two-column edu-story-grid" id="edu-story">
       <section class="edu-story-console" aria-label="Payment-hold walkthrough">
         <div class="edu-console-top">
@@ -631,6 +647,21 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <a href={@component.link}>Read more about this part →</a>
       </div>
     </section>
+    <.reading_note
+      id="edu-retry-primer"
+      title="A retry keeps the payment identity."
+      question="Should retrying this authorization create a new payment identity?"
+      answer="No. This ledger retries with the same request key and amount. A new worker attempt can have its own attempt ID while still referring to that same hold."
+    >
+      <p>
+        Read the opening paragraphs of <a href="https://docs.stripe.com/api/idempotent_requests">Stripe's idempotent requests</a>
+        about connection errors, keeping the key and unchanged parameters. The API examples can wait.
+      </p>
+      <p class="edu-source-note">
+        This repository's permanent identity and terminal-fencing requirements are stronger
+        assumptions, defined in <code>guides/processors.md</code>.
+      </p>
+    </.reading_note>
     <section class="edu-status-section">
       <div class="edu-section-head">
         <div>
@@ -871,9 +902,91 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     """
   end
 
+  attr :example, :map, required: true
+
+  defp example_card(assigns) do
+    ~H"""
+    <article
+      class="edu-example-card"
+      id={"example-" <> String.downcase(@example["id"])}
+      data-example-id={@example["id"]}
+      data-example-kind={@example["kind"]}
+    >
+      <header class="edu-example-heading">
+        <p class="edu-eyebrow">
+          {if(@example["kind"] == "mutation", do: "Deliberate mutation", else: "Policy exercise")}
+        </p>
+        <h3><span>{@example["id"]}</span> {@example["title"]}</h3>
+        <span :if={@example["correct_control"]} class="edu-example-control">
+          Correct local cancellation
+        </span>
+      </header>
+      <p class="edu-example-summary">{@example["summary"]}</p>
+      <dl class="edu-example-contrast">
+        <div>
+          <dt>Expected from the source</dt>
+          <dd>{@example["expected_output"]}</dd>
+        </div>
+        <div>
+          <dt>
+            {if(@example["kind"] == "mutation",
+              do: "What the mutation changes",
+              else: "Proposed output · not run"
+            )}
+          </dt>
+          <dd>{@example["challenge"]}</dd>
+        </div>
+      </dl>
+      <p class="edu-example-lesson">{@example["lesson"]}</p>
+      <details class="edu-example-source">
+        <summary>Input and source details</summary>
+        <div>
+          <dl :if={@example["kind"] == "mutation"} class="edu-example-input">
+            <div><dt>Starting state</dt><dd><code>{@example["before"]}</code></dd></div>
+            <div><dt>Event</dt><dd><code>{@example["event"]}</code></dd></div>
+          </dl>
+          <p :if={@example["fixture_path"]} class="edu-source-note">
+            Existing source fixture · not executed here<br />
+            <code>{@example["fixture_path"]}</code>
+          </p>
+          <pre
+            :if={@example["fixture_json"]}
+            tabindex="0"
+            role="region"
+            aria-label={"Source fixture for " <> @example["id"]}
+          ><code>{@example["fixture_json"]}</code></pre>
+          <p :if={@example["fixture_path"] && !@example["fixture_json"]} class="edu-source-note">
+            The fixture source is unavailable in this checkout.
+          </p>
+          <p class="edu-source-note">Read these paths in your checkout:</p>
+          <ul class="edu-example-paths">
+            <li :for={path <- @example["source_paths"]}><code>{path}</code></li>
+          </ul>
+          <a
+            :if={@example["target_slug"]}
+            class="edu-inline-link"
+            href={"/atlas/" <> @example["target_slug"]}
+          >Read the claim: {Education.title(@example["target_slug"])}</a>
+        </div>
+      </details>
+    </article>
+    """
+  end
+
   attr :claim, :map, default: nil
 
   defp profile(assigns) do
+    related =
+      if assigns.claim do
+        Education.examples(
+          (assigns.claim["named_mutants"] || []) ++ (assigns.claim["exercise_ids"] || [])
+        )
+      else
+        []
+      end
+
+    assigns = assign(assigns, :examples, related)
+
     ~H"""
     <%= if @claim do %>
       <nav class="edu-profile-breadcrumb" aria-label="Claim location">
@@ -889,6 +1002,10 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           <span>{@claim["family"]}</span>
           <span>{if(@claim["kind"] == "native_lean", do: "Lean-only claim", else: "Elixir law")}</span>
         </div>
+        <div class="edu-editorial-status" id="edu-claim-editorial">
+          <span>Editorial draft</span>
+          <p>Sources are linked below. Owner review of this explanation is not recorded here.</p>
+        </div>
         <div class="edu-profile-scenario" id="edu-claim-scenario">
           <p class="edu-eyebrow">Consider this case</p><p>{@claim["scenario"]}</p>
         </div>
@@ -899,7 +1016,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </section>
         <section class="edu-profile-panel edu-profile-wrong">
           <p class="edu-eyebrow">The challenge</p><h2>Wrong behavior</h2><p>
-            {@claim["wrong_behavior"] || @claim["risk"]}
+            {@claim["wrong_behavior"]}
           </p>
         </section>
       </div>
@@ -925,23 +1042,31 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         Registration does not report checker acceptance.
         <a href="/assurance#catalog-evidence">See what each kind of evidence covers.</a>
       </p>
+      <section class="edu-related-examples" id="edu-related-examples">
+        <div class="edu-section-head">
+          <div><h2>Examples for this claim</h2></div>
+        </div>
+        <p :if={@examples != []} class="edu-source-note">
+          M identifies a deliberate source fault outside the default implementation.
+          P identifies a payment-policy exercise. These cards explain the source examples;
+          they do not run them.
+        </p>
+        <div :if={@examples != []} class="edu-example-grid">
+          <.example_card :for={example <- @examples} example={example} />
+        </div>
+        <p :if={(@claim["named_mutants"] || []) == []} class="edu-source-note">
+          No named mutant yet.
+        </p>
+        <p :if={@examples == []} class="edu-source-note">
+          Use the case above and the statement's cited sources to inspect this claim.
+        </p>
+      </section>
       <details class="edu-disclosure" id="edu-claim-source">
-        <summary>Compare coverage and inspect the sources</summary>
+        <summary>Explanation and source references</summary>
         <div class="edu-disclosure-content edu-profile-detail-grid">
           <section>
             <h2>Why another check may miss it</h2>
             <p>{@claim["why_others_miss"]}</p>
-            <h3>Named mutation examples</h3>
-            <div :if={(@claim["named_mutants"] || []) != []} class="edu-source-chips">
-              <a :for={mutant <- @claim["named_mutants"]} href="/repository#mutation-examples">{mutant}</a>
-            </div>
-            <p :if={(@claim["named_mutants"] || []) == []}>No named mutant yet.</p>
-            <div :if={(@claim["exercise_ids"] || []) != []}>
-              <h3>Related review exercises</h3>
-              <div class="edu-source-chips">
-                <a :for={exercise <- @claim["exercise_ids"]} href="/repository#review-exercises">{exercise} · exercise guide</a>
-              </div>
-            </div>
           </section>
           <section>
             <h2>Statement and explanation sources</h2>
@@ -1037,6 +1162,18 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </li>
       </ol>
     </section>
+    <.reading_note
+      id="edu-statement-primer"
+      title="Read the condition before the promise."
+      question="In P → Q, what must hold before this implication promises Q?"
+      answer="P must hold. If the input does not satisfy the premise, this implication makes no promise about Q for that input."
+    >
+      <p>
+        Read sections 3.1–3.3 of Lean's <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/">Propositions and Proofs</a>
+        to recognize <code>Prop</code>, implication <code>→</code> and conjunction <code>∧</code>.
+        Skip constructing the proofs and exercises on the first pass.
+      </p>
+    </.reading_note>
     <details class="edu-disclosure" id="edu-contract-source">
       <summary>Read the PO-A2 contract in Elixir</summary>
       <div class="edu-disclosure-content">
@@ -1079,6 +1216,18 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </p>
       </article>
     </section>
+    <.reading_note
+      id="edu-domain-primer"
+      title="“Every input” has a domain."
+      question="In ∀ x : α, P x, which inputs does x range over?"
+      answer="All values of the stated type α. Further premises can limit which inputs receive the promised conclusion. Check both against the payment requirement."
+    >
+      <p>
+        Read the opening of section 4.1, “The Universal Quantifier,” in
+        <a href="https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/">Quantifiers and Equality</a>.
+        Skip equality proofs and the remaining chapter for now.
+      </p>
+    </.reading_note>
     <div class="edu-section-head">
       <div>
         <p class="edu-eyebrow">Follow the same claim</p><h2>Where could the argument go wrong?</h2>
@@ -1115,6 +1264,18 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </p>
         <p>The PO-A2 law refers to this proof:</p>
         <pre><code>exact Elixir.HoldLedger.ProofContracts.«po_a2/3» s key amount requires</code></pre>
+        <.reading_note
+          id="edu-syntax-primer"
+          title="Recognize the parts of a Lean definition."
+          question="In def add1 (n : Nat) : Nat := n + 1, where are the input type and function body?"
+          answer="The n : Nat annotation gives the input type. The Nat after the parentheses gives the result type. The expression after := is the function body."
+        >
+          <p>
+            Read the first annotations in <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Types/">Types</a>
+            and the first examples in <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Functions-and-Definitions/">Functions and Definitions</a>.
+            Focus on <code>:</code>, <code>:=</code>, arguments and result types; skip the exercises and later features.
+          </p>
+        </.reading_note>
         <p>
           For a policy review, concentrate on the statement, called definitions, domain and assumptions. For a proof-only change, first confirm that the statement and other review-sensitive source really are unchanged.
         </p>
@@ -1203,6 +1364,22 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </div>
       </article>
     </section>
+    <.reading_note
+      id="edu-kernel-primer"
+      title="What does Lean's kernel check?"
+      question="Does an accepted proof show that the statement matches the payment policy?"
+      answer="No. It establishes the formal claim under its assumptions. Review the statement, the source translation and the payment requirement separately. A real processor also needs evidence that it satisfies the model's assumptions."
+    >
+      <p>
+        Lean checks the formal proof against the formal statement. The translation and the
+        intended payment requirement still need their own review.
+      </p>
+      <p>
+        Read “The Kernel” in <a href="https://lean-lang.org/doc/reference/latest/Elaboration-and-Compilation/">Elaboration and Compilation</a>.
+        In <a href="https://lean-lang.org/doc/reference/latest/ValidatingProofs/">Validating Proofs</a>, read the opening distinction
+        between proof validity and statement meaning, then “Printing Axioms.” Advanced checker commands can wait.
+      </p>
+    </.reading_note>
     <aside class="edu-assurance-note">
       <div>
         <h2>Match the report to the code.</h2><p>
@@ -1359,8 +1536,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
             path: "mutants/",
             explanation:
               "Named mutations describe a wrong behavior, the input that exposes it and the claims that catch it.",
-            link: "/atlas/po_a2",
-            action: "Read the exact-fit mutation example"
+            link: "#mutation-example-directory",
+            action: "Browse the mutation examples"
           },
           %{
             id: "review-exercises",
@@ -1368,14 +1545,21 @@ defmodule HoldLedgerReviewWeb.EducationLive do
             path: "guides/payment_hold_review_exercises.md",
             explanation:
               "P01–P08 provide review cases grounded in the policy. Claim Lens presents two interactive studies.",
-            link: "/lens/po_a2",
-            action: "Open the exact-fit study"
+            link: "#policy-exercise-directory",
+            action: "Browse the policy exercises"
           }
         ]
       }
     ]
 
-    assigns = assign(assigns, :sections, sections)
+    examples = Education.examples()
+
+    assigns =
+      assign(assigns,
+        sections: sections,
+        mutations: Enum.filter(examples, &(&1["kind"] == "mutation")),
+        exercises: Enum.filter(examples, &(&1["kind"] == "exercise"))
+      )
 
     ~H"""
     <.intro
@@ -1396,6 +1580,32 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           </div>
           <a href={entry.link}>{entry.action} <span aria-hidden="true">→</span></a>
         </article>
+      </div>
+    </section>
+    <section class="edu-example-directory" id="mutation-example-directory">
+      <div class="edu-section-head">
+        <div><p class="edu-eyebrow">M1–M10 · deliberate source faults</p><h2>Mutation examples</h2></div>
+      </div>
+      <p class="edu-source-note">
+        Each M example changes a source implementation outside the default ledger. Read the
+        input, required result and deliberate fault together. These cards describe the source;
+        they do not run the mutation.
+      </p>
+      <div class="edu-example-grid">
+        <.example_card :for={example <- @mutations} example={example} />
+      </div>
+    </section>
+    <section class="edu-example-directory" id="policy-exercise-directory">
+      <div class="edu-section-head">
+        <div><p class="edu-eyebrow">P01–P08 · payment-policy exercises</p><h2>Policy exercises</h2></div>
+      </div>
+      <p class="edu-source-note">
+        Each P example pairs an input with a proposed output for review against the policy.
+        P08 is a correct local cancellation. The input details show the existing source fixture,
+        not a new execution result.
+      </p>
+      <div class="edu-example-grid">
+        <.example_card :for={example <- @exercises} example={example} />
       </div>
     </section>
     <.next_links
@@ -1436,6 +1646,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       />
       <span role="status">{length(@terms)} of {@count} terms</span>
     </.form>
+    <.reading_directory />
     <div class="edu-glossary-grid" id="edu-glossary-results">
       <article :for={term <- @terms} id={"term-" <> term["id"]} class="edu-term-card">
         <h2>{term["term"]}</h2>
@@ -1456,60 +1667,82 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         Try a shorter phrase or clear the search to browse all definitions.
       </p><.link patch="/glossary">Show all terms →</.link>
     </div>
-    <section class="edu-reading-paths" aria-labelledby="edu-prerequisites-title">
-      <div class="edu-section-head">
-        <div>
-          <p class="edu-eyebrow">If the idea is new</p><h2 id="edu-prerequisites-title">
-            Take the short explanation first.
-          </h2>
-        </div>
-      </div>
-      <div>
-        <article>
-          <h3>Payment holds and retries</h3>
-          <p>
-            Start with the <a href="/start">100¢ walkthrough</a>
-            and <a href="/glossary?q=idempotency">idempotency example</a>.
-          </p>
-          <p>
-            Optional reading:
-            <a href="https://docs.stripe.com/api/idempotent_requests">Stripe's idempotent requests</a>
-            explains how keys support retries. HTTP details can wait.
-          </p>
-          <p class="edu-source-note">
-            The repository's permanent identity and remote fencing requirements are specified separately in its policy and processor contract.
-          </p>
-        </article>
-        <article>
-          <h3>Formal statements</h3>
-          <p>
-            Start with the <a href="/proofs">statement-reading guide</a>: premise, input domain and promised output.
-          </p>
-          <p>
-            Optional reading: Lean's
-            <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/#propositional-logic">propositional logic</a>
-            and <a href="https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/#the-universal-quantifier">universal quantifier</a>. Focus on <code>Prop</code>, <code>→</code>,
-            <code>∧</code>
-            and <code>∀</code>; constructing proofs can wait.
-          </p>
-        </article>
-        <article>
-          <h3>Lean syntax</h3>
-          <p>
-            Look up a source term here first. Reading statements does not require learning the whole proof language.
-          </p>
-          <p>
-            Optional reading: <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/">Getting to Know Lean</a>. Read the types and functions sections to recognize declarations; leave larger programming exercises for later.
-          </p>
-        </article>
-      </div>
-    </section>
     <.next_links
       one="/atlas"
       one_title="Find a claim using these terms"
       two="/proofs"
       two_title="Practice reading a statement"
     />
+    """
+  end
+
+  defp reading_directory(assigns) do
+    ~H"""
+    <details class="edu-disclosure edu-reading-directory" id="edu-reading-directory">
+      <summary>Optional background reading</summary>
+      <div class="edu-reading-directory-grid">
+        <article>
+          <h2>Payment holds and retries</h2>
+          <p>Start with the <a href="/start">100¢ walkthrough</a> and the <a href="/system">system guide</a>.</p>
+          <p>
+            Read the opening of Stripe's <a href="https://docs.stripe.com/payments/place-a-hold-on-a-payment-method">authorization holds</a>
+            and <a href="https://docs.stripe.com/api/idempotent_requests">idempotent requests</a>.
+            Focus on authorization versus capture and retrying with the same key. Skip API examples.
+          </p>
+          <p class="edu-source-note">
+            This repository's permanent identity and fencing assumptions are defined separately in its processor contract.
+          </p>
+        </article>
+        <article>
+          <h2>Formal statements</h2>
+          <p>Start with the <a href="/proofs">statement-reading guide</a>.</p>
+          <p>
+            Read sections 3.1–3.3 of <a href="https://lean-lang.org/theorem_proving_in_lean4/Propositions-and-Proofs/">Propositions and Proofs</a>
+            and the opening of 4.1 in <a href="https://lean-lang.org/theorem_proving_in_lean4/Quantifiers-and-Equality/">Quantifiers and Equality</a>.
+            Focus on <code>Prop</code>, <code>→</code>, <code>∧</code> and <code>∀</code>; skip constructing proofs.
+          </p>
+        </article>
+        <article>
+          <h2>Lean syntax</h2>
+          <p>
+            Read the first annotations in <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Types/">Types</a>
+            and the first examples in <a href="https://lean-lang.org/functional_programming_in_lean/Getting-to-Know-Lean/Functions-and-Definitions/">Functions and Definitions</a>.
+            Focus on arguments, result types, <code>:</code> and <code>:=</code>. Exercises and later language features can wait.
+          </p>
+        </article>
+        <article>
+          <h2>What the kernel checks</h2>
+          <p>Start with the <a href="/assurance">evidence guide</a>.</p>
+          <p>
+            Read “The Kernel” in <a href="https://lean-lang.org/doc/reference/latest/Elaboration-and-Compilation/">Elaboration and Compilation</a>,
+            then the opening and “Printing Axioms” in <a href="https://lean-lang.org/doc/reference/latest/ValidatingProofs/">Validating Proofs</a>.
+            Advanced checker commands can wait.
+          </p>
+        </article>
+      </div>
+    </details>
+    """
+  end
+
+  attr :id, :string, required: true
+  attr :title, :string, required: true
+  attr :question, :string, required: true
+  attr :answer, :string, required: true
+  slot :inner_block, required: true
+
+  defp reading_note(assigns) do
+    ~H"""
+    <aside class="edu-reading-note" id={@id} aria-labelledby={@id <> "-title"}>
+      <div>
+        <p class="edu-reading-note-label">Optional background</p>
+        <h2 id={@id <> "-title"}>{@title}</h2>
+        {render_slot(@inner_block)}
+      </div>
+      <details class="edu-self-check">
+        <summary><span>Check your understanding</span>{@question}</summary>
+        <p>{@answer}</p>
+      </details>
+    </aside>
     """
   end
 

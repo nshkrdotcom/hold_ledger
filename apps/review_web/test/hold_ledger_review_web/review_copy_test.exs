@@ -2,6 +2,18 @@ defmodule HoldLedgerReviewWeb.ReviewCopyTest do
   use ExUnit.Case, async: true
   alias HoldLedgerReviewWeb.ReviewCopy
 
+  test "display titles follow the catalog without changing authored capitalization" do
+    for slug <- ~w(po_a2 po_exposure_retain po_a4_duplicate po_b1_timeout po_s) do
+      assert ReviewCopy.title(%{"slug" => slug, "title" => "Old display title"}) ==
+               HoldLedgerReviewWeb.Education.title(slug)
+    end
+
+    assert ReviewCopy.title(%{"slug" => "outside_catalog", "title" => "Read the Lean API"}) ==
+             "Read the Lean API"
+
+    assert ReviewCopy.title(%{}) == "Ledger claim"
+  end
+
   defp binding(requires, actual) do
     %{
       "requires" => %{"value" => requires},

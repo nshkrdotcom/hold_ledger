@@ -3,7 +3,8 @@ defmodule HoldLedgerReviewWeb.Layouts do
   embed_templates "layouts/*"
   attr :flash, :map, required: true
   attr :review_stage, :string, default: nil
-  attr :review_claim, :string, default: "po_a2"
+  attr :review_claim, :string, default: nil
+  attr :review_case, :string, default: nil
   slot :tools
   slot :inner_block, required: true
 
@@ -59,13 +60,18 @@ defmodule HoldLedgerReviewWeb.Layouts do
       <div class="site-tools">{render_slot(@tools)}</div>
     </header>
     <main id="workspace" class="workspace">
-      <nav id="review-steps" class="review-steps" aria-label="Review steps">
-        <span>Review a claim</span>
-        <ol>
-          <li :for={{stage, label, path} <- review_steps(@review_claim)}>
-            <a href={path} aria-current={if(@review_stage == stage, do: "step")}>{label}</a>
+      <nav
+        :if={@review_claim}
+        id="claim-navigation"
+        class="claim-navigation"
+        aria-label="For this claim"
+      >
+        <span>For this claim</span>
+        <ul>
+          <li :for={{stage, label, path} <- claim_links(@review_claim, @review_case)}>
+            <a href={path} aria-current={if(@review_stage == stage, do: "page")}>{label}</a>
           </li>
-        </ol>
+        </ul>
       </nav>
       {render_slot(@inner_block)}
     </main>
@@ -137,19 +143,18 @@ defmodule HoldLedgerReviewWeb.Layouts do
     """
   end
 
-  defp review_steps(slug) do
-    [
-      {"policy", "Policy", "/guarantees"},
-      {"claim", "Claim", "/atlas/" <> slug},
-      {"challenge", "Challenge", "/claims/" <> slug},
-      {"evidence", "Evidence", "/assurance"},
-      {"assumptions", "Assumptions", "/assurance#model-boundary"},
-      {"decision", "Decision", decision_path(slug)}
-    ]
-  end
+  defp claim_links(slug, case_id) do
+    case_path = "/claims/" <> slug <> if(case_id, do: "/" <> case_id, else: "")
 
-  defp decision_path(slug) when slug in ~w(po_a2 po_exposure_retain), do: "/lens/" <> slug
-  defp decision_path(slug), do: "/claims/" <> slug <> "#nearby-observation"
+    links = [
+      {"claim", "Read claim", "/atlas/" <> slug},
+      {"challenge", "Case Lab", case_path}
+    ]
+
+    if slug in ~w(po_a2 po_exposure_retain),
+      do: links ++ [{"practice", "Guided practice", "/lens/" <> slug}],
+      else: links
+  end
 
   attr :flash, :map, required: true
 
