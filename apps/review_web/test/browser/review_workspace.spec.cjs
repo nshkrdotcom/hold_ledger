@@ -12,7 +12,7 @@ async function saved(page){const id=new URL(page.url()).pathname.split('/').at(-
 test('opens with the rule, proof and experiment instead of sign-off controls',async({page})=>{
  await open(page);await expect(page.locator('h1')).toHaveText('Accept requests that fit available capacity');
  await expect(page.locator('#policy-anchor')).toContainText('all remaining capacity');await expect(page.locator('#proof-script')).toBeVisible();
- await expect(page.locator('#tool-drawer,[role=dialog],#review-document > details')).toHaveCount(0);await expect(page.locator('#decision-docket button')).toHaveCount(3);
+ await expect(page.locator('#tool-drawer,[role=dialog]:visible,#review-document > details')).toHaveCount(0);await expect(page.locator('#decision-docket button')).toHaveCount(3);
  await expect(page.locator('#review-document')).not.toContainText('no policy approval');await expect(page.locator('#review-document')).not.toContainText('Exact-fit admission');
  await expect(page.locator('#ledger-output h3')).toHaveText('Code returned');await expect(page.locator('#hypothetical-output h3')).toHaveText('What if it returned…');
 });
@@ -81,7 +81,7 @@ for(const [width,height] of [[1280,720],[1440,900],[390,844]])test(`correlated e
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.locator('#edit-candidate').click();await page.getByRole('button',{name:'Reset to code result',exact:true}).click();await page.locator('#alternative-counter input').fill('0');await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');
  await expect(page.locator('#validity-row')).toHaveCount(1)
- await expect(page.locator('[inert],.tool-backdrop,[role=dialog]')).toHaveCount(0);
+ await expect(page.locator('[inert],.tool-backdrop,[role=dialog]:visible')).toHaveCount(0);
  await page.screenshot({path:`../../../../tmp/review_workspace_0711/edit-${width}.png`,fullPage:true});
 });
 

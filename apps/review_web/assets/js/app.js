@@ -146,16 +146,21 @@ const CopyReview = {
 // workbenches are re-rendered by LiveView; no per-node hook needs to survive a
 // patch. The glossary is the same source as /glossary (not a parallel judge).
 const eduTerms = new Map(educationGlossary.terms.map(term => [term.id, term]))
-const eduTooltip = document.getElementById("edu-tooltip")
-const tooltipTitle = eduTooltip?.querySelector("[data-tooltip-title]")
-const tooltipShort = eduTooltip?.querySelector("[data-tooltip-short]")
-const tooltipDetail = eduTooltip?.querySelector("[data-tooltip-detail]")
-const tooltipLink = eduTooltip?.querySelector("[data-tooltip-link]")
-const eduHelpDrawer = document.getElementById("edu-help-drawer")
-const eduHelpButton = document.querySelector("[data-edu-help-open]")
+const eduUI = {
+  get tooltip() { return document.getElementById("edu-tooltip") },
+  get title() { return this.tooltip?.querySelector("[data-tooltip-title]") },
+  get short() { return this.tooltip?.querySelector("[data-tooltip-short]") },
+  get detail() { return this.tooltip?.querySelector("[data-tooltip-detail]") },
+  get link() { return this.tooltip?.querySelector("[data-tooltip-link]") },
+  get drawer() { return document.getElementById("edu-help-drawer") },
+  get helpButton() { return document.querySelector("[data-edu-help-open]") },
+  get guidance() { return document.querySelector("select[data-edu-guidance]") },
+}
 let eduActiveTarget = null
 let eduPinned = false
 let eduLastFocus = null
+let eduCloseTimer = null
+let eduPreviousDescription = null
 
 const eduWords = [
   ["precondition", "requires"], ["requires", "requires"], ["postcondition", "expects"],
@@ -195,10 +200,14 @@ const pageHelp = [
 ]
 
 function eduCloseTooltip() {
-  if (!eduTooltip) return
-  if (eduActiveTarget) eduActiveTarget.removeAttribute("aria-describedby")
-  eduTooltip.hidden = true
-  eduTooltip.dataset.pinned = "false"
+  if (!eduUI.tooltip) return
+  clearTimeout(eduCloseTimer)
+  if (eduActiveTarget) {
+    if (eduPreviousDescription) eduActiveTarget.setAttribute("aria-describedby", eduPreviousDescription)
+    else eduActiveTarget.removeAttribute("aria-describedby")
+  }
+  eduUI.tooltip.hidden = true
+  eduUI.tooltip.dataset.pinned = "false"
   eduActiveTarget = null
   eduPinned = false
 }
@@ -208,7 +217,7 @@ function eduTarget(event) {
   const explicit = node.closest("[data-edu-term], [data-edu-hint]")
   if (explicit) return explicit
   if (!node.closest("#review-document, #claim-lens, .site-tools")) return null
-  return node.closest("button, summary, label, select, input, textarea, a, dt, th, [data-kind], .status-pill, .field-delta, .lens-step, .lens-evidence, [role='tab'], [role='button']")
+  return node.closest("dt, th, [data-kind], .status-pill, .field-delta, .lens-step, .lens-evidence")
 }
 function eduExplain(target) {
   const id = target.dataset.eduTerm
@@ -224,45 +233,47 @@ function eduExplain(target) {
   return {term: label || "Review control", short: "An interaction in the review workbench. Its result is bounded by the selected source, case and evidence.", detail: "Case Lab and Claim Lens show model cases and reviewed source. A screen interaction is not itself a new formal checker receipt.", link: "/assurance"}
 }
 function eduShowTooltip(target, pinned = false) {
-  if (!eduTooltip || !target?.isConnected) return
+  if (!eduUI.tooltip || !target?.isConnected) return
   if (eduPinned && !pinned && target !== eduActiveTarget) return
-  if (eduActiveTarget && eduActiveTarget !== target) eduActiveTarget.removeAttribute("aria-describedby")
+  clearTimeout(eduCloseTimer)
+  if (eduActiveTarget && eduActiveTarget !== target) eduCloseTooltip()
+  if (eduActiveTarget !== target) eduPreviousDescription = target.getAttribute("aria-describedby")
   const explanation = eduExplain(target)
-  tooltipTitle.textContent = explanation.term
-  tooltipShort.textContent = explanation.short
-  tooltipDetail.textContent = explanation.detail
-  tooltipLink.setAttribute("href", explanation.link)
-  eduTooltip.hidden = false
-  eduTooltip.dataset.pinned = String(pinned)
+  eduUI.title.textContent = explanation.term
+  eduUI.short.textContent = explanation.short
+  eduUI.detail.textContent = explanation.detail
+  eduUI.link.setAttribute("href", explanation.link)
+  eduUI.tooltip.hidden = false
+  eduUI.tooltip.dataset.pinned = String(pinned)
   eduPinned = pinned
   eduActiveTarget = target
-  target.setAttribute("aria-describedby", "edu-tooltip")
+  target.setAttribute("aria-describedby", [eduPreviousDescription, "edu-tooltip"].filter(Boolean).join(" "))
   const box = target.getBoundingClientRect()
-  const width = eduTooltip.offsetWidth
-  const height = eduTooltip.offsetHeight
+  const width = eduUI.tooltip.offsetWidth
+  const height = eduUI.tooltip.offsetHeight
   const left = Math.max(10, Math.min(window.innerWidth - width - 10, box.left + box.width / 2 - width / 2))
   const below = box.bottom + 10
   const top = below + height < window.innerHeight - 10 ? below : Math.max(10, box.top - height - 10)
-  eduTooltip.style.left = `${left}px`
-  eduTooltip.style.top = `${top}px`
+  eduUI.tooltip.style.left = `${left}px`
+  eduUI.tooltip.style.top = `${top}px`
 }
 
-function eduCloseHelp() {
-  if (!eduHelpDrawer) return
-  eduHelpDrawer.hidden = true
-  eduHelpButton?.setAttribute("aria-expanded", "false")
-  if (eduLastFocus?.isConnected) eduLastFocus.focus({preventScroll: true})
+function eduCloseHelp(restoreFocus = true) {
+  if (!eduUI.drawer) return
+  eduUI.drawer.hidden = true
+  eduUI.helpButton?.setAttribute("aria-expanded", "false")
+  if (restoreFocus && eduLastFocus?.isConnected) eduLastFocus.focus({preventScroll: true})
 }
 function eduOpenHelp() {
-  if (!eduHelpDrawer) return
+  if (!eduUI.drawer) return
   eduCloseTooltip()
   eduLastFocus = document.activeElement
   const [title, detail] = (pageHelp.find(([re]) => re.test(location.pathname)) || pageHelp[0])[1]
-  eduHelpDrawer.querySelector("#edu-help-title").textContent = title
-  eduHelpDrawer.querySelector("#edu-help-description").textContent = detail
-  eduHelpDrawer.hidden = false
-  eduHelpButton?.setAttribute("aria-expanded", "true")
-  eduHelpDrawer.querySelector("[data-edu-help-close]")?.focus({preventScroll: true})
+  eduUI.drawer.querySelector("#edu-help-title").textContent = title
+  eduUI.drawer.querySelector("#edu-help-description").textContent = detail
+  eduUI.drawer.hidden = false
+  eduUI.helpButton?.setAttribute("aria-expanded", "true")
+  eduUI.drawer.querySelector("[data-edu-help-close]")?.focus({preventScroll: true})
 }
 function eduMarkNav() {
   for (const a of document.querySelectorAll("[data-global-nav] [data-nav]")) {
@@ -272,62 +283,80 @@ function eduMarkNav() {
     else a.removeAttribute("aria-current")
   }
 }
-const guidanceSelect = document.querySelector("[data-edu-guidance]")
-try {
-  const stored = localStorage.getItem("hold_ledger_education_density")
-  if (stored === "guided" || stored === "focused") guidanceSelect.value = stored
-} catch { /* Browser storage is optional */ }
-document.documentElement.dataset.eduGuidance = guidanceSelect?.value || "guided"
-guidanceSelect?.addEventListener("change", () => {
-  document.documentElement.dataset.eduGuidance = guidanceSelect.value
-  try { localStorage.setItem("hold_ledger_education_density", guidanceSelect.value) } catch { /* optional */ }
+function eduRestoreGuidance() {
+  let density = document.documentElement.dataset.eduGuidance || "guided"
+  try { density = localStorage.getItem("hold_ledger_education_density") || density } catch { /* optional */ }
+  if (!["guided", "focused"].includes(density)) density = "guided"
+  document.documentElement.dataset.eduGuidance = density
+  if (eduUI.guidance) eduUI.guidance.value = density
+}
+eduRestoreGuidance()
+document.addEventListener("change", event => {
+  if (!event.target.matches("select[data-edu-guidance]")) return
+  const density = event.target.value
+  document.documentElement.dataset.eduGuidance = density
+  try { localStorage.setItem("hold_ledger_education_density", density) } catch { /* optional */ }
 })
 document.addEventListener("pointerover", event => {
   if (event.pointerType === "touch") return
   const target = eduTarget(event)
-  if (target && (!eduPinned || target === eduActiveTarget)) eduShowTooltip(target)
+  if (target && !eduPinned) eduShowTooltip(target)
 })
 document.addEventListener("pointerout", event => {
-  if (!eduPinned && eduActiveTarget && eduActiveTarget.contains(event.target) &&
-      !eduActiveTarget.contains(event.relatedTarget)) eduCloseTooltip()
+  if (!eduPinned && eduActiveTarget && !eduActiveTarget.contains(document.activeElement) &&
+      (eduActiveTarget.contains(event.target) || eduUI.tooltip.contains(event.target)) &&
+      !eduActiveTarget.contains(event.relatedTarget) && !eduUI.tooltip.contains(event.relatedTarget)) {
+    eduCloseTimer = setTimeout(eduCloseTooltip, 150)
+  }
+})
+document.addEventListener("pointerover", event => {
+  if (eduUI.tooltip?.contains(event.target)) clearTimeout(eduCloseTimer)
 })
 document.addEventListener("focusin", event => {
   const target = eduTarget(event)
   if (target && !eduPinned) eduShowTooltip(target)
 })
 document.addEventListener("focusout", event => {
-  if (!eduPinned && eduActiveTarget?.contains(event.target)) eduCloseTooltip()
+  if (!eduPinned && eduActiveTarget?.contains(event.target) && !eduUI.tooltip?.contains(event.relatedTarget)) eduCloseTooltip()
 })
 document.addEventListener("click", event => {
   const node = event.target instanceof Element ? event.target : null
   if (!node) return
   if (node.closest("[data-edu-help-open]")) {
     event.preventDefault()
-    if (eduHelpDrawer?.hidden) eduOpenHelp()
+    if (eduUI.drawer?.hidden) eduOpenHelp()
     else eduCloseHelp()
     return
   }
   if (node.closest("[data-edu-help-close]")) {eduCloseHelp(); return}
-  if (!eduHelpDrawer?.hidden && !eduHelpDrawer.contains(node) && !node.closest("[data-edu-help-open]")) eduCloseHelp()
+  if (!eduUI.drawer?.hidden && !eduUI.drawer.contains(node) && !node.closest("[data-edu-help-open]")) eduCloseHelp(false)
   const term = node.closest("[data-edu-term]")
   if (term) {
     event.preventDefault()
     if (eduPinned && eduActiveTarget === term) eduCloseTooltip()
     else eduShowTooltip(term, true)
-  } else if (eduPinned && !eduTooltip?.contains(node)) eduCloseTooltip()
+  } else if (!eduUI.tooltip?.contains(node)) eduCloseTooltip()
 })
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
-    if (eduPinned || !eduTooltip?.hidden) eduCloseTooltip()
-    if (!eduHelpDrawer?.hidden) eduCloseHelp()
+    if (eduPinned || !eduUI.tooltip?.hidden) eduCloseTooltip()
+    if (!eduUI.drawer?.hidden) eduCloseHelp()
   }
-  if ((event.key === "Enter" || event.key === " ") && event.target?.matches?.("[data-edu-term]")) {
+  if ((event.key === "Enter" || event.key === " ") && event.target?.matches?.("[data-edu-term]:not(button):not(a):not(input):not(select):not(textarea)")) {
     event.preventDefault()
     eduShowTooltip(event.target, true)
   }
 })
-window.addEventListener("scroll", () => { if (!eduPinned) eduCloseTooltip() }, {capture:true, passive:true})
-window.addEventListener("phx:page-loading-stop", () => { eduCloseTooltip(); eduMarkNav() })
+window.addEventListener("scroll", () => {
+  if (eduActiveTarget?.contains(document.activeElement)) eduShowTooltip(eduActiveTarget, eduPinned)
+  else eduCloseTooltip()
+}, {capture:true, passive:true})
+window.addEventListener("phx:page-loading-stop", () => { eduCloseTooltip(); eduCloseHelp(false); eduMarkNav(); eduRestoreGuidance() })
+window.addEventListener("resize", eduCloseTooltip)
+new MutationObserver(records => {
+  if (eduActiveTarget && (!eduActiveTarget.isConnected ||
+      records.some(record => eduActiveTarget.contains(record.target)))) eduCloseTooltip()
+}).observe(document.body, {childList: true, subtree: true})
 window.addEventListener("popstate", eduMarkNav)
 eduMarkNav()
 

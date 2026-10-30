@@ -131,7 +131,7 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
     }
     expect(metrics.bodyOverflow).not.toBe('hidden');
     await expect(page.locator('#add-observation')).toBeVisible();
-    await expect(page.locator('[role=dialog],.tool-backdrop')).toHaveCount(0);
+    await expect(page.locator('[role=dialog]:visible,.tool-backdrop')).toHaveCount(0);
   });
 }
 

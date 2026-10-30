@@ -27,22 +27,63 @@ defmodule HoldLedgerReviewWeb.Layouts do
         </nav>
         <div class="global-actions">
           <label for="edu-guidance" class="edu-guidance-label">EXPLAIN</label>
-          <select id="edu-guidance" aria-label="Explanation density" data-edu-guidance>
+          <select
+            id="edu-guidance"
+            phx-update="ignore"
+            aria-label="Explanation density"
+            data-edu-guidance
+          >
             <option value="guided">Guided</option>
             <option value="focused">Focused</option>
           </select>
-          <button id="edu-help-toggle" type="button" data-edu-help-open aria-controls="edu-help-drawer" aria-expanded="false" data-edu-hint="Open the page guide, keyboard and touch accessible.">? <span>Help</span></button>
+          <button
+            id="edu-help-toggle"
+            phx-update="ignore"
+            type="button"
+            data-edu-help-open
+            aria-controls="edu-help-drawer"
+            aria-expanded="false"
+            data-edu-hint="Open the page guide, keyboard and touch accessible."
+          >? <span>Help</span></button>
         </div>
       </div>
       <div class="site-tools">{render_slot(@tools)}</div>
     </header>
     <main id="workspace" class="workspace">{render_slot(@inner_block)}</main>
-    <aside id="edu-help-drawer" class="edu-help-drawer" hidden role="dialog" aria-label="Explain this screen" aria-modal="false" tabindex="-1">
-      <div class="edu-help-head"><span>HOLD LEDGER / PAGE GUIDE</span><button type="button" data-edu-help-close aria-label="Close page guide">×</button></div>
-      <div class="edu-help-content"><h2 id="edu-help-title">What am I looking at?</h2><p id="edu-help-description">This companion helps connect policy, source code, claims, and evidence.</p><div class="edu-help-callout"><strong>Evidence boundary</strong><p>One pointwise case and a source-reading link are not a universal formal receipt.</p></div><h3>Keep exploring</h3><div class="edu-help-links"><a href="/start">The payment story →</a><a href="/glossary">Plain-language glossary →</a><a href="/assurance">Evidence and limitations →</a></div></div>
+    <aside
+      id="edu-help-drawer"
+      phx-update="ignore"
+      class="edu-help-drawer"
+      hidden
+      role="dialog"
+      aria-label="Explain this screen"
+      aria-modal="false"
+      tabindex="-1"
+    >
+      <div class="edu-help-head">
+        <span>HOLD LEDGER / PAGE GUIDE</span><button
+          type="button"
+          data-edu-help-close
+          aria-label="Close page guide"
+        >×</button>
+      </div>
+      <div class="edu-help-content">
+        <h2 id="edu-help-title">What am I looking at?</h2><p id="edu-help-description">
+          This companion helps connect policy, source code, claims, and evidence.
+        </p><div class="edu-help-callout">
+          <strong>Evidence boundary</strong><p>
+            One pointwise case and a source-reading link are not a universal formal receipt.
+          </p>
+        </div><h3>Keep exploring</h3><div class="edu-help-links">
+          <a href="/start">The payment story →</a><a href="/glossary">Plain-language glossary →</a><a href="/assurance">Evidence and limitations →</a>
+        </div>
+      </div>
     </aside>
-    <div id="edu-tooltip" class="edu-tooltip" role="tooltip" hidden>
-      <strong data-tooltip-title></strong><p data-tooltip-short></p><p data-tooltip-detail></p><a data-tooltip-link href="/glossary">More context →</a>
+    <div id="edu-tooltip" phx-update="ignore" class="edu-tooltip" role="tooltip" hidden>
+      <strong data-tooltip-title></strong><p data-tooltip-short></p><p data-tooltip-detail></p><a
+        data-tooltip-link
+        href="/glossary"
+      >More context →</a>
     </div>
     <.flash_group flash={@flash} />
     """

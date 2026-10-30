@@ -29,6 +29,9 @@ Spec, evaluator, Lean files, checks and processor logic are unchanged.
 
 Shared explanatory assistance works by hover, focus and touch with a persistent
 page help drawer and an optional Guided/Focused explanation-density setting.
+Focus or tap an annotated heading button to read its explanation. Press Escape
+to dismiss help; closing the page guide returns focus to its opener. Ordinary
+review buttons continue to perform their original actions.
 The same curated glossary powers the reference page and workbench tooltips.
 None of the educational scenario steps, examples or glossary entries is a new
 formal proof, real processor execution or human policy approval.
