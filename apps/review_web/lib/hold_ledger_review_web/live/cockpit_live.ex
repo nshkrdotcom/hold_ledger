@@ -1508,7 +1508,11 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           show_sources={@show_sources}
           doc={@doc}
         />
-        <section class="case-review-map" id="case-review-map" aria-label="Three layers of review evidence">
+        <section
+          class="case-review-map"
+          id="case-review-map"
+          aria-label="Three layers of review evidence"
+        >
           <div class="case-map-cell">
             <span>01 / Human requirement</span>
             <strong>What should the ledger allow?</strong>
@@ -1635,43 +1639,47 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     Links are reading aids, not kernel-level dependencies.</p>
                 </div>
                 <details id="case-conditions-depth" class="case-depth" open>
-                  <summary><strong>Condition breakdown</strong><span>Source-bound applicability &amp; output constraints</span></summary>
-                <section id="clauses-panel">
-                  <.dissector
-                    source_requested={@condition_source_requested}
-                    reading={@reading}
-                    case={@case_data}
-                    basis={@basis}
-                    helper={@helper}
-                    binding_index={@binding_index}
-                    links={@reading_links.links}
-                    unavailable={@reading_links.unavailable}
-                    active_links={@active_links}
-                    selection={@selection}
-                    generation={@reading["source_generation"]}
-                    stage={@stage}
-                    changed_sources={
-                      if(@package, do: Enum.map(@package["source_changes"], & &1["path"]), else: [])
-                    }
-                  />
-                </section>
+                  <summary>
+                    <strong>Condition breakdown</strong><span>Source-bound applicability &amp; output constraints</span>
+                  </summary>
+                  <section id="clauses-panel">
+                    <.dissector
+                      source_requested={@condition_source_requested}
+                      reading={@reading}
+                      case={@case_data}
+                      basis={@basis}
+                      helper={@helper}
+                      binding_index={@binding_index}
+                      links={@reading_links.links}
+                      unavailable={@reading_links.unavailable}
+                      active_links={@active_links}
+                      selection={@selection}
+                      generation={@reading["source_generation"]}
+                      stage={@stage}
+                      changed_sources={
+                        if(@package, do: Enum.map(@package["source_changes"], & &1["path"]), else: [])
+                      }
+                    />
+                  </section>
                 </details>
                 <details id="case-proof-depth" class="case-depth" open>
-                  <summary><strong>Formal source &amp; provenance</strong><span>Reviewed Lean text · verification scope</span></summary>
-                <section id="proof-panel">
-                  <.proof_source
-                    reading={@reading}
-                    stage={@stage}
-                    full={@proof_full}
-                    active_links={@active_links}
-                    links={@reading_links.links}
-                  />
-                  <section :if={@inspected} id="inline-source" class="inline-source">
-                    <header>
-                      <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
-                    </header><pre>{@inspected.bytes}</pre>
+                  <summary>
+                    <strong>Formal source &amp; provenance</strong><span>Reviewed Lean text · verification scope</span>
+                  </summary>
+                  <section id="proof-panel">
+                    <.proof_source
+                      reading={@reading}
+                      stage={@stage}
+                      full={@proof_full}
+                      active_links={@active_links}
+                      links={@reading_links.links}
+                    />
+                    <section :if={@inspected} id="inline-source" class="inline-source">
+                      <header>
+                        <h3>{@inspected.name}</h3><button phx-click="close_source">Close source</button>
+                      </header><pre>{@inspected.bytes}</pre>
+                    </section>
                   </section>
-                </section>
                 </details>
               </div>
               <section id="nearby-observation" aria-label="Observation and local repair">

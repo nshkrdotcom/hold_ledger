@@ -5,7 +5,8 @@ for(const width of [1440,1280,1024,768,640,390])test(`rule controls align and re
  const s=await select.boundingBox(),c=await compare.boundingBox(),title=await page.locator('.rule-identity').boundingBox();
  expect(Math.abs(s.height-c.height)).toBeLessThanOrEqual(1);
  if(width>480){expect(Math.abs(s.y-c.y)).toBeLessThanOrEqual(1);expect(s.x+s.width).toBeLessThanOrEqual(c.x-7)}
- else{expect(c.y).toBeGreaterThanOrEqual(s.y+s.height+7);expect(s.width).toBeGreaterThan(width-60)}
+ // The selector fills the title column inside the redesigned card padding.
+ else{expect(c.y).toBeGreaterThanOrEqual(s.y+s.height+7);expect(Math.abs(s.width-title.width)).toBeLessThanOrEqual(1)}
  if(width<=1000)expect(s.y).toBeGreaterThanOrEqual(title.y+title.height+7);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
  await select.selectOption('po_b1_void');await expect(page).toHaveURL(/\/claims\/po_b1_void\//);

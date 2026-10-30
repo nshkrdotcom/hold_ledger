@@ -158,13 +158,16 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
     values = Map.new(@review_fields, &{&1, Map.get(fields, &1, "")})
 
     if Enum.all?(values, fn {key, value} ->
-         is_binary(value) and byte_size(value) <= if(key == "text", do: 2000, else: 500)
+         is_binary(value) and byte_size(value) <= review_limit(key)
        end) do
       {:ok, values}
     else
       {:error, :invalid_draft}
     end
   end
+
+  defp review_limit("text"), do: 2000
+  defp review_limit(_field), do: 500
 
   defp change_observation(socket, witness, variation) do
     slug = socket.assigns.study.slug
@@ -277,7 +280,10 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
             <.link patch={~p"/lens/#{@study.slug}"} aria-current={if @mode == "challenge", do: "page"}>
               <strong>01 · Review first</strong><small>Commit an initial classification</small>
             </.link>
-            <.link patch={~p"/lens/#{@study.slug}?mode=explore"} aria-current={if @mode == "explore", do: "page"}>
+            <.link
+              patch={~p"/lens/#{@study.slug}?mode=explore"}
+              aria-current={if @mode == "explore", do: "page"}
+            >
               <strong>02 · Explore freely</strong><small>Open answers for learning and QA</small>
             </.link>
           </nav>
@@ -293,11 +299,24 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
           <details id="lens-evidence-legend" class="lens-details lens-legend">
             <summary>Understand the five evidence levels</summary>
             <ol class="lens-legend-list">
-              <li><strong>Policy Requirement</strong> — independently authored intended behavior, not a theorem.</li>
-              <li><strong>Pointwise Evaluation</strong> — one bound input/output, not a universal proof.</li>
-              <li><strong>Reviewed Source Reading</strong> — text navigation, not a kernel dependency.</li>
-              <li><strong>Checked Formal Artifact</strong> — only if a report matches the exact source and declared scope.</li>
-              <li><strong>Unverified External Assumption</strong> — processor behavior and durability require separate evidence.</li>
+              <li>
+                <strong>Policy Requirement</strong>
+                — independently authored intended behavior, not a theorem.
+              </li>
+              <li>
+                <strong>Pointwise Evaluation</strong> — one bound input/output, not a universal proof.
+              </li>
+              <li>
+                <strong>Reviewed Source Reading</strong> — text navigation, not a kernel dependency.
+              </li>
+              <li>
+                <strong>Checked Formal Artifact</strong>
+                — only if a report matches the exact source and declared scope.
+              </li>
+              <li>
+                <strong>Unverified External Assumption</strong>
+                — processor behavior and durability require separate evidence.
+              </li>
             </ol>
             <p>No proof is rerun, no AI request is made, and no payments are sent by this page.</p>
           </details>
@@ -383,12 +402,20 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 >{variation_title(variation, @mode)}</button>
               </div>
               <p :if={@feedback?} class="lens-detail">{@observation.variation.detail}</p>
-              <p :if={@variation_id == "proof_only" && @feedback?} id="lens-proof-control" class="lens-detail lens-null-control">
+              <p
+                :if={@variation_id == "proof_only" && @feedback?}
+                id="lens-proof-control"
+                class="lens-detail lens-null-control"
+              >
                 <strong>No semantic delta in specification.</strong>
                 Requires and expects are identical in this proof-body-only illustration.
                 The edited proof has not been checked.
               </p>
-              <p :if={@variation_id == "proof_only" && !@feedback?} id="lens-proof-control" class="lens-detail">
+              <p
+                :if={@variation_id == "proof_only" && !@feedback?}
+                id="lens-proof-control"
+                class="lens-detail"
+              >
                 Proof-body-only change proposed. Compare the authored and illustrative clauses;
                 no revised proof was run. Determine whether its guarantee changed.
               </p>
@@ -405,7 +432,11 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
               </p>
             </section>
 
-            <section class="lens-panel lens-case-brief" id="lens-case-brief" aria-label="Concrete case for human review">
+            <section
+              class="lens-panel lens-case-brief"
+              id="lens-case-brief"
+              aria-label="Concrete case for human review"
+            >
               <div class="lens-panel-head">
                 <span class="lens-step">05 / Concrete test case</span>
                 <span class="lens-evidence lens-provenance" data-kind="hypothetical">Curated alternative · unexecuted</span>
@@ -422,16 +453,22 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   )}</strong>
                 </div>
               </div>
-              <p class="lens-footnote">The code output is evaluated by the existing Ledger step function.
-                The alternative is curated and unexecuted; this is not a new mutant run.</p>
+              <p class="lens-footnote">
+                The code output is evaluated by the existing Ledger step function.
+                The alternative is curated and unexecuted; this is not a new mutant run.
+              </p>
             </section>
 
             <section class="lens-panel lens-human" id="lens-review">
-              <div class="lens-panel-head"><span class="lens-step">06 / Commit your interpretation</span>
-                <span class="lens-evidence lens-provenance" data-kind="human">Human judgment · local only</span></div>
+              <div class="lens-panel-head">
+                <span class="lens-step">06 / Commit your interpretation</span>
+                <span class="lens-evidence lens-provenance" data-kind="human">Human judgment · local only</span>
+              </div>
               <h2>What does the contract promise here?</h2>
-              <p>Choose the best classification, then anchor it to the policy, claim,
-                concrete witness and scope limit. No concern and uncertainty are valid conclusions.</p>
+              <p>
+                Choose the best classification, then anchor it to the policy, claim,
+                concrete witness and scope limit. No concern and uncertainty are valid conclusions.
+              </p>
               <div class="lens-decisions" role="group" aria-label="Provisional human decision">
                 <button
                   id="lens-decision-concern"
@@ -465,16 +502,28 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                   phx-value-choice="unresolved"
                   aria-pressed={to_string(@decision == "unresolved")}
                 >Insufficient evidence <small>Unresolved assumptions</small></button>
-                <button id="lens-decision-covers" type="button" phx-click="decision"
-                  phx-value-choice="covers" disabled={not is_nil(@submitted_review)}
+                <button
+                  id="lens-decision-covers"
+                  type="button"
+                  phx-click="decision"
+                  phx-value-choice="covers"
+                  disabled={not is_nil(@submitted_review)}
                   aria-pressed={to_string(@decision == "covers")}
                 >Covers intended policy <small>Scoped to this example</small></button>
-                <button id="lens-decision-permits-forbidden" type="button" phx-click="decision"
-                  phx-value-choice="permits_forbidden" disabled={not is_nil(@submitted_review)}
+                <button
+                  id="lens-decision-permits-forbidden"
+                  type="button"
+                  phx-click="decision"
+                  phx-value-choice="permits_forbidden"
+                  disabled={not is_nil(@submitted_review)}
                   aria-pressed={to_string(@decision == "permits_forbidden")}
                 >Permits forbidden output <small>Possible underconstraint</small></button>
-                <button id="lens-decision-overconstrains" type="button" phx-click="decision"
-                  phx-value-choice="overconstrains" disabled={not is_nil(@submitted_review)}
+                <button
+                  id="lens-decision-overconstrains"
+                  type="button"
+                  phx-click="decision"
+                  phx-value-choice="overconstrains"
+                  disabled={not is_nil(@submitted_review)}
                   aria-pressed={to_string(@decision == "overconstrains")}
                 >Overconstrains valid behavior <small>Possible false alarm</small></button>
               </div>
@@ -485,18 +534,38 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 phx-submit="reveal"
               >
                 <div class="lens-argument-grid" aria-label="Four-part evidence argument">
-                  <.input field={@review_form[:policy_anchor]} type="text" maxlength="500"
+                  <.input
+                    field={@review_form[:policy_anchor]}
+                    type="text"
+                    maxlength="500"
                     disabled={not is_nil(@submitted_review)}
-                    label="01 · Policy anchor" placeholder="guides/specification.md · exact-fit admission" />
-                  <.input field={@review_form[:contract_clause]} type="text" maxlength="500"
+                    label="01 · Policy anchor"
+                    placeholder="guides/specification.md · exact-fit admission"
+                  />
+                  <.input
+                    field={@review_form[:contract_clause]}
+                    type="text"
+                    maxlength="500"
                     disabled={not is_nil(@submitted_review)}
-                    label="02 · Contract provision" placeholder="requires or expects clause" />
-                  <.input field={@review_form[:witness]} type="text" maxlength="500"
+                    label="02 · Contract provision"
+                    placeholder="requires or expects clause"
+                  />
+                  <.input
+                    field={@review_form[:witness]}
+                    type="text"
+                    maxlength="500"
                     disabled={not is_nil(@submitted_review)}
-                    label="03 · Discriminating witness" placeholder="100¢ request / 100¢ remaining" />
-                  <.input field={@review_form[:scope_limit]} type="text" maxlength="500"
+                    label="03 · Discriminating witness"
+                    placeholder="100¢ request / 100¢ remaining"
+                  />
+                  <.input
+                    field={@review_form[:scope_limit]}
+                    type="text"
+                    maxlength="500"
                     disabled={not is_nil(@submitted_review)}
-                    label="04 · Limitation / assumption" placeholder="Illustrative edit; not Lean checked" />
+                    label="04 · Limitation / assumption"
+                    placeholder="Illustrative edit; not Lean checked"
+                  />
                 </div>
                 <.input
                   field={@review_form[:text]}
@@ -517,15 +586,29 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
               <div :if={@submitted_review} id="lens-initial-answer" role="status">
                 <strong>Your initial classification: {decision_label(@submitted_review.decision)}.</strong>
                 <div class="lens-argument-summary">
-                  <p :if={@submitted_review.policy_anchor != ""}><b>Policy:</b> {@submitted_review.policy_anchor}</p>
-                  <p :if={@submitted_review.contract_clause != ""}><b>Claim:</b> {@submitted_review.contract_clause}</p>
-                  <p :if={@submitted_review.witness != ""}><b>Witness:</b> {@submitted_review.witness}</p>
-                  <p :if={@submitted_review.scope_limit != ""}><b>Limitation:</b> {@submitted_review.scope_limit}</p>
+                  <p :if={@submitted_review.policy_anchor != ""}>
+                    <b>Policy:</b> {@submitted_review.policy_anchor}
+                  </p>
+                  <p :if={@submitted_review.contract_clause != ""}>
+                    <b>Claim:</b> {@submitted_review.contract_clause}
+                  </p>
+                  <p :if={@submitted_review.witness != ""}>
+                    <b>Witness:</b> {@submitted_review.witness}
+                  </p>
+                  <p :if={@submitted_review.scope_limit != ""}>
+                    <b>Limitation:</b> {@submitted_review.scope_limit}
+                  </p>
                   <p :if={@submitted_review.text != ""}><b>Reasoning:</b> {@submitted_review.text}</p>
                 </div>
-                <p>Feedback is now available. This provisional answer is not a saved review decision.</p>
-                <button id="lens-copy-packet" type="button" phx-hook="CopyReview"
-                  data-packet={review_packet(@submitted_review, @study, @observation)}>
+                <p>
+                  Feedback is now available. This provisional answer is not a saved review decision.
+                </p>
+                <button
+                  id="lens-copy-packet"
+                  type="button"
+                  phx-hook="CopyReview"
+                  data-packet={review_packet(@submitted_review, @study, @observation)}
+                >
                   Copy local Markdown argument
                 </button>
                 <span id="lens-copy-status" class="lens-copy-status" role="status" aria-live="polite"></span>
@@ -647,160 +730,205 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
                 new pointwise evaluations or proof results.</p>
               <div class="lens-case-atlas">
                 <details name="lens-case-pair" open>
-                  <summary><span>P02</span><strong>Remote void request missing</strong><small>Authorized → voiding</small></summary>
-                  <dl><div><dt>Capacity</dt><dd>100¢ / 1 slot retained</dd></div>
-                    <div><dt>Remote effect</dt><dd class="lens-emphasis">None requested</dd></div>
-                    <div><dt>Decision boundary</dt><dd>Retention alone is insufficient</dd></div></dl>
+                  <summary>
+                    <span>P02</span><strong>Remote void request missing</strong><small>Authorized → voiding</small>
+                  </summary>
+                  <dl>
+                    <div>
+                      <dt>Capacity</dt><dd>100¢ / 1 slot retained</dd>
+                    </div>
+                    <div>
+                      <dt>Remote effect</dt><dd class="lens-emphasis">None requested</dd>
+                    </div>
+                    <div>
+                      <dt>Decision boundary</dt><dd>Retention alone is insufficient</dd>
+                    </div>
+                  </dl>
                 </details>
                 <details name="lens-case-pair">
-                  <summary><span>P05</span><strong>Capacity released too soon</strong><small>Authorized → voided</small></summary>
-                  <dl><div><dt>Capacity</dt><dd class="lens-emphasis">0¢ / 0 slots, too early</dd></div>
-                    <div><dt>Remote effect</dt><dd>Void requested</dd></div>
-                    <div><dt>Decision boundary</dt><dd>An emitted effect is not terminal confirmation</dd></div></dl>
+                  <summary>
+                    <span>P05</span><strong>Capacity released too soon</strong><small>Authorized → voided</small>
+                  </summary>
+                  <dl>
+                    <div>
+                      <dt>Capacity</dt><dd class="lens-emphasis">0¢ / 0 slots, too early</dd>
+                    </div>
+                    <div>
+                      <dt>Remote effect</dt><dd>Void requested</dd>
+                    </div>
+                    <div>
+                      <dt>Decision boundary</dt><dd>
+                        An emitted effect is not terminal confirmation
+                      </dd>
+                    </div>
+                  </dl>
                 </details>
                 <details name="lens-case-pair">
-                  <summary><span>P08</span><strong>Legitimate local release</strong><small>Reserved → voided</small></summary>
-                  <dl><div><dt>Capacity</dt><dd>0¢ / 0 slots, permitted</dd></div>
-                    <div><dt>Remote effect</dt><dd>No effect needed; never dispatched</dd></div>
-                    <div><dt>Decision boundary</dt><dd>Correct acceptance is as important as catching a fault</dd></div></dl>
+                  <summary>
+                    <span>P08</span><strong>Legitimate local release</strong><small>Reserved → voided</small>
+                  </summary>
+                  <dl>
+                    <div>
+                      <dt>Capacity</dt><dd>0¢ / 0 slots, permitted</dd>
+                    </div>
+                    <div>
+                      <dt>Remote effect</dt><dd>No effect needed; never dispatched</dd>
+                    </div>
+                    <div>
+                      <dt>Decision boundary</dt><dd>
+                        Correct acceptance is as important as catching a fault
+                      </dd>
+                    </div>
+                  </dl>
                 </details>
               </div>
-              <p class="lens-footnote">Source: <code>guides/payment_hold_review_exercises.md</code>
-                and curated <code>priv/scenarios/P02.json</code>, <code>P05.json</code>, <code>P08.json</code>.</p>
+              <p class="lens-footnote">
+                Source: <code>guides/payment_hold_review_exercises.md</code>
+                and curated <code>priv/scenarios/P02.json</code>, <code>P05.json</code>, <code>P08.json</code>.
+              </p>
             </section>
           </div>
 
           <details id="lens-evidence-drawer" class="lens-evidence-drawer" open={@mode == "explore"}>
             <summary>
-              <span><b>08 / Evidence library</b> · Claim source, Lean reading and verification provenance</span>
+              <span><b>08 / Evidence library</b>
+              · Claim source, Lean reading and verification provenance</span>
               <small>Secondary depth · source navigation is not a proof dependency</small>
             </summary>
-          <aside class="lens-reading" aria-label="Source and verification evidence">
-            <section class="lens-panel" id="lens-source-contract">
-              <span class="lens-step">Source / Elixir law</span>
-              <h2>The authored contract</h2>
-              <p class="lens-evidence">{@reading["law"]["file"]}</p>
-              <dl :if={@reading["contract"]["status"] == "source_read"} class="lens-contract">
-                <dt>REQUIRES</dt><dd tabindex="0" aria-label="Authored precondition">
-                  <code>{@reading["contract"]["requires"]}</code>
-                </dd>
-                <dt>EXPECTS</dt><dd tabindex="0" aria-label="Authored postcondition">
-                  <code>{@reading["contract"]["expects"]}</code>
-                </dd>
-              </dl>
-              <p :if={@reading["contract"]["status"] != "source_read"} role="status">
-                Audited Elixir expression unavailable.
-              </p>
-              <a
-                :if={source_href(@reading, @observation.source_path)}
-                href={source_href(@reading, @observation.source_path)}
-                target="_blank"
-                rel="noopener"
-              >Read complete registered law</a>
-            </section>
-            <section class="lens-panel" id="lens-source-links">
-              <span class="lens-step">Source / Reviewed correspondences</span>
-              <h2>Select a clause to inspect</h2>
-              <div class="lens-clause-list" role="group" aria-label="Source-linked clauses">
-                <button
-                  :for={link <- @reading["connections"]}
-                  id={"lens-clause-#{link["id"]}"}
-                  class={[
-                    "lens-clause",
-                    @selected_clause == link["id"] && "selected",
-                    @observation.changed? && @study.connection == link["id"] && "lens-clause-edited"
-                  ]}
-                  phx-click="clause"
-                  phx-value-id={link["id"]}
-                  aria-pressed={to_string(@selected_clause == link["id"])}
-                >
-                  <span>{link["phase"]} · {link["id"]}</span>
-                  <code>{link["expression"]}</code>
-                </button>
-              </div>
-              <p :if={@selected_link && @feedback?} id="lens-selected-clause" class="lens-detail">
-                {@selected_link["relation"]}
-              </p>
-              <p :if={@selected_link && @selected_link["availability"] != "available"} role="status">
-                Reviewed source link unavailable for the current source.
-              </p>
-              <p :if={@feedback? && @observed_link} id="lens-observed-path" class="lens-footnote">
-                Matching observed AST path:
-                <code>{@observed_link["phase"]}:{@observed_link["path"]}</code>
-                · one bound witness.
-              </p>
-              <p
-                :if={@feedback? && @selected_link && !@observed_link}
-                id="lens-observed-unavailable"
-                class="lens-footnote"
-              >
-                No unique observed AST link for this candidate and binding; source reading remains separate.
-              </p>
-            </section>
-            <section class="lens-panel" id="lens-lean-reading">
-              <span class="lens-step">Source / Lean text</span>
-              <h2>What the theorem states</h2>
-              <article :for={decl <- @reading["declarations"]} class="lens-lean-decl">
-                <p class="lens-evidence">
-                  {decl["path"]}:{decl["line"]} · {evidence_label(decl["status"])}
+            <aside class="lens-reading" aria-label="Source and verification evidence">
+              <section class="lens-panel" id="lens-source-contract">
+                <span class="lens-step">Source / Elixir law</span>
+                <h2>The authored contract</h2>
+                <p class="lens-evidence">{@reading["law"]["file"]}</p>
+                <dl :if={@reading["contract"]["status"] == "source_read"} class="lens-contract">
+                  <dt>REQUIRES</dt><dd tabindex="0" aria-label="Authored precondition">
+                    <code>{@reading["contract"]["requires"]}</code>
+                  </dd>
+                  <dt>EXPECTS</dt><dd tabindex="0" aria-label="Authored postcondition">
+                    <code>{@reading["contract"]["expects"]}</code>
+                  </dd>
+                </dl>
+                <p :if={@reading["contract"]["status"] != "source_read"} role="status">
+                  Audited Elixir expression unavailable.
                 </p>
-                <pre tabindex="0" aria-label={"Lean statement #{decl["name"]}"}>{decl["header"]}</pre>
                 <a
-                  :if={source_href(@reading, decl["path"])}
-                  href={source_href(@reading, decl["path"])}
+                  :if={source_href(@reading, @observation.source_path)}
+                  href={source_href(@reading, @observation.source_path)}
                   target="_blank"
                   rel="noopener"
-                >Read Lean declaration</a>
-              </article>
-              <div :if={@feedback? && @selected_steps != []} id="lens-proof-steps">
-                <h3>Reviewed source passages for selected clause</h3>
-                <article :for={step <- @selected_steps} class="lens-step-reading">
-                  <span>{step["title"]} · line {step["line"]}</span>
-                  <p :if={@feedback?}>{step["reason"]}</p>
-                  <pre tabindex="0" aria-label={"Lean passage: #{step["title"]}"}>{step["code"]}</pre>
+                >Read complete registered law</a>
+              </section>
+              <section class="lens-panel" id="lens-source-links">
+                <span class="lens-step">Source / Reviewed correspondences</span>
+                <h2>Select a clause to inspect</h2>
+                <div class="lens-clause-list" role="group" aria-label="Source-linked clauses">
+                  <button
+                    :for={link <- @reading["connections"]}
+                    id={"lens-clause-#{link["id"]}"}
+                    class={[
+                      "lens-clause",
+                      @selected_clause == link["id"] && "selected",
+                      @observation.changed? && @study.connection == link["id"] && "lens-clause-edited"
+                    ]}
+                    phx-click="clause"
+                    phx-value-id={link["id"]}
+                    aria-pressed={to_string(@selected_clause == link["id"])}
+                  >
+                    <span>{link["phase"]} · {link["id"]}</span>
+                    <code>{link["expression"]}</code>
+                  </button>
+                </div>
+                <p :if={@selected_link && @feedback?} id="lens-selected-clause" class="lens-detail">
+                  {@selected_link["relation"]}
+                </p>
+                <p :if={@selected_link && @selected_link["availability"] != "available"} role="status">
+                  Reviewed source link unavailable for the current source.
+                </p>
+                <p :if={@feedback? && @observed_link} id="lens-observed-path" class="lens-footnote">
+                  Matching observed AST path:
+                  <code>{@observed_link["phase"]}:{@observed_link["path"]}</code>
+                  · one bound witness.
+                </p>
+                <p
+                  :if={@feedback? && @selected_link && !@observed_link}
+                  id="lens-observed-unavailable"
+                  class="lens-footnote"
+                >
+                  No unique observed AST link for this candidate and binding; source reading remains separate.
+                </p>
+              </section>
+              <section class="lens-panel" id="lens-lean-reading">
+                <span class="lens-step">Source / Lean text</span>
+                <h2>What the theorem states</h2>
+                <article :for={decl <- @reading["declarations"]} class="lens-lean-decl">
+                  <p class="lens-evidence">
+                    {decl["path"]}:{decl["line"]} · {evidence_label(decl["status"])}
+                  </p>
+                  <pre tabindex="0" aria-label={"Lean statement #{decl["name"]}"}>{decl["header"]}</pre>
+                  <a
+                    :if={source_href(@reading, decl["path"])}
+                    href={source_href(@reading, decl["path"])}
+                    target="_blank"
+                    rel="noopener"
+                  >Read Lean declaration</a>
                 </article>
-              </div>
-              <p :if={@feedback? && @selected_steps == []} class="lens-footnote">
-                No current reviewed source passages for this selection.
-              </p>
-            </section>
-            <section class="lens-panel" id="lens-evidence-status">
-              <span class="lens-step">Evidence / Provenance</span>
-              <h2>What is actually checked?</h2>
-              <dl class="lens-evidence-grid">
-                <dt>Pointwise baseline</dt><dd>
-                  Audited Elixir law · {@observation.baseline.bindings_tested} source binding(s)
-                </dd>
-                <dt>Law source SHA-256</dt><dd>
-                  <code>{String.slice(@observation.baseline[:source_sha256] || "", 0, 16)}</code>
-                </dd>
-                <dt>Evaluator ID</dt><dd>
-                  <code>{String.slice(@observation.baseline[:evaluator_id] || "", 0, 16)}</code>
-                </dd>
-                <dt>Clause → Lean</dt><dd>
-                  {evidence_label(@reading["reading_status"])} · source link only
-                </dd>
-                <dt>Focused elaboration</dt><dd>{evidence_label(@reading["focused"]["status"])}</dd>
-                <dt>Required formal gate</dt><dd id="lens-formal-status">
-                  {evidence_label(@reading["formal"]["status"])}
-                </dd>
-                <dt>Hypothetical edit proof</dt><dd>Not run / unavailable</dd>
-                <dt>Lean tactic goals</dt><dd>Not collected / unavailable</dd>
-              </dl>
-              <p class="lens-footnote">
-                Even a source-matched accepted Lean theorem does not prove that its policy is correct. Any proof repair requires a real source comparison and full-scoped verification.
-              </p>
-              <p :if={@reading["omits"]} class="lens-footnote">Scope omitted: {@reading["omits"]}</p>
-              <div id="lens-premise-ledger" class="lens-premise-ledger">
-                <h3>External premises to establish separately</h3>
-                <p class="lens-footnote">Personal reading checklist only; checking a box never verifies a processor guarantee.</p>
-                <label><input type="checkbox" /> Permanent terminal fencing against delayed authorization</label>
-                <label><input type="checkbox" /> Truthful remote decline vs. local acknowledgment</label>
-                <label><input type="checkbox" /> Durable journal synchronization and replay assumptions</label>
-                <p class="lens-footnote lens-provenance" data-kind="external">Unverified External Assumption · not established by Lean source text.</p>
-              </div>
-            </section>
-          </aside>
+                <div :if={@feedback? && @selected_steps != []} id="lens-proof-steps">
+                  <h3>Reviewed source passages for selected clause</h3>
+                  <article :for={step <- @selected_steps} class="lens-step-reading">
+                    <span>{step["title"]} · line {step["line"]}</span>
+                    <p>{step["reason"]}</p>
+                    <pre tabindex="0" aria-label={"Lean passage: #{step["title"]}"}>{step["code"]}</pre>
+                  </article>
+                </div>
+                <p :if={@feedback? && @selected_steps == []} class="lens-footnote">
+                  No current reviewed source passages for this selection.
+                </p>
+              </section>
+              <section class="lens-panel" id="lens-evidence-status">
+                <span class="lens-step">Evidence / Provenance</span>
+                <h2>What is actually checked?</h2>
+                <dl class="lens-evidence-grid">
+                  <dt>Pointwise baseline</dt><dd>
+                    Audited Elixir law · {@observation.baseline.bindings_tested} source binding(s)
+                  </dd>
+                  <dt>Law source SHA-256</dt><dd>
+                    <code>{String.slice(@observation.baseline[:source_sha256] || "", 0, 16)}</code>
+                  </dd>
+                  <dt>Evaluator ID</dt><dd>
+                    <code>{String.slice(@observation.baseline[:evaluator_id] || "", 0, 16)}</code>
+                  </dd>
+                  <dt>Clause → Lean</dt><dd>
+                    {evidence_label(@reading["reading_status"])} · source link only
+                  </dd>
+                  <dt>Focused elaboration</dt><dd>{evidence_label(@reading["focused"]["status"])}</dd>
+                  <dt>Required formal gate</dt><dd id="lens-formal-status">
+                    {evidence_label(@reading["formal"]["status"])}
+                  </dd>
+                  <dt>Hypothetical edit proof</dt><dd>Not run / unavailable</dd>
+                  <dt>Lean tactic goals</dt><dd>Not collected / unavailable</dd>
+                </dl>
+                <p class="lens-footnote">
+                  Even a source-matched accepted Lean theorem does not prove that its policy is correct. Any proof repair requires a real source comparison and full-scoped verification.
+                </p>
+                <p :if={@reading["omits"]} class="lens-footnote">
+                  Scope omitted: {@reading["omits"]}
+                </p>
+                <div id="lens-premise-ledger" class="lens-premise-ledger">
+                  <h3>External premises to establish separately</h3>
+                  <p class="lens-footnote">
+                    Personal reading checklist only; checking a box never verifies a processor guarantee.
+                  </p>
+                  <label><input type="checkbox" />
+                  Permanent terminal fencing against delayed authorization</label>
+                  <label><input type="checkbox" /> Truthful remote decline vs. local acknowledgment</label>
+                  <label><input type="checkbox" />
+                  Durable journal synchronization and replay assumptions</label>
+                  <p class="lens-footnote lens-provenance" data-kind="external">
+                    Unverified External Assumption · not established by Lean source text.
+                  </p>
+                </div>
+              </section>
+            </aside>
           </details>
         </div>
       </div>

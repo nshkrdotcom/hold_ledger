@@ -12,6 +12,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     refute has_element?(view, "#lens-near-misses")
 
     element(view, "#lens-decision-permits-forbidden") |> render_click()
+
     form(view, "#lens-review-form",
       review: %{
         policy_anchor: "guides/specification.md",
@@ -20,7 +21,8 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
         scope_limit: "Hypothetical; no Lean run",
         text: "Initial scoped argument"
       }
-    ) |> render_submit()
+    )
+    |> render_submit()
 
     assert has_element?(view, "#lens-initial-answer", "guides/specification.md")
     assert has_element?(view, "#lens-initial-answer", "Hypothetical; no Lean run")

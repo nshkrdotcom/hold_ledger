@@ -749,7 +749,8 @@ body {
   font-size: 14px;
   line-height: 1.55;
 }
-.site-header {position:relative; z-index:4; min-height:64px; border-bottom:1px solid #d4e0e2; box-shadow:0 3px 18px #17344906}
+/* Keep the fixed question panel above the sticky verdict's stacking layer. */
+.site-header {position:relative; min-height:64px; border-bottom:1px solid #d4e0e2; box-shadow:0 3px 18px #17344906}
 .brand {letter-spacing:.065em; font-size:.74rem; gap:.7rem}
 .brand-name {font-weight:800; color:#173449 !important}
 .brand-section {color:#71848e !important; font-weight:500}
@@ -776,10 +777,10 @@ input:focus-visible,select:focus-visible,textarea:focus-visible {border-color:va
 }
 .lens-hero-top {margin-bottom:28px; position:relative; z-index:1}
 .lens-hero .lens-kicker {color:#92c7c7; letter-spacing:.17em}
-.lens-modes {background:#ffffff12; border-color:#ffffff35; backdrop-filter:blur(4px)}
-.lens-modes a {color:#e5f1f4; font-size:.76rem; padding:8px 13px}
-.lens-modes a:hover {color:white; background:#ffffff27}
-.lens-modes a[aria-current=page] {color:#123747; background:#d4f0eb; font-weight:800}
+.lens-hero .lens-modes {background:#ffffff12; border-color:#ffffff35; backdrop-filter:blur(4px)}
+.lens-hero .lens-modes a {color:#e5f1f4; font-size:.76rem; padding:8px 13px}
+.lens-hero .lens-modes a:hover {color:white; background:#ffffff27}
+.lens-hero .lens-modes a[aria-current=page] {color:#123747; background:#d4f0eb; font-weight:800}
 .lens-hero-content {display:grid; grid-template-columns:minmax(0,1.7fr) minmax(215px,.7fr); gap:34px; align-items:end}
 .lens-overline {color:#91d7cc; text-transform:uppercase; letter-spacing:.2em; font-size:.7rem; font-weight:750}
 .lens-hero h1 {color:#fff; font-size:clamp(2.05rem,3.5vw,3.65rem); max-width:770px; line-height:1.12; letter-spacing:-.052em; margin:14px 0 16px; font-weight:770}
