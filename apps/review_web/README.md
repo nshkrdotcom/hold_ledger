@@ -45,15 +45,35 @@ witness, select a curated hypothetical precondition edit, and compare:
 - a transparently modeled *hypothetical* precondition with the existing
   promise. The UI never rewrites the law or claims the hypothetical was proved.
 
-**Explore** shows the comparison immediately. **Challenge** (also available at
-`/lens/po_a2?mode=challenge`) withholds the curated verdicts, coverage strip,
-worked explanation and review insight until you choose a classification and
-press **Confirm classification and reveal feedback**. No answer is preselected;
-**Need more evidence** is an explicit, neutral choice. Your initial answer is
-then fixed for that attempt. Changing the witness, hypothetical, study or mode,
-or choosing **Try again**, clears the attempt; reload discards it too. This is
-practice, not a blinded or scored assessment: Explore and prior feedback can
-already have exposed the answer.
+**Review first is now the default** at `/lens/:slug` and
+`/lens/:slug?mode=challenge`. It withholds curated verdicts, coverage rows,
+worked explanations and observed source-path hints until the reviewer selects
+an initial classification and presses **Confirm classification and reveal
+feedback**. Six broad category families plus a proof-only no-change control
+are available; uncertainty is valid. The policy, claim excerpt, case input,
+computed output and clearly unexecuted alternative are visible before reveal.
+The reviewer may expand the evidence library to read source without receiving
+an automated verdict. **Explore freely** at `/lens/:slug?mode=explore`
+shows comparison results immediately for learning and QA.
+
+The optional four-part argument form asks for a policy anchor, a contract
+provision, a discriminating witness and the limitation or external assumption,
+plus a narrative. After confirmation the UI can copy a **local provisional
+Markdown argument** to the clipboard. This draft is never scored, persisted,
+submitted to a model, or turned into a verified repair packet. Changing the
+witness, hypothesis, study or mode, selecting **Try again**, or reloading
+clears the attempt. The challenge is practice, not a blinded study; prior
+exposure to Explore may have disclosed the answer.
+
+After feedback the **contrast studio** offers three explicitly authored guide
+exercises: P02 (missing void effect), P05 (premature release despite effect),
+and P08 (legitimate immediate release of a never-dispatched reservation).
+These are illustrative comparisons from the guide and scenario JSON, not
+freshly executed cases, and no answers appear until feedback is enabled.
+An **external-premise reading checklist** helps reviewers name processor
+fencing, truthful decline and journal durability without pretending a checked
+box proves any of them. A collapsible evidence library separates reviewed
+Lean text and source-matched reports from pointwise and hypothetical displays.
 
 After feedback, the three-witness coverage strip shows authored versus
 hypothetical input applicability together. “Doesn't apply” means the claim says

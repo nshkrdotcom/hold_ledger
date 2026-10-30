@@ -1453,7 +1453,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
       <:tools :if={@doc && @reading}>
         <nav class="lens-modes case-mode-nav" id="case-review-modes" aria-label="Review experiences">
           <a href={~p"/claims/#{@slug}/#{@doc["id"]}"} aria-current="page">Case Lab</a>
-          <a :if={@slug in ~w(po_a2 po_exposure_retain)} href={~p"/lens/#{@slug}"}>Claim Lens</a>
+          <a :if={@slug in ~w(po_a2 po_exposure_retain)} href={~p"/lens/#{@slug}"}>Review first · Claim Lens</a>
           <span
             :if={@slug not in ~w(po_a2 po_exposure_retain)}
             class="lens-mode-unavailable"
@@ -1508,6 +1508,26 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
           show_sources={@show_sources}
           doc={@doc}
         />
+        <section class="case-review-map" id="case-review-map" aria-label="Three layers of review evidence">
+          <div class="case-map-cell">
+            <span>01 / Human requirement</span>
+            <strong>What should the ledger allow?</strong>
+            <small>Independent policy lives in the governing specification above, not in the proof.</small>
+          </div>
+          <div class="case-map-cell">
+            <span>02 / Pointwise claim</span>
+            <strong>What does this law check here?</strong>
+            <small>The computed and alternative outputs below are one case, not a universal theorem.</small>
+          </div>
+          <div class="case-map-cell">
+            <span>03 / Assurance boundary</span>
+            <strong>What remains unverified?</strong>
+            <small>Remote processor, source identity, and hypothetical changes need independent evidence.</small>
+            <a :if={@slug in ~w(po_a2 po_exposure_retain)} href={~p"/lens/#{@slug}"}>
+              Make an initial classification
+            </a>
+          </div>
+        </section>
         <div class="connected-experiment">
           <div class="experiment-lane">
             <section class="case-stage" aria-label="Experiment and outputs">
@@ -1609,6 +1629,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 preview={nil}
               />
               <div class="case-reasoning">
+                <div class="case-depth-heading">
+                  <span class="eyebrow">02 / Investigate the semantic difference</span>
+                  <p>Open a source lens when you need a clause or Lean passage.
+                    Links are reading aids, not kernel-level dependencies.</p>
+                </div>
+                <details id="case-conditions-depth" class="case-depth" open>
+                  <summary><strong>Condition breakdown</strong><span>Source-bound applicability &amp; output constraints</span></summary>
                 <section id="clauses-panel">
                   <.dissector
                     source_requested={@condition_source_requested}
@@ -1628,6 +1655,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     }
                   />
                 </section>
+                </details>
+                <details id="case-proof-depth" class="case-depth" open>
+                  <summary><strong>Formal source &amp; provenance</strong><span>Reviewed Lean text · verification scope</span></summary>
                 <section id="proof-panel">
                   <.proof_source
                     reading={@reading}
@@ -1642,6 +1672,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     </header><pre>{@inspected.bytes}</pre>
                   </section>
                 </section>
+                </details>
               </div>
               <section id="nearby-observation" aria-label="Observation and local repair">
                 <div class="section-heading">

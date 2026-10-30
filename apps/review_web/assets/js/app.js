@@ -121,11 +121,31 @@ const QuestionPanel = {
   },
 }
 
+// A transient clipboard aid for the author's own pre-reveal answer. It does
+// not persist, submit, score, or imply any verification status.
+const CopyReview = {
+  mounted() {
+    this.copy = async () => {
+      const message = document.getElementById("lens-copy-status")
+      try {
+        await navigator.clipboard.writeText(this.el.dataset.packet || "")
+        if (message) message.textContent = "Local argument copied"
+      } catch {
+        if (message) message.textContent = "Clipboard unavailable; select your answer to copy"
+      }
+    }
+    this.el.addEventListener("click", this.copy)
+  },
+  destroyed() {
+    this.el.removeEventListener("click", this.copy)
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {InlineTools, InlineAlternative, QuestionPanel},
+  hooks: {InlineTools, InlineAlternative, QuestionPanel, CopyReview},
 })
 topbar.config({barColors: {0: "#635080"}, shadowColor: "rgba(37,35,48,.2)"})
 window.addEventListener("phx:page-loading-start", () => topbar.show(300))

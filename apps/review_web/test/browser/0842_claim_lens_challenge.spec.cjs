@@ -36,6 +36,8 @@ for (const width of [1280, 390]) {
     await expect(page.locator('.lens-decisions [aria-pressed=true]')).toHaveCount(0);
     await expect(page.locator('#lens-confirm')).toBeDisabled();
     await expect(page.locator('#lens-policy')).toContainText('An exact amount fit is admitted.');
+    await expect(page.locator('#lens-case-brief')).toContainText('Challenged output');
+    await expect(page.locator('#lens-evidence-legend')).toContainText('Pointwise Evaluation');
     await expect(page.locator('#lens-source-contract')).toContainText('request_eligible?');
     const choice = page.locator('#lens-decision-unresolved');
     await choice.focus();
@@ -48,6 +50,8 @@ for (const width of [1280, 390]) {
     await page.getByRole('textbox', {name: 'Your explanation'}).fill('Inspect the boundary');
     await page.locator('#lens-confirm').click();
     await expect(page.locator('#lens-initial-answer')).toContainText('needs more evidence');
+    await expect(page.locator('#lens-near-misses')).toContainText('Legitimate local release');
+    await expect(page.locator('#lens-copy-packet')).toBeVisible();
     await expect(page.locator('#lens-gap')).toContainText('Potential loss of required coverage');
     await expect(choice).toBeDisabled();
     await expect(page.locator('#lens-review-form textarea')).toBeDisabled();
@@ -75,11 +79,12 @@ test('changing context resets the answer and Challenge remains in the study URL'
   await expect(page.locator('#lens-decision-concern')).toHaveCSS('border-top-color', 'rgb(183, 121, 31)');
   await page.locator('#lens-variation-proof_only').click();
   await withheld(page);
-  await expect(page.locator('#lens-proof-control')).toContainText('Requires and expects are identical');
+  await expect(page.locator('#lens-proof-control')).toContainText('Proof-body-only change proposed');
   await confirm(page, 'no-change');
   await expect(page.locator('#lens-gap')).toContainText('No claim-level change');
+  await expect(page.locator('#lens-proof-control')).toContainText('No semantic delta in specification');
   await expect(page.locator('.lens-clause-edited')).toHaveCount(0);
-  await page.locator('#lens-study-picker a[href="/lens/po_exposure_retain?mode=challenge"]').click();
+  await page.locator('#lens-study-picker a[href="/lens/po_exposure_retain"]').click();
   await connected(page);
   await withheld(page);
   await expect(page.locator('#lens-confirm')).toBeDisabled();
@@ -91,6 +96,6 @@ test('changing context resets the answer and Challenge remains in the study URL'
   await expect(page.locator('#lens-review-form textarea')).toHaveValue('');
   await page.locator('#lens-exercise-modes a').filter({hasText: 'Explore'}).click();
   await expect(page.locator('#lens-gap')).toBeVisible();
-  await page.locator('#lens-exercise-modes a').filter({hasText: 'Challenge'}).click();
+  await page.locator('#lens-exercise-modes a').filter({hasText: 'Review first'}).click();
   await withheld(page);
 });

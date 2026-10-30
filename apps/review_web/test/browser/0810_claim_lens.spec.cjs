@@ -14,7 +14,7 @@ test.afterEach(async ({page}) => {
 for (const width of [1280, 390]) {
   test(`Claim Lens reveals input-domain loss and proof provenance at ${width}px`, async ({page}) => {
     await page.setViewportSize({width, height: 900});
-    await page.goto('/lens/po_a2');
+    await page.goto('/lens/po_a2?mode=explore');
     await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
     await expect(page.locator('#lens-gap')).toContainText('Potential loss of required coverage');
     await expect(page.locator('#lens-baseline-verdict')).toContainText('Rejects this output');
@@ -32,7 +32,7 @@ for (const width of [1280, 390]) {
     await expect(page.locator('#lens-evidence-status')).toContainText('Not collected / unavailable');
     await expect(page.getByRole('main')).toHaveCount(1);
     await expect(page.locator('.lens-layout')).toHaveCSS('grid-template-columns',
-      width === 1280 ? /\S+ \S+ \S+/ : /^\S+$/);
+      width === 1280 ? /\S+ \S+/ : /^\S+$/);
     const passage = page.locator('#lens-proof-steps pre').first();
     await passage.focus();
     await expect(passage).toBeFocused();
@@ -43,7 +43,7 @@ for (const width of [1280, 390]) {
 }
 
 test('retention lens distinguishes terminal evidence and source-linked statements', async ({page}) => {
-  await page.goto('/lens/po_exposure_retain');
+  await page.goto('/lens/po_exposure_retain?mode=explore');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(page.locator('#lens-policy-verdict')).toContainText('Policy permits this output');
   await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Rejects this output');
@@ -78,7 +78,7 @@ test('retention lens distinguishes terminal evidence and source-linked statement
 });
 
 test('compare mode deeplink opens trusted version picker without staging anything', async ({page}) => {
-  await page.goto('/lens/po_a2');
+  await page.goto('/lens/po_a2?mode=explore');
   await page.locator('#lens-modes a').filter({hasText: 'Compare versions'}).click();
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(page.locator('#source-comparison')).toBeVisible();
@@ -86,9 +86,9 @@ test('compare mode deeplink opens trusted version picker without staging anythin
 });
 
 test('keyboard decisions and drafts reset across study navigation and reload', async ({page}) => {
-  await page.goto('/lens/po_a2');
+  await page.goto('/lens/po_a2?mode=explore');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  const decision = page.getByRole('button', {name: 'Possible guarantee loss', exact: true});
+  const decision = page.getByRole('button', {name: /Excludes valid input/});
   await decision.focus();
   await expect(decision).toBeFocused();
   await expect(decision).toHaveCSS('outline-style', 'solid');
@@ -96,7 +96,7 @@ test('keyboard decisions and drafts reset across study navigation and reload', a
   await expect(decision).toHaveAttribute('aria-pressed', 'true');
   const note = page.getByRole('textbox', {name: 'Your explanation'});
   await note.fill('Check the exact-fit boundary');
-  await page.locator('#lens-study-picker a[href="/lens/po_exposure_retain"]').click();
+  await page.locator('#lens-study-picker a[href="/lens/po_exposure_retain?mode=explore"]').click();
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(note).toHaveValue('');
   await expect(page.locator('.lens-decisions [aria-pressed=true]')).toHaveCount(0);
