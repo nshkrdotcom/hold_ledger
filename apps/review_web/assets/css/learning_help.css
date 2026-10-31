@@ -1,8 +1,9 @@
 /* Supplemental help stays separate from the action it explains. */
 #global-header[data-learning-shell] .site-header-main {gap: 1.5rem; padding-top: .8rem; padding-bottom: .8rem}
 #global-header[data-learning-shell] .global-nav {justify-content: flex-start; gap: .25rem}
-#global-header[data-learning-shell] .global-actions {gap: .5rem; margin-left: auto}
-#global-header[data-learning-shell] .reference-nav > div {width: 280px; max-height: min(75dvh, 620px); overflow-y: auto}
+#global-header[data-learning-shell] .global-actions {position: relative; gap: .5rem; margin-left: auto}
+#global-header[data-learning-shell] .reference-nav {position: static}
+#global-header[data-learning-shell] .reference-nav > div {left: auto; right: 0; width: 280px; max-height: min(75dvh, 620px); overflow-y: auto}
 #global-header[data-learning-shell] .reference-nav > div a {padding: .6rem .7rem; color: #4a566a; font-size: .82rem; text-decoration: none; border-radius: 6px}
 #global-header[data-learning-shell] .reference-nav > div a:hover {background: #f2f1f8; color: #433776}
 #global-header[data-learning-shell] .site-tools {border-top: 1px solid #f0f1f5; padding-top: .5rem}

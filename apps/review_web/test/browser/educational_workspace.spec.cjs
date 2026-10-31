@@ -370,3 +370,22 @@ for (const [width, route] of [[390, '/'], [390, '/start?moment=3'], [390, '/glos
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
 }
+
+
+test('Guides stays fully visible and clickable beside the header actions', async ({page}) => {
+  for (const width of [390, 1024, 1440]) {
+    await page.setViewportSize({width, height: 900});
+    await page.goto('/');
+    await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+    await page.locator('#reference-nav > summary').click();
+    const menu = page.locator('#reference-nav > div');
+    await expect(menu).toBeVisible();
+    const box = await menu.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(12);
+    expect(box.x + box.width).toBeLessThanOrEqual(width - 12);
+    await expect(page.locator('#reference-nav')).toHaveCSS('position', 'static');
+    await expect(page.locator('#reference-nav').getByRole('link', {name: 'Follow a payment hold'})).toBeInViewport();
+    await page.locator('#reference-nav').getByRole('link', {name: 'Follow a payment hold'}).click({position: {x: 8, y: 12}});
+    await expect(page).toHaveURL(/\/start$/);
+  }
+});
