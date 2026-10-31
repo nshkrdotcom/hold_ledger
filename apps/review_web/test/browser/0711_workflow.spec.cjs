@@ -22,14 +22,14 @@ test('field differences update with unsaved edits and clear when restored', asyn
   await expect(page.locator('#output-differences')).toContainText('Reserved');
   await expect(page.locator('#output-differences')).toContainText('Entry');
   await expect(page.locator('#output-differences')).toContainText('Result');
-  await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects proposed output');
+  await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects what-if output');
   await page.locator('#edit-candidate').click();
   await page.getByRole('button', {name: 'Reset to code result', exact: true}).click();
   await expect(page.locator('#same-output')).toHaveText('Same as code result.');
   await page.locator('#alternative-counter input').fill('0');
   await expect(page.locator('#output-differences')).toContainText('100¢');
   await expect(page.locator('#output-differences')).toContainText('0¢');
-  await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');
+  await expect(page.locator('#validity-row td').last()).toHaveText('Account is invalid');
   expect((await saved(page)).steps).toEqual(before.steps);
   await expect(page.locator('#case-tools')).toBeVisible();
 });
@@ -57,8 +57,8 @@ test('applicability, code acceptance, alternative acceptance and accounting stay
   await open(page, 'po_exposure_retain');
   await expect(page.locator('#applicability-row')).toContainText('Applies');
   await expect(page.locator('#selected-law-row td').first()).toHaveText('Accepts code result');
-  await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects proposed output');
-  await expect(page.locator('#validity-row td').last()).toHaveText('Accounting balances');
+  await expect(page.locator('#selected-law-row td').last()).toHaveText('Rejects what-if output');
+  await expect(page.locator('#validity-row td').last()).toHaveText('Account is valid');
   await expect(page.locator('#review-help')).toContainText('not automatically a defect');
 });
 
@@ -126,7 +126,7 @@ for (const [width, height] of [[1440, 900], [1280, 800], [1024, 768], [390, 844]
     expect(metrics.width).toBeLessThanOrEqual(width);
     expect(metrics.requirement.top).toBeLessThan(metrics.case.top);
     expect(metrics.proof.top).toBeGreaterThan(metrics.checks.top);
-    if (width > 950) {
+    if (width >= 1160) {
       expect(Math.abs(metrics.case.top - metrics.checks.top)).toBeLessThan(35);
       expect(metrics.checks.left).toBeGreaterThan(metrics.case.left);
     } else {
@@ -146,7 +146,7 @@ for (const [slug, stage] of [['po_b1_timeout', 1], ['po_exposure_retain', 4]]) {
     await proof.locator('.proof-source-stages button').nth(stage).click();
     await expect(page.locator('#selected-reading-links')).toBeVisible();
     await expect(page.locator('#dissector .connected-clause[id*=candidate]')).not.toHaveCount(0);
-    await page.getByRole('button', {name: 'Code result', exact: true}).click();
+    await page.locator('#dissector').getByRole('button', {name: 'Code returned', exact: true}).click();
     await proof.locator('.proof-source-stages button').nth(stage).click();
     await expect(page.locator('#dissector .connected-clause[id*=actual]')).not.toHaveCount(0);
     expect((await saved(page)).steps).toEqual(before.steps);
@@ -164,10 +164,10 @@ test('200 percent effective desktop viewport keeps editing and evidence accessib
   const page = await context.newPage();
   try {
     await open(page, 'po_exposure_retain');
-    await expect(page.locator('#selected-law-row')).toContainText('Rejects proposed output');
+    await expect(page.locator('#selected-law-row')).toContainText('Rejects what-if output');
     await page.locator('#edit-candidate').click();
     await page.locator('#alternative-counter input').fill('7');
-    await expect(page.locator('#validity-row')).toContainText('Accounting does not balance');
+    await expect(page.locator('#validity-row')).toContainText('Account is invalid');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.locator('#alternative-counter input').focus();
     await page.keyboard.press('Escape');

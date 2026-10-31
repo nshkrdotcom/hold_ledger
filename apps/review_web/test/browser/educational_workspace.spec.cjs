@@ -1,18 +1,18 @@
 const {test, expect} = require('@playwright/test');
 
-for (const width of [390, 800, 1024, 1440]) {
+for (const width of [320, 390, 800, 1024, 1440]) {
   test(`orientation is usable without overflow at ${width}px`, async ({page}) => {
     await page.setViewportSize({width, height: 900});
     await page.goto('/');
     await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-    await expect(page.locator('#edu-overview h1')).toContainText('Follow the code.');
+    await expect(page.locator('#edu-overview h1')).toContainText('A missing reply.');
     await expect(page.locator('#edu-home-example')).toHaveAttribute('data-moment', '0');
     await expect(page.locator('#edu-home-capacity-held')).toHaveText('0¢');
     await expect(page.locator('.edu-journey')).toHaveCount(3);
-    await expect(page.locator('.edu-stat-strip')).toContainText('Registered claims');
+    await expect(page.locator('#claim-map-selection')).toContainText('49 registered claim groups');
     await expect(page.locator('#edu-overview')).not.toContainText('49 proven');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.getByRole('link', {name: /Follow a payment hold/}).first().click();
+    await page.getByRole('link', {name: /Follow the payment/}).first().click();
     await expect(page.locator('#edu-story')).toBeVisible();
     await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
     await page.getByRole('button', {name: /3 Timeout/}).click();
@@ -61,6 +61,49 @@ test('home controls update the account and retain the selected moment in the wal
   await page.locator('#edu-home-example a[href="/start?moment=1"]').click();
   await expect(page.locator('#edu-story')).toHaveAttribute('data-moment', '1');
   await expect(page.locator('#edu-story-before-held')).toHaveText('0¢');
+});
+
+test('the claim map highlights curated relationships and keeps every claim reachable', async ({page}) => {
+  await page.goto('/');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await expect(page.locator('[data-map-claim]')).toHaveCount(49);
+  await expect(page.locator('[data-map-family]')).toHaveCount(8);
+  await page.locator('#edu-claim-map [phx-value-id="uncertainty"]').click();
+  await expect(page.locator('[data-map-claim="po_b2"]')).toHaveAttribute('data-related', 'true');
+  await expect(page.locator('[data-map-claim="po_a2"]')).toHaveAttribute('data-related', 'false');
+  await expect(page.locator('[data-map-claim]')).toHaveCount(49);
+  await expect(page.locator('.map-caption')).toContainText('does not show proof dependencies');
+  await page.locator('#claim-map-selection a').click();
+  await expect(page).toHaveURL(/\/guarantees\?requirement=uncertainty$/);
+  await expect(page.locator('#learning-chapters a[aria-current="page"]')).toHaveText(/Payment requirements/);
+});
+
+test('processor illustrations never alter the computed local state', async ({page}) => {
+  await page.goto('/start?moment=3');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  const stateBefore = await page.locator('#edu-story-after').innerText();
+  await page.locator('[data-possibility="undelivered"]').click();
+  await expect(page.locator('#edu-processor-possibility')).toContainText('never reached the processor');
+  await expect(page.locator('#edu-story-after')).toHaveText(stateBefore);
+  await expect(page.locator('#edu-story-result code')).toContainText(':marked_unknown');
+  await page.locator('[data-possibility="approved"]').click();
+  await expect(page.locator('#edu-processor-possibility')).toContainText('approved 100¢');
+  await expect(page.locator('#edu-story-after')).toHaveText(stateBefore);
+  await expect(page.locator('#edu-uncertainty')).toContainText('illustration only');
+});
+
+test('translation concept links open the actual source without replacing it', async ({page}) => {
+  await page.goto('/translation');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await page.locator('#translation-focus [phx-value-id="requires"]').click();
+  await page.locator('#translation-focus-explanation [data-reveal-source]').click();
+  await expect(page.locator('#translation-implementation')).toHaveAttribute('open', '');
+  await expect(page.locator('#translation-implementation')).toBeFocused();
+  await expect(page.locator('#translation-implementation')).toContainText('request_eligible?');
+  await page.locator('#translation-focus [phx-value-id="expects"]').click();
+  await expect(page.locator('#translation-focus-explanation')).toContainText('exact admitted output');
+  await page.locator('#translation-focus-explanation [data-reveal-source]').click();
+  await expect(page.locator('#translation-expects')).toBeFocused();
 });
 
 test('the focused mutation directory exposes M7 source and its actual target', async ({page}) => {
@@ -113,7 +156,7 @@ test('learning source panels and controls reflow with enlarged text', async ({pa
 test('the atlas keeps eight families and all 49 claims with source access', async ({page}) => {
   await page.goto('/atlas');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
-  await expect(page.locator('#edu-families > a')).toHaveCount(8);
+  await expect(page.locator('#claim-map-families > section')).toHaveCount(8);
   await expect(page.locator('.edu-claim-row')).toHaveCount(49);
   await page.locator('[name=kind]').selectOption('native_lean');
   await expect(page.locator('.edu-claim-row')).toHaveCount(14);
@@ -150,7 +193,7 @@ const destinations = ['/', '/start', '/how-it-fits', '/examples', '/translation'
   '/repository', '/glossary', '/lab', '/claims/po_a2', '/claims/po_b7', '/lens/po_a2',
   '/lens/po_exposure_retain'];
 
-for (const width of [390, 800, 1024, 1440]) {
+for (const width of [320, 390, 800, 1024, 1440]) {
   test(`all educational and review destinations reflow at ${width}px`, async ({page}, testInfo) => {
     test.setTimeout(120000);
     await page.setViewportSize({width, height: 900});
@@ -372,7 +415,7 @@ for (const [width, route] of [[390, '/'], [390, '/start?moment=3'], [390, '/glos
 }
 
 
-test('Guides stays fully visible and clickable beside the header actions', async ({page}) => {
+test('Reference stays fully visible and clickable beside the header actions', async ({page}) => {
   for (const width of [390, 1024, 1440]) {
     await page.setViewportSize({width, height: 900});
     await page.goto('/');
@@ -384,8 +427,8 @@ test('Guides stays fully visible and clickable beside the header actions', async
     expect(box.x).toBeGreaterThanOrEqual(12);
     expect(box.x + box.width).toBeLessThanOrEqual(width - 12);
     await expect(page.locator('#reference-nav')).toHaveCSS('position', 'static');
-    await expect(page.locator('#reference-nav').getByRole('link', {name: 'Follow a payment hold'})).toBeInViewport();
-    await page.locator('#reference-nav').getByRole('link', {name: 'Follow a payment hold'}).click({position: {x: 8, y: 12}});
-    await expect(page).toHaveURL(/\/start$/);
+    await expect(page.locator('#reference-nav').getByRole('link', {name: 'Reading map'})).toBeInViewport();
+    await page.locator('#reference-nav').getByRole('link', {name: 'Reading map'}).click({position: {x: 8, y: 12}});
+    await expect(page).toHaveURL(/\/how-it-fits$/);
   }
 });

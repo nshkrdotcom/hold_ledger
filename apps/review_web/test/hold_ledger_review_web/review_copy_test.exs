@@ -32,8 +32,8 @@ defmodule HoldLedgerReviewWeb.ReviewCopyTest do
 
     assert ReviewCopy.applicability(case_data) == "Applies (2 of 3 bindings)"
     assert ReviewCopy.code_acceptance(case_data) == "Rejects code result"
-    assert ReviewCopy.candidate_acceptance(case_data) == "Rejects proposed output"
-    assert ReviewCopy.accounting(true) == "Accounting balances"
+    assert ReviewCopy.candidate_acceptance(case_data) == "Rejects what-if output"
+    assert ReviewCopy.accounting(true) == "Account is valid"
   end
 
   test "absence, false coverage, evaluation errors and acceptance are distinct" do
@@ -60,7 +60,7 @@ defmodule HoldLedgerReviewWeb.ReviewCopyTest do
     assert ReviewCopy.code_acceptance(uncertain) == "Unavailable"
 
     assert ReviewCopy.candidate_acceptance(%{"law_status" => "allows_here"}) ==
-             "Accepts proposed output"
+             "Accepts what-if output"
 
     assert ReviewCopy.candidate_acceptance(%{"law_status" => "cant_check"}) == "Unavailable"
     assert ReviewCopy.accounting(nil) == "Unavailable"

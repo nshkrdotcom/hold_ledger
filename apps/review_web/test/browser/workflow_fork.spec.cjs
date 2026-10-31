@@ -16,8 +16,8 @@ async function saved(page) {
 test('rule-accepts-changed-alternative has its own visual state', async ({page}) => {
   await open(page, 'po_b1_void');
   await expect(page.locator('#verdict-signal')).toHaveAttribute('data-state', 'permits');
-  await expect(page.locator('#verdict-signal')).toContainText('Claim would accept this output. Intended?');
-  await expect(page.locator('#selected-law-row td').last()).toHaveText('Accepts proposed output');
+  await expect(page.locator('#verdict-signal')).toContainText('Claim accepts the what-if output');
+  await expect(page.locator('#selected-law-row td').last()).toHaveText('Accepts what-if output');
   await page.locator('#edit-candidate').click();
   await page.getByRole('button', {name: 'Reset to code result'}).click();
   await expect(page.locator('#verdict-signal')).toHaveAttribute('data-state', 'same');
@@ -40,7 +40,7 @@ test('two real follow-on results stay visible in a fork and persist only on save
   await page.locator('#apply-event-pair').click();
   await expect(page.locator('#code-branch .timeline-step')).toHaveCount(2);
   await expect(page.locator('#alternative-branch .timeline-step')).toHaveCount(2);
-  await expect(page.locator('#code-branch')).toContainText('Not enough available money');
+  await expect(page.locator('#code-branch')).toContainText('Not enough available capacity');
   await expect(page.locator('#alternative-branch')).toContainText('Accepted');
   await expect(page.locator('#scratch-status')).toBeVisible();
   expect((await saved(page)).steps).toEqual(initial.steps);
@@ -48,7 +48,7 @@ test('two real follow-on results stay visible in a fork and persist only on save
   await expect(page.locator('#scratch-status')).toHaveCount(0);
   const after = await saved(page);
   expect(after.steps.length).toBe(initial.steps.length + 3);
-  await expect(page.locator('#code-branch')).toContainText('Not enough available money');
+  await expect(page.locator('#code-branch')).toContainText('Not enough available capacity');
   await expect(page.locator('#alternative-branch')).toContainText('Accepted');
 });
 

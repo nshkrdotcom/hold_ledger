@@ -401,7 +401,8 @@ async function eduCopy(text, status) {
 function eduMarkNav() {
   for (const a of document.querySelectorAll("#global-header [data-nav]")) {
     const segment = a.dataset.nav
-    const active = segment === "/" ? location.pathname === "/"
+    const active = a.dataset.navGroup === "learn" ? /^\/(start|system|guarantees|translation|proofs|lens)(\/|$)/.test(location.pathname)
+      : segment === "/" ? location.pathname === "/"
       : segment === "/lab" ? /^\/(lab|claims)(\/|$)/.test(location.pathname)
       : location.pathname === segment || location.pathname.startsWith(`${segment}/`)
     if (active) a.setAttribute("aria-current", "page")
@@ -483,6 +484,22 @@ document.addEventListener("focusout", event => {
 document.addEventListener("click", event => {
   const node = event.target instanceof Element ? event.target : null
   if (!node) return
+  const sourceLink = node.closest("a[data-reveal-source]")
+  if (sourceLink && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+    const fragment = sourceLink.getAttribute("href")
+    const target = fragment?.startsWith("#") ? document.getElementById(fragment.slice(1)) : null
+    if (target) {
+      event.preventDefault()
+      if (target.tagName === "DETAILS") target.open = true
+      for (let parent = target.parentElement; parent; parent = parent.parentElement) {
+        if (parent.tagName === "DETAILS") parent.open = true
+      }
+      target.setAttribute("tabindex", "-1")
+      target.scrollIntoView({block: "start"})
+      target.focus({preventScroll: true})
+      history.replaceState(history.state, "", fragment)
+    }
+  }
   if (node.closest("[data-edu-help-open]")) {
     if (eduUI.drawer?.hidden) eduOpenHelp()
     else eduCloseHelp()
@@ -600,7 +617,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
   params: {_csrf_token: csrfToken},
   hooks: {InlineTools, InlineAlternative, QuestionPanel, CopyReview},
 })
-topbar.config({barColors: {0: "#635080"}, shadowColor: "rgba(37,35,48,.2)"})
+topbar.config({barColors: {0: "#126b63"}, shadowColor: "rgba(23,47,60,.16)"})
 window.addEventListener("phx:page-loading-start", () => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", () => topbar.hide())
 liveSocket.connect()

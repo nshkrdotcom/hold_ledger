@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "editorial_note": "Readings of the registered claims, with concrete examples and source references. The families provide a reading order; proof evidence is reported separately.",
+  "editorial_note": "Readings of registered claim groups, with concrete cases and source references. The eight families provide curated navigation; proof results come from matching verification evidence.",
   "claims": [
     {
       "slug": "l1_find",
@@ -215,9 +215,9 @@
       "family": "Admission",
       "scenario": "An empty account has a 100¢ limit and one free slot. Fresh key 11 requests 100¢.",
       "must_happen": "Return admitted, add key 11 as reserved, increase the used amount by 100¢ and the hold count by one, and request no outside work.",
-      "wrong_behavior": "Return insufficient_amount for the exact fit, as in the M4 boundary-rejection mutation. The M5 always-reject mutation refuses every eligible request.",
+      "wrong_behavior": "Return insufficient_amount for an exact fit, as in deliberate bug M4. M5 instead refuses every eligible request.",
       "why_others_miss": "Refusing the request leaves an empty, valid state. A validity check alone does not require the service to admit an eligible request.",
-      "does_not_cover": "The promise applies when request_eligible? holds: a valid account, fresh integer key, positive integer amount, free slot and sufficient amount capacity.",
+      "does_not_cover": "The claim applies when request_eligible? holds: the account is valid, the integer key is new, the integer amount is positive, a slot is free and the amount fits. Exact fit is included.",
       "provenance": [
         {
           "kind": "claim",
@@ -256,7 +256,7 @@
     },
     {
       "slug": "po_a3",
-      "title": "Leave the account alone when an event is not applied",
+      "title": "Keep the account unchanged when an event is not applied",
       "family": "Admission",
       "scenario": "An account holds 100¢ under key 11. A dispatch for absent key 22 returns not_found.",
       "must_happen": "A non-applied result must return the entire original state and an empty requested-effects list.",
@@ -503,7 +503,7 @@
       "must_happen": "The returned state must have well-formed entries, correct holding totals and counters within the limits.",
       "wrong_behavior": "Mark key 11 voiding while reporting that its 100¢ and one slot are free.",
       "why_others_miss": "Remembering the key and requesting the right remote void do not ensure that the stored totals still count the hold.",
-      "does_not_cover": "A voided entry with zero used counters is also valid. This claim alone therefore permits the P01 early-cancellation proposal; retention supplies the missing requirement.",
+      "does_not_cover": "A voided entry with zero used counters is also valid. This claim alone therefore permits the P01 early-cancellation what-if output; retention supplies the missing requirement.",
       "provenance": [
         {
           "kind": "claim",
@@ -578,7 +578,7 @@
       "must_happen": "A voiding result must request the void for key 11. Dispatched and retried results must request authorization with the stored key and amount.",
       "wrong_behavior": "Omit the required void request, as in the M7 missing-effect mutation, or retry under a different key, as in the M3 retry-identity mutation.",
       "why_others_miss": "A valid state that retains the hold can still omit the remote work. The P02 missing-cancellation exercise isolates that mistake.",
-      "does_not_cover": "The predicate branches on the supplied result. The P01 early-cancellation proposal returns voided with no effects and passes it; retention rejects that premature release. Delivery remains a separate concern.",
+      "does_not_cover": "The predicate branches on the supplied result. The P01 early-cancellation what-if output returns voided with no effects and passes it; retention rejects that premature release. Delivery remains a separate concern.",
       "provenance": [
         {
           "kind": "claim",
@@ -961,7 +961,7 @@
     },
     {
       "slug": "po_terminal_fence",
-      "title": "Keep a delayed authorization behind the processor’s fence",
+      "title": "Prevent delayed authorization after remote cancellation",
       "family": "Processor & exposure",
       "scenario": "The modeled processor has a voided record for key 11. A delayed authorization for that key arrives with an approved outcome.",
       "must_happen": "The environment must remain unchanged and return declined for that delayed authorization.",
@@ -1046,7 +1046,7 @@
       "must_happen": "The same key and 100¢ amount must remain in sent, unknown, authorized or voiding status. Separate validity checks require the counters to match the holding entries.",
       "wrong_behavior": "Release hold 11 immediately after requesting its remote void. The M10 premature-release mutation introduces this fault while the old authorization may still be live.",
       "why_others_miss": "A voided entry with zero counters can be internally valid. The P01 early-cancellation exercise also shows how its voided result lets an empty effects list pass the effects predicate.",
-      "does_not_cover": "The condition excludes that key’s declined result and void confirmation. This conclusion protects the entry, not the stored counters: the P06 zero-counter exercise needs validity as well. Real processor truth and fencing remain external requirements.",
+      "does_not_cover": "The condition excludes that key’s declined result and void confirmation. This conclusion protects the entry, not the stored counters: the P06 zero-counter case needs validity as well. Real processor truth and fencing remain external requirements.",
       "provenance": [
         {
           "kind": "claim",
@@ -1495,7 +1495,7 @@
     },
     {
       "slug": "po_exposure_model_bounds",
-      "title": "Read remote capacity bounds from the combined invariant",
+      "title": "Derive remote capacity bounds from the combined invariant",
       "family": "Processor & exposure",
       "scenario": "A valid combined exposure state has a 100¢ amount limit, one slot and a remote live authorization for key 11.",
       "must_happen": "The remote live amount must be at most 100¢ and the live authorization count at most one.",
@@ -1526,7 +1526,7 @@
       "must_happen": "Request persistence at most once for attempt 1, despite the two completion messages. A committed event may retire it only if that ID already requested persistence earlier in the modeled history.",
       "wrong_behavior": "Request persistence twice for attempt 1, or retire it without any earlier persistence request.",
       "why_others_miss": "Distinct attempt IDs and at-most-once retirement do not establish that persistence was requested before retirement, or requested only once.",
-      "does_not_cover": "The guarantee covers finite typed histories from the initial lifecycle. A persistence intent is a request; the theorem does not establish a completed journal write or disk sync.",
+      "does_not_cover": "The claim covers finite typed histories from the initial lifecycle. A persistence intent requests a write; this theorem does not establish a completed journal write or disk sync.",
       "provenance": [
         {
           "kind": "claim",

@@ -356,7 +356,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
             name="question[text]"
             value={@text}
             label="Question about this case"
-            placeholder="Ask about this case…"
+            placeholder="What does this case tell us?"
             disabled={!@ready}
             maxlength="4096"
           />
@@ -413,8 +413,8 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
         </p>
         <p :if={@error} role="alert">{@error}</p>
         <p class="question-local-help">
-          Keep reading: <a href="/glossary">look up a term</a>
-          or <a href="/proofs">read a claim</a>. These guides work without sending a question.
+          For local reference, <a href="/glossary">look up a term</a>
+          or <a href="/proofs">read a claim</a>. Opening a guide sends nothing.
         </p>
         <details :if={@error && @error_detail} id="question-error-details">
           <summary>Technical details</summary><code>{@error_detail}</code>
@@ -440,7 +440,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
                 rel="noopener"
               >{source["path"]}</a>
             </nav>
-            <span class="scope-note">AI answer</span>
+            <span class="scope-note">Generated explanation · check the cited source and verification records</span>
           </div>
           <p :if={@active["error"]} role="status">{@active["status"]}: {@active["error"]}</p>
           <p :if={@active["persistence_error"]} role="alert">
@@ -449,7 +449,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           <div class="question-actions">
             <button :if={answer?(@active)} phx-click="followup" phx-target={@myself}>Ask a follow-up</button>
             <button phx-click="new" phx-target={@myself}>Ask using current case</button>
-            <a href={export(@active)} download={"question-#{@active["id"]}.json"}>Export this question</a>
+            <a href={export(@active)} download={"question-#{@active["id"]}.json"}>Export question and answer</a>
             <button
               :if={answer?(@active)}
               type="button"
@@ -473,7 +473,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
             maxlength="4096"
           />
           <p :if={@previous != []} class="scope-note">
-            This follow-up includes the earlier question and answer, using that question’s case. Review Context before sending.
+            Uses the earlier case, question and answer. Inspect context before sending this follow-up.
           </p>
           <input type="hidden" name="question[context_id]" value={@send_context_id} />
           <p class="scope-note">Sends this question, case and included source to Codex.</p>
@@ -490,7 +490,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
         <details :if={(@packet || @active) && !@history_open} id="question-context">
           <summary>Context · {(@packet || @active["packet"])["model"]} · medium</summary>
           <p>
-            Codex receives your question, the selected case, and the sources listed here. The app saves a local question history.
+            Sending shares your question, the selected case and these sources with Codex. The app saves the question and response locally.
           </p>
           <p><code>{(@packet || @active["packet"])["digest"]}</code></p>
           <p :for={source <- (@packet || @active["packet"])["context"]["sources"]}>
@@ -554,7 +554,7 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
           >Older questions</button>
         </div>
         <p :if={@history_open && @history == []} class="scope-note">
-          No questions found.
+          No questions match this search. Try another phrase or choose All questions.
         </p>
         <div :if={@history_open} class="question-actions">
           <button phx-click="new" phx-target={@myself}>New question</button>

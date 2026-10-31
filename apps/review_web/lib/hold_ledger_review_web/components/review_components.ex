@@ -45,7 +45,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           />
         </.form>
         <div class="rule-identity">
-          <span class="eyebrow">{@slug} · Requirement summary</span>
+          <span class="eyebrow">{@slug} · Payment requirement</span>
           <h1>
             <button
               type="button"
@@ -75,17 +75,17 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         <summary data-edu-hint="Learn the distinction between single-case checks, policy, proof evidence, and unsaved experiments.">
           How to read this workspace
         </summary>
-        <p>A single-case check tells you whether this claim accepts the proposed output.
+        <p>A single-case check tells you whether this claim accepts the what-if output.
           An accepted changed output is worth investigating, not automatically a defect.
           Unavailable never means false.</p>
-        <p id="connection-scope">Clause ↔ proof links are source-reading aids, not Lean goal
-          states, kernel dependencies or acceptance evidence.</p>
+        <p id="connection-scope">Clause ↔ proof links are reviewed source-reading aids.
+          Read verification records for checker results; these links do not show Lean goals or proof dependencies.</p>
         <p>Edits and follow-on events remain in an unsaved experiment until saved to the timeline.
           Notes do not approve policy or save pending events.</p>
       </details>
       <details id="selected-claim" class="selected-claim">
         <summary data-edu-hint="Read which inputs the claim covers and what it requires from the output.">
-          Read full claim · requires / expects
+          Read the claim · input conditions and promised output
         </summary>
         <p :if={@slug == "po_exposure_retain"} id="retention-check-scope" class="scope-note">
           This claim keeps the same request ID and amount in a holding status until its release evidence.
@@ -117,7 +117,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         </dl>
         <p :if={@reading["contract"]["status"] == "native_statement_only"}>
           Native Lean claim: {Enum.join(@reading["law"]["theorems"] || [], ", ")}.
-          No executable Elixir counterpart. The full declaration is in Lean source reading.
+          Read the complete declaration in Lean source reading. This claim has no executable Elixir counterpart.
         </p>
         <p :if={@reading["contract"]["status"] not in ~w(source_read native_statement_only)}>
           Executable claim source unavailable. Read registered source for its scope.
@@ -129,7 +129,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           <code>amount &lt;= remaining</code>
           <span aria-label="changed to">→</span>
           <code>amount &lt; remaining</code>
-          <small>Not a recorded source comparison</small>
+          <small>Illustration from the current case; no edited source was run</small>
         </p>
         <p :if={!@package && !@example} id="standalone-law-scope" class="scope-note">
           Claim source · no proposed source change
@@ -179,7 +179,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         </details>
       </div>
       <div :if={@show_sources} id="source-comparison" class="source-chooser">
-        <p>Choose two trusted local versions to run this case in separate processes.</p>
+        <p>Choose two trusted local source versions. Run the same case in a separate process for each.</p>
         <p class="scope-note">
           Compare what the claim covers, what outputs it permits, and what the code returns.
           A difference needs review against the policy before you call it a defect.
@@ -379,7 +379,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
     ~H"""
     <div class="selected-input" id="selected-input">
       <div>
-        <strong>Try a request</strong><small>{if @request,
+        <strong>Try another amount</strong><small>{if @request,
           do: "",
           else: "This event does not request an amount"}</small>
       </div>
@@ -453,6 +453,9 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           do: if(@reading["proof_steps"] == [], do: "Show excerpt", else: "Show selected step"),
           else: "Read full proof"}</button>
       </header>
+      <p class="proof-source-guide">
+        Read the supplied Lean declaration and proof below. Matching verification records show which checks completed.
+      </p>
       <p :if={@reading["proof_steps"] == []} class="scope-note" id="no-proof-steps">
         No reviewed step-by-step reading for this claim. Its declaration remains available below.
       </p>
@@ -676,7 +679,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
             </tr>
           </thead><tbody>
             <tr>
-              <th scope="row">Money reserved locally</th><td id="premise-local">
+              <th scope="row">Capacity reserved locally</th><td id="premise-local">
                 {@result.local}¢
               </td>
             </tr><tr>
@@ -702,8 +705,8 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
   defp version_coverage(false), do: "Does not apply"
   defp version_coverage(_), do: "Unavailable or not run"
 
-  defp version_alternative(true), do: "Accepts proposed output"
-  defp version_alternative(false), do: "Rejects proposed output"
+  defp version_alternative(true), do: "Accepts what-if output"
+  defp version_alternative(false), do: "Rejects what-if output"
   defp version_alternative(_), do: "Unavailable or not run"
 
   defp answer(true), do: "Yes"

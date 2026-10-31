@@ -39,7 +39,7 @@ for (const width of [1280, 390]) {
     await expect(page.locator('.lens-decisions [aria-pressed=true]')).toHaveCount(0);
     await expect(page.locator('#lens-confirm')).toBeDisabled();
     await expect(page.locator('#lens-policy')).toContainText('An exact amount fit is admitted.');
-    await expect(page.locator('#lens-case-brief')).toContainText('Proposed output');
+    await expect(page.locator('#lens-case-brief')).toContainText('What-if output');
     await expect(page.locator('#lens-evidence-legend')).toContainText('Single-case check');
     await expect(page.locator('#lens-source-contract')).toContainText('request_eligible?');
     const choice = page.locator('#lens-decision-unresolved');
@@ -80,7 +80,7 @@ test('changing context resets the answer and Challenge remains in the study URL'
   await page.goto('/lens/po_a2?mode=challenge');
   await connected(page);
   await confirm(page);
-  await expect(page.locator('#lens-decision-concern')).toHaveCSS('border-top-color', 'rgb(183, 121, 31)');
+  await expect(page.locator('#lens-decision-concern')).toHaveCSS('border-top-color', 'rgb(129, 86, 0)');
   await page.locator('#lens-variation-proof_only').click();
   await withheld(page);
   await expect(page.locator('#lens-proof-control')).toContainText('Proof-body-only change proposed');

@@ -2,6 +2,18 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
   use HoldLedgerReviewWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
 
+  test "one study selector and three review phases preserve the unanswered case", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/lens/po_a2")
+    assert has_element?(view, "#lens-review-phases a[href='#lens-policy']")
+    assert has_element?(view, "#lens-review-phases a[href='#lens-review']")
+    assert has_element?(view, "#lens-review-phases a[href='#lens-results']")
+    assert has_element?(view, "#lens-study-picker #lens-demo-scope")
+    refute has_element?(view, ".lens-hero #lens-demo-scope")
+    assert has_element?(view, "#lens-feedback-withheld a[href='#lens-review']")
+    refute has_element?(view, "#lens-gap")
+    refute has_element?(view, "#lens-coverage")
+  end
+
   test "optional reasoning can stay closed when confirming a classification", %{conn: conn} do
     {:ok, view, _} = live(conn, "/lens/po_a2")
     assert has_element?(view, "#lens-review-notes > summary", "Optional")
@@ -20,7 +32,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     {:ok, view, _} = live(conn, "/lens/po_a2")
     assert has_element?(view, "#lens-feedback-withheld")
     assert has_element?(view, "#lens-confirm[disabled]")
-    assert has_element?(view, "#lens-case-brief", "Proposed output")
+    assert has_element?(view, "#lens-case-brief", "What-if output")
     assert has_element?(view, "#lens-evidence-drawer")
     assert has_element?(view, "#lens-demo-scope", "Two reviews to practice")
     assert has_element?(view, "#lens-demo-scope a[href='/lens/po_a2']")
@@ -59,7 +71,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     assert has_element?(view, "#lens-evidence-status", "Proof check for proposed change")
     assert has_element?(view, "#lens-formal-status")
     assert has_element?(view, "#lens-gap", "Potential loss of required coverage")
-    assert has_element?(view, "#lens-baseline-verdict", "Claim rejects this output")
+    assert has_element?(view, "#lens-baseline-verdict", "Claim rejects the what-if output")
     assert has_element?(view, "#lens-hypothetical-verdict", "Claim says nothing about this input")
     assert has_element?(view, "#lens-observed-path")
     assert has_element?(view, "#lens-variation-strict[aria-pressed=true]")
@@ -71,7 +83,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     {:ok, view, _} = live(conn, "/lens/po_a2?mode=explore")
     element(view, "#lens-witness-below") |> render_click()
     assert has_element?(view, "#lens-witness-below[aria-pressed=true]")
-    assert has_element?(view, "#lens-hypothetical-verdict", "Claim rejects this output")
+    assert has_element?(view, "#lens-hypothetical-verdict", "Claim rejects the what-if output")
 
     element(view, "#lens-witness-above") |> render_click()
     assert has_element?(view, "#lens-policy-verdict", "Policy permits this output")
@@ -89,11 +101,11 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     {:ok, view, _} = live(conn, "/lens/po_exposure_retain?mode=explore")
     assert has_element?(view, "#lens-policy-verdict", "Policy permits this output")
     assert has_element?(view, "#lens-baseline-verdict", "Claim says nothing about this input")
-    assert has_element?(view, "#lens-hypothetical-verdict", "Claim rejects this output")
+    assert has_element?(view, "#lens-hypothetical-verdict", "Claim rejects the what-if output")
     assert has_element?(view, "#lens-gap", "Potential overconstraint")
     assert has_element?(view, "#lens-proof-steps")
     element(view, "#lens-witness-void") |> render_click()
-    assert has_element?(view, "#lens-baseline-verdict", "Claim rejects this output")
+    assert has_element?(view, "#lens-baseline-verdict", "Claim rejects the what-if output")
     element(view, "#lens-clause-retain-protected") |> render_click()
     assert has_element?(view, "#lens-selected-clause", "protected status")
     assert has_element?(view, "#lens-proof-steps")
@@ -141,7 +153,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
         ] do
       Application.put_env(:hold_ledger_review_web, :ledger_root, root)
       {:ok, view, _} = live(conn, "/lens/po_a2?mode=explore")
-      assert has_element?(view, "#lens-baseline-verdict", "Claim rejects this output")
+      assert has_element?(view, "#lens-baseline-verdict", "Claim rejects the what-if output")
       Application.put_env(:hold_ledger_review_web, :ledger_root, "/missing-ledger-checkout")
 
       render_click(view, event, params)

@@ -144,16 +144,17 @@ An agent can carry out this workflow under agreed policy:
 
 [Agentic verification](guides/agentic_verification.md) has a worked exercise and prompts; [Human review](guides/human_review.md) explains what may be delegated and includes a decision practice set. The repository's `AGENTS.md` contains instructions for an agent working on this codebase.
 
-The optional [Phoenix claim workbench](apps/review_web/README.md) provides
-one source-anchored human review at `/` and `/workbench`. It reads policy and
-original law source, computes bounded what-if cases with one source-derived
-evaluator and strict codec, and persists human reviews with JSON/Markdown
-exports. Optional source-bound questions and answer-aware follow-ups require a fresh
-opt-in for each request. Computed
-pointwise evidence remains separate from model interpretations, independent
-formal checking and the human conclusion. The app does not execute mutations
-or remote payment operations. The [manual exercise](guides/interactive_review.md)
-also works without the app.
+The optional [Phoenix learning and review app](apps/review_web/README.md)
+connects a computed payment walkthrough to Elixir laws, Lynx translation and
+Lean proof evidence. Start at `/`, follow the lesson at `/start`, investigate
+cases in `/lab`, or practice reviewing a changed claim at `/lens/po_a2`.
+The Claim Atlas at `/atlas` registers 49 claim groups in eight curated reading
+families. Case Lab compares the code result with a hypothetical What-if output
+for one concrete case and saves review notes with JSON/Markdown exports.
+Optional source-bound questions and follow-ups send the displayed context only
+when submitted. Case checks, source readings, formal reports and human judgments
+remain separate evidence. The app contacts no payment processor. The
+[manual exercise](guides/interactive_review.md) also works without the app.
 
 ## Documentation map
 

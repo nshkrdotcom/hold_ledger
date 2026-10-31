@@ -2,21 +2,22 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   @moduledoc "Learning pages using existing model execution and source readers."
   use HoldLedgerReviewWeb, :live_view
   import HoldLedgerReviewWeb.ScrubberComponents, only: [capacity_view: 1]
+  import HoldLedgerReviewWeb.LearningComponents
   alias HoldLedgerReviewWeb.{Education, Learning, ReviewCopy}
 
   @page_names %{
-    overview: "Explore",
-    start: "Follow a payment hold",
-    how_it_fits: "How the pieces fit",
-    examples: "Learn from deliberate faults",
-    translation: "Elixir to Lean with Lynx",
-    system: "The hold system",
-    guarantees: "Payment-hold requirements",
-    atlas: "Find a claim",
+    overview: "Overview",
+    start: "Payment walkthrough",
+    how_it_fits: "Reading map",
+    examples: "Deliberate bugs",
+    translation: "Elixir to Lean",
+    system: "System guide",
+    guarantees: "Payment requirements",
+    atlas: "Claim Atlas",
     profile: "Read a claim",
-    proofs: "Read the statement",
+    proofs: "Read a claim",
     assurance: "Evidence and assumptions",
-    repository: "Find the source",
+    repository: "Repository map",
     glossary: "Glossary"
   }
 
@@ -79,8 +80,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
   @journeys [
     %{
-      title: "I'm new to formal verification",
-      tag: "Start with one payment hold",
+      title: "Follow the missing reply",
+      tag: "A payment hold",
       description:
         "Follow a 100¢ request through dispatch and timeout. See why the amount stays held when the reply is missing.",
       path: "/start",
@@ -88,8 +89,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       destination: "Payment-hold walkthrough"
     },
     %{
-      title: "I know Elixir",
-      tag: "Follow familiar code into Lean",
+      title: "Inspect the exact-fit claim",
+      tag: "Elixir to Lean",
       description:
         "Read an Elixir law, follow its translation and inspect the supplied theorem. See which part Lynx provides and which part the proof establishes.",
       path: "/translation",
@@ -97,13 +98,13 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       destination: "Elixir → Lynx → Lean"
     },
     %{
-      title: "I review proofs or agent changes",
-      tag: "Check meaning and evidence",
+      title: "Review a changed claim",
+      tag: "Practice your judgment",
       description:
-        "Follow policy, claims and evidence across the repository. Then practice spotting a change that leaves out a required case.",
-      path: "/how-it-fits",
+        "Try a boundary case, decide what changed, then compare your reasoning with the explanation.",
+      path: "/lens/po_a2",
       number: "03",
-      destination: "Reading map and review practice"
+      destination: "Claim Lens"
     }
   ]
 
@@ -129,6 +130,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
        journeys: @journeys,
        pipeline: @pipeline,
        scenario_step: 0,
+       processor_possibility: "approved",
+       map_requirement: "all",
+       translation_focus: "requires",
        story_moments: nil,
        story_issue: nil,
        mutations: Learning.mutations(),
@@ -203,6 +207,12 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     end
   end
 
+  defp page_params(socket, :guarantees, params) do
+    id = params["requirement"]
+    selected = if Enum.any?(Education.guarantees(), &(&1.id == id)), do: id, else: "uncertainty"
+    assign(socket, :selected_guarantee, selected)
+  end
+
   defp page_params(socket, _action, _params), do: socket
 
   @impl true
@@ -212,6 +222,24 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
   def handle_event("reload_story", _, socket),
     do: {:noreply, socket |> assign(story_moments: nil) |> load_story()}
+
+  def handle_event("processor_possibility", %{"id" => id}, socket)
+      when id in ~w(approved undelivered) do
+    {:noreply, assign(socket, :processor_possibility, id)}
+  end
+
+  def handle_event("map_requirement", %{"id" => id}, socket) do
+    if id == "all" or Enum.any?(Education.guarantees(), &(&1.id == id)) do
+      {:noreply, assign(socket, :map_requirement, id)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("translation_focus", %{"id" => id}, socket)
+      when id in ~w(requires expects proof) do
+    {:noreply, assign(socket, :translation_focus, id)}
+  end
 
   def handle_event("open_story", _, socket) do
     if is_list(socket.assigns.story_moments) do
@@ -257,7 +285,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
   def handle_event("guarantee", %{"id" => id}, socket) do
     if Enum.any?(Education.guarantees(), &(&1.id == id)) do
-      {:noreply, assign(socket, :selected_guarantee, id)}
+      {:noreply, push_patch(socket, to: ~p"/guarantees?requirement=#{id}")}
     else
       {:noreply, socket}
     end
@@ -358,6 +386,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       review_claim={@profile && @profile["slug"]}
     >
       <div class="edu-root" id="education-root">
+        <.chapter_nav :if={@live_action in [:start, :system, :guarantees, :translation, :proofs]} current={@live_action} />
         <%= if @catalog_issue do %>
           <div id="edu-catalog-unavailable" class="edu-caution" role="alert">
             The claim catalog is unavailable. You can still read the guides; claim counts and source links will return when the catalog can be loaded.
@@ -365,15 +394,15 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <% end %>
         <%= case @live_action do %>
           <% :overview -> %>
-            <.overview inventory={@inventory} journeys={@journeys} moment={@story_moment} />
+            <.overview inventory={@inventory} journeys={@journeys} moment={@story_moment} claims={@claims} families={@families} guarantees={@guarantees} map_requirement={@map_requirement} />
           <% :start -> %>
-            <.start moment={@story_moment} moments={@story_moments || []} />
+            <.start moment={@story_moment} moments={@story_moments || []} possibility={@processor_possibility} />
           <% :how_it_fits -> %>
-            <.how_it_fits inventory={@inventory} guarantees={@guarantees} counts={@source_counts} />
+            <.how_it_fits inventory={@inventory} guarantees={@guarantees} counts={@source_counts} claims={@claims} families={@families} map_requirement={@map_requirement} />
           <% :examples -> %>
             <.mutation_examples mutations={@mutations} selected={@selected_mutation} />
           <% :translation -> %>
-            <.translation source={@translation} />
+            <.translation source={@translation} focus={@translation_focus} />
           <% :system -> %>
             <.system
               components={@components}
@@ -392,6 +421,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
               family={@family}
               kind={@kind}
               priority={@priority}
+              guarantees={@guarantees}
+              map_requirement={@map_requirement}
             />
           <% :profile -> %>
             <.profile claim={@profile} />
@@ -405,9 +436,10 @@ defmodule HoldLedgerReviewWeb.EducationLive do
             <.glossary terms={@filtered_terms} query={@term_query} count={length(@glossary)} />
         <% end %>
         <footer class="edu-footer">
-          <span>Hold Ledger · A guide to the repository</span>
-          <a href="/repository">Find the source</a>
-          <a href="/assurance">Read the evidence</a>
+          <span>Hold Ledger · Code, claims and the questions between them</span>
+          <a href="/repository">Repository map</a>
+          <a href="/glossary">Glossary</a>
+          <a href="/assurance">Evidence and assumptions</a>
         </footer>
       </div>
     </Layouts.app>
@@ -433,21 +465,25 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   attr :inventory, :map, required: true
   attr :journeys, :list, required: true
   attr :moment, :any, default: nil
+  attr :claims, :list, required: true
+  attr :families, :list, required: true
+  attr :guarantees, :list, required: true
+  attr :map_requirement, :string, required: true
 
   defp overview(assigns) do
     ~H"""
     <section class="edu-home-hero learning-home" id="edu-overview">
       <div class="edu-home-hero-content">
-        <p class="edu-eyebrow">Formal verification with Lynx and Lean</p>
-        <h1>Follow the code.<span>Understand the proof.</span></h1>
+        <p class="edu-eyebrow">Hold Ledger · An interactive guide</p>
+        <h1>A missing reply.<span>An amount still on hold.</span></h1>
         <p class="edu-hero-sub">
-          A payment processor can approve a hold even when its reply never arrives.
-          Follow a 100¢ example, inspect the Elixir laws that describe it,
-          and see what the Lean proofs establish.
+          A processor can approve a payment hold even when its reply never arrives.
+          Follow 100¢ through the ledger, then see how Elixir claims and Lean proofs
+          describe the behavior it must keep.
         </p>
         <div class="edu-hero-actions">
           <a class="edu-primary-button" href="/start">
-            Follow a payment hold <span aria-hidden="true">→</span>
+            Follow the payment <span aria-hidden="true">→</span>
           </a>
           <a class="edu-ghost-button" href="/lab">Open Case Lab</a>
         </div>
@@ -455,6 +491,10 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       </div>
       <.home_example moment={@moment} />
     </section>
+
+    <.concept_intro />
+
+    <.claim_map claims={@claims} families={@families} requirements={@guarantees} selected={@map_requirement} />
 
     <aside class="edu-overview-lesson" id="edu-overview-lesson">
       <span class="edu-eyebrow">The review question</span>
@@ -468,8 +508,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     <section class="edu-home-journeys" aria-labelledby="edu-paths-title">
       <div class="edu-section-head">
         <div>
-          <p class="edu-eyebrow">Choose your next step</p><h2 id="edu-paths-title">
-            Start with the question you have.
+          <p class="edu-eyebrow">Three ways to investigate</p><h2 id="edu-paths-title">
+            Choose a question to follow.
           </h2>
         </div>
       </div>
@@ -483,17 +523,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       </div>
     </section>
 
-    <section class="edu-stat-strip" aria-label="Current registered claim inventory">
-      <div><strong>{@inventory.total}</strong><span>Registered claims</span></div>
-      <div><strong>{@inventory.elixir}</strong><span>Elixir laws</span></div>
-      <div><strong>{@inventory.lean}</strong><span>Lean-only claims</span></div>
-      <p class="edu-stat-note">
-        Counts come from the current catalog. <a href="/assurance">Check the evidence</a>
-        before treating a registered claim as formally accepted.
-      </p>
-    </section>
-
-    <section class="edu-home-map" aria-labelledby="edu-directory-title">
+    <details class="edu-home-map edu-disclosure" id="edu-page-directory">
+      <summary>All pages and reference</summary>
       <div class="edu-section-head">
         <div>
           <p class="edu-eyebrow">Keep a useful page close</p><h2 id="edu-directory-title">
@@ -505,27 +536,27 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       <nav class="edu-page-directory" aria-label="Page directory">
         <div>
           <h3>The payment model</h3>
-          <a href="/start"><strong>Follow a payment hold</strong><span>Request, dispatch and a missing reply</span></a>
-          <a href="/system"><strong>Explore the system</strong><span>Ledger, Spec, runtime and the seven states</span></a>
-          <a href="/guarantees"><strong>Read the requirements</strong><span>Six behaviors the policy calls for</span></a>
+          <a href="/start"><strong>Payment walkthrough</strong><span>Request, dispatch and a missing reply</span></a>
+          <a href="/system"><strong>System guide</strong><span>Ledger, Spec, runtime and the seven states</span></a>
+          <a href="/guarantees"><strong>Payment requirements</strong><span>Six behaviors the policy calls for</span></a>
         </div>
         <div>
           <h3>Claims and evidence</h3>
-          <a href="/how-it-fits"><strong>How the pieces fit</strong><span>Policy, code, claims and evidence</span></a>
-          <a href="/translation"><strong>Elixir to Lean with Lynx</strong><span>Actual source and the supplied theorem</span></a>
-          <a href="/proofs"><strong>Read a formal statement</strong><span>Input coverage, promises and assumptions</span></a>
-          <a href="/atlas"><strong>Find a claim</strong><span>Browse the eight claim families</span></a>
-          <a href="/assurance"><strong>Check the evidence</strong><span>Examples, checks, reports and their scope</span></a>
+          <a href="/how-it-fits"><strong>Reading map</strong><span>Policy, code, claims and evidence</span></a>
+          <a href="/translation"><strong>Elixir to Lean</strong><span>Actual source and the supplied theorem</span></a>
+          <a href="/proofs"><strong>Read a claim</strong><span>Input coverage, promises and assumptions</span></a>
+          <a href="/atlas"><strong>Claim Atlas</strong><span>Browse the eight claim families</span></a>
+          <a href="/assurance"><strong>Evidence and assumptions</strong><span>Examples, checks, reports and their scope</span></a>
         </div>
         <div>
           <h3>Tools and reference</h3>
-          <a href="/examples"><strong>Learn from deliberate faults</strong><span>Ten source changes and what each challenges</span></a>
+          <a href="/examples"><strong>Deliberate bugs</strong><span>Ten source changes and what each challenges</span></a>
           <a href="/lab"><strong>Case Lab</strong><span>Try an input and propose an output</span></a>
           <a href="/repository"><strong>Repository map</strong><span>Find the source for your question</span></a>
           <a href="/glossary"><strong>Glossary</strong><span>Plain meanings and repository examples</span></a>
         </div>
       </nav>
-    </section>
+    </details>
     """
   end
 
@@ -596,12 +627,13 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
   attr :moment, :any, default: nil
   attr :moments, :list, required: true
+  attr :possibility, :string, required: true
 
   defp start(assigns) do
     ~H"""
     <.intro
-      eyebrow="Learn · the payment example"
-      heading="A missing reply still leaves money on hold."
+      eyebrow="Payment walkthrough"
+      heading="A missing reply keeps the amount reserved."
       description="Start with an empty account, a 100¢ ($1.00) limit and two hold slots. Run the events and watch what the ledger keeps reserved."
     />
     <.story_unavailable :if={!@moment} />
@@ -672,6 +704,13 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           <p :for={effect <- @moment.output["effects"]}>{ReviewCopy.action(effect)}</p>
         </div>
       </div>
+      <.uncertainty_view :if={@moment.index >= 3} moment={@moment} possibility={@possibility} />
+      <aside :if={@moment.index == 1} class="learning-exact-fit" id="edu-exact-fit-bridge">
+        <strong>What if the code rejected this exact fit?</strong>
+        <p>M4 changes the capacity comparison so this request is refused. Read the actual patch, or explore how a changed claim could miss the same boundary.</p>
+        <a href="/examples?example=M4">Read the exact-fit bug →</a>
+        <a href="/lens/po_a2?mode=explore">Explore the claim change →</a>
+      </aside>
       <div class="learning-story-controls">
         <button
           type="button"
@@ -749,8 +788,8 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       </p>
     </.reading_note>
     <.next_links
-      one="/how-it-fits"
-      one_title="See how the code, claims and proofs fit"
+      one="/system"
+      one_title="Next: see where the ledger fits"
       two="/examples"
       two_title="Learn from a deliberately broken implementation"
     />
@@ -760,12 +799,15 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   attr :inventory, :map, required: true
   attr :guarantees, :list, required: true
   attr :counts, :map, required: true
+  attr :claims, :list, required: true
+  attr :families, :list, required: true
+  attr :map_requirement, :string, required: true
 
   defp how_it_fits(assigns) do
     ~H"""
     <section id="edu-how-it-fits" class="learning-page">
       <.intro
-        eyebrow="Learn · the repository map"
+        eyebrow="Reading map"
         heading="Follow the question from policy to proof."
         description="Each part answers a different question. Use this map to move from required payment behavior to code, claims and evidence for the source you are reading."
       />
@@ -773,6 +815,10 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <strong>Reading map, not proof dependencies.</strong>
         The order below is a way into the repository. It does not describe which theorems depend on one another.
       </p>
+      <.vocabulary_ladder />
+      <.claim_map claims={@claims} families={@families} requirements={@guarantees} selected={@map_requirement} />
+      <details class="edu-disclosure learning-path-detail">
+        <summary>Follow the six connections from policy to evidence</summary>
       <ol class="learning-map" aria-label="From payment policy to matching evidence">
         <li>
           <span class="learning-map-number">01</span>
@@ -829,6 +875,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           <a href="/assurance">Read the evidence and assumptions →</a>
         </li>
       </ol>
+      </details>
       <aside class="learning-context-note">
         <h2>Where does the outside world enter?</h2>
         <p>
@@ -852,13 +899,13 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     ~H"""
     <section id="edu-examples" class="learning-page">
       <.intro
-        eyebrow="Learn · deliberate faults"
+        eyebrow="Deliberate bugs"
         heading="See what one code change can break."
         description="Choose a mutation, follow its concrete input and read the claim aimed at the fault. These examples make the required behavior easier to recognize."
       />
       <p id="edu-examples-scope" class="learning-scope-note">
-        Source examples from this repository. This page reads the existing patch and witness;
-        it does not run the mutation or report a new test result.
+        Each example pairs an existing source patch with an input that exposes the fault.
+        This page does not run the mutation or report a new test result.
       </p>
       <div class="learning-example-layout">
         <nav class="learning-example-picker" aria-label="Choose a deliberate mutation">
@@ -914,7 +961,10 @@ defmodule HoldLedgerReviewWeb.EducationLive do
                 {Education.title(@selected.example["target_slug"])}
               </h3><code>{@selected.example["target_slug"]}</code>
             </div>
-            <a id="edu-mutation-claim" href={"/atlas/" <> @selected.example["target_slug"]}>Read the claim →</a>
+            <div class="learning-inline-actions">
+              <a id="edu-mutation-claim" href={"/atlas/" <> @selected.example["target_slug"]}>Read the claim →</a>
+              <a href={"/claims/" <> @selected.example["target_slug"]}>Open the current code in Case Lab →</a>
+            </div>
           </section>
           <section class="learning-patch" aria-labelledby="edu-mutation-patch-title">
             <h3 id="edu-mutation-patch-title">The patch in the repository</h3>
@@ -950,7 +1000,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </section>
       </div>
       <aside class="learning-context-note">
-        <h2>Continue with a proposed output or claim.</h2>
+        <h2>Continue with a what-if output or claim.</h2>
         <p>
           The full directory also has eight policy exercises, including P08's correct local cancellation. Claim Lens lets you inspect two authored claim changes.
         </p>
@@ -964,6 +1014,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   end
 
   attr :source, :any, default: nil
+  attr :focus, :string, required: true
 
   defp translation(assigns) do
     assigns = assign(assigns, :reading, assigns.source && assigns.source.reading)
@@ -971,7 +1022,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     ~H"""
     <section id="edu-translation" class="learning-page">
       <.intro
-        eyebrow="Learn · Elixir to Lean with Lynx"
+        eyebrow="Elixir to Lean"
         heading="Follow an Elixir law into its proof."
         description="Use the exact-fit claim, PO-A2, to distinguish the code and law you write, the Lean definitions Lynx generates, and the theorem whose proof is supplied in the repository."
       />
@@ -983,6 +1034,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <a href="/assurance">Read how source identity is checked →</a>
       </section>
       <%= if @source do %>
+        <.translation_guide focus={@focus} />
         <div class="learning-translation-grid">
           <section id="translation-elixir" class="learning-translation-panel">
             <header>
@@ -997,9 +1049,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
               describes the required output.
             </p>
             <h3>Input condition</h3>
-            <pre tabindex="0" role="region" aria-label="PO-A2 requires condition"><code>{@reading["contract"]["requires"]}</code></pre>
+            <pre id="translation-requires" class={if(@focus == "requires", do: "source-selected")} tabindex="0" role="region" aria-label="PO-A2 requires condition"><code>{@reading["contract"]["requires"]}</code></pre>
             <h3>Required output</h3>
-            <pre tabindex="0" role="region" aria-label="PO-A2 expects condition"><code>{@reading["contract"]["expects"]}</code></pre>
+            <pre id="translation-expects" class={if(@focus == "expects", do: "source-selected")} tabindex="0" role="region" aria-label="PO-A2 expects condition"><code>{@reading["contract"]["expects"]}</code></pre>
             <p class="edu-source-note">
               <code>test/laws/po_a2_test.exs</code> · line {@reading["contract"]["line"]}
             </p>
@@ -1040,13 +1092,15 @@ defmodule HoldLedgerReviewWeb.EducationLive do
               <a href={@source.generated.url}>Read the full generated source →</a>
             <% else %>
               <div id="translation-generated-unavailable" class="learning-source-empty">
-                <h3>No matching generated definition is available here.</h3>
+                <h3>Generated definitions are not available for this source.</h3>
                 <p>
-                  This checkout does not currently expose a readable generated definition for this example. The Elixir and supplied proof panels remain useful for reading.
+                  Lynx represents Elixir values with <code>Lynx.Term</code> and turns the law's input and output conditions into Lean definitions. The supplied theorem refers to those definitions.
                 </p>
                 <p>
-                  Existing verification tooling produces the focused artifacts. This page does not generate them or substitute proof text for translated code.
+                  To produce the focused artifacts, run this from the repository root with the pinned tools installed:
                 </p>
+                <pre tabindex="0" role="region" aria-label="Command to generate focused claim readings"><code>MIX_ENV=test uv run --locked python scripts/local_run.py mix run apps/review_web/scripts/produce_claim_readings.exs</code></pre>
+                <p>This writes the focused reading index and artifacts used by this page. Reload to read matching generated definitions. Assess the full verification report separately.</p>
               </div>
             <% end %>
             <p class="learning-source-status">
@@ -1072,7 +1126,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
             <header>
               <span class="learning-panel-number">03</span><p class="edu-eyebrow">
                 Supplied Lean theorem and proof
-              </p><h2>The proof establishes this statement.</h2>
+              </p><h2>Read the statement and supplied proof.</h2>
             </header>
             <p>
               The premise below uses the generated <code>requires</code>
@@ -1093,7 +1147,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
               <p class="edu-source-note">
                 <code>{declaration["path"]}</code> · line {declaration["line"]}
               </p>
-              <details id="translation-proof" class="learning-source-disclosure">
+              <details id="translation-proof" class={["learning-source-disclosure", @focus == "proof" && "source-selected"]}>
                 <summary>Read the supplied proof body</summary>
                 <pre tabindex="0" role="region" aria-label="PO-A2 supplied proof body"><code>{declaration["text"]}</code></pre>
                 <a href={Learning.source_url(@reading, declaration["path"])}>Read the complete Lean file →</a>
@@ -1106,6 +1160,14 @@ defmodule HoldLedgerReviewWeb.EducationLive do
             <p class="learning-scope-note">
               These are checked-in source declarations. Reading them does not establish a current verification result.
             </p>
+            <details class="learning-source-disclosure translation-notation" id="translation-notation">
+              <summary>A short guide to the Lean notation</summary>
+              <dl>
+                <div><dt><code>Lynx.Term</code></dt><dd>The representation of Elixir values used by translated code.</dd></div>
+                <div><dt><code>«po_a2/3»</code></dt><dd>A quoted Lean identifier. The name keeps the Elixir function's name and arity.</dd></div>
+                <div><dt><code>requires</code> / <code>ensures</code></dt><dd>The generated conditions for the law's input and its promised output. The latter comes from <code>expects</code>.</dd></div>
+              </dl>
+            </details>
           </section>
         </div>
         <section
@@ -1136,6 +1198,12 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <a href="/lens/po_a2?mode=explore"><span>A changed claim</span><strong>See why excluding exact fit leaves a policy gap.</strong></a>
       </div>
     </section>
+    <.next_links
+      one="/proofs"
+      one_title="Next: read a claim as a reviewer"
+      two="/lens/po_a2?mode=challenge"
+      two_title="Practice with the exact-fit claim"
+    />
     """
   end
 
@@ -1147,10 +1215,19 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp system(assigns) do
     ~H"""
     <.intro
-      eyebrow="Learn · the system"
+      eyebrow="System guide"
       heading="Follow a hold through the system."
       description="Ledger handles each event. Spec describes the expected behavior independently. The runtime records inputs and asks the processor to do the outside work."
     />
+    <section class="system-flow" aria-labelledby="system-flow-title">
+      <h2 id="system-flow-title">Local state and remote work have different jobs.</h2>
+      <ol>
+        <li><span>01 · Record the input</span><h3>Journal and runtime</h3><p>The runtime syncs the input before applying it.</p><code>recorded event →</code></li>
+        <li><span>02 · Compute the transition</span><h3>Ledger</h3><p>The pure function returns a state, result and requested effects.</p><code>effects → runtime</code></li>
+        <li><span>03 · Perform the outside work</span><h3>Processor</h3><p>The runtime sends the request. A trusted reply becomes another input.</p><code>reply → runtime</code></li>
+      </ol>
+      <p><strong>Spec is independent.</strong> It describes expected behavior for comparison with Ledger. Lynx and Lean check stated properties; they do not process payments at runtime.</p>
+    </section>
     <div class="edu-section-head">
       <div>
         <p class="edu-eyebrow">Code and responsibilities</p><h2>Choose a part to see its role.</h2>
@@ -1240,7 +1317,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     </section>
     <.next_links
       one="/guarantees"
-      one_title="Read the required behavior"
+      one_title="Next: read the payment requirements"
       two="/repository"
       two_title="Find the source files"
     />
@@ -1253,7 +1330,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp guarantees(assigns) do
     ~H"""
     <.intro
-      eyebrow="Learn · policy"
+      eyebrow="Payment requirements"
       heading="Six requirements for a payment hold."
       description="The policy explains when capacity may be used, kept or released. Choose a requirement to see the behavior it calls for and the claims that help check it."
     />
@@ -1287,16 +1364,18 @@ defmodule HoldLedgerReviewWeb.EducationLive do
             <span>{Education.title(slug) || slug}</span><code>{slug}</code>
           </a>
         </div>
+        <a :if={@guarantee.id == "admission"} class="edu-inline-link" href="/examples?example=M4">Inspect M4, the exact-fit bug →</a>
+        <a :if={@guarantee.id == "uncertainty"} class="edu-inline-link" href="/start?moment=3">See the missing reply in the walkthrough →</a>
         <p class="edu-source-note">
           Policy source: <code>guides/specification.md</code>. Each claim's input conditions determine which part it covers.
         </p>
       </section>
     </div>
     <.next_links
-      one="/atlas"
-      one_title="Find claims by question"
-      two="/lens/po_a2"
-      two_title="Review a changed exact-fit claim"
+      one="/translation"
+      one_title="Next: follow the Elixir claim into Lean"
+      two="/atlas"
+      two_title="Find claims by question"
     />
     """
   end
@@ -1308,38 +1387,23 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   attr :family, :string, required: true
   attr :kind, :string, required: true
   attr :priority, :string, required: true
+  attr :guarantees, :list, required: true
+  attr :map_requirement, :string, required: true
 
   defp atlas(assigns) do
     ~H"""
     <.intro
-      eyebrow="Claims · the reading map"
+      eyebrow="Claim Atlas"
       heading="Find the claim you need."
       description="Start with a question, then read the statement that answers it. The eight families below suggest a reading order, from bookkeeping to recovery."
     />
-    <section id="edu-origin-story" class="edu-origin-story" aria-labelledby="edu-families-title">
-      <div class="edu-section-head">
-        <div>
-          <p class="edu-eyebrow">Eight families</p><h2 id="edu-families-title">
-            What are you trying to understand?
-          </h2>
-        </div>
-        <span>This is a reading order, not a proof-dependency diagram.</span>
-      </div>
-      <nav class="edu-family-grid" id="edu-families" aria-label="Claim families in reading order">
-        <a
-          :for={family <- @families}
-          href={"/atlas?family=" <> URI.encode_www_form(family.id)}
-          class={["edu-family-tile", @family == family.id && "active"]}
-          aria-current={if(@family == family.id, do: "true", else: nil)}
-        >
-          <span class="edu-family-number">{family.number}</span>
-          <div>
-            <span class="edu-family-name">{family.id}</span><h3>{family.question}</h3>
-          </div>
-          <span class="edu-family-count">{length(Education.by_family(@all, family.id))}<small>claims</small></span>
-        </a>
-      </nav>
+    <section id="edu-origin-story" aria-label="How to read claim identifiers">
+      <.vocabulary_ladder />
+      <p class="atlas-notation">IDs beginning with <code>PO</code> name proof obligations: statements the project asks its proofs to establish. The catalog groups related statements; a group can contain more than one theorem.</p>
     </section>
+    <div id="edu-families">
+      <.claim_map claims={@all} families={@families} requirements={@guarantees} selected={@map_requirement} />
+    </div>
     <section class="edu-atlas-browser" id="edu-atlas-browser">
       <div class="edu-section-head">
         <div>
@@ -1461,7 +1525,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           <dt>
             {if(@example["kind"] == "mutation",
               do: "What the mutation changes",
-              else: "Proposed output · not run"
+              else: "What-if output"
             )}
           </dt>
           <dd>{@example["challenge"]}</dd>
@@ -1519,12 +1583,19 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         []
       end
 
-    assigns = assign(assigns, :examples, related)
+    requirements =
+      if assigns.claim do
+        Enum.filter(Education.guarantees(), &(assigns.claim["slug"] in &1.slugs))
+      else
+        []
+      end
+
+    assigns = assign(assigns, examples: related, requirements: requirements)
 
     ~H"""
     <%= if @claim do %>
       <nav class="edu-profile-breadcrumb" aria-label="Claim location">
-        <a href="/atlas">← All claims</a><span>{@claim["family"]}</span>
+        <a href="/atlas">Claim Atlas</a><span aria-hidden="true">/</span><a href={"/atlas?family=" <> URI.encode_www_form(@claim["family"])}>{@claim["family"]}</a><span aria-hidden="true">/</span><span>{@claim["id"]}</span>
       </nav>
       <section class="edu-profile-hero" id="edu-claim-profile">
         <div class="edu-profile-heading">
@@ -1536,20 +1607,24 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           <span>{@claim["family"]}</span>
           <span>{if(@claim["kind"] == "native_lean", do: "Lean-only claim", else: "Elixir law")}</span>
         </div>
-        <div class="edu-editorial-status" id="edu-claim-editorial">
-          <span>Editorial draft</span>
+        <details class="edu-editorial-status" id="edu-claim-editorial">
+          <summary>About this explanation · Editorial draft</summary>
           <p>Sources are linked below. Owner review of this explanation is not recorded here.</p>
-        </div>
+        </details>
         <div class="edu-profile-scenario" id="edu-claim-scenario">
           <p class="edu-eyebrow">Consider this case</p><p>{@claim["scenario"]}</p>
         </div>
       </section>
+      <nav :if={@requirements != []} class="profile-requirements" aria-label="Related payment requirements">
+        <span>Related requirements</span>
+        <a :for={requirement <- @requirements} href={"/guarantees?requirement=" <> requirement.id}>{requirement.title} →</a>
+      </nav>
       <div class="edu-profile-grid">
         <section class="edu-profile-panel edu-profile-promise">
-          <p class="edu-eyebrow">The promise</p><h2>Must happen</h2><p>{@claim["must_happen"]}</p>
+          <p class="edu-eyebrow">The promise</p><h2>What must happen</h2><p>{@claim["must_happen"]}</p>
         </section>
         <section class="edu-profile-panel edu-profile-wrong">
-          <p class="edu-eyebrow">The challenge</p><h2>Wrong behavior</h2><p>
+          <p class="edu-eyebrow">The challenge</p><h2>What would go wrong</h2><p>
             {@claim["wrong_behavior"]}
           </p>
         </section>
@@ -1558,13 +1633,13 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <h2 id="edu-scope-title">Scope</h2><p>{@claim["does_not_cover"]}</p>
       </section>
       <div class="edu-profile-actions">
-        <a class="edu-primary-button" href={"/claims/" <> @claim["slug"]}>Read the full statement
+        <a class="edu-primary-button" href={"/claims/" <> @claim["slug"]}>Open in Case Lab
         <span aria-hidden="true">→</span></a>
         <a
           :if={@claim["slug"] in ~w(po_a2 po_exposure_retain)}
           class="edu-secondary-button"
           href={"/lens/" <> @claim["slug"]}
-        >Practice this review</a>
+        >Practice in Claim Lens</a>
         <button
           id="edu-copy-claim"
           type="button"
@@ -1654,7 +1729,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp proofs(assigns) do
     ~H"""
     <.intro
-      eyebrow="Learn · reading statements"
+      eyebrow="Read a claim"
       heading="Read what a claim promises."
       description="A proof establishes the statement it was given. Your first job is to check whether that statement covers the behavior the policy requires. Start with a request that fits exactly."
     />
@@ -1890,7 +1965,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
     ~H"""
     <.intro
-      eyebrow="Evidence · meaning and scope"
+      eyebrow="Evidence and assumptions"
       heading="Check what the evidence covers."
       description="A catalog entry, an example and a completed formal report answer different questions. Read the kind of evidence beside each result, then check that its scope matches your question."
     />
@@ -2101,7 +2176,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
     ~H"""
     <.intro
-      eyebrow="Reference · repository map"
+      eyebrow="Repository map"
       heading="Find the source for your question."
       description="Use the paths below in your checkout. The links beside them open the related explanation or tool in this app."
     />
@@ -2142,7 +2217,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         </div>
       </div>
       <p class="edu-source-note">
-        Each P example pairs an input with a proposed output for review against the policy.
+        Each P example pairs an input with a what-if output for review against the policy.
         P08 is a correct local cancellation. The input details show the existing source fixture,
         not a new execution result.
       </p>
@@ -2166,10 +2241,18 @@ defmodule HoldLedgerReviewWeb.EducationLive do
   defp glossary(assigns) do
     ~H"""
     <.intro
-      eyebrow="Reference · glossary"
+      eyebrow="Glossary"
       heading="Look up a term."
       description="Find its plain meaning, a concrete example from this repository and the source to read next. The same definitions appear in contextual help."
     />
+    <nav class="glossary-topics" aria-label="Common glossary topics">
+      <a href="/glossary?q=hold">Payment holds</a>
+      <a href="/glossary?q=requires">Input conditions</a>
+      <a href="/glossary?q=expects">Required outputs</a>
+      <a href="/glossary?q=lynx">Lynx</a>
+      <a href="/glossary?q=proof">Proofs and evidence</a>
+      <a href="/glossary">All terms</a>
+    </nav>
     <.form
       for={to_form(%{"q" => @query})}
       id="edu-glossary-filter"

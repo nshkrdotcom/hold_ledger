@@ -1,0 +1,264 @@
+/* Case Lab presentation. The reducer, evidence readers and trace controls keep
+   their original identities; these rules only change their visual hierarchy. */
+#review-document[data-case-view] {
+  --case-ink: #172f3c;
+  --case-action: #126b63;
+  --case-soft: #edf6f2;
+  --case-line: #ccdcd7;
+  --case-muted: #4d646b;
+  --case-what-if: #65528a;
+  --case-amber: #815600;
+  color: var(--case-ink);
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
+#review-document[data-case-view] :where(section, article, figure, form, nav, details, div) {min-width: 0;}
+#review-document[data-case-view] :where(h1, h2, h3, h4, p, small, span, code, a, button, summary) {overflow-wrap: anywhere;}
+#review-document[data-case-view] :where(button, input, select, textarea) {max-width: 100%;}
+#review-document[data-case-view] :where(button, select, input:not([type=hidden])) {min-height: 44px;}
+#review-document[data-case-view] :where(button, a, summary, input, select, textarea):focus-visible {
+  outline: 3px solid var(--case-action);
+  outline-offset: 3px;
+}
+#review-document[data-case-view] :where(button, summary, a) {touch-action: manipulation;}
+#review-document[data-case-view] button {
+  color: var(--case-action);
+  border-color: #b4cbc4;
+  background: #fff;
+  border-radius: 7px;
+  line-height: 1.35;
+  white-space: normal;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+#review-document[data-case-view] button:hover:not(:disabled) {background: var(--case-soft); border-color: var(--case-action);}
+#review-document[data-case-view] button:disabled {color: #5b676c; background: #f1f3f2; opacity: 1; cursor: not-allowed;}
+#review-document[data-case-view] button.primary,
+#review-document[data-case-view] #append-preview:not(:disabled) {color: #fff; border-color: var(--case-action); background: var(--case-action);}
+#review-document[data-case-view] :where(.scope-note, .boundary-guide, .capacity-footnote, .capacity-limit) {color: var(--case-muted); line-height: 1.6;}
+#review-document[data-case-view] :where(pre, .numbered-proof) {max-width: 100%; overflow: auto; overscroll-behavior-inline: contain;}
+#review-document[data-case-view] pre {white-space: pre; overflow-wrap: normal;}
+#review-document[data-case-view] :where(.form-row, .action-row, .source-links, .decision-actions) {gap: .65rem;}
+
+/* One orientation, then the live experiment. */
+#review-document[data-case-view] #case-education-bridge {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1.5rem;
+  border: 0;
+  border-bottom: 1px solid var(--case-line);
+  border-radius: 0;
+  background: transparent;
+  padding: .5rem 0 1.25rem;
+  margin: 0 0 1.25rem;
+}
+#review-document[data-case-view] #case-education-bridge > div:first-child {max-width: 64ch;}
+#review-document[data-case-view] #case-education-bridge .case-lab-label {color: var(--case-action); letter-spacing: .08em; font-size: .7rem;}
+#review-document[data-case-view] #case-education-bridge strong {display: block; color: var(--case-ink); font-size: clamp(1.15rem, 1.7vw, 1.55rem); line-height: 1.3; margin: .3rem 0;}
+#review-document[data-case-view] #case-education-bridge p {font-size: .88rem; line-height: 1.6; margin: .35rem 0 0;}
+#review-document[data-case-view] .case-presentation {flex: 0 1 270px;}
+#review-document[data-case-view] #case-presentation {background: #f0f4f2; border-color: var(--case-line); padding: .25rem; border-radius: 9px;}
+#review-document[data-case-view] #case-presentation button {min-height: 44px; font-size: .84rem; padding: .5rem 1rem;}
+#review-document[data-case-view] #case-presentation button[aria-pressed=true] {color: var(--case-action); border-color: #a8c7bc; background: #fff; box-shadow: 0 1px 3px #173c3020;}
+#review-document[data-case-view] #case-presentation-help {font-size: .75rem; color: var(--case-muted);}
+#review-document[data-case-view] #review-comparison {border: 1px solid var(--case-line); border-radius: 12px; background: #fff; padding: 1rem 1.25rem; box-shadow: none;}
+#review-document[data-case-view] .rule-ribbon {grid-template-columns: minmax(180px, .8fr) minmax(0, 1.4fr) auto; gap: 1rem;}
+#review-document[data-case-view] .rule-identity h1 {font-size: 1.15rem; line-height: 1.4; margin: .2rem 0;}
+#review-document[data-case-view] .rule-identity .eyebrow {color: var(--case-muted); font-size: .72rem;}
+#review-document[data-case-view] #policy-anchor {color: var(--case-ink); font-size: .95rem; line-height: 1.65; max-width: 100ch;}
+#review-document[data-case-view] #policy-source {margin-left: .45rem; min-height: 32px;}
+#review-document[data-case-view] #review-help {background: #f5f7f5; color: var(--case-muted); border-radius: 6px;}
+#review-document[data-case-view] #selected-claim {border-color: var(--case-line); background: #fff;}
+#review-document[data-case-view] .example-contract {font-size: .78rem; color: var(--case-muted);}
+#review-document[data-case-view] #case-review-map {display: flex; gap: .65rem; margin: 1rem 0 1.25rem;}
+#review-document[data-case-view] #case-review-map a {background: transparent; color: var(--case-action); padding: .35rem .5rem; min-height: 44px; font-size: .8rem;}
+#review-document[data-case-view] #case-review-map a span {border-color: #a5c3b8; color: var(--case-action); background: var(--case-soft);}
+
+/* Guided and Inspector share the same data and reading order. */
+#review-document[data-case-view] .connected-experiment {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  max-width: none;
+  margin: 0;
+  align-items: start;
+}
+#review-document[data-case-view] .experiment-lane,
+#review-document[data-case-view] .reasoning-lane {display: block; min-width: 0;}
+#review-document[data-case-view] .case-stage {margin: 0;}
+#review-document[data-case-view] #active-case {padding: 0;}
+#review-document[data-case-view] .before-state {background: #fff; border: 1px solid var(--case-line); border-radius: 12px; padding: 1rem; box-shadow: none;}
+#review-document[data-case-view] .before-state > header {align-items: center; flex-wrap: wrap; gap: .5rem;}
+#review-document[data-case-view] .before-state > header h2 {font-size: .95rem;}
+#review-document[data-case-view] #edit-start {font-size: .75rem; min-height: 32px; padding: .35rem .55rem;}
+#review-document[data-case-view] .capacity-view {margin: .85rem 0 0; padding: 0; background: transparent; border: 0; border-radius: 0;}
+#review-document[data-case-view] .capacity-title {font-size: .78rem; color: var(--case-muted); margin-bottom: .6rem;}
+#review-document[data-case-view] .capacity-dimensions {gap: 1rem;}
+#review-document[data-case-view] .capacity-dimensions h3 {font-size: .8rem; font-weight: 600; color: var(--case-muted);}
+#review-document[data-case-view] .capacity-numbers dd {font-size: 1.4rem; color: var(--case-ink); font-variant-numeric: tabular-nums;}
+#review-document[data-case-view] .capacity-track {height: 9px; background: #e9efec; border-radius: 5px; overflow: hidden;}
+#review-document[data-case-view] .capacity-track > span {background: var(--case-action); transition: width 160ms ease;}
+#review-document[data-case-view] .capacity-slot {border-color: #b3c9bf; background: #f5f8f5;}
+#review-document[data-case-view] .capacity-slot-used {border-color: var(--case-action); background: var(--case-action);}
+#review-document[data-case-view] .capacity-record {border-color: var(--case-line); box-shadow: none;}
+#review-document[data-case-view] .capacity-record-pending {background: #fcf6e8; border-color: #d8c597; color: var(--case-amber);}
+#review-document[data-case-view] .capacity-record-reserved,
+#review-document[data-case-view] .capacity-record-authorized {background: var(--case-soft); color: var(--case-action);}
+#review-document[data-case-view] .capacity-record-finished {background: #f4f5f3; color: var(--case-muted);}
+#review-document[data-case-view] .capacity-record-status {color: inherit;}
+#review-document[data-case-view] :where(.state-tuple, .state-records) {font-size: .78rem; margin-top: .8rem; border-top: 1px solid #e0e8e3; padding-top: .6rem;}
+#review-document[data-case-view] #selected-input {background: var(--case-soft); border-left: 3px solid var(--case-action); margin: 1rem 0; padding: 1rem; border-radius: 8px; gap: .65rem;}
+#review-document[data-case-view] #selected-input > div:first-child {max-width: none; flex: 1 1 140px;}
+#review-document[data-case-view] #selected-input strong {color: var(--case-action);}
+#review-document[data-case-view] #selected-input .boundary-buttons {display: flex; flex-wrap: wrap; gap: .4rem;}
+#review-document[data-case-view] #selected-input .boundary-buttons button {min-height: 44px; font-size: .8rem;}
+#review-document[data-case-view] #selected-input .boundary-guide {font-size: .78rem;}
+#review-document[data-case-view] #scratch-status {background: #fff8e8; border: 1px solid #d7c492; color: #654b16; padding: .8rem 1rem; border-radius: 7px; line-height: 1.55; font-size: .8rem;}
+#review-document[data-case-view] #scratch-status strong {color: var(--case-amber);}
+
+/* The code result and the what-if output have distinct, quiet provenance. */
+#review-document[data-case-view] #contrast {background: transparent; padding: 0; border: 0; margin: 1rem 0;}
+#review-document[data-case-view] #contrast > header {padding: 0; margin: 0 0 .75rem;}
+#review-document[data-case-view] #contrast > header h2 {font-size: .95rem;}
+#review-document[data-case-view] #contrast .section-number {display: none;}
+#review-document[data-case-view] #contrast .output-pair {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem;}
+#review-document[data-case-view] #contrast .output {padding: .9rem; border: 1px solid var(--case-line); border-top: 3px solid var(--case-action); border-radius: 9px; box-shadow: none; background: #fff;}
+#review-document[data-case-view] #hypothetical-output {border-color: #d1c9df; border-top-color: var(--case-what-if); background: #fbf9fd;}
+#review-document[data-case-view] .output-heading {align-items: center; flex-wrap: wrap; gap: .4rem;}
+#review-document[data-case-view] .output-heading h3 {font-size: .9rem; color: var(--case-action); margin: 0;}
+#review-document[data-case-view] #hypothetical-output .output-heading h3 {color: var(--case-what-if);}
+#review-document[data-case-view] #contrast .output-heading button {min-height: 32px; font-size: .72rem;}
+#review-document[data-case-view] #what-if-guide {color: #5d4c78; font-size: .76rem; line-height: 1.6; margin: .75rem 0;}
+#review-document[data-case-view] .quick-alternative {display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem; margin: .8rem 0;}
+#review-document[data-case-view] .quick-alternative select,
+#review-document[data-case-view] .quick-alternative input {width: 100%; min-width: 0; font-size: .85rem; background: #fff;}
+#review-document[data-case-view] .output-headline {font-size: .85rem; line-height: 1.6; margin: .65rem 0;}
+#review-document[data-case-view] .output-headline > strong {font-size: 1.25rem; font-variant-numeric: tabular-nums;}
+#review-document[data-case-view] .output-headline small {color: var(--case-muted);}
+#review-document[data-case-view] .output-entries li {display: flex; align-items: center; flex-wrap: wrap; gap: .35rem;}
+#review-document[data-case-view] .output .status-pill {font-size: .72rem; min-height: 32px; padding: .3rem .5rem;}
+#review-document[data-case-view] .effect-list {font-size: .78rem; padding-top: .7rem; margin-top: .7rem; border-top: 1px solid #e2e8e4;}
+#review-document[data-case-view] .field-delta {color: #674f83; background: #f0eaf7;}
+#review-document[data-case-view] .comparison-ghost {background: #f5f0f7; color: #655676; border-color: #d9ccdf;}
+#review-document[data-case-view] .experiment-actions {padding: .5rem 0 1rem; gap: .65rem;}
+#review-document[data-case-view] .experiment-actions button {font-size: .85rem; padding: .65rem .85rem;}
+#review-document[data-case-view] #case-tools {background: #fff; border: 1px solid var(--case-line); border-radius: 9px; padding: 1rem; margin: 1rem 0; box-shadow: none;}
+#review-document[data-case-view] #case-tools > header {align-items: center; flex-wrap: wrap; gap: .5rem;}
+#review-document[data-case-view] #case-tools h3 {font-size: .95rem;}
+
+/* Case evidence stays visible and in flow, never overlaid on the experiment. */
+#review-document[data-case-view] #case-findings {padding: 1rem; background: #fff; border: 1px solid var(--case-line); border-radius: 12px; box-shadow: none;}
+#review-document[data-case-view] #case-current-summary {padding: .85rem 1rem; margin: 0 0 1rem; border: 0; border-radius: 8px; background: var(--case-soft); color: var(--case-ink);}
+#review-document[data-case-view] #case-current-summary h2 {color: var(--case-action); font-size: .8rem;}
+#review-document[data-case-view] #case-current-summary p {font-size: .85rem; line-height: 1.6;}
+#review-document[data-case-view] #case-current-summary small {font-size: .74rem; color: var(--case-muted);}
+#review-document[data-case-view] #verdict {position: static; padding: 0; border: 0; background: transparent;}
+#review-document[data-case-view] #verdict h2 {font-size: .95rem;}
+#review-document[data-case-view] .verdict-event {font-size: .7rem; color: var(--case-muted);}
+#review-document[data-case-view] .verdict-signal {padding: .85rem; border-radius: 7px; font-size: .82rem; line-height: 1.6;}
+#review-document[data-case-view] .verdict-rejects {color: #79412f; background: #fcf1ea; border-color: #dec7b7;}
+#review-document[data-case-view] .verdict-permits {color: #5d487c; background: #f3eef9; border-color: #d4c7e5;}
+#review-document[data-case-view] .verdict-same {color: var(--case-action); background: var(--case-soft); border-color: #b5cfc0;}
+#review-document[data-case-view] .verdict-unavailable {color: var(--case-amber); background: #fcf6e8; border-color: #d9c798;}
+#review-document[data-case-view] #contrast-matrix {width: 100%; table-layout: fixed; font-size: .77rem; margin: 1rem 0;}
+#review-document[data-case-view] #contrast-matrix :where(th, td) {white-space: normal; overflow-wrap: anywhere; padding: .65rem .4rem; vertical-align: top; border-color: #dce5df;}
+#review-document[data-case-view] #contrast-matrix thead th {font-size: .72rem; color: var(--case-muted); background: #f5f7f4;}
+#review-document[data-case-view] #contrast-matrix :where(th, td):first-child {width: 39%;}
+#review-document[data-case-view] #contrast-matrix .candidate-verdict {background: #f6f2fa; color: #604c7d;}
+#review-document[data-case-view] #inspector-tools {position: static; display: flex; flex-wrap: wrap; gap: .4rem; background: transparent; border: 0; border-block: 1px solid var(--case-line); border-radius: 0; padding: .8rem 0; margin: 1rem 0;}
+#review-document[data-case-view] #inspector-tools button {font-size: .75rem; min-height: 36px; padding: .4rem .65rem; font-weight: 600;}
+#review-document[data-case-view] .case-depth-heading {margin-bottom: .8rem;}
+#review-document[data-case-view] .case-depth-heading p {font-size: .78rem; color: var(--case-muted); line-height: 1.6; margin: .25rem 0;}
+#review-document[data-case-view] :where(.case-depth, .case-review-tools, .case-source-comparison) {border: 1px solid var(--case-line); background: #fff; border-radius: 8px; margin: .75rem 0; padding: 0;}
+#review-document[data-case-view] :where(.case-depth, .case-review-tools, .case-source-comparison) > summary {min-height: 44px; cursor: pointer; padding: .8rem; color: var(--case-action); font-size: .83rem; line-height: 1.5;}
+#review-document[data-case-view] :where(.case-depth, .case-review-tools) > summary span {display: block; color: var(--case-muted); font-size: .73rem; font-weight: 400; padding-top: .15rem;}
+#review-document[data-case-view] :where(.case-depth, .case-review-tools, .case-source-comparison)[open] > summary {border-bottom: 1px solid var(--case-line); background: #f6f8f5;}
+#review-document[data-case-view] :where(#clauses-panel, #proof-panel, #nearby-observation, #boundary-fork) {padding: .85rem;}
+#review-document[data-case-view] #boundary-fork {border: 0; margin: 0; border-radius: 0; background: transparent;}
+#review-document[data-case-view] #dissector {border: 0; background: transparent; padding: 0;}
+#review-document[data-case-view] #dissector > header {padding: 0;}
+#review-document[data-case-view] #dissector > header .section-number {display: none;}
+#review-document[data-case-view] #dissector h2 {font-size: .9rem;}
+#review-document[data-case-view] #dissector :where(button, .edu-term-button) {min-height: 32px;}
+#review-document[data-case-view] :where(.expression-tree-guide, .proof-source-guide) {font-size: .78rem; line-height: 1.65; color: var(--case-muted); max-width: 72ch;}
+#review-document[data-case-view] :where(.logic-line, .binding-values, .condition-rows, .linked-excerpt, .helper-definition) {min-width: 0; max-width: 100%;}
+#review-document[data-case-view] .logic-line {flex-wrap: wrap;}
+#review-document[data-case-view] .logic-children {margin-left: .4rem; padding-left: .5rem;}
+#review-document[data-case-view] .clause-select {white-space: normal; text-align: left; max-width: 100%; font-size: .76rem;}
+#review-document[data-case-view] .numbered-proof {background: #f5f7f5; border-color: var(--case-line); border-radius: 6px; font-size: .73rem;}
+#review-document[data-case-view] .numbered-proof code {white-space: pre; overflow-wrap: normal; color: #243e4a;}
+#review-document[data-case-view] .numbered-proof .active-proof-line {background: #e1eee6;}
+#review-document[data-case-view] :where(.proof-source-stages, .excerpt-stages) {display: flex; flex-wrap: wrap; gap: .4rem;}
+#review-document[data-case-view] :where(.proof-source-stages, .excerpt-stages) button {font-size: .73rem; min-height: 32px;}
+#review-document[data-case-view] #nearby-observation {border: 0; margin: 0; background: transparent;}
+#review-document[data-case-view] #nearby-observation h3 {font-size: .9rem;}
+#review-document[data-case-view] #nearby-observation .review-target {font-size: .75rem; color: var(--case-muted);}
+#review-document[data-case-view] .secondary-panel {border-color: var(--case-line); border-radius: 10px; background: #fff; padding: 1rem;}
+
+/* Saved steps form one connected path; branches keep their original order. */
+#review-document[data-case-view] #trace-rail {padding: 0 0 1rem; border: 0; margin: 0;}
+#review-document[data-case-view] .timeline-heading {align-items: baseline; gap: .75rem; flex-wrap: wrap;}
+#review-document[data-case-view] .timeline-heading h2 {font-size: .9rem;}
+#review-document[data-case-view] #trace-revision {font-size: .7rem; color: var(--case-muted);}
+#review-document[data-case-view] .linear-timeline {display: flex; align-items: stretch; gap: 1rem; overflow-x: auto; max-width: 100%; padding: .6rem .2rem .8rem;}
+#review-document[data-case-view] .linear-timeline > button {position: relative; flex: 0 0 auto; max-width: 220px; min-width: 65px; font-size: .74rem; border-radius: 8px; padding: .6rem .75rem;}
+#review-document[data-case-view] .linear-timeline > button:not(:last-child)::after {content: ""; position: absolute; width: 1rem; height: 2px; top: 50%; left: calc(100% + 1px); background: #aec9bd; pointer-events: none;}
+#review-document[data-case-view] #timeline button[aria-current=step] {border-color: var(--case-action); color: #fff; background: var(--case-action); box-shadow: none;}
+#review-document[data-case-view] .timeline-hint {font-size: .73rem; color: var(--case-muted); line-height: 1.6;}
+#review-document[data-case-view] .timeline-branches {display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem;}
+#review-document[data-case-view] .timeline-branch {border: 1px solid var(--case-line); border-top: 3px solid var(--case-action); border-radius: 7px; background: #f9fbf8; padding: .7rem;}
+#review-document[data-case-view] .alternative-branch {border-color: #d4cae0; border-top-color: var(--case-what-if); background: #faf8fc;}
+#review-document[data-case-view] .timeline-branch h3 {font-size: .8rem; line-height: 1.5;}
+#review-document[data-case-view] .branch-steps {display: grid; gap: .7rem; position: relative; padding-left: .55rem; border-left: 2px solid #bfd2c7;}
+#review-document[data-case-view] .alternative-branch .branch-steps {border-left-color: #c4b5d6;}
+#review-document[data-case-view] .timeline-step {position: relative; width: 100%; text-align: left; font-size: .73rem;}
+#review-document[data-case-view] .timeline-step::before {content: ""; position: absolute; left: -.85rem; top: 1rem; width: .5rem; height: .5rem; border-radius: 50%; border: 2px solid #779e8d; background: #fff;}
+#review-document[data-case-view] .timeline-step-event {font-size: .74rem;}
+#review-document[data-case-view] .timeline-step-amount {font-variant-numeric: tabular-nums; font-size: .71rem;}
+#review-document[data-case-view] :where(.timeline-preview, #transient-branch) {font-size: .73rem; max-width: 100%; padding: .6rem; color: var(--case-amber); background: #fff7e6; border-color: #d4bf89;}
+
+/* The question component lives in the shared header, outside review-document. */
+#question-assistant .question-bar {min-height: 36px; height: auto; gap: .5rem;}
+#question-assistant .question-bar button {min-height: 32px; height: auto; line-height: 1.4; color: #126b63;}
+#question-assistant .question-bar input {min-height: 36px;}
+#question-assistant .question-panel {color: #172f3c; border-color: #c4d8ce; border-radius: 12px;}
+#question-assistant .question-panel :where(button, input, textarea) {min-height: 44px;}
+#question-assistant .question-panel :where(button, a, input, textarea):focus-visible {outline: 3px solid #126b63; outline-offset: 3px;}
+#question-assistant .question-panel .scope-note {color: #4d646b; line-height: 1.6;}
+#question-assistant .question-panel pre {max-width: 100%; overflow: auto;}
+#question-assistant .question-actions {flex-wrap: wrap; gap: .6rem;}
+
+@media (max-width: 1159px) {
+  #review-document[data-case-view] .connected-experiment {display: block;}
+  #review-document[data-case-view] .reasoning-lane {margin-top: 1.25rem;}
+  #review-document[data-case-view] .rule-ribbon {grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr);}
+  #review-document[data-case-view] #choose-sources {justify-self: start; grid-column: 1 / -1;}
+}
+
+@media (max-width: 599px) {
+  #review-document[data-case-view] #case-education-bridge {display: block;}
+  #review-document[data-case-view] .case-presentation {width: 100%; margin-top: 1rem;}
+  #review-document[data-case-view] .rule-ribbon {grid-template-columns: minmax(0, 1fr); gap: .7rem;}
+  #review-document[data-case-view] #review-comparison {padding: .9rem;}
+  #review-document[data-case-view] #case-review-map {display: grid; grid-template-columns: minmax(0, 1fr); gap: .2rem;}
+  #review-document[data-case-view] #case-review-map a {padding: .35rem 0;}
+  #review-document[data-case-view] #contrast .output-pair {grid-template-columns: minmax(0, 1fr);}
+  #review-document[data-case-view] .before-state {padding: .8rem;}
+  #review-document[data-case-view] #case-findings {padding: .8rem;}
+  #review-document[data-case-view] #selected-input {padding: .85rem;}
+  #review-document[data-case-view] #selected-input .boundary-buttons {width: 100%;}
+  #review-document[data-case-view] #selected-input .boundary-buttons button {flex: 1 1 70px; padding: .5rem .4rem;}
+  #review-document[data-case-view] .timeline-branches {grid-template-columns: minmax(0, 1fr);}
+  #review-document[data-case-view] #contrast-matrix {font-size: .72rem;}
+  #review-document[data-case-view] #contrast-matrix :where(th, td) {padding: .55rem .3rem;}
+  #review-document[data-case-view] #inspector-tools button {flex: 1 1 auto; min-height: 44px;}
+  #review-document[data-case-view] :where(#clauses-panel, #proof-panel, #nearby-observation) {padding: .65rem;}
+  #review-document[data-case-view] .logic-children {margin-left: .15rem; padding-left: .25rem;}
+  #question-assistant .question-panel {border-radius: 8px;}
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #review-document[data-case-view] *,
+  #question-assistant * {animation: none; transition: none; scroll-behavior: auto;}
+}

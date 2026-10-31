@@ -27,7 +27,7 @@
       "event": "{:timeout, 11}",
       "expected_output": "Change hold 11 to unknown while retaining 300¢ and one slot. Return marked_unknown and no effects.",
       "challenge": "The deliberate patch keeps the unknown entry but subtracts its 300¢ and slot, leaving both used counters at zero.",
-      "lesson": "The entry and counters must agree. P06 presents this same kind of proposed output; P03 instead invents a terminal decline.",
+      "lesson": "The entry and counters must agree. P06 presents this same kind of what-if output; P03 instead invents a terminal decline.",
       "target_slug": "po_b1_timeout",
       "source_paths": [
         "mutants/02_timeout_release/README.md",
@@ -61,7 +61,7 @@
       "event": "{:request, 11, 100}",
       "expected_output": "Reserve 100¢ and one slot for key 11, record reserved status, return admitted and request no effects.",
       "challenge": "The deliberate patch changes the amount rejection test from > to >=, so equality is refused as insufficient_amount.",
-      "lesson": "A rejected exact-fit request leaves a valid empty ledger but violates required admission.",
+      "lesson": "Refusing the exact fit leaves a valid empty account. The admission claim also requires the ledger to admit eligible requests.",
       "target_slug": "po_a2",
       "source_paths": [
         "mutants/04_exact_fit/README.md",
@@ -78,7 +78,7 @@
       "event": "{:request, 22, 100}",
       "expected_output": "Add key 22 as a reserved 100¢ hold, set used totals to 100¢ and one slot, return admitted and request no effects.",
       "challenge": "The deliberate patch replaces the successful admission branch with insufficient_amount and an unchanged state.",
-      "lesson": "Refusing every request can preserve all upper bounds. A separate admission claim requires useful service for eligible inputs.",
+      "lesson": "A ledger that refuses every request can stay within both limits. The admission claim requires an eligible request to succeed.",
       "target_slug": "po_a2",
       "source_paths": [
         "mutants/05_always_reject/README.md",
@@ -177,8 +177,8 @@
       "title": "Cancel an approved hold too early",
       "summary": "Hold 1 is authorized for 100¢, using all the amount capacity. Request its cancellation.",
       "expected_output": "Keep 100¢ and one slot held, change hold 1 to voiding, return voiding and request {:void, 1}.",
-      "challenge": "The proposed output marks hold 1 voided, frees both counters, returns voided and requests no remote work.",
-      "lesson": "The proposal has two defects: premature release and missing work. Its supplied voided result lets both validity and the effects predicate accept the proposal; retention rejects it.",
+      "challenge": "The what-if output marks hold 1 voided, frees both counters, returns voided and requests no remote work.",
+      "lesson": "The what-if output has two defects: premature release and missing work. Its supplied voided result lets both validity and the effects predicate accept the what-if output; retention rejects it.",
       "fixture_path": "apps/review_web/priv/scenarios/P01.json",
       "source_paths": [
         "guides/payment_hold_review_exercises.md",
@@ -191,8 +191,8 @@
       "title": "Keep capacity, omit cancellation work",
       "summary": "Hold 1 is authorized for 100¢. Request cancellation while its processor authorization may still be live.",
       "expected_output": "Set hold 1 to voiding, retain 100¢ and one slot, return voiding and request {:void, 1}.",
-      "challenge": "The proposed output retains the right hold and counters but supplies an empty effects list.",
-      "lesson": "This proposal isolates the missing effect. Validity and retention permit it, while the effects predicate requires the void request. Emitting that request would still not prove delivery.",
+      "challenge": "The what-if output retains the right hold and counters but supplies an empty effects list.",
+      "lesson": "This what-if output isolates the missing effect. Validity and retention permit it, while the effects predicate requires the void request. Emitting that request would still not prove delivery.",
       "fixture_path": "apps/review_web/priv/scenarios/P02.json",
       "source_paths": [
         "guides/payment_hold_review_exercises.md",
@@ -205,7 +205,7 @@
       "title": "Invent a decline after silence",
       "summary": "Hold 1 was sent for 100¢. Its reply times out before the ledger receives a trusted result.",
       "expected_output": "Change hold 1 to unknown, retain 100¢ and one slot, return marked_unknown and request no effects.",
-      "challenge": "The proposed output marks the hold declined, frees both counters and returns declined.",
+      "challenge": "The what-if output marks the hold declined, frees both counters and returns declined.",
       "lesson": "A timeout establishes uncertainty. An invented terminal status can have internally consistent counters while violating retention. A second request could use capacity still held remotely.",
       "fixture_path": "apps/review_web/priv/scenarios/P03.json",
       "source_paths": [
@@ -219,8 +219,8 @@
       "title": "Refuse a request that fits exactly",
       "summary": "An empty account has a 100¢ limit and one slot. Fresh key 11 requests exactly 100¢.",
       "expected_output": "Add a reserved 100¢ entry for key 11, use 100¢ and one slot, return admitted and request no effects.",
-      "challenge": "The proposed output returns insufficient_amount and leaves the account empty.",
-      "lesson": "Keeping a valid state is insufficient when the requirement says an eligible request must be accepted.",
+      "challenge": "The what-if output returns insufficient_amount and leaves the account empty.",
+      "lesson": "An unchanged empty account can be valid while refusing a request the policy requires the ledger to admit.",
       "fixture_path": "apps/review_web/priv/scenarios/P04.json",
       "source_paths": [
         "guides/payment_hold_review_exercises.md",
@@ -233,8 +233,8 @@
       "title": "Send the void, release too early",
       "summary": "Hold 1 is authorized for 100¢. Its cancellation has been requested, but no confirmation has arrived.",
       "expected_output": "Keep hold 1 voiding with 100¢ and one slot held, return voiding and request {:void, 1}.",
-      "challenge": "The proposed output supplies the void effect but marks the hold voided and immediately frees both counters.",
-      "lesson": "This proposal matches the shape of the M10 source fault. A requested effect does not establish completion. Both retention and effects consistency reject it.",
+      "challenge": "The what-if output supplies the void effect but marks the hold voided and immediately frees both counters.",
+      "lesson": "This what-if output matches the shape of the M10 source fault. A requested effect does not establish completion. Both retention and effects consistency reject it.",
       "fixture_path": "apps/review_web/priv/scenarios/P05.json",
       "source_paths": [
         "guides/payment_hold_review_exercises.md",
@@ -247,7 +247,7 @@
       "title": "Keep the unknown label, free its counters",
       "summary": "Hold 1 is sent for 100¢ and one slot. Process a timeout for that hold.",
       "expected_output": "Keep 100¢ and one slot counted, change the entry to unknown, return marked_unknown and request no effects.",
-      "challenge": "The proposed output keeps the unknown entry but sets both used counters to zero.",
+      "challenge": "The what-if output keeps the unknown entry but sets both used counters to zero.",
       "lesson": "The retention predicate accepts the same key and amount in unknown status; validity rejects the counters. This is the shape of the M2 fault, not P03’s invented decline.",
       "fixture_path": "apps/review_web/priv/scenarios/P06.json",
       "source_paths": [
@@ -261,8 +261,8 @@
       "title": "Change an unrelated hold",
       "summary": "Hold 1 is authorized for 50¢ and hold 2 is sent for 100¢. Their account permits 250¢ and three slots. Only hold 2 times out.",
       "expected_output": "Keep hold 1 authorized, change hold 2 to unknown, retain totals of 150¢ and two slots, return marked_unknown and request no effects.",
-      "challenge": "The proposed output also marks hold 1 voided and reduces the totals to 100¢ and one slot.",
-      "lesson": "The proposal has consistent totals and preserves both keys and amounts. Check retention for protected key 1 even though the event targets key 2.",
+      "challenge": "The what-if output also marks hold 1 voided and reduces the totals to 100¢ and one slot.",
+      "lesson": "The what-if output has consistent totals and preserves both keys and amounts. Check retention for protected key 1 even though the event targets key 2.",
       "fixture_path": "apps/review_web/priv/scenarios/P07.json",
       "source_paths": [
         "guides/payment_hold_review_exercises.md",
@@ -275,8 +275,8 @@
       "title": "Cancel before dispatch",
       "summary": "Hold 1 reserves 100¢ locally and has never been dispatched. Request its cancellation.",
       "expected_output": "Mark hold 1 voided, release 100¢ and one slot, return voided and request no remote work. Keep key 1 and its original amount remembered.",
-      "challenge": "The proposed output does exactly this. It is the correct local-cancellation control case.",
-      "lesson": "A rule that always waits for remote confirmation would wrongly reject this local cancellation. A fresh request under key 2 can now fit; the post-dispatch retention precondition does not apply.",
+      "challenge": "The what-if output matches this result. It is the correct example of cancellation before dispatch.",
+      "lesson": "Before dispatch, this model has issued no authorization to cancel remotely. A fresh request under key 2 can now fit. The claim protecting issued holds does not apply to this input.",
       "fixture_path": "apps/review_web/priv/scenarios/P08.json",
       "source_paths": [
         "guides/payment_hold_review_exercises.md",

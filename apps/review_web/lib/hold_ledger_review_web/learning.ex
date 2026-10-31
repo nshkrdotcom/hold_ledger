@@ -49,7 +49,7 @@ defmodule HoldLedgerReviewWeb.Learning do
       text:
         "The processor may have approved the authorization before the reply was lost. The ledger marks the outcome unknown. The 100¢ and its slot stay held.",
       claim: "po_b2",
-      claim_label: "Read the capacity-retention claim",
+      claim_label: "Read the unresolved-hold claim",
       native_event: {:timeout, 11},
       next_action: "Try another 100¢ request",
       source_function: "Ledger.timeout/2"

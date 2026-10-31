@@ -34,7 +34,7 @@ test('structured in-card differences and noninteractive ghosts are not candidate
   await open(page);
   await expect(page.locator('#hypothetical-output .field-delta').first()).toBeVisible();
   await expect(page.locator('#hypothetical-output')).toContainText('(-100¢)');
-  await expect(page.locator('#hypothetical-output .comparison-ghost')).toContainText('Absent from proposed output');
+  await expect(page.locator('#hypothetical-output .comparison-ghost')).toContainText('Absent from what-if output');
   await expect(page.locator('#hypothetical-output .comparison-ghost button')).toHaveCount(0);
   const candidateCount = await page.locator('#hypothetical-output .output-entries li').count();
   expect(candidateCount).toBe(0);
@@ -72,7 +72,7 @@ test('verdict highlights changed alternatives without changing the recorded revi
   const initial = await saved(page);
   const focus = page.locator('#active-predicate-result');
   await expect(focus).toContainText('Accepts code result');
-  await expect(focus).toContainText('Rejects proposed output');
+  await expect(focus).toContainText('Rejects what-if output');
   await expect(page.locator('#applicability-row')).toContainText('Applies');
   await expect(page.locator('#local-decision-target')).toContainText('session note');
   await expect(page.locator('#decision-docket button')).toHaveCount(3);

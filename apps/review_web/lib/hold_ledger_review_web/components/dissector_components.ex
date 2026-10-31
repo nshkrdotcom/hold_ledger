@@ -47,7 +47,7 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
     ~H"""
     <section class="instrument" id="dissector">
       <header>
-        <span class="section-number">02</span><h2>Conditions and proof</h2>
+        <span class="section-number">Conditions</span><h2>How the claim checks this case</h2>
       </header>
       <p :if={@bindings != []} id="condition-values-guide" class="scope-note">
         These values come from the selected input and output. Expand a condition to inspect its comparison.
@@ -160,12 +160,12 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
             phx-click="basis"
             phx-value-basis="actual"
             aria-pressed={to_string(@basis == "actual")}
-          >Code result</button>
+          >Code returned</button>
           <button
             phx-click="basis"
             phx-value-basis="candidate"
             aria-pressed={to_string(@basis == "candidate")}
-          >Proposed output</button>
+          >What-if output</button>
         </div>
         <article
           :for={{binding, index} <- Enum.with_index(@bindings)}
@@ -286,6 +286,10 @@ defmodule HoldLedgerReviewWeb.DissectorComponents do
         open={tree_selection?(@selection, @phase, @binding, @groups)}
       >
         <summary>Full expression tree · values and source paths</summary>
+        <p class="expression-tree-guide">
+          The tree follows the exact source expression. Each branch shows the values used here;
+          a helper expands a named condition. “Not evaluated” means that branch was not run.
+        </p>
         <.logic
           node={@node}
           root={@node}

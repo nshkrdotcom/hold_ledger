@@ -4,6 +4,64 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
   alias HoldLedgerReview.Claims
   alias HoldLedgerReviewWeb.Education
 
+  test "the dashboard map links every registered group without inventing proof status", %{conn: conn} do
+    {:ok, view, html} = live(conn, "/")
+    {:ok, claims} = Education.claims()
+
+    cells = html |> LazyHTML.from_fragment() |> LazyHTML.query("#edu-claim-map [data-map-claim]")
+    assert Enum.count(cells) == length(claims)
+
+    for claim <- claims do
+      assert has_element?(view, "#edu-claim-map a[href='/atlas/#{claim["slug"]}']")
+    end
+
+    assert has_element?(view, "#edu-claim-map", "registered claim groups")
+    assert has_element?(view, "#edu-claim-map", "does not show proof dependencies")
+    render_click(view, "map_requirement", %{"id" => "uncertainty"})
+    assert has_element?(view, "[data-map-claim='po_b2'][data-related='true']")
+    assert has_element?(view, "[data-map-claim='po_b2'][aria-label*='In the selected requirement']")
+    assert has_element?(view, "[data-map-claim='po_b2'] .map-related-mark", "✓")
+    assert has_element?(view, "[data-map-claim='po_a2'][data-related='false']")
+    assert has_element?(view, "[data-map-claim='po_a2'][aria-label*='Outside the selected requirement']")
+    render_click(view, "map_requirement", %{"id" => "all"})
+    refute has_element?(view, "[data-map-claim][data-related='false']")
+  end
+
+  test "possible processor outcomes leave the computed local state unchanged", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/start?moment=3")
+    assert has_element?(view, "#edu-uncertainty [data-possibility='approved'][aria-pressed='true']")
+    assert has_element?(view, "#edu-story-after-held", "100¢")
+
+    render_click(view, "processor_possibility", %{"id" => "undelivered"})
+    assert has_element?(view, "#edu-uncertainty [data-possibility='undelivered'][aria-pressed='true']")
+    assert has_element?(view, "#edu-processor-possibility", "never reached the processor")
+    assert has_element?(view, "#edu-story-after-held", "100¢")
+    assert has_element?(view, "#edu-story-result code", "marked_unknown")
+    assert has_element?(view, "#edu-uncertainty", "Possible outcomes")
+
+    render_click(view, "processor_possibility", %{"id" => "invented"})
+    assert has_element?(view, "#edu-uncertainty [data-possibility='undelivered'][aria-pressed='true']")
+  end
+
+  test "requirement deep links preserve orientation and invalid selections recover", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/guarantees?requirement=identity")
+    assert has_element?(view, "#edu-guarantee-detail", "same key")
+    assert has_element?(view, "#learning-chapters a[href='/guarantees'][aria-current='page']")
+
+    {:ok, fallback, _} = live(conn, "/guarantees?requirement=not-a-requirement")
+    assert has_element?(fallback, "#edu-guarantee-detail", "missing reply")
+  end
+
+  test "translation concept selection keeps authentic source available", %{conn: conn} do
+    {:ok, view, _} = live(conn, "/translation")
+    assert has_element?(view, "#translation-focus [phx-value-id='requires'][aria-pressed='true']")
+    render_click(view, "translation_focus", %{"id" => "expects"})
+    assert has_element?(view, "#translation-focus [phx-value-id='expects'][aria-pressed='true']")
+    assert has_element?(view, "#translation-focus-explanation", "exact admitted output")
+    assert has_element?(view, "#translation-elixir", "request_eligible?")
+    assert has_element?(view, "#translation-theorem-header", "Lynx.Term")
+  end
+
   test "editorial inventory covers every registered group exactly once" do
     {:ok, current} = Claims.catalog()
     {:ok, explanations} = Education.claims()
@@ -88,7 +146,7 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     {:ok, profile, _} = live(conn, "/atlas/po_a2")
     assert has_element?(profile, "#example-m4 h3", "M4")
     assert has_element?(profile, "#example-m5")
-    assert has_element?(profile, "#example-p04", "Proposed output · not run")
+    assert has_element?(profile, "#example-p04", "What-if output")
     assert has_element?(profile, "#example-m4", "Expected from the source")
     assert has_element?(profile, "#example-m4 details summary", "Input and source details")
     assert has_element?(profile, "#example-m4 code", "{:request, 11, 100}")

@@ -16,6 +16,34 @@ const helpCode = `const educationGlossary = ${glossary};\nconst educationHelp = 
 
 test.use({hasTouch: true});
 
+test('learning navigation marks the chapter section without marking Overview', async ({page}) => {
+  await page.route('http://review.test/translation', route => route.fulfill({
+    contentType: 'text/html',
+    body: `<html><body><header id="global-header"><nav data-global-nav>
+      <a href="/" data-nav="/">Overview</a>
+      <a href="/start" data-nav="/start" data-nav-group="learn">Learn</a>
+      <a href="/lab" data-nav="/lab">Case Lab</a>
+      <a href="/atlas" data-nav="/atlas">Claim Atlas</a>
+    </nav></header></body></html>`,
+  }));
+  await page.goto('http://review.test/translation');
+  await page.addScriptTag({content: helpCode});
+  await expect(page.locator('[data-nav-group="learn"]')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('[data-nav="/"]')).not.toHaveAttribute('aria-current', 'page');
+});
+
+test('a source shortcut opens its disclosure and focuses the source region', async ({page}) => {
+  await page.goto('about:blank');
+  await page.setContent(`<html><body>
+    <a href="#source-detail" data-reveal-source>Read the source</a>
+    <details id="source-detail"><summary>Source</summary><pre>actual source</pre></details>
+  </body></html>`);
+  await page.addScriptTag({content: helpCode});
+  await page.locator('[data-reveal-source]').click();
+  await expect(page.locator('#source-detail')).toHaveAttribute('open', '');
+  await expect(page.locator('#source-detail')).toBeFocused();
+});
+
 test.beforeEach(async ({page}) => {
   await page.setContent(`<!doctype html><html lang="en"><head><style>
     [hidden]{display:none!important}body{margin:20px;font:16px sans-serif}
@@ -129,7 +157,7 @@ test('proposed result, hold status and effect type have distinct help', async ({
   await page.locator('#status-field').focus();
   await expect(page.locator('#edu-tooltip [data-tooltip-title]')).toHaveText('Change a proposed hold state');
   await page.locator('#effect-field').focus();
-  await expect(page.locator('#edu-tooltip [data-tooltip-title]')).toHaveText('Proposed outside work');
+  await expect(page.locator('#edu-tooltip [data-tooltip-title]')).toHaveText('What-if outside work');
 });
 
 test('Guides retains the current-page marker outside primary navigation', async ({page}) => {

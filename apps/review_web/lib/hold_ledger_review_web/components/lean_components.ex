@@ -2,6 +2,7 @@ defmodule HoldLedgerReviewWeb.LeanComponents do
   @moduledoc false
   use HoldLedgerReviewWeb, :html
   import HoldLedgerReviewWeb.DissectorComponents, only: [source_url: 2]
+  alias HoldLedgerReviewWeb.ReviewCopy
 
   attr :reading, :map, required: true
 
@@ -11,7 +12,7 @@ defmodule HoldLedgerReviewWeb.LeanComponents do
     ~H"""
     <section class="instrument" id="assumptions">
       <header>
-        <span class="section-number">04</span><h2>Assumptions to check</h2>
+        <span class="section-number">Assumptions</span><h2>What this model relies on</h2>
       </header>
       <blockquote :if={@reading["policy"]["quote"]} id="policy-quote">
         {@reading["policy"]["quote"]}
@@ -21,17 +22,18 @@ defmodule HoldLedgerReviewWeb.LeanComponents do
       ]["line"]} ↗</a>
       <p :if={@reading["omits"]} class="omission" id="omission">{@reading["omits"]}</p>
       <dl :if={@show_status} class="evidence-status">
-        <dt>Focused Lean elaboration</dt><dd id="focused-status">{@reading["focused"]["status"]}</dd><dt>
+        <dt>Focused Lean elaboration</dt><dd id="focused-status">{ReviewCopy.evidence_status(@reading["focused"]["status"])}</dd><dt>
           Full verification report
-        </dt><dd id="formal-status">{@reading["formal"]["status"]}</dd><dt>
+        </dt><dd id="formal-status">{ReviewCopy.evidence_status(@reading["formal"]["status"])}</dd><dt>
           Axioms used by this theorem
         </dt><dd>Read the matching proof export.</dd><dt>Checker configurations</dt><dd>
           Lean default · Lean paranoid · lean4lean · nanoda · con-leche · con-ron
         </dd>
       </dl>
-      <h3>Processor and storage guarantees</h3><p>
-        The processor must recognize repeated keys, report outcomes accurately, and keep a confirmed cancellation final.
-        The runtime also relies on durable journal writes. Use these contracts to check the assumptions behind the model.
+      <h3>Processor and storage contracts</h3><p>
+        The processor must recognize repeated keys and report truthful outcomes.
+        After a confirmed remote cancellation, that key must never authorize again.
+        The runtime also relies on durable journal writes. Review these contracts before applying the model to a real system.
       </p>
       <div class="source-links">
         <a

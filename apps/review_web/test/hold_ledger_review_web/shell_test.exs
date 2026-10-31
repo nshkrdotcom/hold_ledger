@@ -3,7 +3,7 @@ defmodule HoldLedgerReviewWeb.ShellTest do
   import Phoenix.LiveViewTest
 
   test "claim engine starts without opening a ledger server", %{conn: conn} do
-    assert response(get(conn, ~p"/"), 200) =~ "Follow the code."
+    assert response(get(conn, ~p"/"), 200) =~ "A missing reply."
     assert response(get(conn, ~p"/lab"), 200) =~ "Opening Case Lab"
     assert Process.whereis(HoldLedgerReview.Claims)
     assert Process.whereis(HoldLedger.Server) == nil
@@ -26,12 +26,13 @@ defmodule HoldLedgerReviewWeb.ShellTest do
     end
   end
 
-  test "the shell keeps three primary destinations and help off the main task", %{conn: conn} do
+  test "the shell keeps four primary destinations and help off the main task", %{conn: conn} do
     {:ok, view, _} = live(conn, ~p"/")
-    assert has_element?(view, "[data-global-nav] > a[href='/']", "Explore")
+    assert has_element?(view, "[data-global-nav] > a[href='/']", "Overview")
     assert has_element?(view, "[data-global-nav] > a[href='/lab']", "Case Lab")
-    assert has_element?(view, "[data-global-nav] > a[href='/atlas']", "Claims")
-    refute has_element?(view, "[data-global-nav] > a:nth-child(4)")
+    assert has_element?(view, "[data-global-nav] > a[href='/atlas']", "Claim Atlas")
+    assert has_element?(view, "[data-global-nav] > a[href='/start']", "Learn")
+    refute has_element?(view, "[data-global-nav] > a:nth-child(5)")
     assert has_element?(view, "#edu-help-drawer #edu-control-help")
     assert has_element?(view, "#edu-help-drawer label[for='edu-guidance']", "Extra explanations")
   end

@@ -188,7 +188,7 @@
       "term": "Voiding state",
       "short": "An authorized hold is being cancelled and is waiting for confirmation.",
       "detail": "The ledger retains the amount and slot and requests the remote void. The composite state also records the outstanding void work.",
-      "example": "In P02 the 100¢ stays counted, but the missing void effect still makes the proposed output wrong.",
+      "example": "In P02 the 100¢ stays counted, but the missing void effect still makes the what-if output wrong.",
       "link": "/system",
       "source_path": "guides/payment_hold_review_exercises.md",
       "why_it_matters": "Keeping the hold and requesting cancellation are separate requirements; the output must do both.",
@@ -389,8 +389,8 @@
     {
       "id": "law",
       "term": "Elixir law",
-      "short": "A claim written with requires and expects in the Elixir source.",
-      "detail": "The precondition selects the inputs and the postcondition states the promise. Lynx translates these expressions for proof; Lean-only claims use theorem statements directly.",
+      "short": "A claim written with requires and expects in Elixir.",
+      "detail": "requires selects the inputs the law covers; expects states what must hold for them. Lynx translates supported code and law expressions into Lean. Claims written directly in Lean state their properties there instead.",
       "example": "PO-A2 requires request_eligible? and expects the exact admitted output.",
       "link": "/proofs",
       "source_path": "test/laws/po_a2_test.exs",
@@ -414,7 +414,7 @@
     {
       "id": "requires",
       "term": "requires",
-      "short": "The precondition: which inputs receive this claim’s promise.",
+      "short": "The input conditions: which inputs the claim covers.",
       "detail": "Read the called predicates as well as the visible expression. If requires is false, the claim says nothing about that input; it is not a failed payment request.",
       "example": "PO-A2’s eligibility predicate includes a fresh key, a positive amount, a free slot and enough amount capacity for an exact fit.",
       "link": "/proofs",
@@ -440,7 +440,7 @@
     {
       "id": "expects",
       "term": "expects",
-      "short": "The postcondition: what must be true when the precondition holds.",
+      "short": "The required result when the input conditions hold.",
       "detail": "A postcondition can constrain the next state, result and requested effects. Read its exact strength: validity is less specific than requiring an admitted result.",
       "example": "PO-A2 expects the reserved entry, updated counters, admitted result and an empty effects list.",
       "link": "/proofs",
@@ -531,15 +531,17 @@
     },
     {
       "id": "mutation",
-      "term": "Mutation",
-      "short": "A deliberate code fault used to see whether a check notices it.",
+      "term": "Deliberate bug (mutation)",
+      "short": "A deliberate source change used to check whether a claimed property catches a specific fault.",
       "detail": "The repository’s mutant patches change the implementation while keeping the specification and target law unchanged. Their READMEs name concrete inputs and intended faults.",
       "example": "M4 changes the admission boundary so a 100¢ request with 100¢ available is rejected.",
       "link": "/guarantees",
       "source_path": "mutants/04_exact_fit/README.md",
       "aliases": [
         "mutant",
-        "mutation testing"
+        "mutation testing",
+        "Mutation",
+        "deliberate fault"
       ],
       "why_it_matters": "A deliberate fault shows whether a check is sensitive to a specific incorrect behavior.",
       "limit": "Detecting one mutation does not establish that the checks detect every possible fault.",
@@ -554,8 +556,8 @@
     {
       "id": "claim",
       "term": "Claim",
-      "short": "A registered statement about the behavior covered by the verification work.",
-      "detail": "The catalog registers Elixir laws and claims written directly in Lean. Some entries include more than one theorem. Proof results are attached to exact source and completed checks separately.",
+      "short": "A precise statement about modeled behavior; a catalog group can contain several statements.",
+      "detail": "The Claim Atlas registers groups of Elixir laws and claims written directly in Lean. A group can include several theorem declarations. Read the exact statements, then check the verification report for their source and scope.",
       "example": "po_b1_void concerns next-state validity; po_exposure_retain protects an issued hold from premature release.",
       "link": "/atlas",
       "source_path": "verification/laws.json",
@@ -624,7 +626,7 @@
     {
       "id": "lean",
       "term": "Lean 4",
-      "short": "The language and proof assistant used to express and check the formal statements.",
+      "short": "A language and proof assistant that checks formal proof arguments.",
       "detail": "Lynx produces Lean definitions for supported Elixir code. Native Lean files also state claims about histories, recovery and the processor model.",
       "example": "Recovery.lean states that replaying committed modeled events reconstructs the same composite state.",
       "link": "/proofs",
@@ -646,7 +648,7 @@
     {
       "id": "lynx",
       "term": "Lynx",
-      "short": "The tool that connects supported Elixir code and laws to Lean.",
+      "short": "The tool that translates supported Elixir code and laws into Lean.",
       "detail": "Lynx translates compiled Elixir through Core Erlang into Lean definitions and generates statements from the laws. The correspondence between source and translated model is a trust boundary.",
       "example": "The PO-A2 law connects Ledger.request with Spec.request_eligible? and the exact expected result.",
       "link": "/proofs",
@@ -840,7 +842,7 @@
     {
       "id": "proof-status",
       "term": "Proof status",
-      "short": "What verification evidence exists for a particular statement and source.",
+      "short": "The verification evidence available for a particular statement and source.",
       "detail": "Registration, a single-case check, a focused proof run and full acceptance answer different questions. Read the report’s selected claims, stages, source identity and unresolved results.",
       "example": "A catalog entry marked supported tells you the claim is registered for the tooling, not that it was freshly checked.",
       "link": "/assurance",
@@ -863,7 +865,7 @@
       "id": "source-identity",
       "term": "Source identity",
       "short": "The hashes that tie a result or review to the exact files it used.",
-      "detail": "Changing a claim, called predicate or other relevant source can make earlier evidence stale. The workbench checks source identity before presenting source-bound observations.",
+      "detail": "Changing a claim, called predicate or other relevant source can make earlier evidence stale. Case Lab checks source identity before presenting source-bound observations.",
       "example": "A successful report for yesterday’s PO-A2 cannot establish a result for a newly edited precondition.",
       "link": "/assurance",
       "source_path": "guides/reading_review_evidence.md",
@@ -911,7 +913,7 @@
       "id": "pointwise",
       "term": "Case check",
       "short": "Evaluate a claim on one concrete input and output.",
-      "detail": "The check can show whether the precondition holds and whether the claim accepts that output. A permitted proposed output may reveal a policy gap; it is not evidence that the code produced it.",
+      "detail": "The check evaluates the input conditions and required result for one concrete case. It can inspect the code result or a what-if output you supply. Compare an accepted alternative with the payment requirement before calling it a gap.",
       "example": "P04 asks whether a 100¢ exact-fit request may return insufficient_amount under the selected claim.",
       "link": "/assurance",
       "source_path": "guides/payment_hold_review_exercises.md",
@@ -922,7 +924,7 @@
         "pointwise check"
       ],
       "why_it_matters": "A concrete case helps you see which condition permits or rejects an output.",
-      "limit": "A case check is not a proof for every input, and a proposed output is not an execution result.",
+      "limit": "A case check covers this input and output. It does not prove the claim for every input.",
       "lookup": [
         {
           "label": "Payment-hold review exercises",
@@ -937,9 +939,9 @@
     },
     {
       "id": "hypothetical",
-      "term": "Proposed output",
-      "short": "A next state, result and effects supplied for inspection instead of returned by the code.",
-      "detail": "Checking this output asks what the selected claim permits. It does not show that the implementation produced it. A proposed claim change is different: it edits the conditions or promise being reviewed.",
+      "term": "What-if output",
+      "short": "A hypothetical next state, result and requested effects that you supply for one case check.",
+      "detail": "Edit an alternative answer and check whether the selected claim accepts it for this input. The app does not run this output as code. A proposed claim change is different: it changes the conditions or required result.",
       "example": "Propose a voided output for an authorized 100¢ cancellation and compare validity with exposure retention.",
       "link": "/lens/po_a2",
       "source_path": "guides/payment_hold_review_exercises.md",
@@ -951,7 +953,7 @@
         "proposed output"
       ],
       "why_it_matters": "Trying an alternative answer helps reveal whether a claim rejects behavior the policy forbids.",
-      "limit": "Acceptance of a proposed output does not show that the implementation can produce it.",
+      "limit": "Acceptance does not show that the ledger can produce this output or that it meets the payment policy.",
       "lookup": [
         {
           "label": "Payment-hold review exercises",
@@ -1073,7 +1075,7 @@
     {
       "id": "coverage",
       "term": "Coverage",
-      "short": "The inputs and behaviors a claim actually addresses.",
+      "short": "The inputs and required behavior that a claim actually covers.",
       "detail": "A stronger precondition can exclude a required case; a weaker postcondition can permit an unwanted output. Compare the statement with independently justified policy examples.",
       "example": "Changing amount ≤ available to amount < available removes a 100¢ exact-fit request from the admission promise.",
       "link": "/guarantees",
@@ -1096,7 +1098,7 @@
       "id": "vacuity",
       "term": "Vacuity",
       "short": "A conditional claim is true because no input can meet its condition.",
-      "detail": "Start by finding a real witness for requires. A witness rules out an impossible precondition, but you still need to inspect which other required cases it excludes.",
+      "detail": "Find an input that satisfies requires. This rules out an impossible input condition. Then inspect other required cases: a claim can have valid examples while still leaving an exact fit uncovered.",
       "example": "A proposed precondition asking for a positive amount that is also less than zero covers no 100¢ request—or any other positive amount.",
       "link": "/proofs",
       "source_path": "guides/agentic_verification.md",
@@ -1234,7 +1236,7 @@
       "id": "obligation",
       "term": "Void obligation",
       "short": "A durable record of remote cancellation work still owed for one hold.",
-      "detail": "The record stores the hold key, durable attempt count and last outcome. Each voiding hold has exactly one. Confirmation removes it together with releasing the hold. A proof obligation is a separate use of the word: a statement required by verification.",
+      "detail": "The record stores the hold key, durable attempt count and last outcome. Each voiding hold has exactly one. Confirmation removes the record and releases the hold. A proof obligation is a different concept: a statement required by verification. PO in claim IDs such as PO-A2 means proof obligation.",
       "example": "{11, 1, {:error, :timeout}} records one attempt and a timeout; cancellation work for hold 11 is still pending.",
       "link": "/system",
       "source_path": "lib/hold_ledger/outbox.ex",
@@ -1334,8 +1336,8 @@
     {
       "id": "binding",
       "term": "Binding",
-      "short": "The values assigned to a claim’s variables for one case check.",
-      "detail": "The evaluator takes these values from the selected state, event, and source-defined lookup conditions. Some claims need several combinations, which the condition panel lets you inspect separately.",
+      "short": "One combination of values assigned to the claim’s variables for a case check.",
+      "detail": "The values come from the selected state, event and source-defined lookup conditions. Some claims need several combinations. Choose one to inspect its conditions, while the overall check still accounts for every required combination.",
       "example": "For an exact-fit request, the values include the empty account, request ID 11, and amount 100. A retention claim may also bind the stored hold amount.",
       "link": "/proofs",
       "source_path": "apps/review_web/lib/hold_ledger_review/claim_probe.ex",
@@ -1402,10 +1404,10 @@
     },
     {
       "id": "basis",
-      "term": "Inspection basis",
-      "short": "The output selected for the condition view: the code result or your proposed output.",
-      "detail": "The input conditions stay tied to the same case. Switching the basis changes which output is substituted into the required-result expression.",
-      "example": "Choose the proposed output to inspect a rejected exact-fit request, then choose the code result to inspect the admitted request.",
+      "term": "Output to inspect",
+      "short": "The output whose values appear in the condition view.",
+      "detail": "Choose the code result or your what-if output for the condition view. The input stays the same; the required-result expression uses the selected output.",
+      "example": "Choose the what-if output to inspect a rejected exact-fit request, then choose the code result to inspect the admitted request.",
       "link": "/proofs",
       "source_path": "apps/review_web/lib/hold_ledger_review_web/components/dissector_components.ex",
       "why_it_matters": "It explains why the same claim can accept the code result and reject your alternative.",
@@ -1418,19 +1420,20 @@
       ],
       "level": "practitioner",
       "aliases": [
-        "output basis"
+        "output basis",
+        "Inspection basis"
       ]
     },
     {
       "id": "source-generation",
-      "term": "Source generation",
-      "short": "The fixed source snapshot and compiled claim evaluator used by this run of the review app.",
-      "detail": "The app builds an evaluator from the registered laws at startup and checks the source and loaded-code fingerprints before new case checks. Relevant source changes require a controlled rebuild and restart.",
+      "term": "Loaded source version",
+      "short": "The source snapshot and compiled claim evaluator loaded by this run of the app.",
+      "detail": "The app builds the evaluator at startup and checks that its source and loaded code still match before new case checks. After relevant source edits, rebuild and restart before relying on new results.",
       "example": "Editing request_eligible? after startup makes the previous evaluator out of date; the app cannot reuse its old case result as current evidence.",
       "link": "/assurance",
       "source_path": "apps/review_web/lib/hold_ledger_review/claims.ex",
       "why_it_matters": "The displayed conditions and computed values must describe the same source version.",
-      "limit": "This term identifies the app’s evaluator generation, not Lynx-generated Lean or a completed proof check.",
+      "limit": "This identifies the case evaluator’s source. Generated Lean and proof reports have their own source identities.",
       "lookup": [
         {
           "label": "Reading review evidence",
@@ -1444,7 +1447,8 @@
       "level": "expert",
       "aliases": [
         "generation",
-        "evaluator generation"
+        "evaluator generation",
+        "Source generation"
       ]
     },
     {

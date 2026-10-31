@@ -198,7 +198,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
         id="timeline"
         class="fork-timeline"
         role="group"
-        aria-label="Code path and proposed-output path"
+        aria-label="Code path and what-if path"
       >
         <div class="shared-history" aria-label="Shared history before the fork">
           <span class="timeline-caption">Shared history</span>
@@ -247,16 +247,16 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
           <section
             class="timeline-branch alternative-branch"
             id="alternative-branch"
-            aria-label="Proposed-output path"
+            aria-label="What-if path"
           >
             <h3>
               <span class="branch-marker" aria-hidden="true">B</span>
               <button type="button" class="edu-term-button" data-edu-term="hypothetical">
-                Proposed-output path
+                What-if path
               </button>
             </h3>
             <p class="scope-note">
-              Starts with your proposed output. Later events run from that state.
+              Starts with your what-if output. Later events run from that state.
             </p>
             <div class="branch-steps">
               <.timeline_step

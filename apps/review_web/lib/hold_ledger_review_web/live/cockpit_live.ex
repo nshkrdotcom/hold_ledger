@@ -638,7 +638,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
       _ ->
         {:noreply,
-         error(socket, "Correct the proposed output's accounting before continuing from it.")}
+         error(socket, "Make the what-if account state valid before continuing from it.")}
     end
   end
 
@@ -660,7 +660,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         false
       )
     else
-      {:noreply, error(socket, "No valid typed candidate to save.")}
+      {:noreply, error(socket, "Enter a valid what-if output before saving this case.")}
     end
   end
 
@@ -1351,8 +1351,9 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
 
   defp hunt_label(%{status: "idle"}), do: "Ready to try preset outputs"
   defp hunt_label(%{status: "running"}), do: "Checking preset outputs…"
-  defp hunt_label(%{status: "found"}), do: "A candidate was found; inspect its checks"
-  defp hunt_label(%{status: "budget_exhausted"}), do: "No candidate found in this preset set"
+  defp hunt_label(%{status: "found"}), do: "A preset output matched the search. Read its checks."
+  defp hunt_label(%{status: "budget_exhausted"}),
+    do: "No matching output in these presets. Try editing one."
   defp hunt_label(%{status: "cancelled"}), do: "Search stopped"
   defp hunt_label(%{status: "failed"}), do: "Could not check the presets"
   defp hunt_label(%{status: "stale"}), do: "Results expired; run again"
@@ -1510,9 +1511,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
         <div class="edu-workbench-intro" id="case-education-bridge">
           <div>
             <span class="case-lab-label">Case Lab</span>
-            <strong>Try an input. Propose a different output.</strong>
+            <strong>Would this claim catch a wrong output?</strong>
             <p>
-              See what the claim accepts, then compare it with the payment requirement.
+              <%= if @case_data && @case_data["event"]["type"] == "request" do %>
+                Try an amount below, at or above the available limit. Compare the code's result with a what-if output.
+              <% else %>
+                Read what the code returned. Change the what-if output to see which promises the claim checks.
+              <% end %>
             </p>
           </div>
           <div class="case-presentation">
@@ -1536,13 +1541,13 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
             </div>
             <p id="case-presentation-help">
               {if @case_view == "guided",
-                do: "Follow the case, then open the source when you need it.",
-                else: "Read the case alongside its conditions and proof source."}
+                do: "Start with the account and results. Open the source at any time.",
+                else: "Keep conditions, source and review tools open beside the case."}
             </p>
           </div>
         </div>
         <p :if={!Trace.current?(@doc)} role="alert" id="stale-session">
-          The source files changed. Reopen this claim to run it again.
+          The source files changed. Rebuild and restart the app against this checkout, then reopen the claim.
         </p>
         <.comparison
           reading={@reading}
@@ -1598,7 +1603,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 <.input_strip case={@case_data} preview={@preview} />
                 <p :if={@preview || @experiment} id="scratch-status" class="scratch-label">
                   <strong>Unsaved experiment</strong>
-                  <span>Save to timeline keeps these changes in this review session. Reset returns to the saved timeline.</span>
+                  <span>Save to timeline keeps these changes. Reset returns to the saved steps.</span>
                   <button phx-click="reset_experiment">Reset</button>
                 </p>
                 <.contrast
@@ -1615,7 +1620,7 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                 <header>
                   <h3>
                     {case @tools do
-                      "draft" -> "Edit the proposed output"
+                      "draft" -> "Edit the what-if output"
                       "events" -> "Run another event"
                       _ -> "Starting account"
                     end}
@@ -1676,17 +1681,44 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
             >
               <.case_summary case={@case_data} step={selected(assigns)} invalid={@invalid} />
               <.verdict case={@case_data} slug={@slug} />
-              <.pair_results
-                case={@case_data}
-                reading={@reading}
-                step={selected(assigns)}
-                package={@package}
-                preview={nil}
-              />
+              <details
+                :if={@package || (@slug == "po_a2" && @case_data)}
+                id="case-source-comparison"
+                class="case-source-comparison"
+                open={@case_view == "inspector" || @package != nil}
+              >
+                <summary>
+                  {if @package,
+                    do: "Compare the two source versions",
+                    else: "Explore an example claim change"}
+                </summary>
+                <.pair_results
+                  case={@case_data}
+                  reading={@reading}
+                  step={selected(assigns)}
+                  package={@package}
+                  preview={nil}
+                />
+              </details>
+              <nav class="evidence-links" id="inspector-tools" aria-label="Evidence tools">
+                <button
+                  :for={
+                    {view, label} <- [
+                      {"proof", "Proof"},
+                      {"clauses", "Conditions"},
+                      {"premises", "Assumptions"},
+                      {"artifacts", "Verification files"},
+                      {"record", "Review notes"}
+                    ]
+                  }
+                  phx-click="inspect"
+                  phx-value-view={view}
+                >{label}</button>
+              </nav>
               <div class="case-reasoning">
                 <div class="case-depth-heading">
                   <span class="eyebrow">Read the conditions and source</span>
-                  <p>Follow the check into the statement when you need to understand its result.</p>
+                  <p>Read the exact conditions, then follow the source passages behind them.</p>
                 </div>
                 <details id="case-conditions-depth" class="case-depth" open={@conditions_open}>
                   <summary>
@@ -1732,69 +1764,63 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                   </section>
                 </details>
               </div>
-              <section id="nearby-observation" aria-label="Observation and local repair">
-                <div class="section-heading">
-                  <h3>Record your review</h3>
-                  <button
-                    id="add-observation"
-                    phx-click="toggle_note"
-                    aria-expanded={to_string(@note_open)}
-                  >
-                    {if @note_open, do: "Close note", else: "Add context"}
-                  </button>
-                </div>
-                <p :if={@slug in ~w(po_a2 po_exposure_retain)} class="case-practice-link">
-                  Want to practice the judgment first?
-                  <a href={~p"/lens/#{@slug}"}>Open guided practice</a>
-                </p>
-                <p id="observation-target" class="review-target">
-                  <%= if @case_data do %>
-                    Active claim {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
-                      do: "unsaved experiment",
-                      else: "saved step"
-                    )}
-                  <% else %>
-                    Claim {@slug} · no proposed output to check
-                  <% end %>
-                </p>
-                <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">
-                  <.input field={@note_form[:text]} type="textarea" label="Your observation" />
-                  <button type="submit">Save note</button>
-                </.form>
-                <.disposition package={@package} doc={@doc} selected_evidence={@selected_evidence} />
-                <p :if={@repair_status.status == "ready"} class="repair-actions" id="repair-ready">
-                  <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.json"}>
-                    Download local repair packet (JSON)
-                  </a>
-                  <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.md"}>
-                    Markdown
-                  </a>
-                </p>
-                <details :if={@repair_status.status != "ready"} class="repair-context">
-                  <summary>Repair export</summary>
-                  <p id="repair-unavailable" class="scope-note">
-                    Repair download unavailable: {@repair_status.reason}.
+              <details
+                id="case-review-tools"
+                class="case-review-tools"
+                open={@case_view == "inspector" || @note_open || @package != nil}
+              >
+                <summary>
+                  Review notes and exports<span>Record a finding or prepare a repair packet</span>
+                </summary>
+                <section id="nearby-observation" aria-label="Observation and local repair">
+                  <div class="section-heading">
+                    <h3>Your review</h3>
+                    <button
+                      id="add-observation"
+                      phx-click="toggle_note"
+                      aria-expanded={to_string(@note_open)}
+                    >
+                      {if @note_open, do: "Close note", else: "Add a note"}
+                    </button>
+                  </div>
+                  <p :if={@slug in ~w(po_a2 po_exposure_retain)} class="case-practice-link">
+                    Practice this judgment:
+                    <a href={~p"/lens/#{@slug}"}>Open guided practice</a>
                   </p>
-                </details>
-              </section>
+                  <p id="observation-target" class="review-target">
+                    <%= if @case_data do %>
+                      Active claim {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
+                        do: "unsaved experiment",
+                        else: "saved step"
+                      )}
+                    <% else %>
+                      Claim {@slug} · no what-if output to check
+                    <% end %>
+                  </p>
+                  <.form :if={@note_open} for={@note_form} id="note-form" phx-submit="record_note">
+                    <.input field={@note_form[:text]} type="textarea" label="Your observation" />
+                    <button type="submit">Save note</button>
+                  </.form>
+                  <.disposition package={@package} doc={@doc} selected_evidence={@selected_evidence} />
+                  <p :if={@repair_status.status == "ready"} class="repair-actions" id="repair-ready">
+                    <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.json"}>
+                      Download local repair packet (JSON)
+                    </a>
+                    <a href={"/comparisons/#{@package["id"]}/repair/#{@repair_status.id}.md"}>
+                      Markdown
+                    </a>
+                  </p>
+                  <details :if={@repair_status.status != "ready"} class="repair-context">
+                    <summary>Repair export</summary>
+                    <p id="repair-unavailable" class="scope-note">
+                      This export needs attention: {@repair_status.reason}.
+                    </p>
+                  </details>
+                </section>
+              </details>
             </section>
           </div>
         </div>
-        <nav class="evidence-links" id="inspector-tools" aria-label="Evidence tools">
-          <button
-            :for={
-              {view, label} <- [
-                {"proof", "Proof"},
-                {"clauses", "Conditions"},
-                {"premises", "Assumptions"},
-                {"artifacts", "Verification files"},
-                {"record", "Review notes"}
-              ]
-            }
-            phx-click="inspect"
-            phx-value-view={view}
-          >{label}</button>
-        </nav>
         <section :if={@secondary == "premises"} id="premises-panel" class="secondary-panel">
           <h2>
             <button

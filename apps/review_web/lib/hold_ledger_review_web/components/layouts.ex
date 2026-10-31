@@ -13,30 +13,28 @@ defmodule HoldLedgerReviewWeb.Layouts do
     <a href="#workspace" class="skip-link">Skip to workspace</a>
     <header class="site-header" id="global-header" data-learning-shell>
       <div class="site-header-main">
-        <a href="/" class="brand" aria-label="Hold Ledger, explore">
+        <a href="/" class="brand" aria-label="Hold Ledger overview">
           <img src="/images/lambda.svg" width="24" height="24" alt="" />
           <span class="brand-name">HOLD LEDGER</span>
-          <span class="brand-section">Payment holds, explained</span>
+          <span class="brand-section">Code, claims and evidence</span>
         </a>
         <nav class="global-nav" aria-label="Main navigation" data-global-nav>
-          <a href="/" data-nav="/">Explore</a>
+          <a href="/" data-nav="/">Overview</a>
+          <a href="/start" data-nav="/start" data-nav-group="learn">Learn</a>
           <a href="/lab" data-nav="/lab">Case Lab</a>
-          <a href="/atlas" data-nav="/atlas">Claims</a>
+          <a href="/atlas" data-nav="/atlas">Claim Atlas</a>
         </nav>
         <div class="global-actions">
           <details class="reference-nav" id="reference-nav">
-            <summary>Guides</summary>
+            <summary>Reference</summary>
             <div>
-              <a href="/start" data-nav="/start">Follow a payment hold</a>
-              <a href="/how-it-fits" data-nav="/how-it-fits">How it fits together</a>
-              <a href="/translation" data-nav="/translation">Elixir to Lean with Lynx</a>
-              <a href="/examples" data-nav="/examples">Find a deliberate bug</a>
-              <a href="/lens/po_a2?mode=explore" data-nav="/lens">Practice a review</a>
-              <a href="/system" data-nav="/system">How the system works</a>
-              <a href="/guarantees" data-nav="/guarantees">Payment requirements</a>
+              <p class="reference-group-label">Follow the reasoning</p>
+              <a href="/how-it-fits" data-nav="/how-it-fits">Reading map</a>
+              <a href="/examples" data-nav="/examples">Deliberate bugs</a>
               <a href="/proofs" data-nav="/proofs">Read a claim</a>
+              <p class="reference-group-label">Look something up</p>
               <a href="/assurance" data-nav="/assurance">Evidence and assumptions</a>
-              <a href="/repository" data-nav="/repository">Find the source</a>
+              <a href="/repository" data-nav="/repository">Repository map</a>
               <a href="/glossary" data-nav="/glossary">Glossary</a>
             </div>
           </details>
@@ -50,9 +48,9 @@ defmodule HoldLedgerReviewWeb.Layouts do
           >? <span>Help</span></button>
         </div>
       </div>
-      <div class="site-tools">{render_slot(@tools)}</div>
+      <div :if={@tools != []} class="site-tools">{render_slot(@tools)}</div>
     </header>
-    <main id="workspace" class="workspace">
+    <main id="workspace" class="workspace" tabindex="-1">
       <nav
         :if={@review_claim}
         id="claim-navigation"
@@ -86,19 +84,19 @@ defmodule HoldLedgerReviewWeb.Layouts do
         >×</button>
       </div>
       <div class="edu-help-content">
-        <p class="help-label">Your question here</p>
+        <p class="help-label">On this page</p>
         <h2 id="edu-help-title">How does a payment hold work?</h2>
         <h3>What you can do</h3>
         <p id="edu-help-description">Follow a request, then read the claims that describe it.</p>
         <div class="edu-help-callout">
-          <strong>What this can't tell you</strong>
+          <strong>How to read the result</strong>
           <p id="edu-help-limit">
             A walkthrough explains the model. Current proof results need a matching report.
           </p>
         </div>
         <section class="edu-control-guide" data-control-guide>
           <h3>Help with controls</h3>
-          <p>Choose a control to read what it does. This won't run it.</p>
+          <p>Read what a control does before using it.</p>
           <div id="edu-control-help" class="edu-control-help"></div>
         </section>
         <div class="edu-guidance-setting">
@@ -167,12 +165,12 @@ defmodule HoldLedgerReviewWeb.Layouts do
     case_path = "/claims/" <> slug <> if(case_id, do: "/" <> case_id, else: "")
 
     links = [
-      {"claim", "Read claim", "/atlas/" <> slug},
+      {"claim", "Claim profile", "/atlas/" <> slug},
       {"challenge", "Case Lab", case_path}
     ]
 
     if slug in ~w(po_a2 po_exposure_retain),
-      do: links ++ [{"practice", "Guided practice", "/lens/" <> slug}],
+      do: links ++ [{"practice", "Claim Lens", "/lens/" <> slug}],
       else: links
   end
 

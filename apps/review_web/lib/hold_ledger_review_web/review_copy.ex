@@ -20,7 +20,7 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
       Map.get(
         %{
           "admitted" => "Accepted",
-          "insufficient_amount" => "Not enough available money",
+          "insufficient_amount" => "Not enough available capacity",
           "insufficient_holds" => "No free hold slot",
           "voiding" => "Cancellation requested",
           "voided" => "Hold cancelled",
@@ -61,10 +61,10 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
   def action(%{"type" => "authorize", "key" => key, "amount" => amount}),
     do: "Authorize #{amount}¢ for request #{key}"
 
-  def check("allows_here"), do: "Claim would accept this output. Intended?"
-  def check("catches"), do: "Claim rejects this output"
+  def check("allows_here"), do: "Claim accepts the what-if output"
+  def check("catches"), do: "Claim rejects the what-if output"
   def check("doesnt_apply"), do: "Claim says nothing about this input"
-  def check("not_probed"), do: "No check wired up for this event"
+  def check("not_probed"), do: "No case check for this event"
   def check(_), do: "Check unavailable"
 
   def applicability(%{"explanation" => %{"bindings" => bindings, "complete" => complete}})
@@ -124,8 +124,8 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
     end
   end
 
-  def candidate_acceptance(%{"law_status" => "allows_here"}), do: "Accepts proposed output"
-  def candidate_acceptance(%{"law_status" => "catches"}), do: "Rejects proposed output"
+  def candidate_acceptance(%{"law_status" => "allows_here"}), do: "Accepts what-if output"
+  def candidate_acceptance(%{"law_status" => "catches"}), do: "Rejects what-if output"
 
   def candidate_acceptance(%{"law_status" => "doesnt_apply"}),
     do: "Outside this claim's input"
@@ -148,8 +148,8 @@ defmodule HoldLedgerReviewWeb.ReviewCopy do
 
   def probe_reason(reason, _), do: reason
 
-  def accounting(true), do: "Accounting balances"
-  def accounting(false), do: "Accounting does not balance"
+  def accounting(true), do: "Account is valid"
+  def accounting(false), do: "Account is invalid"
   def accounting(_), do: "Unavailable"
 
   def evidence_status("source_declaration_not_elaborated_evidence"),

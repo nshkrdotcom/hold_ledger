@@ -18,7 +18,7 @@ test('Inspector keeps the rule, proof and experiment together',async({page})=>{
  await expect(page.locator('#policy-anchor')).toContainText('all remaining capacity');await expect(page.locator('#proof-script')).toBeVisible();
  await expect(page.locator('#tool-drawer,[role=dialog]:visible,#review-document > details')).toHaveCount(0);await expect(page.locator('#decision-docket button')).toHaveCount(3);
  await expect(page.locator('#review-document')).not.toContainText('no policy approval');await expect(page.locator('#review-document')).not.toContainText('Exact-fit admission');
- await expect(page.locator('#ledger-output h3')).toHaveText('Code returned');await expect(page.locator('#hypothetical-output h3')).toHaveText('Proposed output · not run');
+ await expect(page.locator('#ledger-output h3')).toHaveText('Code returned');await expect(page.locator('#hypothetical-output h3')).toHaveText('What-if output');
 });
 
 for(const width of [1280,390])test(`Guided preserves an experiment while changing depth at ${width}px`,async({page})=>{
@@ -33,7 +33,7 @@ for(const width of [1280,390])test(`Guided preserves an experiment while changin
  await page.locator('#edit-candidate').click();
  await page.getByRole('button',{name:'Reset to code result',exact:true}).click();
  await page.locator('#alternative-counter input').fill('0');
- await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');
+ await expect(page.locator('#validity-row td').last()).toHaveText('Account is invalid');
  await page.locator('#case-view-inspector').click();
  await expect(page.locator('#case-proof-depth')).toHaveJSProperty('open',true);
  await expect(page.locator('#case-conditions-depth')).toHaveJSProperty('open',true);
@@ -87,10 +87,10 @@ test('events without an amount retain the same input layout',async({page})=>{
 test('inline alternative edits and notes preserve live checks and the scratch input',async({page})=>{
  await open(page);await page.locator('#review-amount').fill('99');await page.locator('#edit-candidate').click();
  await page.getByRole('button',{name:'Reset to code result',exact:true}).click();await page.locator('#alternative-counter input').fill('0');
- await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');await expect(page.locator('#ledger-output')).toContainText('99¢ reserved');
+ await expect(page.locator('#validity-row td').last()).toHaveText('Account is invalid');await expect(page.locator('#ledger-output')).toContainText('99¢ reserved');
  await expect(page.locator('body')).not.toHaveCSS('overflow','hidden');expect(await page.locator('#review-document').evaluate(el=>el.inert)).toBe(false);
  await page.locator('#close-tools').click();await page.locator('#add-observation').click();await page.locator('#note_text').fill('Keep the inconsistent accounting example.');await page.locator('#note-form button').click();
- await expect(page.locator('#review-amount')).toHaveValue('99');await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');await expect(page.locator('#hypothetical-output')).toContainText('0¢ reserved');
+ await expect(page.locator('#review-amount')).toHaveValue('99');await expect(page.locator('#validity-row td').last()).toHaveText('Account is invalid');await expect(page.locator('#hypothetical-output')).toContainText('0¢ reserved');
 });
 
 test('run through an unsaved request, dispatch and timeout, then save once',async({page})=>{
@@ -114,10 +114,10 @@ for(const [width,height] of [[1280,720],[1440,900],[390,844]])test(`correlated e
  await page.setViewportSize({width,height});await open(page);
  const rule=await page.locator('#review-comparison').boundingBox(),checks=await page.locator('#case-findings').boundingBox(),proof=await page.locator('#proof-panel').boundingBox(),caseBox=await page.locator('.case-stage').boundingBox();
  expect(checks.y).toBeGreaterThan(rule.y);expect(proof.y).toBeGreaterThan(checks.y);
- if(width>=1120){expect(Math.abs(caseBox.y-checks.y)).toBeLessThan(30);expect(checks.x).toBeGreaterThan(caseBox.x)}
+ if(width>=1160){expect(Math.abs(caseBox.y-checks.y)).toBeLessThan(30);expect(checks.x).toBeGreaterThan(caseBox.x)}
  else{expect(checks.y).toBeGreaterThan(caseBox.y)}
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.locator('#edit-candidate').click();await page.getByRole('button',{name:'Reset to code result',exact:true}).click();await page.locator('#alternative-counter input').fill('0');await expect(page.locator('#validity-row td').last()).toHaveText('Accounting does not balance');
+ await page.locator('#edit-candidate').click();await page.getByRole('button',{name:'Reset to code result',exact:true}).click();await page.locator('#alternative-counter input').fill('0');await expect(page.locator('#validity-row td').last()).toHaveText('Account is invalid');
  await expect(page.locator('#validity-row')).toHaveCount(1)
  await expect(page.locator('[inert],.tool-backdrop,[role=dialog]:visible')).toHaveCount(0);
  await page.screenshot({path:`../../../../tmp/review_workspace_0711/edit-${width}.png`,fullPage:true});

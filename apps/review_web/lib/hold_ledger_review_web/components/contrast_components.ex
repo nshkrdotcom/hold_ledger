@@ -30,10 +30,10 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       aria-live="polite"
       aria-atomic="true"
     >
-      <h2>What this case shows</h2>
+      <h2>Result for this case</h2>
       <p><strong>{@event_label}</strong><span>{@result_label}</span></p>
       <p class="case-summary-check">Claim check: <strong>{@check_label}</strong></p>
-      <small>The claim check covers this input and proposed output.</small>
+      <small>This is a check of one case. Proof results appear in the verification records.</small>
     </section>
     """
   end
@@ -94,11 +94,11 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
     ~H"""
     <section class="instrument" id="contrast">
       <header>
-        <span class="section-number">Outputs</span><h2>Compare what happened</h2>
+        <span class="section-number">Outputs</span><h2>Compare the two outputs</h2>
       </header>
       <div :if={@step && @step["output"]}>
         <p :if={@step["origin"] != "computed"} id="hypothetical-lineage" class="signal">
-          Continuing from the proposed output
+          Continuing from the what-if output
         </p>
         <div class="output-pair">
           <.output
@@ -109,7 +109,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           />
           <.output
             :if={@case}
-            title="Proposed output · not run"
+            title="What-if output"
             output={@case["candidate"]}
             id="hypothetical-output"
             differences={@differences}
@@ -127,7 +127,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           <summary>
             Full differences · {@differences.field_count} changed fields, {@differences.other_count} other rows
           </summary>
-          <h3>Code returned → proposed output</h3>
+          <h3>Code returned → what-if output</h3>
           <ol>
             <li
               :for={{difference, index} <- Enum.with_index(@differences.rows)}
@@ -140,7 +140,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           </ol>
         </details>
         <p :if={@invalid} id="invalid-candidate" role="alert">
-          Enter a whole number or valid output JSON to check this proposed output.
+          This output could not be read. Use whole-number fields or valid output JSON, then try again.
         </p>
       </div>
       <p :if={@step && !@step["output"]}>Coupled model step. Remote records are shown below.</p>
@@ -155,15 +155,15 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
   def draft_tools(assigns) do
     ~H"""
     <section id="draft-tools">
-      <h3>Edit the proposed output</h3>
+      <h3>Edit the what-if output</h3>
       <p class="scope-note">
-        Describe a different result for this input, then check whether the claim would accept it.
-        Continue from this output to run later events from the state you proposed.
+        Change the result, totals, entries or requested work. The check updates as you edit.
+        Continue from this output to try later events in a separate path.
       </p>
       <div class="mutation-chips" id="candidate-mutations">
         <button phx-click="mutate_candidate" phx-value-kind="drop_effects">Remove requested effects</button>
         <button phx-click="mutate_candidate" phx-value-kind="zero_counters">Zero both totals</button>
-        <button phx-click="mutate_candidate" phx-value-kind="change_identity">Change first identity</button>
+        <button phx-click="mutate_candidate" phx-value-kind="change_identity">Change first request ID</button>
         <button phx-click="candidate_recalculate" id="recalculate-inline">Recalculate totals</button>
       </div>
       <div class="action-row">
@@ -218,7 +218,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             <.input
               field={nested_form(effect, index, "effects", "output")[:key]}
               type="number"
-              label="Identity"
+              label="Request ID"
             />
             <.input
               field={nested_form(effect, index, "effects", "output")[:amount]}
@@ -241,7 +241,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             <.input
               field={@json_form[:json]}
               type="textarea"
-              label="Typed output"
+              label="What-if output as JSON"
               id="candidate-json"
             />
             <button>Check JSON</button>
@@ -292,12 +292,12 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       <div :if={@case} id="active-predicate-result">
         <table id="contrast-matrix">
           <caption class="sr-only">
-            Coverage, output acceptance and accounting for the selected case
+            Input coverage, output acceptance and account validity for one case
           </caption>
           <thead>
             <tr>
               <th scope="col">Check</th><th scope="col">Code returned</th><th scope="col">
-                Proposed output · not run
+                What-if output
               </th>
             </tr>
           </thead>
@@ -327,7 +327,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
             <tr id="validity-row">
               <th scope="row">
                 <button type="button" class="edu-term-button" data-edu-term="invariant">
-                  Do the totals and holds agree?
+                  Is the account state valid?
                 </button>
               </th>
               <td>{ReviewCopy.accounting(@case["actual_valid"])}</td>
@@ -359,7 +359,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         {ReviewCopy.probe_reason(@case["law_reason"], @slug)}
       </p>
       <p :if={!@case} id="checks-unavailable" role="status">
-        Checks unavailable for the current input or alternative. Correct the editing error, or select an executable case.
+        No check is available for this input and output. Correct any editing error or choose another case.
       </p>
     </section>
     """
@@ -390,7 +390,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       <.input
         field={nested_form(entry, index, "entries", @form.name)[:key]}
         type="number"
-        label="Identity"
+        label="Request ID"
       />
       <.input
         field={nested_form(entry, index, "entries", @form.name)[:amount]}
@@ -422,12 +422,15 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
           type="button"
           class="output-explanation edu-term-button"
           data-edu-term={if(@editable, do: "hypothetical", else: "pointwise")}
-          aria-label={if(@editable, do: "About proposed outputs", else: "About computed outputs")}
+          aria-label={if(@editable, do: "About what-if outputs", else: "About computed outputs")}
         >?</button>
         <button :if={@editable} id="edit-candidate" phx-click="edit_candidate" class="text-button">
-          More edits
+          Edit full output
         </button>
       </div>
+      <p :if={@editable} id="what-if-guide" class="what-if-guide">
+        An output you propose. The claim checks it for this case; the ledger did not return it.
+      </p>
       <div
         :if={@editable}
         class="quick-alternative"
@@ -475,7 +478,7 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         min="0"
         max={max(@output["after"]["amount_limit"], 1)}
         value={@output["after"]["used_amount"]}
-        aria-label={@title <> ": reserved money"}
+        aria-label={@title <> ": reserved capacity"}
       ></meter>
       <p class="output-headline">
         {slot_count(@output["after"]["used_holds"])} · {ReviewCopy.result(@output["result"])}
@@ -547,19 +550,19 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
       <ul
         :if={@differences && @differences.ghosts != []}
         class="comparison-ghosts"
-        aria-label="Entries absent from the proposed output"
+        aria-label="Entries absent from the what-if output"
       >
         <li :for={ghost <- @differences.ghosts} class="comparison-ghost">
           <span>{ghost.entry["key"]} · {ghost.entry["amount"]}¢ · {ReviewCopy.state(
             ghost.entry["status"]
           )}</span>
-          <small>Absent from proposed output · original position {ghost.before_index + 1}</small>
+          <small>Absent from what-if output · original position {ghost.before_index + 1}</small>
         </li>
       </ul>
       <div class="effect-list">
         <strong>
           <button type="button" class="edu-term-button" data-edu-term="effect-intent">
-            Requested effects
+            Requested outside work
           </button>
         </strong>
         <p :if={@output["effects"] == []}>No outside work requested</p>
@@ -602,35 +605,35 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         %{
           state: "same",
           title: "Claim accepts the code result",
-          detail: "The proposed output matches what the code returned."
+          detail: "The what-if output matches what the code returned."
         }
 
       "allows_here" ->
         %{
           state: "permits",
-          title: "Claim would accept this output. Intended?",
+          title: "Claim accepts the what-if output",
           detail:
-            "Compare the output with the policy, then inspect the conditions that accepted it."
+            "Does it meet the payment requirement? An accepted output can still reveal a missing promise."
         }
 
       "catches" ->
         %{
           state: "rejects",
-          title: "Claim rejects this output",
-          detail: "The proposed output fails the claim on this input."
+          title: "Claim rejects the what-if output",
+          detail: "The what-if output fails the claim on this input."
         }
 
       "doesnt_apply" ->
         %{
           state: "unavailable",
           title: "Claim says nothing about this input",
-          detail: "Its starting condition is false, so its promise is not checked here."
+          detail: "Its input condition is false. The output promise is not checked for this input."
         }
 
       "not_probed" ->
         %{
           state: "unavailable",
-          title: "No check wired up for this event",
+          title: "No case check for this event",
           detail: "Read the source for its scope."
         }
 

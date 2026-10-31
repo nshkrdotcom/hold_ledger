@@ -11,16 +11,16 @@ test.afterEach(async ({page}) => {
   expect(page.qaErrors).toEqual([]);
 });
 
-for (const width of [1280, 390]) {
+for (const width of [1280, 390, 320]) {
   test(`Claim Lens reveals input-domain loss and proof provenance at ${width}px`, async ({page}) => {
     await page.setViewportSize({width, height: 900});
     await page.goto('/lens/po_a2?mode=explore');
     await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
     await expect(page.locator('#lens-gap')).toContainText('Potential loss of required coverage');
-    await expect(page.locator('#lens-baseline-verdict')).toContainText('Claim rejects this output');
+    await expect(page.locator('#lens-baseline-verdict')).toContainText('Claim rejects the what-if output');
     await expect(page.locator('#lens-hypothetical-verdict')).toContainText("Claim says nothing about this input");
     await page.locator('#lens-witness-below').click();
-    await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Claim rejects this output');
+    await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Claim rejects the what-if output');
     await page.locator('#lens-witness-above').click();
     await expect(page.locator('#lens-policy-verdict')).toContainText('Policy permits');
     await expect(page.locator('#lens-baseline-verdict')).toContainText("Claim says nothing about this input");
@@ -46,16 +46,16 @@ test('retention lens distinguishes terminal evidence and source-linked statement
   await page.goto('/lens/po_exposure_retain?mode=explore');
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(page.locator('#lens-policy-verdict')).toContainText('Policy permits this output');
-  await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Claim rejects this output');
+  await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Claim rejects the what-if output');
   await expect(page.locator('#lens-proof-steps')).toBeVisible();
   await expect(page.locator('#lens-baseline-verdict')).toContainText("Claim says nothing about this input");
   await page.locator('#lens-witness-timeout').click();
   await expect(page.locator('#lens-policy-verdict')).toContainText('Policy forbids');
-  await expect(page.locator('#lens-baseline-verdict')).toContainText('Claim rejects this output');
-  await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Claim rejects this output');
+  await expect(page.locator('#lens-baseline-verdict')).toContainText('Claim rejects the what-if output');
+  await expect(page.locator('#lens-hypothetical-verdict')).toContainText('Claim rejects the what-if output');
   await expect(page.locator('.lens-witness-data')).toContainText('100¢ reserved');
   await page.locator('#lens-witness-void').click();
-  await expect(page.locator('#lens-baseline-verdict')).toContainText('Claim rejects this output');
+  await expect(page.locator('#lens-baseline-verdict')).toContainText('Claim rejects the what-if output');
   await page.locator('#lens-clause-retain-protected').click();
   await expect(page.locator('#lens-selected-clause')).toBeVisible();
   await page.locator('#lens-decision-concern').click();

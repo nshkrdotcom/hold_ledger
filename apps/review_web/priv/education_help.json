@@ -4,8 +4,8 @@
     {
       "path": "/",
       "title": "Where should I start?",
-      "detail": "Follow the payment example, inspect the Elixir-to-Lean connection, or open Case Lab. Choose a reading path that fits what you want to learn.",
-      "limit": "Catalog counts describe available claims, not a fresh proof run."
+      "detail": "Start in Learn with the Payment walkthrough. Follow the Elixir-to-Lean connection, try the case in Case Lab, or find a claim in the Claim Atlas.",
+      "limit": "Counts describe registered claim groups. Read a matching verification report for proof results."
     },
     {
       "path": "/start",
@@ -28,8 +28,8 @@
     {
       "path": "/atlas",
       "title": "Which claim covers the behavior I care about?",
-      "detail": "Search for an event, example or claim name. Each profile gives a concrete situation, the required behavior and source links.",
-      "limit": "Reading families organize the catalog; they are not proof dependencies or checker results."
+      "detail": "Search the Claim Atlas by event, example or claim name. Each profile gives a concrete case, the stated requirement and source links.",
+      "limit": "The eight families are curated navigation. They do not establish proof dependencies, policy completeness or checker acceptance."
     },
     {
       "path": "/proofs",
@@ -46,7 +46,7 @@
     {
       "path": "/repository",
       "title": "Where is the source?",
-      "detail": "Choose the question you are investigating and follow its file or claim link. The directory also includes the named mutation and policy examples.",
+      "detail": "Use the Repository map to find the file or claim that answers your question. It also lists the deliberate bugs and payment-policy exercises.",
       "limit": "An example description is not a freshly executed check."
     },
     {
@@ -64,7 +64,7 @@
     {
       "path": "/examples",
       "title": "Which claim is meant to catch this mistake?",
-      "detail": "Choose a named source mutation. Read its changed behavior, concrete input and target claim, then inspect the linked source.",
+      "detail": "Choose a deliberate bug. Compare its changed behavior with the expected result, then inspect the input, target claim and source patch.",
       "limit": "This page explains committed examples; it does not run a mutation campaign."
     },
     {
@@ -82,14 +82,14 @@
     {
       "path": "/claims",
       "title": "What does this case show?",
-      "detail": "Try an event, inspect the code result and test a proposed output against the claim. Open Inspector for the condition tree and proof source.",
-      "limit": "A case check covers the selected input and output, not every possible execution."
+      "detail": "Run an event and inspect the code result. Edit a what-if output to check what the claim permits for the same input. Open Inspector for conditions and proof source.",
+      "limit": "A what-if output is hypothetical and is never run. Its case check is not a proof for every input."
     },
     {
       "path": "/lab",
       "title": "What does this case show?",
-      "detail": "Try an event, inspect the code result and test a proposed output against the claim. Open Inspector for the condition tree and proof source.",
-      "limit": "A case check covers the selected input and output, not every possible execution."
+      "detail": "Run an event and inspect the code result. Edit a what-if output to check what the claim permits for the same input. Open Inspector for conditions and proof source.",
+      "limit": "A what-if output is hypothetical and is never run. Its case check is not a proof for every input."
     }
   ],
   "controls": {
@@ -174,7 +174,7 @@
       "link": "/atlas/po_a2"
     },
     "lab.propose": {
-      "term": "Edit proposed output",
+      "term": "Edit what-if output",
       "selector": "[phx-click=\"edit_candidate\"], [phx-click=\"open_tools\"][phx-value-tool=\"draft\"]",
       "short": "Change the answer you want to test against the claim.",
       "detail": "Edit the result, held amount, entries or requested effects. The code returned the other output; this one is your proposal.",
@@ -184,7 +184,7 @@
     "lab.proposed_result": {
       "term": "Proposed result",
       "selector": "#alternative-result-select, #candidate-form select[name=\"output[result]\"]",
-      "short": "Choose the result your proposed output should report.",
+      "short": "Choose the result your what-if output should report.",
       "detail": "Try a different result while keeping the rest of the output visible. The claim check updates for this proposal.",
       "limit": "This changes a proposed answer, not the implementation.",
       "link": "/proofs"
@@ -192,7 +192,7 @@
     "lab.proposed_amount": {
       "term": "Proposed held amount",
       "selector": "#alternative-reserved-input",
-      "short": "Change the held-amount counter in the proposed output.",
+      "short": "Change the held-amount counter in the what-if output.",
       "detail": "The editor keeps your value even if it disagrees with the entries. Use Recalculate totals when you want counters derived from those entries.",
       "limit": "A changed counter is an illustration; the code did not return it.",
       "link": "/glossary#term-invariant"
@@ -200,7 +200,7 @@
     "lab.status": {
       "term": "Change a proposed hold state",
       "selector": "[phx-click=\"cycle_status\"], #candidate-form select[name$=\"[status]\"]",
-      "short": "Try another status for this entry in the proposed output.",
+      "short": "Try another status for this entry in the what-if output.",
       "detail": "Watch whether the claim accepts the changed status and whether the account remains consistent. Other output fields keep their current values.",
       "limit": "Changing a local status does not change a real processor authorization.",
       "link": "/system"
@@ -214,17 +214,17 @@
       "link": "/examples"
     },
     "lab.mutate": {
-      "term": "Change part of a proposed output",
+      "term": "Change part of a what-if output",
       "selector": "[phx-click=\"mutate_candidate\"]",
-      "short": "Apply the named change to the proposed output.",
+      "short": "Apply the named change to the what-if output.",
       "detail": "Remove effects, zero counters or change an identity to examine a specific mistake. Other values remain available for inspection.",
-      "limit": "This is a proposed output, not an executed source mutation.",
+      "limit": "This is a what-if output, not an executed source mutation.",
       "link": "/examples"
     },
     "lab.restore": {
       "term": "Reset to code result",
       "selector": "[phx-click=\"restore_candidate\"]",
-      "short": "Copy the code result into the proposed output again.",
+      "short": "Copy the code result into the what-if output again.",
       "detail": "Use this to undo your output edits while keeping the selected input and timeline.",
       "limit": "",
       "link": "/lab"
@@ -240,7 +240,7 @@
     "lab.advanced": {
       "term": "Full state and JSON editor",
       "selector": "[phx-click=\"show_advanced\"], #candidate-json, #candidate-json-form button",
-      "short": "Edit the full proposed state, result and effects.",
+      "short": "Edit the full what-if state, result and effects.",
       "detail": "Use structured fields or JSON when the quick controls cannot express your example. Invalid input clears the previous check.",
       "limit": "This editor accepts bounded example data; it does not execute pasted code.",
       "link": "/lab"
@@ -256,23 +256,23 @@
     "lab.add_effect": {
       "term": "Add void effect",
       "selector": "[phx-click=\"candidate_add_effect\"]",
-      "short": "Add a proposed request to cancel an authorization.",
-      "detail": "Choose the key whose authorization the proposed output should ask the processor to void.",
+      "short": "Add a hypothetical request to cancel an authorization.",
+      "detail": "Choose the key whose authorization the what-if output should ask the processor to void.",
       "limit": "An effect requests outside work; it does not mean that work has completed.",
       "link": "/glossary#term-effect"
     },
     "lab.clear_effects": {
       "term": "Clear effects",
       "selector": "[phx-click=\"candidate_clear_effects\"]",
-      "short": "Remove requested outside work from the proposed output.",
+      "short": "Remove requested outside work from the what-if output.",
       "detail": "This helps examine whether the claim requires the correct authorization or void request.",
-      "limit": "The proposed state stays as you edited it.",
+      "limit": "The what-if state stays as you edited it.",
       "link": "/examples?example=M7"
     },
     "lab.branch": {
-      "term": "Continue from the proposed output",
+      "term": "Continue from the what-if output",
       "selector": "[phx-click=\"branch_candidate\"]",
-      "short": "Create a second timeline path starting from your proposed output.",
+      "short": "Create a second timeline path starting from your what-if output.",
       "detail": "One path keeps the code result. The other uses your proposal as the starting state for later events.",
       "limit": "The proposal must be a valid state before it can be continued.",
       "link": "/lab"
@@ -281,7 +281,7 @@
       "term": "Run on both paths",
       "selector": "[phx-click=\"apply_event_pair\"]",
       "short": "Apply the same next event to both timeline paths.",
-      "detail": "Compare the continuation from the code result with the continuation from your proposed output. Both use the same implementation.",
+      "detail": "Compare the continuation from the code result with the continuation from your what-if output. Both use the same implementation.",
       "limit": "These paths are different from comparing two source versions.",
       "link": "/lab"
     },
@@ -368,7 +368,7 @@
     "lab.save_case": {
       "term": "Save this case for review",
       "selector": "[phx-click=\"save_challenge\"]",
-      "short": "Keep this input and proposed output as a review case.",
+      "short": "Keep this input and what-if output as a review case.",
       "detail": "Save temporary events to the timeline first. The stored case retains its source and selected claim.",
       "limit": "",
       "link": "/lab"
@@ -377,14 +377,14 @@
       "term": "Choose an output to inspect",
       "selector": "[phx-click=\"basis\"]",
       "short": "Choose which output supplies the values in the condition view.",
-      "detail": "Code returned uses the computed result. Proposed output uses the answer you are testing against the claim.",
+      "detail": "Code returned uses the ledger’s result. What-if output uses the hypothetical answer you are checking for the same input.",
       "limit": "",
       "link": "/glossary#term-basis"
     },
     "lab.binding": {
-      "term": "Choose a binding",
-      "selector": "#binding-selector select, [phx-change=\"binding\"] select",
-      "short": "Inspect one set of values substituted into the claim.",
+      "term": "Choose variable values",
+      "selector": "#binding-choice select, [phx-change=\"select_binding\"] select",
+      "short": "Inspect one combination of values substituted into the claim.",
       "detail": "Some claims consider several entries or combinations. This selection changes the values shown in the condition tree.",
       "limit": "One displayed combination does not replace the aggregate case result.",
       "link": "/glossary#term-binding"
@@ -528,8 +528,8 @@
     "learn.mutation": {
       "term": "Choose a deliberate bug",
       "selector": "[phx-click=\"select_mutation\"]",
-      "short": "Read the source change, witness and target claim for this mutation.",
-      "detail": "Each example describes one committed source fault. Compare its wrong behavior with the requirement and follow the source links.",
+      "short": "Read a deliberate bug’s changed source, concrete input and target claim.",
+      "detail": "Compare the fault with the payment requirement and follow its source links. This page describes the committed example; it does not apply the patch.",
       "limit": "Selecting an example does not execute its patch or run a mutation campaign.",
       "link": "/examples"
     },
@@ -566,11 +566,11 @@
       "link": "/lens/po_a2"
     },
     "lab.effect_type": {
-      "term": "Proposed outside work",
+      "term": "What-if outside work",
       "selector": "#candidate-form select[name^=\"output[effects]\"][name$=\"[type]\"]",
-      "short": "Choose the outside work your proposed output should request.",
-      "detail": "Authorize asks the processor for a hold; void asks it to cancel one. The key and amount identify the request.",
-      "limit": "This edits a proposed effect. It does not contact a payment processor.",
+      "short": "Choose the outside work your what-if output should request.",
+      "detail": "Authorize asks the processor for a hold; void asks it to cancel one. Choose the key and amount for the work this hypothetical output would request.",
+      "limit": "This edits a what-if effect. It does not contact a payment processor.",
       "link": "/glossary#term-effect"
     }
   },
@@ -605,6 +605,9 @@
     "status": "Selecting a named status reveals its meaning beside the selector.",
     "history_page": "Previous and Next move through the local history list.",
     "keep": "The cancellation button explicitly keeps question history.",
-    "open": "The labeled answer preview opens an existing answer without a provider call."
+    "open": "The labeled answer preview opens an existing answer without a provider call.",
+    "processor_possibility": "The labeled possibility changes the illustration while keeping the computed ledger state.",
+    "map_requirement": "The labeled requirement highlights its curated claim links without running checks.",
+    "translation_focus": "The labeled concept changes the reading explanation and keeps all source panels."
   }
 }
