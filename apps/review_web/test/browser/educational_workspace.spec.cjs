@@ -84,11 +84,11 @@ test('processor illustrations never alter the computed local state', async ({pag
   const stateBefore = await page.locator('#edu-story-after').innerText();
   await page.locator('[data-possibility="undelivered"]').click();
   await expect(page.locator('#edu-processor-possibility')).toContainText('never reached the processor');
-  await expect(page.locator('#edu-story-after')).toHaveText(stateBefore);
+  await expect(page.locator('#edu-story-after')).toHaveText(stateBefore, {useInnerText: true});
   await expect(page.locator('#edu-story-result code')).toContainText(':marked_unknown');
   await page.locator('[data-possibility="approved"]').click();
   await expect(page.locator('#edu-processor-possibility')).toContainText('approved 100¢');
-  await expect(page.locator('#edu-story-after')).toHaveText(stateBefore);
+  await expect(page.locator('#edu-story-after')).toHaveText(stateBefore, {useInnerText: true});
   await expect(page.locator('#edu-uncertainty')).toContainText('illustration only');
 });
 
@@ -430,5 +430,33 @@ test('Reference stays fully visible and clickable beside the header actions', as
     await expect(page.locator('#reference-nav').getByRole('link', {name: 'Reading map'})).toBeInViewport();
     await page.locator('#reference-nav').getByRole('link', {name: 'Reading map'}).click({position: {x: 8, y: 12}});
     await expect(page).toHaveURL(/\/how-it-fits$/);
+  }
+});
+
+test('walkthrough results fit with doubled text at 320px', async ({page}) => {
+  await page.setViewportSize({width: 320, height: 900});
+  for (let moment = 0; moment <= 4; moment++) {
+    await page.goto(`/start?moment=${moment}`);
+    await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+      document.querySelectorAll('details').forEach(details => details.open = true);
+    });
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), `moment ${moment}`).toBeLessThanOrEqual(320);
+  }
+});
+
+test('expanded profile sources and Lens assumptions fit enlarged text on a phone', async ({page}) => {
+  await page.setViewportSize({width: 320, height: 900});
+  for (const route of ['/atlas/po_composite_preservation', '/lens/po_a2', '/lens/po_exposure_retain']) {
+    await page.goto(route);
+    await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%';
+      document.querySelectorAll('details').forEach(details => details.open = true);
+    });
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth), route).toBeLessThanOrEqual(320);
   }
 });

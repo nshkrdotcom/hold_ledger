@@ -22,7 +22,7 @@ for(const width of [1440,1280,1024,800,640,390])test(`header stays within viewpo
  await page.setViewportSize({width,height:900});
  await page.goto('/claims/po_a2');
  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
- const brand=page.getByRole('link',{name:'Hold Ledger, explore',exact:true});
+ const brand=page.getByRole('link',{name:'Hold Ledger overview',exact:true});
  const box=await brand.boundingBox();
  expect(box.x).toBeGreaterThanOrEqual(16);
  expect(box.x+box.width).toBeLessThanOrEqual(width-16);

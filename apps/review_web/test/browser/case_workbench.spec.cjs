@@ -46,3 +46,16 @@ for (const width of [320, 768, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
 }
+
+test('expanded condition trees fit a 320px viewport with doubled text', async ({page}) => {
+  await page.setViewportSize({width: 320, height: 900});
+  await page.goto('/claims/po_a2');
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '200%';
+    document.querySelectorAll('details').forEach(details => details.open = true);
+  });
+  await page.keyboard.press('Escape');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await expect(page.locator('.inline-values').first()).toBeVisible();
+});

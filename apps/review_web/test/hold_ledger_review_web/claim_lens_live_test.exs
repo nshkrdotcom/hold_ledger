@@ -281,7 +281,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
     for slug <- ~w(po_a2 po_exposure_retain l2_identity) do
       {:ok, doc} = HoldLedgerReview.Contrast.create(slug)
       {:ok, view, _} = live(conn, "/claims/#{slug}/#{doc["id"]}")
-      assert has_element?(view, "#claim-navigation a[href='/atlas/#{slug}']", "Read claim")
+      assert has_element?(view, "#claim-navigation a[href='/atlas/#{slug}']", "Claim profile")
 
       assert has_element?(
                view,
@@ -290,7 +290,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
              )
 
       if slug in ~w(po_a2 po_exposure_retain) do
-        assert has_element?(view, "#claim-navigation a[href='/lens/#{slug}']", "Guided practice")
+        assert has_element?(view, "#claim-navigation a[href='/lens/#{slug}']", "Claim Lens")
       else
         refute has_element?(view, "#claim-navigation a[href^='/lens/']")
         assert has_element?(view, "#decision-docket", "Mark reviewed")

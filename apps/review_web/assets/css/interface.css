@@ -34,7 +34,7 @@ button, input, select, textarea {accent-color: var(--accent);}
   position: relative;
   max-width: 1540px;
   gap: 1.1rem;
-  padding: .8rem clamp(.85rem, 2.5vw, 2.5rem);
+  padding: .8rem clamp(1rem, 2.5vw, 2.5rem);
 }
 #global-header[data-learning-shell] .global-actions {
   position: static;
@@ -331,3 +331,9 @@ button, input, select, textarea {accent-color: var(--accent);}
 @media (prefers-reduced-motion: reduce) {
   .workspace *, .workspace *::before, .workspace *::after {scroll-behavior: auto!important; transition: none!important; animation: none!important;}
 }
+
+/* Long outcome labels must wrap when a reader enlarges the text. */
+#edu-story :where(.learning-story-result, .capacity-numbers),
+#global-header[data-learning-shell] .global-nav a {overflow-wrap: anywhere;}
+.edu-provenance-list {overflow-wrap: anywhere;}
+.edu-provenance-list :where(strong, span, code) {max-width: 100%;}

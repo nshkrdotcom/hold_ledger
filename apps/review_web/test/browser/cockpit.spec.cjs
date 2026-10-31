@@ -11,6 +11,10 @@ async function open(page,slug='po_exposure_retain') {
 async function tab(page,name) {
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   if(['proof','premises','record','artifacts','clauses'].includes(name))await page.locator('#inspector-tools [phx-value-view="'+name+'"]').click();
+  if(name==='record'){
+    await expect(page.locator('#record-panel')).toBeVisible();
+    if(!await page.locator('#case-review-tools').evaluate(node=>node.open))await page.locator('#case-review-tools > summary').click();
+  }
 }
 async function inspect(page) { await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/); }
 async function event(page,type,key='2',amount='100') {

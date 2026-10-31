@@ -832,8 +832,7 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
 
           <details id="lens-evidence-drawer" class="lens-evidence-drawer" open={@mode == "explore"}>
             <summary>
-              <span><b>Source and evidence</b>
-              · Elixir law, Lean passages and available reports</span>
+              <span><b>Source and evidence</b> · Elixir law, Lean passages and available reports</span>
               <small>Read the source and check the available reports.</small>
             </summary>
             <aside class="lens-reading" aria-label="Source and verification evidence">

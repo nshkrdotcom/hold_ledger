@@ -22,7 +22,9 @@ defmodule HoldLedgerReviewWeb.LeanComponents do
       ]["line"]} ↗</a>
       <p :if={@reading["omits"]} class="omission" id="omission">{@reading["omits"]}</p>
       <dl :if={@show_status} class="evidence-status">
-        <dt>Focused Lean elaboration</dt><dd id="focused-status">{ReviewCopy.evidence_status(@reading["focused"]["status"])}</dd><dt>
+        <dt>Focused Lean elaboration</dt><dd id="focused-status">
+          {ReviewCopy.evidence_status(@reading["focused"]["status"])}
+        </dd><dt>
           Full verification report
         </dt><dd id="formal-status">{ReviewCopy.evidence_status(@reading["formal"]["status"])}</dd><dt>
           Axioms used by this theorem

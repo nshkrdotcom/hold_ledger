@@ -78,8 +78,10 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         <p>A single-case check tells you whether this claim accepts the what-if output.
           An accepted changed output is worth investigating, not automatically a defect.
           Unavailable never means false.</p>
-        <p id="connection-scope">Clause ↔ proof links are reviewed source-reading aids.
-          Read verification records for checker results; these links do not show Lean goals or proof dependencies.</p>
+        <p id="connection-scope">
+          Clause ↔ proof links are reviewed source-reading aids.
+          Read verification records for checker results; these links do not show Lean goals or proof dependencies.
+        </p>
         <p>Edits and follow-on events remain in an unsaved experiment until saved to the timeline.
           Notes do not approve policy or save pending events.</p>
       </details>
@@ -179,7 +181,9 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         </details>
       </div>
       <div :if={@show_sources} id="source-comparison" class="source-chooser">
-        <p>Choose two trusted local source versions. Run the same case in a separate process for each.</p>
+        <p>
+          Choose two trusted local source versions. Run the same case in a separate process for each.
+        </p>
         <p class="scope-note">
           Compare what the claim covers, what outputs it permits, and what the code returns.
           A difference needs review against the policy before you call it a defect.

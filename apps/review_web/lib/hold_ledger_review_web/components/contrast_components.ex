@@ -627,7 +627,8 @@ defmodule HoldLedgerReviewWeb.ContrastComponents do
         %{
           state: "unavailable",
           title: "Claim says nothing about this input",
-          detail: "Its input condition is false. The output promise is not checked for this input."
+          detail:
+            "Its input condition is false. The output promise is not checked for this input."
         }
 
       "not_probed" ->

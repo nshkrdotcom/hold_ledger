@@ -112,7 +112,10 @@ test('keyboard decisions and drafts reset across study navigation and reload', a
   await expect(page.locator('#claim-navigation a[href^="/lens/"]')).toHaveCount(0);
   await expect(page.locator('#decision-docket')).toContainText('Mark reviewed');
   await page.locator('#reference-nav > summary').click();
-  await page.locator('#reference-nav').getByRole('link', {name: 'Practice a review'}).click();
+  await page.locator('#reference-nav').getByRole('link', {name: 'Read a claim', exact: true}).click();
+  await page.getByRole('link', {name: /Review a changed precondition/}).click();
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+  await page.locator('#lens-exercise-modes a').filter({hasText: 'Explore freely'}).click();
   await expect(page).toHaveURL(/\/lens\/po_a2\?mode=explore$/);
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(page.locator('#lens-policy-verdict')).toBeVisible();

@@ -386,7 +386,10 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       review_claim={@profile && @profile["slug"]}
     >
       <div class="edu-root" id="education-root">
-        <.chapter_nav :if={@live_action in [:start, :system, :guarantees, :translation, :proofs]} current={@live_action} />
+        <.chapter_nav
+          :if={@live_action in [:start, :system, :guarantees, :translation, :proofs]}
+          current={@live_action}
+        />
         <%= if @catalog_issue do %>
           <div id="edu-catalog-unavailable" class="edu-caution" role="alert">
             The claim catalog is unavailable. You can still read the guides; claim counts and source links will return when the catalog can be loaded.
@@ -394,11 +397,30 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         <% end %>
         <%= case @live_action do %>
           <% :overview -> %>
-            <.overview inventory={@inventory} journeys={@journeys} moment={@story_moment} claims={@claims} families={@families} guarantees={@guarantees} map_requirement={@map_requirement} />
+            <.overview
+              inventory={@inventory}
+              journeys={@journeys}
+              moment={@story_moment}
+              claims={@claims}
+              families={@families}
+              guarantees={@guarantees}
+              map_requirement={@map_requirement}
+            />
           <% :start -> %>
-            <.start moment={@story_moment} moments={@story_moments || []} possibility={@processor_possibility} />
+            <.start
+              moment={@story_moment}
+              moments={@story_moments || []}
+              possibility={@processor_possibility}
+            />
           <% :how_it_fits -> %>
-            <.how_it_fits inventory={@inventory} guarantees={@guarantees} counts={@source_counts} claims={@claims} families={@families} map_requirement={@map_requirement} />
+            <.how_it_fits
+              inventory={@inventory}
+              guarantees={@guarantees}
+              counts={@source_counts}
+              claims={@claims}
+              families={@families}
+              map_requirement={@map_requirement}
+            />
           <% :examples -> %>
             <.mutation_examples mutations={@mutations} selected={@selected_mutation} />
           <% :translation -> %>
@@ -494,7 +516,12 @@ defmodule HoldLedgerReviewWeb.EducationLive do
 
     <.concept_intro />
 
-    <.claim_map claims={@claims} families={@families} requirements={@guarantees} selected={@map_requirement} />
+    <.claim_map
+      claims={@claims}
+      families={@families}
+      requirements={@guarantees}
+      selected={@map_requirement}
+    />
 
     <aside class="edu-overview-lesson" id="edu-overview-lesson">
       <span class="edu-eyebrow">The review question</span>
@@ -707,7 +734,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
       <.uncertainty_view :if={@moment.index >= 3} moment={@moment} possibility={@possibility} />
       <aside :if={@moment.index == 1} class="learning-exact-fit" id="edu-exact-fit-bridge">
         <strong>What if the code rejected this exact fit?</strong>
-        <p>M4 changes the capacity comparison so this request is refused. Read the actual patch, or explore how a changed claim could miss the same boundary.</p>
+        <p>
+          M4 changes the capacity comparison so this request is refused. Read the actual patch, or explore how a changed claim could miss the same boundary.
+        </p>
         <a href="/examples?example=M4">Read the exact-fit bug →</a>
         <a href="/lens/po_a2?mode=explore">Explore the claim change →</a>
       </aside>
@@ -816,65 +845,70 @@ defmodule HoldLedgerReviewWeb.EducationLive do
         The order below is a way into the repository. It does not describe which theorems depend on one another.
       </p>
       <.vocabulary_ladder />
-      <.claim_map claims={@claims} families={@families} requirements={@guarantees} selected={@map_requirement} />
+      <.claim_map
+        claims={@claims}
+        families={@families}
+        requirements={@guarantees}
+        selected={@map_requirement}
+      />
       <details class="edu-disclosure learning-path-detail">
         <summary>Follow the six connections from policy to evidence</summary>
-      <ol class="learning-map" aria-label="From payment policy to matching evidence">
-        <li>
-          <span class="learning-map-number">01</span>
-          <h2>Begin with the payment policy.</h2>
-          <p>
-            When must a request succeed? When may capacity be released? Decide what the system is required to do.
-          </p>
-          <code>guides/specification.md</code>
-          <a href="/guarantees">Read the required behavior →</a>
-        </li>
-        <li>
-          <span class="learning-map-number">02</span>
-          <h2>Find a requirement to examine.</h2>
-          <p>
-            {@guarantees |> length()} summaries connect the policy to concrete cases, including exact fit, missing replies and retained identities.
-          </p>
-          <span class="learning-map-fact">Curated reading summaries</span>
-          <a href="/start">Follow the missing-reply example →</a>
-        </li>
-        <li>
-          <span class="learning-map-number">03</span>
-          <h2>Compare implementation and specification.</h2>
-          <p>
-            Ledger handles an event. Spec independently describes the expected behavior. Both are pure Elixir modules.
-          </p>
-          <code>lib/hold_ledger/ledger.ex · spec.ex</code>
-          <a href="/system">See their responsibilities →</a>
-        </li>
-        <li>
-          <span class="learning-map-number">04</span>
-          <h2>Read the claim's input and conclusion.</h2>
-          <p>
-            The catalog registers {@inventory.total} claim groups: {@inventory.elixir} Elixir laws and {@inventory.lean} Lean-only claims. A group may contain several theorems.
-          </p>
-          <code>verification/laws.json</code>
-          <a href="/atlas">Find a claim →</a>
-        </li>
-        <li>
-          <span class="learning-map-number">05</span>
-          <h2>Follow the translation and supplied proof.</h2>
-          <p>
-            Lynx translates supported Elixir into Lean. The shared proof library has {@counts.shared_lean_files} source files, with definitions and proofs used across claims.
-          </p>
-          <code>test/support/lean/*.lean</code>
-          <a href="/translation">Read Elixir and Lean together →</a>
-        </li>
-        <li>
-          <span class="learning-map-number">06</span>
-          <h2>Check evidence for these source bytes.</h2>
-          <p>
-            A matching verification report records its scope, required checker results, exported statements and allowed axioms.
-          </p>
-          <span class="learning-map-fact">Registration alone is not acceptance</span>
-          <a href="/assurance">Read the evidence and assumptions →</a>
-        </li>
-      </ol>
+        <ol class="learning-map" aria-label="From payment policy to matching evidence">
+          <li>
+            <span class="learning-map-number">01</span>
+            <h2>Begin with the payment policy.</h2>
+            <p>
+              When must a request succeed? When may capacity be released? Decide what the system is required to do.
+            </p>
+            <code>guides/specification.md</code>
+            <a href="/guarantees">Read the required behavior →</a>
+          </li>
+          <li>
+            <span class="learning-map-number">02</span>
+            <h2>Find a requirement to examine.</h2>
+            <p>
+              {@guarantees |> length()} summaries connect the policy to concrete cases, including exact fit, missing replies and retained identities.
+            </p>
+            <span class="learning-map-fact">Curated reading summaries</span>
+            <a href="/start">Follow the missing-reply example →</a>
+          </li>
+          <li>
+            <span class="learning-map-number">03</span>
+            <h2>Compare implementation and specification.</h2>
+            <p>
+              Ledger handles an event. Spec independently describes the expected behavior. Both are pure Elixir modules.
+            </p>
+            <code>lib/hold_ledger/ledger.ex · spec.ex</code>
+            <a href="/system">See their responsibilities →</a>
+          </li>
+          <li>
+            <span class="learning-map-number">04</span>
+            <h2>Read the claim's input and conclusion.</h2>
+            <p>
+              The catalog registers {@inventory.total} claim groups: {@inventory.elixir} Elixir laws and {@inventory.lean} Lean-only claims. A group may contain several theorems.
+            </p>
+            <code>verification/laws.json</code>
+            <a href="/atlas">Find a claim →</a>
+          </li>
+          <li>
+            <span class="learning-map-number">05</span>
+            <h2>Follow the translation and supplied proof.</h2>
+            <p>
+              Lynx translates supported Elixir into Lean. The shared proof library has {@counts.shared_lean_files} source files, with definitions and proofs used across claims.
+            </p>
+            <code>test/support/lean/*.lean</code>
+            <a href="/translation">Read Elixir and Lean together →</a>
+          </li>
+          <li>
+            <span class="learning-map-number">06</span>
+            <h2>Check evidence for these source bytes.</h2>
+            <p>
+              A matching verification report records its scope, required checker results, exported statements and allowed axioms.
+            </p>
+            <span class="learning-map-fact">Registration alone is not acceptance</span>
+            <a href="/assurance">Read the evidence and assumptions →</a>
+          </li>
+        </ol>
       </details>
       <aside class="learning-context-note">
         <h2>Where does the outside world enter?</h2>
@@ -1049,9 +1083,21 @@ defmodule HoldLedgerReviewWeb.EducationLive do
               describes the required output.
             </p>
             <h3>Input condition</h3>
-            <pre id="translation-requires" class={if(@focus == "requires", do: "source-selected")} tabindex="0" role="region" aria-label="PO-A2 requires condition"><code>{@reading["contract"]["requires"]}</code></pre>
+            <pre
+              id="translation-requires"
+              class={if(@focus == "requires", do: "source-selected")}
+              tabindex="0"
+              role="region"
+              aria-label="PO-A2 requires condition"
+            ><code>{@reading["contract"]["requires"]}</code></pre>
             <h3>Required output</h3>
-            <pre id="translation-expects" class={if(@focus == "expects", do: "source-selected")} tabindex="0" role="region" aria-label="PO-A2 expects condition"><code>{@reading["contract"]["expects"]}</code></pre>
+            <pre
+              id="translation-expects"
+              class={if(@focus == "expects", do: "source-selected")}
+              tabindex="0"
+              role="region"
+              aria-label="PO-A2 expects condition"
+            ><code>{@reading["contract"]["expects"]}</code></pre>
             <p class="edu-source-note">
               <code>test/laws/po_a2_test.exs</code> · line {@reading["contract"]["line"]}
             </p>
@@ -1094,13 +1140,20 @@ defmodule HoldLedgerReviewWeb.EducationLive do
               <div id="translation-generated-unavailable" class="learning-source-empty">
                 <h3>Generated definitions are not available for this source.</h3>
                 <p>
-                  Lynx represents Elixir values with <code>Lynx.Term</code> and turns the law's input and output conditions into Lean definitions. The supplied theorem refers to those definitions.
+                  Lynx represents Elixir values with <code>Lynx.Term</code>
+                  and turns the law's input and output conditions into Lean definitions. The supplied theorem refers to those definitions.
                 </p>
                 <p>
                   To produce the focused artifacts, run this from the repository root with the pinned tools installed:
                 </p>
-                <pre tabindex="0" role="region" aria-label="Command to generate focused claim readings"><code>MIX_ENV=test uv run --locked python scripts/local_run.py mix run apps/review_web/scripts/produce_claim_readings.exs</code></pre>
-                <p>This writes the focused reading index and artifacts used by this page. Reload to read matching generated definitions. Assess the full verification report separately.</p>
+                <pre
+                  tabindex="0"
+                  role="region"
+                  aria-label="Command to generate focused claim readings"
+                ><code>MIX_ENV=test uv run --locked python scripts/local_run.py mix run apps/review_web/scripts/produce_claim_readings.exs</code></pre>
+                <p>
+                  This writes the focused reading index and artifacts used by this page. Reload to read matching generated definitions. Assess the full verification report separately.
+                </p>
               </div>
             <% end %>
             <p class="learning-source-status">
@@ -1147,7 +1200,10 @@ defmodule HoldLedgerReviewWeb.EducationLive do
               <p class="edu-source-note">
                 <code>{declaration["path"]}</code> · line {declaration["line"]}
               </p>
-              <details id="translation-proof" class={["learning-source-disclosure", @focus == "proof" && "source-selected"]}>
+              <details
+                id="translation-proof"
+                class={["learning-source-disclosure", @focus == "proof" && "source-selected"]}
+              >
                 <summary>Read the supplied proof body</summary>
                 <pre tabindex="0" role="region" aria-label="PO-A2 supplied proof body"><code>{declaration["text"]}</code></pre>
                 <a href={Learning.source_url(@reading, declaration["path"])}>Read the complete Lean file →</a>
@@ -1163,9 +1219,21 @@ defmodule HoldLedgerReviewWeb.EducationLive do
             <details class="learning-source-disclosure translation-notation" id="translation-notation">
               <summary>A short guide to the Lean notation</summary>
               <dl>
-                <div><dt><code>Lynx.Term</code></dt><dd>The representation of Elixir values used by translated code.</dd></div>
-                <div><dt><code>«po_a2/3»</code></dt><dd>A quoted Lean identifier. The name keeps the Elixir function's name and arity.</dd></div>
-                <div><dt><code>requires</code> / <code>ensures</code></dt><dd>The generated conditions for the law's input and its promised output. The latter comes from <code>expects</code>.</dd></div>
+                <div>
+                  <dt><code>Lynx.Term</code></dt><dd>
+                    The representation of Elixir values used by translated code.
+                  </dd>
+                </div>
+                <div>
+                  <dt><code>«po_a2/3»</code></dt><dd>
+                    A quoted Lean identifier. The name keeps the Elixir function's name and arity.
+                  </dd>
+                </div>
+                <div>
+                  <dt><code>requires</code> / <code>ensures</code></dt><dd>
+                    The generated conditions for the law's input and its promised output. The latter comes from <code>expects</code>.
+                  </dd>
+                </div>
               </dl>
             </details>
           </section>
@@ -1222,11 +1290,26 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     <section class="system-flow" aria-labelledby="system-flow-title">
       <h2 id="system-flow-title">Local state and remote work have different jobs.</h2>
       <ol>
-        <li><span>01 · Record the input</span><h3>Journal and runtime</h3><p>The runtime syncs the input before applying it.</p><code>recorded event →</code></li>
-        <li><span>02 · Compute the transition</span><h3>Ledger</h3><p>The pure function returns a state, result and requested effects.</p><code>effects → runtime</code></li>
-        <li><span>03 · Perform the outside work</span><h3>Processor</h3><p>The runtime sends the request. A trusted reply becomes another input.</p><code>reply → runtime</code></li>
+        <li>
+          <span>01 · Record the input</span><h3>Journal and runtime</h3><p>
+            The runtime syncs the input before applying it.
+          </p><code>recorded event →</code>
+        </li>
+        <li>
+          <span>02 · Compute the transition</span><h3>Ledger</h3><p>
+            The pure function returns a state, result and requested effects.
+          </p><code>effects → runtime</code>
+        </li>
+        <li>
+          <span>03 · Perform the outside work</span><h3>Processor</h3><p>
+            The runtime sends the request. A trusted reply becomes another input.
+          </p><code>reply → runtime</code>
+        </li>
       </ol>
-      <p><strong>Spec is independent.</strong> It describes expected behavior for comparison with Ledger. Lynx and Lean check stated properties; they do not process payments at runtime.</p>
+      <p>
+        <strong>Spec is independent.</strong>
+        It describes expected behavior for comparison with Ledger. Lynx and Lean check stated properties; they do not process payments at runtime.
+      </p>
     </section>
     <div class="edu-section-head">
       <div>
@@ -1399,10 +1482,18 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     />
     <section id="edu-origin-story" aria-label="How to read claim identifiers">
       <.vocabulary_ladder />
-      <p class="atlas-notation">IDs beginning with <code>PO</code> name proof obligations: statements the project asks its proofs to establish. The catalog groups related statements; a group can contain more than one theorem.</p>
+      <p class="atlas-notation">
+        IDs beginning with <code>PO</code>
+        name proof obligations: statements the project asks its proofs to establish. The catalog groups related statements; a group can contain more than one theorem.
+      </p>
     </section>
     <div id="edu-families">
-      <.claim_map claims={@all} families={@families} requirements={@guarantees} selected={@map_requirement} />
+      <.claim_map
+        claims={@all}
+        families={@families}
+        requirements={@guarantees}
+        selected={@map_requirement}
+      />
     </div>
     <section class="edu-atlas-browser" id="edu-atlas-browser">
       <div class="edu-section-head">
@@ -1595,7 +1686,9 @@ defmodule HoldLedgerReviewWeb.EducationLive do
     ~H"""
     <%= if @claim do %>
       <nav class="edu-profile-breadcrumb" aria-label="Claim location">
-        <a href="/atlas">Claim Atlas</a><span aria-hidden="true">/</span><a href={"/atlas?family=" <> URI.encode_www_form(@claim["family"])}>{@claim["family"]}</a><span aria-hidden="true">/</span><span>{@claim["id"]}</span>
+        <a href="/atlas">Claim Atlas</a><span aria-hidden="true">/</span><a href={"/atlas?family=" <> URI.encode_www_form(@claim["family"])}>{@claim[
+          "family"
+        ]}</a><span aria-hidden="true">/</span><span>{@claim["id"]}</span>
       </nav>
       <section class="edu-profile-hero" id="edu-claim-profile">
         <div class="edu-profile-heading">
@@ -1615,13 +1708,19 @@ defmodule HoldLedgerReviewWeb.EducationLive do
           <p class="edu-eyebrow">Consider this case</p><p>{@claim["scenario"]}</p>
         </div>
       </section>
-      <nav :if={@requirements != []} class="profile-requirements" aria-label="Related payment requirements">
+      <nav
+        :if={@requirements != []}
+        class="profile-requirements"
+        aria-label="Related payment requirements"
+      >
         <span>Related requirements</span>
         <a :for={requirement <- @requirements} href={"/guarantees?requirement=" <> requirement.id}>{requirement.title} →</a>
       </nav>
       <div class="edu-profile-grid">
         <section class="edu-profile-panel edu-profile-promise">
-          <p class="edu-eyebrow">The promise</p><h2>What must happen</h2><p>{@claim["must_happen"]}</p>
+          <p class="edu-eyebrow">The promise</p><h2>What must happen</h2><p>
+            {@claim["must_happen"]}
+          </p>
         </section>
         <section class="edu-profile-panel edu-profile-wrong">
           <p class="edu-eyebrow">The challenge</p><h2>What would go wrong</h2><p>

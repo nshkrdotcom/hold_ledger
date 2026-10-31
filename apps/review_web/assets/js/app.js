@@ -159,6 +159,7 @@ const eduUI = {
   get guidance() { return document.querySelector("select[data-edu-guidance]") },
 }
 let eduActiveTarget = null
+let eduDismissedTarget = null
 let eduDialogTarget = null
 let eduLastFocus = null
 let eduCloseTimer = null
@@ -272,7 +273,7 @@ function eduPositionTooltip(target) {
 }
 
 function eduShowTooltip(target) {
-  if (!eduUI.tooltip || !target?.isConnected || eduDialogTarget || eduRestoringFocus) return
+  if (!eduUI.tooltip || !target?.isConnected || eduDialogTarget || eduRestoringFocus || target === eduDismissedTarget) return
   const questionPanel = document.getElementById("question-panel")
   if (questionPanel && !questionPanel.contains(target)) return
   const explanation = eduExplain(target)
@@ -469,6 +470,9 @@ document.addEventListener("pointerover", event => {
   }
 })
 document.addEventListener("pointerout", event => {
+  if (eduDismissedTarget?.contains(event.target) &&
+      !eduDismissedTarget.contains(event.relatedTarget) &&
+      !eduDismissedTarget.contains(document.activeElement)) eduDismissedTarget = null
   if (!eduActiveTarget || eduActiveTarget.contains(document.activeElement)) return
   const fromHelp = eduActiveTarget.contains(event.target) || eduUI.tooltip?.contains(event.target)
   const toHelp = eduActiveTarget.contains(event.relatedTarget) || eduUI.tooltip?.contains(event.relatedTarget)
@@ -479,6 +483,7 @@ document.addEventListener("focusin", event => {
   if (target) eduShowTooltip(target)
 })
 document.addEventListener("focusout", event => {
+  if (eduDismissedTarget?.contains(event.target)) eduDismissedTarget = null
   if (eduActiveTarget?.contains(event.target)) eduCloseTooltip()
 })
 document.addEventListener("click", event => {
@@ -548,6 +553,7 @@ document.addEventListener("keydown", event => {
     if (open) {
       event.preventDefault()
       event.stopPropagation()
+      eduDismissedTarget = eduActiveTarget
       eduCloseTooltip()
       if (eduDialogTarget) eduCloseTerm()
       else if (eduUI.drawer && !eduUI.drawer.hidden) eduCloseHelp()

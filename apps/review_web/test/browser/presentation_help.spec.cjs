@@ -312,3 +312,17 @@ test('attribute-only patches restore registered control help', async ({page}) =>
   await expect(page.locator('[data-tooltip-title]')).toHaveText('Save to timeline');
   expect(await page.evaluate(() => window.timelineSaves)).toBe(0);
 });
+
+test('Escape keeps focused help dismissed through pointer entry until focus leaves', async ({page}) => {
+  const control = page.locator('#ordinary');
+  await control.focus();
+  await expect(page.locator('#edu-tooltip')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#edu-tooltip')).toBeHidden();
+  await control.dispatchEvent('pointerover', {pointerType: 'mouse', relatedTarget: null});
+  await expect(page.locator('#edu-tooltip')).toBeHidden();
+  await expect(control).toBeFocused();
+  await page.locator('#question-field').focus();
+  await control.focus();
+  await expect(page.locator('#edu-tooltip')).toBeVisible();
+});

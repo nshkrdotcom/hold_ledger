@@ -144,3 +144,5 @@
 @media (prefers-reduced-motion: reduce) {
   #claim-lens[data-learning-mode] *,#claim-lens[data-learning-mode] *::before,#claim-lens[data-learning-mode] *::after {animation: none!important; transition: none!important; scroll-behavior: auto!important}
 }
+
+#claim-lens[data-learning-mode] :is(li, label, blockquote) {overflow-wrap: anywhere;}

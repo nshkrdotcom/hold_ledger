@@ -4,7 +4,9 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
   alias HoldLedgerReview.Claims
   alias HoldLedgerReviewWeb.Education
 
-  test "the dashboard map links every registered group without inventing proof status", %{conn: conn} do
+  test "the dashboard map links every registered group without inventing proof status", %{
+    conn: conn
+  } do
     {:ok, view, html} = live(conn, "/")
     {:ok, claims} = Education.claims()
 
@@ -19,28 +21,52 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     assert has_element?(view, "#edu-claim-map", "does not show proof dependencies")
     render_click(view, "map_requirement", %{"id" => "uncertainty"})
     assert has_element?(view, "[data-map-claim='po_b2'][data-related='true']")
-    assert has_element?(view, "[data-map-claim='po_b2'][aria-label*='In the selected requirement']")
+
+    assert has_element?(
+             view,
+             "[data-map-claim='po_b2'][aria-label*='In the selected requirement']"
+           )
+
     assert has_element?(view, "[data-map-claim='po_b2'] .map-related-mark", "✓")
     assert has_element?(view, "[data-map-claim='po_a2'][data-related='false']")
-    assert has_element?(view, "[data-map-claim='po_a2'][aria-label*='Outside the selected requirement']")
+
+    assert has_element?(
+             view,
+             "[data-map-claim='po_a2'][aria-label*='Outside the selected requirement']"
+           )
+
     render_click(view, "map_requirement", %{"id" => "all"})
     refute has_element?(view, "[data-map-claim][data-related='false']")
   end
 
   test "possible processor outcomes leave the computed local state unchanged", %{conn: conn} do
     {:ok, view, _} = live(conn, "/start?moment=3")
-    assert has_element?(view, "#edu-uncertainty [data-possibility='approved'][aria-pressed='true']")
+
+    assert has_element?(
+             view,
+             "#edu-uncertainty [data-possibility='approved'][aria-pressed='true']"
+           )
+
     assert has_element?(view, "#edu-story-after-held", "100¢")
 
     render_click(view, "processor_possibility", %{"id" => "undelivered"})
-    assert has_element?(view, "#edu-uncertainty [data-possibility='undelivered'][aria-pressed='true']")
+
+    assert has_element?(
+             view,
+             "#edu-uncertainty [data-possibility='undelivered'][aria-pressed='true']"
+           )
+
     assert has_element?(view, "#edu-processor-possibility", "never reached the processor")
     assert has_element?(view, "#edu-story-after-held", "100¢")
     assert has_element?(view, "#edu-story-result code", "marked_unknown")
     assert has_element?(view, "#edu-uncertainty", "Possible outcomes")
 
     render_click(view, "processor_possibility", %{"id" => "invented"})
-    assert has_element?(view, "#edu-uncertainty [data-possibility='undelivered'][aria-pressed='true']")
+
+    assert has_element?(
+             view,
+             "#edu-uncertainty [data-possibility='undelivered'][aria-pressed='true']"
+           )
   end
 
   test "requirement deep links preserve orientation and invalid selections recover", %{conn: conn} do

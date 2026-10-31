@@ -1352,8 +1352,10 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
   defp hunt_label(%{status: "idle"}), do: "Ready to try preset outputs"
   defp hunt_label(%{status: "running"}), do: "Checking preset outputs…"
   defp hunt_label(%{status: "found"}), do: "A preset output matched the search. Read its checks."
+
   defp hunt_label(%{status: "budget_exhausted"}),
     do: "No matching output in these presets. Try editing one."
+
   defp hunt_label(%{status: "cancelled"}), do: "Search stopped"
   defp hunt_label(%{status: "failed"}), do: "Could not check the presets"
   defp hunt_label(%{status: "stale"}), do: "Results expired; run again"
@@ -1784,12 +1786,12 @@ defmodule HoldLedgerReviewWeb.CockpitLive do
                     </button>
                   </div>
                   <p :if={@slug in ~w(po_a2 po_exposure_retain)} class="case-practice-link">
-                    Practice this judgment:
-                    <a href={~p"/lens/#{@slug}"}>Open guided practice</a>
+                    Practice this judgment: <a href={~p"/lens/#{@slug}"}>Open guided practice</a>
                   </p>
                   <p id="observation-target" class="review-target">
                     <%= if @case_data do %>
-                      Active claim {@slug} · {term(@case_data["event"])} · {if(@preview || @experiment,
+                      Active claim {@slug} · {term(@case_data["event"])} · {if(
+                        @preview || @experiment,
                         do: "unsaved experiment",
                         else: "saved step"
                       )}

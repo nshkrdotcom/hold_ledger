@@ -69,8 +69,8 @@
 #review-document[data-case-view] #policy-anchor {color: var(--case-ink); font-size: .95rem; line-height: 1.65; max-width: 100ch;}
 #review-document[data-case-view] #policy-source {margin-left: .45rem; min-height: 32px;}
 #review-document[data-case-view] #review-help {background: #f5f7f5; color: var(--case-muted); border-radius: 6px;}
-#review-document[data-case-view] #selected-claim {border-color: var(--case-line); background: #fff;}
-#review-document[data-case-view] .example-contract {font-size: .78rem; color: var(--case-muted);}
+#review-document[data-case-view] #selected-claim {grid-column: 1 / -1; border-color: var(--case-line); background: #fff;}
+#review-document[data-case-view] .example-contract {grid-column: 1 / -1; font-size: .78rem; color: var(--case-muted);}
 #review-document[data-case-view] #case-review-map {display: flex; gap: .65rem; margin: 1rem 0 1.25rem;}
 #review-document[data-case-view] #case-review-map a {background: transparent; color: var(--case-action); padding: .35rem .5rem; min-height: 44px; font-size: .8rem;}
 #review-document[data-case-view] #case-review-map a span {border-color: #a5c3b8; color: var(--case-action); background: var(--case-soft);}
@@ -232,14 +232,17 @@
 @media (max-width: 1159px) {
   #review-document[data-case-view] .connected-experiment {display: block;}
   #review-document[data-case-view] .reasoning-lane {margin-top: 1.25rem;}
-  #review-document[data-case-view] .rule-ribbon {grid-template-columns: minmax(0, .9fr) minmax(0, 1.4fr);}
-  #review-document[data-case-view] #choose-sources {justify-self: start; grid-column: 1 / -1;}
+  #review-document[data-case-view] .rule-ribbon {grid-template-columns: minmax(0, 1fr) auto;}
+  #review-document[data-case-view] .rule-identity {grid-column: 1 / -1; grid-row: 1;}
+  #review-document[data-case-view] #law-picker {grid-column: 1; grid-row: 2;}
+  #review-document[data-case-view] #choose-sources {justify-self: end; grid-column: 2; grid-row: 2;}
 }
 
 @media (max-width: 599px) {
   #review-document[data-case-view] #case-education-bridge {display: block;}
   #review-document[data-case-view] .case-presentation {width: 100%; margin-top: 1rem;}
   #review-document[data-case-view] .rule-ribbon {grid-template-columns: minmax(0, 1fr); gap: .7rem;}
+  #review-document[data-case-view] #choose-sources {grid-column: 1; grid-row: 3;}
   #review-document[data-case-view] #review-comparison {padding: .9rem;}
   #review-document[data-case-view] #case-review-map {display: grid; grid-template-columns: minmax(0, 1fr); gap: .2rem;}
   #review-document[data-case-view] #case-review-map a {padding: .35rem 0;}
@@ -261,4 +264,10 @@
 @media (prefers-reduced-motion: reduce) {
   #review-document[data-case-view] *,
   #question-assistant * {animation: none; transition: none; scroll-behavior: auto;}
+}
+
+/* Keep expanded expression trees readable when text is enlarged on phones. */
+#review-document[data-case-view] .inline-values {min-width: 0; overflow-wrap: anywhere;}
+@media (max-width: 480px) {
+  #review-document[data-case-view] .logic-children {margin-left: 0; padding-left: .2rem;}
 }

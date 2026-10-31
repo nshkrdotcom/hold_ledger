@@ -54,7 +54,7 @@ outside the event model. The examples contact no payment processor.
 This app is a separate Phoenix project at `apps/review_web`, with a local path
 dependency on the repository root. Run the commands below from that root.
 
-Follow [Getting started](../../guides/getting-started.md) for the pinned
+Follow [Getting started](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/getting-started.md) for the pinned
 Elixir/OTP pair, Python and `uv`. The app's CI uses Elixir 1.20.4 and OTP 29.1.2.
 Onboarding checks the installed Elixir/OTP and provisions the pinned local proof
 tools; Python and `uv` support repository tooling rather than the application
@@ -92,7 +92,7 @@ and source material. Contextual links keep the selected claim nearby.
 
 A useful first journey is the Payment walkthrough, Elixir to Lean, the exact-fit
 case in Case Lab, then Claim Lens. The
-[formal verification crash course](../../guides/formal_verification_crash_course.md)
+[formal verification crash course](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/formal_verification_crash_course.md)
 provides a longer lesson, starting with a small law before a ledger proof.
 You can read it before installing the proof tools.
 
@@ -276,7 +276,7 @@ kept outside the default implementation. For example,
 [M7](http://localhost:4000/examples?example=M7) omits the requested cancellation
 while retaining the hold and correct counters. PO-B3 checks requested effects.
 
-The page reads committed examples. Use the [testing guide](../../guides/testing.md)
+The page reads committed examples. Use the [testing guide](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/testing.md)
 when you need fresh mutation execution evidence.
 
 Claim profiles also link to eight payment-policy exercises, P01–P08. P08 is
@@ -302,7 +302,7 @@ reviewed source bytes. Missing, stale or ambiguous links are marked unavailable.
 A checked theorem establishes its stated conclusion under its assumptions.
 Review must still connect the statement to the policy and the translated model
 to the source. Full acceptance requires all six checker configurations and the
-permitted-axiom audit. The [verification guide](../../guides/verification.md)
+permitted-axiom audit. The [verification guide](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md)
 describes scope and `ProofEvidence` validation. A count, source excerpt or
 selected-scope result cannot stand in for that full report.
 
@@ -318,8 +318,8 @@ recording it locally are separate steps. Approval keeps the hold active;
 that hold's trusted decline or void confirmation can release it.
 
 **Assumptions** varies supported processor behavior, including whether
-cancellation stays final. The [processor](../../guides/processors.md) and
-[runtime](../../guides/runtime.md) guides explain what a real service and durable
+cancellation stays final. The [processor](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/processors.md) and
+[runtime](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/runtime.md) guides explain what a real service and durable
 storage must provide. A modeled assumption is a requirement for that boundary,
 not evidence that a deployed service meets it.
 
@@ -480,7 +480,7 @@ mappings. Keep labels consistent across the screen, help and this guide.
 Keep the CSS import order explicit: `review_base.css` retains the existing tool
 layouts, followed by `interface.css`, `case_workbench.css` and `claim_lens.css`.
 An explanation interprets existing policy; changing the policy or formal
-statement requires the review described in [Human review](../../guides/human_review.md).
+statement requires the review described in [Human review](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/human_review.md).
 
 ## Use the command interface
 
@@ -550,7 +550,7 @@ question submission and local persistence without provider calls; live answer
 quality is outside that check.
 
 Ordinary tests, formal verification and external assumptions have different
-evidence requirements. Follow the [verification guide](../../guides/verification.md)
+evidence requirements. Follow the [verification guide](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/verification.md)
 for a fresh formal run; the web checks above are not full proof acceptance.
 
 ## Troubleshooting
