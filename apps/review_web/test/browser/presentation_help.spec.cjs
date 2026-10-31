@@ -240,3 +240,47 @@ test('new term buttons receive dialog semantics without changing ordinary action
   expect(await page.evaluate(() => window.caseRuns)).toBe(1);
   await expect(page.locator('#edu-term-dialog')).toBeHidden();
 });
+
+
+test('pointer entry after keyboard scrolling preserves the focused explanation', async ({page}) => {
+  const term = page.locator('#term');
+  await term.focus();
+  await expect(term).toHaveAttribute('aria-describedby', 'existing edu-tooltip');
+  const title = await page.locator('[data-tooltip-title]').innerText();
+  await page.locator('#ordinary').dispatchEvent('pointerover', {pointerType: 'mouse'});
+  await expect(page.locator('[data-tooltip-title]')).toHaveText(title);
+  await expect(term).toHaveAttribute('aria-describedby', 'existing edu-tooltip');
+  await expect(term).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page.locator('#ordinary').dispatchEvent('pointerover', {pointerType: 'mouse'});
+  await expect(page.locator('#edu-tooltip')).toBeHidden();
+  await term.evaluate(node => node.blur());
+  await page.locator('#ordinary').hover();
+  await expect(page.locator('[data-tooltip-short]')).toHaveText('Runs this example.');
+  expect(await page.evaluate(() => window.caseRuns)).toBe(0);
+});
+
+test('an open question panel keeps background hover help out of its controls', async ({page}) => {
+  await page.evaluate(() => {
+    const panel = document.createElement('section');
+    panel.id = 'question-panel';
+    panel.innerHTML = '<input id="panel-field"><button id="panel-help" data-edu-term="requires">Input condition</button>';
+    document.body.append(panel);
+    panel.querySelector('input').focus();
+  });
+  await page.locator('#ordinary').dispatchEvent('pointerover', {pointerType: 'mouse'});
+  await expect(page.locator('#edu-tooltip')).toBeHidden();
+  await page.locator('#panel-help').focus();
+  await expect(page.locator('#edu-tooltip')).toBeVisible();
+  await expect(page.locator('#panel-help')).toHaveAttribute('aria-describedby', 'edu-tooltip');
+});
+
+test('attribute-only patches restore registered control help', async ({page}) => {
+  const save = page.locator('#append-preview');
+  await expect(save).toHaveAttribute('data-help', 'lab.save_to_timeline');
+  await save.evaluate(node => node.removeAttribute('data-help'));
+  await expect(save).toHaveAttribute('data-help', 'lab.save_to_timeline');
+  await save.focus();
+  await expect(page.locator('[data-tooltip-title]')).toHaveText('Save to timeline');
+  expect(await page.evaluate(() => window.timelineSaves)).toBe(0);
+});

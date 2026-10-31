@@ -105,6 +105,7 @@
 #review-document[data-case-view] #case-presentation button {min-width: 0; max-width: 100%; min-height: 40px; padding: .4rem 1rem; border-color: transparent; background: transparent; font-size: .84rem; white-space: normal; overflow-wrap: anywhere}
 #review-document[data-case-view] #case-presentation button[aria-pressed=true] {background: white; border-color: #bcb2d2; color: #4e3d70; font-weight: 700; box-shadow: 0 1px 3px #26374b10}
 #review-document[data-case-view] #case-presentation-help {margin: .45rem 0 0; max-width: 40ch; font-size: .75rem; line-height: 1.5; color: #536378}
+#review-document[data-case-view] #law-picker select {min-height: 40px; height: auto}
 #review-document[data-case-view] #choose-sources {max-width: 100%; min-height: 40px; height: auto; white-space: normal}
 #review-document[data-case-view] #case-review-map {display: flex; flex-wrap: wrap; gap: .45rem; margin: .75rem 0 1.15rem; padding: 0; background: transparent; border: 0}
 #review-document[data-case-view] #case-review-map a {display: inline-flex; align-items: center; gap: .5rem; min-height: 42px; border-radius: 7px; padding: .45rem .75rem; color: #4e4269; background: #f1eef7; font-size: .8rem; font-weight: 600; text-decoration: none}

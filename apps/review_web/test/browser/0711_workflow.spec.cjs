@@ -6,6 +6,7 @@ async function open(page, slug = 'po_a2') {
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   // These regressions exercise the detailed source workspace.
   await page.locator('#case-view-inspector').click();
+  await expect(page.locator('#review-document')).toHaveAttribute('data-case-view', 'inspector');
 }
 
 async function saved(page) {

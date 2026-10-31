@@ -1,4 +1,7 @@
 /* Learning pages use the shared account view and the existing source readers. */
+.edu-root :is(h1, h2, h3, p) {overflow-wrap: anywhere}
+#edu-story .learning-story-steps button {flex-wrap: wrap; overflow-wrap: anywhere}
+#edu-story .learning-story-steps button > span {min-width: 0; max-width: 100%}
 #edu-overview.learning-home {
   grid-template-columns: minmax(0, 1fr) minmax(330px, .95fr);
   align-items: start;

@@ -66,7 +66,8 @@ for (const [width, height] of [[1440, 900], [390, 844]]) {
       };
     });
     expect(geometry.inOrder).toBe(true);
-    expect(geometry.sticky).toBe(width > 950 ? 'sticky' : 'static');
+    // Evidence stays in document flow in both Lab presentations.
+    expect(geometry.sticky).toBe('static');
     expect(geometry.overflow).toBe(false);
     await expect(page.locator('#nearby-observation')).toBeVisible();
     await expect(page.locator('#review-help')).toContainText('source-reading aids');

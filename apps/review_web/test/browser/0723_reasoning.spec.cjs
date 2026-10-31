@@ -6,6 +6,7 @@ async function open(page, slug = 'po_a2') {
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   // These regressions exercise the detailed source workspace.
   await page.locator('#case-view-inspector').click();
+  await expect(page.locator('#review-document')).toHaveAttribute('data-case-view', 'inspector');
 }
 
 async function saved(page) {
@@ -119,7 +120,13 @@ for (const [width, height] of [[1440, 900], [1280, 800], [390, 844], [640, 400]]
     expect(geometry.source).toBeLessThan(geometry.input);
     expect(geometry.check).toBeLessThan(geometry.proof);
     await page.locator('#edit-candidate').click();
+    await expect(page.locator('#case-tools')).toBeVisible();
     await page.locator('#alternative-counter input').focus();
+    // The first Escape dismisses passive help while preserving the input focus.
+    await expect(page.locator('#edu-tooltip')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#edu-tooltip')).toBeHidden();
+    await expect(page.locator('#alternative-counter input')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.locator('#edit-candidate')).toBeFocused();
     await page.locator('#selected-claim summary').focus();

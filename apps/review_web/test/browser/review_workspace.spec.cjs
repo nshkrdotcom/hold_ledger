@@ -2,7 +2,10 @@ const {test,expect}=require('@playwright/test');
 async function open(page,slug='po_a2',inspector=true) {
  await page.goto('/claims/'+slug);await expect(page).toHaveURL(new RegExp('/claims/'+slug+'/trace-'));
  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
- if(inspector)await page.locator('#case-view-inspector').click();
+ if(inspector){
+  await page.locator('#case-view-inspector').click();
+  await expect(page.locator('#review-document')).toHaveAttribute('data-case-view','inspector');
+ }
 }
 async function inspect(page,name){await page.locator('#inspector-tools [phx-value-view="'+name+'"]').click()}
 async function run(page,type,key='11'){
@@ -128,11 +131,23 @@ test('eight entries and their eight bindings remain inspectable without a giant 
  }
  await page.getByRole('button',{name:'Recalculate totals',exact:true}).click();await expect(page.locator('#initial_used_amount')).toHaveValue('296');await expect(page.locator('#initial_used_holds')).toHaveValue('8');await page.locator('#save-starting').click();await expect(page.locator('#case-tools')).toHaveCount(0);
  await run(page,'void','1');await expect(page.locator('#entries tbody tr')).toHaveCount(8);await expect(page.locator('#ledger-output')).toContainText('296¢ reserved');await expect(page.locator('#ledger-output .effect-list')).toContainText('Cancel hold 1');
+ await inspect(page,'clauses');
  await expect(page.locator('#binding-count')).toContainText('8 combinations checked');await page.locator('#binding-choice select').selectOption('7');await expect(page.locator('#binding-7')).toBeVisible();await expect(page.locator('#binding-0')).toHaveCount(0);
+ await inspect(page,'proof');
  expect(await page.locator('#proof-script > div').count()).toBeLessThan(15);await page.locator('#full-proof').click();await expect.poll(()=>page.locator('#proof-script > div').count()).toBeGreaterThan(40);
 });
 
 test('keyboard can leave inline editing and still inspect the rule',async({page})=>{
- await open(page);await page.locator('#edit-candidate').click();await page.locator('#alternative-counter input').focus();await page.keyboard.press('Escape');await expect(page.locator('#case-tools')).toHaveCount(0);await expect(page.locator('#edit-candidate')).toBeFocused();
+ await open(page);
+ await page.locator('#edit-candidate').click();
+ await expect(page.locator('#case-tools')).toBeVisible();
+ await page.locator('#alternative-counter input').focus();
+ await expect(page.locator('#edu-tooltip')).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#edu-tooltip')).toBeHidden();
+ await expect(page.locator('#alternative-counter input')).toBeFocused();
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#case-tools')).toHaveCount(0);
+ await expect(page.locator('#edit-candidate')).toBeFocused();
  await page.locator('#edit-candidate').click();await page.locator('#policy-source').click();await expect(page.locator('#inline-source')).toContainText('Specification');await expect(page.locator('#case-tools')).toBeVisible();
 });

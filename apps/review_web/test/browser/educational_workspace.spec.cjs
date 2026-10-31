@@ -14,6 +14,7 @@ for (const width of [390, 800, 1024, 1440]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.getByRole('link', {name: /Follow a payment hold/}).first().click();
     await expect(page.locator('#edu-story')).toBeVisible();
+    await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
     await page.getByRole('button', {name: /3 Timeout/}).click();
     await expect(page.locator('#edu-story')).toContainText('reply never arrives');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
@@ -326,10 +327,14 @@ test('authored Lab help remains available on request and processor controls', as
   await expect(page.locator('#edu-tooltip [data-tooltip-short]')).not.toBeEmpty();
   await page.keyboard.press('Escape');
   await expect(requestId).toBeFocused();
-  await page.locator('#event_type').selectOption('request');
   const amount = page.locator('#event_amount');
+  await page.locator('#event_type').selectOption('dispatch');
+  await expect(amount).toBeDisabled();
+  await page.locator('#event_type').selectOption('request');
   await expect(amount).toBeEnabled();
+  await expect(amount).toHaveAttribute('data-help', 'lab.amount');
   await amount.focus();
+  await expect(page.locator('#edu-tooltip')).toBeVisible();
   await expect(page.locator('#edu-tooltip [data-tooltip-short]')).toContainText('Amounts are whole cents');
   await page.keyboard.press('Escape');
   await expect(amount).toBeFocused();
@@ -351,3 +356,17 @@ test('authored Lab help remains available on request and processor controls', as
   await fencing.click();
   await expect(fencing).toHaveAttribute('aria-checked', prior === 'true' ? 'false' : 'true');
 });
+
+for (const [width, route] of [[390, '/'], [390, '/start?moment=3'], [390, '/glossary'], [390, '/guarantees'], [1024, '/how-it-fits']]) {
+  test(`enlarged text wraps with disclosures open on ${route} at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 900});
+    await page.goto(route);
+    await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
+    await page.evaluate(async () => {
+      document.documentElement.style.fontSize = '200%';
+      document.querySelectorAll('details').forEach(node => { node.open = true; });
+      await document.fonts.ready;
+    });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  });
+}

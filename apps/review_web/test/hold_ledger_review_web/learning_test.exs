@@ -9,6 +9,7 @@ defmodule HoldLedgerReviewWeb.LearningTest do
     assert {:ok, [start, request, dispatch, timeout, refused]} = Learning.walkthrough()
 
     assert start.index == 0
+
     assert start.ledger == %{
              "amount_limit" => 100,
              "hold_limit" => 2,
@@ -50,6 +51,25 @@ defmodule HoldLedgerReviewWeb.LearningTest do
     assert {:ok, ^doc} = Trace.get(doc["id"])
   end
 
+  test "every story prefix reopens with exactly its selected events and output" do
+    assert {:ok, moments} = Learning.walkthrough()
+
+    for moment <- moments do
+      assert {:ok, %{doc: doc, slug: slug}} = Learning.open_moment(moment.index)
+      assert slug == moment.claim
+      assert length(doc["steps"]) == moment.index
+      assert {:ok, ^doc} = Trace.get(doc["id"])
+
+      expected = moments |> Enum.take(moment.index + 1) |> tl()
+      assert Enum.map(doc["steps"], & &1["event"]) == Enum.map(expected, & &1.event)
+
+      if moment.index > 0 do
+        assert List.last(doc["steps"])["after"] == moment.ledger
+        assert List.last(doc["steps"])["output"] == moment.output
+      end
+    end
+  end
+
   test "the starting moment opens an empty account without inventing an event" do
     assert {:ok, %{doc: doc, slug: "po_i"}} = Learning.open_moment(0)
     assert doc["steps"] == []
@@ -89,7 +109,9 @@ defmodule HoldLedgerReviewWeb.LearningTest do
              "source_declaration_not_elaborated_evidence"
 
     assert translation.implementation.sha256 ==
-             HoldLedgerReview.Anchor.sha(File.read!(Path.join(Config.root(), translation.implementation.path)))
+             HoldLedgerReview.Anchor.sha(
+               File.read!(Path.join(Config.root(), translation.implementation.path))
+             )
   end
 
   test "missing generated artifacts are unavailable rather than replaced by supplied proof text" do
@@ -102,7 +124,13 @@ defmodule HoldLedgerReviewWeb.LearningTest do
 
   test "an unavailable checkout returns errors without fabricated story or translation data" do
     root = Config.root()
-    Application.put_env(:hold_ledger_review_web, :ledger_root, Path.join(root, "missing-checkout"))
+
+    Application.put_env(
+      :hold_ledger_review_web,
+      :ledger_root,
+      Path.join(root, "missing-checkout")
+    )
+
     on_exit(fn -> Application.put_env(:hold_ledger_review_web, :ledger_root, root) end)
 
     assert {:error, _} = Learning.walkthrough()

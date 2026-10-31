@@ -102,6 +102,7 @@ const QuestionPanel = {
   updated() {
     const panel = this.el.querySelector('#question-panel')
     if (panel && !this.previousPanel) {
+      eduCloseTooltip()
       this.opener = document.activeElement
       this.restore = true
       ;(panel.querySelector('textarea') || panel).focus({preventScroll: true})
@@ -272,6 +273,8 @@ function eduPositionTooltip(target) {
 
 function eduShowTooltip(target) {
   if (!eduUI.tooltip || !target?.isConnected || eduDialogTarget || eduRestoringFocus) return
+  const questionPanel = document.getElementById("question-panel")
+  if (questionPanel && !questionPanel.contains(target)) return
   const explanation = eduExplain(target)
   if (!explanation) return
   clearTimeout(eduCloseTimer)
@@ -456,7 +459,12 @@ document.addEventListener("pointerover", event => {
   if (eduUI.tooltip?.contains(event.target)) clearTimeout(eduCloseTimer)
   if (event.pointerType !== "touch") {
     const target = eduTarget(event)
-    if (target && !target.contains(event.relatedTarget)) eduShowTooltip(target)
+    // Focus-induced scrolling can move a stationary pointer onto another control.
+    // Keep the focused explanation and its accessible description in that case.
+    const focused = eduTarget({target: document.activeElement})
+    if (target && !target.contains(event.relatedTarget) && (!focused || target === focused)) {
+      eduShowTooltip(target)
+    }
   }
 })
 document.addEventListener("pointerout", event => {
@@ -567,7 +575,7 @@ new MutationObserver(records => {
     if (record.type === "attributes") eduSyncTerm(record.target)
   }
   if (records.some(record => record.type === "attributes" &&
-      ["phx-click", "phx-value-tool", "phx-value-view", "id"].includes(record.attributeName))) {
+      ["data-help", "phx-click", "phx-value-tool", "phx-value-view", "id"].includes(record.attributeName))) {
     eduSyncControls()
   }
   if (records.some(record => record.type === "childList")) {

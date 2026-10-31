@@ -154,7 +154,9 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     assert before_results =~ "id=\"edu-reading-directory\""
   end
 
-  test "the walkthrough starts empty and shows the state before and after the selected event", %{conn: conn} do
+  test "the walkthrough starts empty and shows the state before and after the selected event", %{
+    conn: conn
+  } do
     {:ok, view, _} = live(conn, "/start")
     assert has_element?(view, "#edu-story[data-moment='0']")
     assert has_element?(view, "#edu-story-initial-held", "0¢")
@@ -193,7 +195,9 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     assert List.last(trace["steps"])["event"]["type"] == "timeout"
   end
 
-  test "mutation selection exposes M7's patch and target without claiming a fresh run", %{conn: conn} do
+  test "mutation selection exposes M7's patch and target without claiming a fresh run", %{
+    conn: conn
+  } do
     {:ok, view, _} = live(conn, "/examples")
     view |> element("#edu-mutation-M7") |> render_click()
     assert has_element?(view, "#edu-selected-mutation[data-example-id='M7']")
@@ -202,16 +206,28 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     assert has_element?(view, "#edu-examples-scope", "does not run the mutation")
   end
 
-  test "the translation page labels source, generated artifacts and supplied proof separately", %{conn: conn} do
+  test "the translation page labels source, generated artifacts and supplied proof separately", %{
+    conn: conn
+  } do
     {:ok, view, _} = live(conn, "/translation")
     assert has_element?(view, "#translation-elixir", "request_eligible?")
     assert has_element?(view, "#translation-generated")
     assert has_element?(view, "#translation-theorem", "Source text")
     assert has_element?(view, "#translation-theorem-header", "Lynx.Term")
     refute has_element?(view, "#translation-proof[open]")
-    assert has_element?(view, "#translation-reading a[href*='formal_verification_crash_course.md']")
+
+    assert has_element?(
+             view,
+             "#translation-reading a[href*='formal_verification_crash_course.md']"
+           )
+
     assert has_element?(view, "#translation-implementation pre", "def request(")
-    assert has_element?(view, "#translation-implementation pre", "amount <= amount_limit - used_amount")
+
+    assert has_element?(
+             view,
+             "#translation-implementation pre",
+             "amount <= amount_limit - used_amount"
+           )
   end
 
   test "unknown examples recover through the existing selector", %{conn: conn} do
@@ -225,7 +241,13 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
 
   test "missing source shows useful unavailable states instead of a staged account", %{conn: conn} do
     root = HoldLedgerReview.Config.root()
-    Application.put_env(:hold_ledger_review_web, :ledger_root, Path.join(root, "missing-checkout"))
+
+    Application.put_env(
+      :hold_ledger_review_web,
+      :ledger_root,
+      Path.join(root, "missing-checkout")
+    )
+
     on_exit(fn -> Application.put_env(:hold_ledger_review_web, :ledger_root, root) end)
 
     {:ok, story, _} = live(conn, "/start")
@@ -239,7 +261,9 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     refute has_element?(translation, "#translation-theorem-header")
   end
 
-  test "the reading map gives catalog counts without presenting them as theorem totals", %{conn: conn} do
+  test "the reading map gives catalog counts without presenting them as theorem totals", %{
+    conn: conn
+  } do
     {:ok, view, _} = live(conn, "/how-it-fits")
     assert has_element?(view, "#edu-reading-map-scope", "Reading map, not proof dependencies")
     assert has_element?(view, ".learning-map", "49 claim groups")
@@ -248,13 +272,19 @@ defmodule HoldLedgerReviewWeb.EducationLiveTest do
     assert has_element?(view, ".learning-map a[href='/translation']")
   end
 
-  test "expanded glossary entries retain examples and expose scope and canonical reading", %{conn: conn} do
+  test "expanded glossary entries retain examples and expose scope and canonical reading", %{
+    conn: conn
+  } do
     {:ok, view, _} = live(conn, "/glossary?q=binding")
     assert has_element?(view, "#term-binding .learning-term-purpose")
     assert has_element?(view, "#term-binding .learning-term-limit")
     assert has_element?(view, "#term-binding .learning-term-lookups a[href^='https://']")
     assert has_element?(view, "#term-binding [data-source-path]")
-    assert has_element?(view, "#edu-reading-directory a[href*='formal_verification_crash_course.md']")
+
+    assert has_element?(
+             view,
+             "#edu-reading-directory a[href*='formal_verification_crash_course.md']"
+           )
   end
 
   test "architecture and guarantee selections expose the correct bound", %{conn: conn} do

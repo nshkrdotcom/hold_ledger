@@ -403,11 +403,17 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
           phx-click="boundary"
           phx-value-offset="0"
           disabled={!@request}
-        >All available</button><button id="boundary-more" phx-click="boundary" phx-value-offset="1" disabled={!@request}>1¢ more</button>
+        >All available</button><button
+          id="boundary-more"
+          phx-click="boundary"
+          phx-value-offset="1"
+          disabled={!@request}
+        >1¢ more</button>
       </div>
       <p id="boundary-guide" class="boundary-guide">
         {if @request,
-          do: "Try just below, exactly at, or just above the available amount. A new request also needs a free hold slot.",
+          do:
+            "Try just below, exactly at, or just above the available amount. A new request also needs a free hold slot.",
           else: "Use Run another event to choose a new request or continue this hold's history."}
       </p>
     </div>

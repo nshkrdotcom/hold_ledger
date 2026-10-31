@@ -15,7 +15,7 @@ test('typing and inspecting context stay local and never move the case',async({p
 });
 
 for(const width of [1280,390,640])test(`question overlay keyboard and reflow at ${width}`,async({page})=>{
- await page.setViewportSize({width,height:800});await open(page);const before=await geometry(page);if(width===390)await expect(page.locator('.brand')).toHaveAccessibleName('Hold Ledger, overview');
+ await page.setViewportSize({width,height:800});await open(page);const before=await geometry(page);if(width===390)await expect(page.locator('.brand')).toHaveAccessibleName('Hold Ledger, explore');
  if(width<=650)await page.locator('.question-mobile-open').click();else await page.locator('#question-history').click();
  await expect(page.locator('#question-panel')).toBeVisible();expect(await geometry(page)).toEqual(before);
  await page.locator('#question-close').focus();await page.keyboard.press('Escape');await expect(page.locator('#question-panel')).toHaveCount(0);

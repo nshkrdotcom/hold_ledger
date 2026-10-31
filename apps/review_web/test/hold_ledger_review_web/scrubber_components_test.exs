@@ -44,6 +44,32 @@ defmodule HoldLedgerReviewWeb.ScrubberComponentsTest do
     refute LazyHTML.text(LazyHTML.query(html, ".capacity-active-records")) =~ "Request 12"
   end
 
+  test "each hold state has a text label and only terminal records are separated" do
+    statuses = ~w(reserved sent unknown authorized voiding declined voided)
+
+    entries =
+      statuses
+      |> Enum.with_index(1)
+      |> Enum.map(fn {status, key} -> %{"key" => key, "amount" => 10, "status" => status} end)
+
+    html = capacity(%{"entries" => entries})
+    labels = LazyHTML.query(html, ".capacity-record-status") |> Enum.map(&LazyHTML.text/1)
+
+    assert labels == [
+             "Reserved",
+             "Authorization pending",
+             "Outcome unknown",
+             "Authorized",
+             "Waiting for cancellation",
+             "Declined",
+             "Cancelled"
+           ]
+
+    assert Enum.count(LazyHTML.query(html, ".capacity-active-records li")) == 5
+    assert Enum.count(LazyHTML.query(html, ".capacity-finished-records li")) == 2
+    assert LazyHTML.text(LazyHTML.query(html, "#test-capacity-held")) == "100¢"
+  end
+
   test "large limits use a bounded decorative rack and preserve exact counts" do
     html = capacity(%{"hold_limit" => 1_000_000, "used_holds" => 999_999})
     assert Enum.count(LazyHTML.query(html, ".capacity-slot")) == 8

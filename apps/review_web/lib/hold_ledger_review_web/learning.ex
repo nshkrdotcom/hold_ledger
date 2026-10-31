@@ -10,7 +10,8 @@ defmodule HoldLedgerReviewWeb.Learning do
       index: 0,
       label: "Start",
       title: "An empty account has room for a hold.",
-      text: "The account has a 100¢ amount limit and two hold slots. Nothing has been requested yet.",
+      text:
+        "The account has a 100¢ amount limit and two hold slots. Nothing has been requested yet.",
       claim: "po_i",
       claim_label: "Read the initial-state claim",
       native_event: nil,
@@ -74,24 +75,26 @@ defmodule HoldLedgerReviewWeb.Learning do
         hd(@moments)
         |> Map.merge(%{before: initial, ledger: initial, event: nil, output: nil})
 
-      Enum.reduce_while(tl(@moments), {:ok, [start]}, fn moment, {:ok, moments} ->
-        before = List.last(moments).ledger
+      Enum.reduce_while(tl(@moments), {:ok, [start]}, &compute_moment/2)
+    end
+  end
 
-        with {:ok, event} <- TermCodec.encode_event(moment.native_event),
-             {:ok, receipt} <- Trace.execute("ledger", before, event) do
-          computed =
-            Map.merge(moment, %{
-              before: receipt["before"],
-              ledger: receipt["after"],
-              event: receipt["event"],
-              output: receipt["output"]
-            })
+  defp compute_moment(moment, {:ok, moments}) do
+    before = List.last(moments).ledger
 
-          {:cont, {:ok, moments ++ [computed]}}
-        else
-          {:error, _} = error -> {:halt, error}
-        end
-      end)
+    with {:ok, event} <- TermCodec.encode_event(moment.native_event),
+         {:ok, receipt} <- Trace.execute("ledger", before, event) do
+      computed =
+        Map.merge(moment, %{
+          before: receipt["before"],
+          ledger: receipt["after"],
+          event: receipt["event"],
+          output: receipt["output"]
+        })
+
+      {:cont, {:ok, moments ++ [computed]}}
+    else
+      {:error, _} = error -> {:halt, error}
     end
   end
 
@@ -150,7 +153,8 @@ defmodule HoldLedgerReviewWeb.Learning do
 
   def source_counts do
     %{
-      shared_lean_files: length(Path.wildcard(Path.join(Config.root(), "test/support/lean/*.lean")))
+      shared_lean_files:
+        length(Path.wildcard(Path.join(Config.root(), "test/support/lean/*.lean")))
     }
   end
 
@@ -161,7 +165,8 @@ defmodule HoldLedgerReviewWeb.Learning do
        %{
          reading: reading,
          implementation: source_excerpt(reading, "lib/hold_ledger/ledger.ex", "def request({"),
-         eligibility: source_excerpt(reading, "lib/hold_ledger/spec.ex", "def request_eligible?(state,"),
+         eligibility:
+           source_excerpt(reading, "lib/hold_ledger/spec.ex", "def request_eligible?(state,"),
          generated: generated_source(reading)
        }}
     end
@@ -178,11 +183,14 @@ defmodule HoldLedgerReviewWeb.Learning do
   end
 
   @doc "Return an actual matching generated definition excerpt, or no generated source."
-  def generated_source(%{"focused" => %{"status" => "elaborated", "artifacts" => artifacts}} = reading)
+  def generated_source(
+        %{"focused" => %{"status" => "elaborated", "artifacts" => artifacts}} = reading
+      )
       when is_list(artifacts) do
     artifacts
     |> Enum.filter(fn item ->
       path = String.replace(item["path"] || "", "/", ".")
+
       String.contains?(path, "Elixir.HoldLedger.Ledger") or
         String.contains?(path, "Elixir.HoldLedger.Spec") or
         String.contains?(path, "Elixir.HoldLedger.ProofContracts")
@@ -197,7 +205,10 @@ defmodule HoldLedgerReviewWeb.Learning do
          lines = String.split(bytes, "\n"),
          index when is_integer(index) <-
            Enum.find_index(lines, fn line ->
-             Regex.match?(~r/^\s*(?:public\s+)?def\s+«(?:request\/3|request_eligible\?\/3|po_a2:requires\/3)»/u, line)
+             Regex.match?(
+               ~r/^\s*(?:public\s+)?def\s+«(?:request\/3|request_eligible\?\/3|po_a2:requires\/3)»/u,
+               line
+             )
            end) do
       %{
         path: item["path"],

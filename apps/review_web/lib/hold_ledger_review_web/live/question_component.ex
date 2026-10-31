@@ -413,8 +413,8 @@ defmodule HoldLedgerReviewWeb.QuestionComponent do
         </p>
         <p :if={@error} role="alert">{@error}</p>
         <p class="question-local-help">
-          Keep reading: <a href="/glossary">look up a term</a> or
-          <a href="/proofs">read a claim</a>. These guides work without sending a question.
+          Keep reading: <a href="/glossary">look up a term</a>
+          or <a href="/proofs">read a claim</a>. These guides work without sending a question.
         </p>
         <details :if={@error && @error_detail} id="question-error-details">
           <summary>Technical details</summary><code>{@error_detail}</code>

@@ -104,9 +104,13 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
             <span class="capacity-record-status">{ReviewCopy.state(entry["status"])}</span>
           </li>
         </ul>
-        <p class="capacity-footnote">Finished entries retain their request IDs; they do not hold capacity.</p>
+        <p class="capacity-footnote">
+          Finished entries retain their request IDs; they do not hold capacity.
+        </p>
       </div>
-      <p class="capacity-footnote">Recorded totals are shown as supplied, without recounting the entries.</p>
+      <p class="capacity-footnote">
+        Recorded totals are shown as supplied, without recounting the entries.
+      </p>
     </figure>
     """
   end
@@ -119,8 +123,7 @@ defmodule HoldLedgerReviewWeb.ScrubberComponents do
       limit: limit,
       free: if(numeric?, do: limit - used),
       in_range?: numeric? && limit >= 0 && used >= 0 && used <= limit,
-      percent:
-        if(numeric? && limit > 0, do: div(min(max(used, 0), limit) * 100, limit), else: 0)
+      percent: if(numeric? && limit > 0, do: div(min(max(used, 0), limit) * 100, limit), else: 0)
     }
   end
 

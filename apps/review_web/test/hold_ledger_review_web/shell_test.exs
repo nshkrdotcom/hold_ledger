@@ -17,7 +17,8 @@ defmodule HoldLedgerReviewWeb.ShellTest do
   end
 
   test "general pages do not imply a selected claim or review progress", %{conn: conn} do
-    for route <- ~w(/ /start /system /atlas /proofs /assurance /repository /glossary /how-it-fits /examples /translation) do
+    for route <-
+          ~w(/ /start /system /atlas /proofs /assurance /repository /glossary /how-it-fits /examples /translation) do
       html = response(get(conn, route), 200)
       refute html =~ "id=\"claim-navigation\""
       refute html =~ "id=\"review-steps\""

@@ -114,6 +114,7 @@ test('keyboard decisions and drafts reset across study navigation and reload', a
   await page.locator('#reference-nav > summary').click();
   await page.locator('#reference-nav').getByRole('link', {name: 'Practice a review'}).click();
   await expect(page).toHaveURL(/\/lens\/po_a2\?mode=explore$/);
+  await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await expect(page.locator('#lens-policy-verdict')).toBeVisible();
   await page.locator('#lens-exercise-modes a').filter({hasText: 'Review first'}).click();
   await expect(page).toHaveURL(/\/lens\/po_a2$/);

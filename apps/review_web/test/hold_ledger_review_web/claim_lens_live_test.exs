@@ -285,7 +285,12 @@ defmodule HoldLedgerReviewWeb.ClaimLensLiveTest do
       end
 
       refute has_element?(view, "#review-steps")
-      assert has_element?(view, "#case-review-modes a[href$='compare=open']", "Compare source versions")
+
+      assert has_element?(
+               view,
+               "#case-review-modes a[href$='compare=open']",
+               "Compare source versions"
+             )
     end
   end
 end

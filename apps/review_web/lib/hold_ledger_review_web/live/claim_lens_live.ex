@@ -1039,7 +1039,8 @@ defmodule HoldLedgerReviewWeb.ClaimLensLive do
     do: "The current claim accepts the proposed output for this input."
 
   defp baseline_description(:doesnt_apply),
-    do: "The input does not meet the claim's starting condition, so its output promise is not checked."
+    do:
+      "The input does not meet the claim's starting condition, so its output promise is not checked."
 
   defp baseline_description(:cant_check), do: "The case check could not be completed."
 
