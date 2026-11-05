@@ -9,10 +9,14 @@ import threading
 import time
 import unittest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import run_laws
+import run_mutants
 
 
 class ProgressTests(unittest.TestCase):
+    run_command = staticmethod(run_laws.run)
+
     def test_output_is_visible_before_command_finishes(self):
         with tempfile.TemporaryDirectory(dir=run_laws.ROOT / 'tmp') as folder:
             folder = Path(folder)
@@ -24,7 +28,7 @@ class ProgressTests(unittest.TestCase):
                     f'p=pathlib.Path({str(release)!r}); '
                     '\nwhile not p.exists(): time.sleep(0.01)\n')
             def worker():
-                result.append(run_laws.run([sys.executable, '-c', code],
+                result.append(self.run_command([sys.executable, '-c', code],
                     cwd=run_laws.ROOT, env=None, log=log, timeout=5))
             with contextlib.redirect_stdout(output):
                 thread = threading.Thread(target=worker)
@@ -52,7 +56,7 @@ class ProgressTests(unittest.TestCase):
             ]:
                 log = Path(folder) / 'command.log'
                 with contextlib.redirect_stdout(io.StringIO()):
-                    result = run_laws.run([sys.executable, '-c', code],
+                    result = self.run_command([sys.executable, '-c', code],
                         cwd=run_laws.ROOT, env=None, log=log, timeout=timeout)
                 self.assertEqual(result['exit'], expected)
                 self.assertEqual(result['timeout'], expected is None)
@@ -64,7 +68,13 @@ class ProgressTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=run_laws.ROOT / 'tmp') as folder:
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
-                result = run_laws.run([sys.executable, '-c', 'import time; time.sleep(16)'],
+                result = self.run_command([sys.executable, '-c', 'import time; time.sleep(16)'],
                     cwd=run_laws.ROOT, env=None, log=Path(folder)/'silent.log', timeout=25)
             self.assertEqual(result['exit'], 0)
             self.assertIn('Still running: 15s elapsed', output.getvalue())
+
+
+class MutationProgressTests(ProgressTests):
+    @staticmethod
+    def run_command(argv, *, cwd, env, log, timeout):
+        return run_mutants.cmd(argv, cwd, log=log, timeout=timeout)

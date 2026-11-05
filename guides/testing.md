@@ -78,6 +78,10 @@ A mutation is an intentionally wrong copy of source code. The exercise asks whet
 | M9 — restart conversion | Leaves sent entries unchanged instead of marking them unknown | `po_b7` |
 | M10 — premature void release | Frees capacity before terminal void confirmation | `po_exposure_retain` |
 
+Mutation commands stream output to the terminal and logs under
+`tmp/verification/mutant-logs/`. Each command reports its start, finish and
+elapsed time every 15 seconds while running, including during silent Lean checks.
+
 These are the targets selected by `scripts/run_mutants.py`. The concrete assertions establish the planted violations; a failed proof attempt alone does not establish that a law detected the fault.
 
 Check that all patches apply in isolated copies, without native execution:

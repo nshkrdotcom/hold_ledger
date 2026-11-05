@@ -12,17 +12,15 @@ import argparse
 import datetime as dt
 import hashlib
 import json
-import os
 import re
 import shutil
 import subprocess
-import signal
 import sys
 import tempfile
-import time
 from pathlib import Path
 
-from run_laws import CHECKERS, REQUIRED_AXIOMS, acceptance_sources, changed_sources, inspect_manifest
+from run_laws import (CHECKERS, REQUIRED_AXIOMS, acceptance_sources, changed_sources,
+                      inspect_manifest, run as run_command)
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = Path("lib/hold_ledger/ledger.ex")
@@ -48,27 +46,10 @@ def digest(path: Path) -> str:
 
 
 def cmd(argv: list[str], cwd: Path, *, timeout: int, log: Path) -> dict:
-    log.parent.mkdir(parents=True, exist_ok=True)
-    started = time.monotonic()
-    process = subprocess.Popen(argv, cwd=cwd, text=True,
-                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               start_new_session=True)
-    try:
-        output, _ = process.communicate(timeout=timeout)
-        code, timed_out = process.returncode, False
-    except subprocess.TimeoutExpired:
-        # The wrapper launches BEAM/Lake/Lean children which retain stdout.
-        # Terminate the whole isolated command group so timeout actually ends.
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        output, _ = process.communicate()
-        code, timed_out = None, True
-    log.write_text(output, encoding="utf8")
-    return {"command": argv, "exit": code, "timeout": timed_out,
-            "wall_seconds": round(time.monotonic() - started, 3),
-            "log": str(log.relative_to(ROOT))}
+    result = run_command(argv, cwd=cwd, env=None, log=log, timeout=timeout)
+    # Preserve the mutation runner's existing report schema.
+    result.pop("cwd")
+    return result
 
 
 def patch_correctly_applies(project: Path, mutant: str, relative_dir: str,
