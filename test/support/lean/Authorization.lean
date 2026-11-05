@@ -29,12 +29,12 @@ theorem «po_b4/2» (s event : Lynx.Term)
       Elixir.HoldLedger.Spec.«proper_entries?/1» es = Except.ok Lynx.Term.true ∧
       Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es Lynx.Term.nil = Except.ok Lynx.Term.true := by
     clear replaced explained marked integer_key compatible reflexive nonauthorized marked_safe fresh authorized lookup_shape
-    simp only [Lynx.Except.andAlso_eq_true, «po_b4:requires/2», Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
+    simp only [ «po_b4:requires/2», Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
       Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at requires
     all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [Lynx.Term.true])
     all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
-    all_goals simp only [Lynx.Except.andAlso_eq_true, Erlang.erlang.«is_integer/1», Elixir.HoldLedger.Spec.«unique_keys?/1»,
-      Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at *
+    all_goals simp only [ Erlang.erlang.«is_integer/1», Elixir.HoldLedger.Spec.«unique_keys?/1»,
+      Lynx.Except.guard, Lynx.Except.tryWith] at *
     all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
     all_goals exact ⟨_, _, _, _, _, by exact ⟨rfl, rfl, rfl, rfl, rfl⟩, by assumption, by assumption⟩
   obtain ⟨al, hl, ua, uh, es, rfl, hp, hu⟩ := shaped
@@ -66,7 +66,7 @@ theorem «po_b4/2» (s event : Lynx.Term)
   obtain ⟨restarted, hr, restart_safe⟩ := marked_safe es event hu
   clear_value changed
   clear requires replaced explained marked integer_key compatible reflexive nonauthorized marked_safe authorized
-  simp only [Lynx.Except.andAlso_eq_true, «po_b4:ensures/2», Elixir.HoldLedger.Ledger.«step/2»]
+  simp only [ «po_b4:ensures/2», Elixir.HoldLedger.Ledger.«step/2»]
   split
   case h_1 ev k amount =>
     cases k <;> simp [Elixir.HoldLedger.Ledger.«request/3», Erlang.erlang.«is_integer/1»,
@@ -80,7 +80,7 @@ theorem «po_b4/2» (s event : Lynx.Term)
     rename_i n amountn
     rcases lookup_shape es (Lynx.Term.integer n) hp with hn | ⟨ek, av, st, hlookup, hst⟩
     all_goals try have hid := fresh es n (Lynx.Term.integer amountn) event hu (by assumption)
-    all_goals simp_all [ Erlang.erlang.«>/2», Erlang.erlang.«=:=/2»,
+    all_goals simp_all [ Erlang.erlang.«=:=/2»,
 
       Lynx.Term.true, Lynx.Term.false]
     all_goals repeat' (first | split_conjunction | split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [])
@@ -91,7 +91,7 @@ theorem «po_b4/2» (s event : Lynx.Term)
     all_goals try grind only [change_safe, change_approved]
   case h_2 ev k =>
     rcases lookup_shape es k hp with hn | ⟨ek, av, st, hlookup, hst⟩
-    all_goals simp only [Lynx.Except.andAlso_eq_true, Elixir.HoldLedger.Ledger.«dispatch/2»]
+    all_goals simp only [ Elixir.HoldLedger.Ledger.«dispatch/2»]
     all_goals try simp_all [
       Elixir.HoldLedger.Spec.«authorized_only_on_result?/3»,
       Erlang.erlang.«element/2»,
@@ -106,7 +106,7 @@ theorem «po_b4/2» (s event : Lynx.Term)
     all_goals try grind only [change_safe, change_approved]
   case h_3 ev k =>
     rcases lookup_shape es k hp with hn | ⟨ek, av, st, hlookup, hst⟩
-    all_goals simp only [Lynx.Except.andAlso_eq_true, Elixir.HoldLedger.Ledger.«timeout/2»]
+    all_goals simp only [ Elixir.HoldLedger.Ledger.«timeout/2»]
     all_goals try simp_all [
       Elixir.HoldLedger.Spec.«authorized_only_on_result?/3»,
       Erlang.erlang.«element/2»,
@@ -121,7 +121,7 @@ theorem «po_b4/2» (s event : Lynx.Term)
     all_goals try grind only [change_safe, change_approved]
   case h_5 ev k =>
     rcases lookup_shape es k hp with hn | ⟨ek, av, st, hlookup, hst⟩
-    all_goals simp only [Lynx.Except.andAlso_eq_true, Elixir.HoldLedger.Ledger.«retry/2»]
+    all_goals simp only [ Elixir.HoldLedger.Ledger.«retry/2»]
     all_goals try simp_all [
       Elixir.HoldLedger.Spec.«authorized_only_on_result?/3»,
       Erlang.erlang.«element/2»,
@@ -136,7 +136,7 @@ theorem «po_b4/2» (s event : Lynx.Term)
     all_goals try grind only [change_safe, change_approved]
   case h_6 ev k outcome =>
     rcases lookup_shape es k hp with hn | ⟨ek, av, st, hlookup, hst⟩
-    all_goals simp only [Lynx.Except.andAlso_eq_true, Elixir.HoldLedger.Ledger.«processor_result/3»]
+    all_goals simp only [ Elixir.HoldLedger.Ledger.«processor_result/3»]
     all_goals try simp_all [
       Elixir.HoldLedger.Spec.«authorized_only_on_result?/3»,
       Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1»,
@@ -155,7 +155,7 @@ theorem «po_b4/2» (s event : Lynx.Term)
       · exact Or.inr (by solve_by_elim))
   case h_7 ev k =>
     rcases lookup_shape es k hp with hn | ⟨ek, av, st, hlookup, hst⟩
-    all_goals simp only [Lynx.Except.andAlso_eq_true, Elixir.HoldLedger.Ledger.«void/2»]
+    all_goals simp only [ Elixir.HoldLedger.Ledger.«void/2»]
     all_goals try simp_all [
       Elixir.HoldLedger.Spec.«authorized_only_on_result?/3»,
       Erlang.erlang.«element/2»,
@@ -170,7 +170,7 @@ theorem «po_b4/2» (s event : Lynx.Term)
     all_goals try grind only [change_safe, change_approved]
   case h_8 ev k =>
     rcases lookup_shape es k hp with hn | ⟨ek, av, st, hlookup, hst⟩
-    all_goals simp only [Lynx.Except.andAlso_eq_true, Elixir.HoldLedger.Ledger.«void_confirmed/2»]
+    all_goals simp only [ Elixir.HoldLedger.Ledger.«void_confirmed/2»]
     all_goals try simp_all [
       Elixir.HoldLedger.Spec.«authorized_only_on_result?/3»,
       Erlang.erlang.«element/2»,

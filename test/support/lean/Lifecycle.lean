@@ -110,7 +110,7 @@ theorem «po_b1_restart/1» (s : Lynx.Term)
   simp_all [«po_b1_restart:ensures/1», Elixir.HoldLedger.Ledger.«restart/1»,
     Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5», Elixir.HoldLedger.Spec.«unique_keys?/1»,
     Erlang.erlang.«element/2», Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true]
+    Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Term.true]
   all_goals repeat' (split at * <;> try simp_all [])
 
 theorem «po_b1_retry/2» (s key : Lynx.Term)
@@ -186,7 +186,7 @@ theorem «po_b1_processor_result/3» (s key outcome : Lynx.Term)
     by_cases hto : HoldLedgerProof.held to
     all_goals simp_all [Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5», Elixir.HoldLedger.Spec.«unique_keys?/1»,
       Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2»,
-      Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Term.true, Lynx.Term.false]
     all_goals repeat' (split at * <;> subst_vars <;> try simp_all [])
     all_goals omega
   have shape := lookup_shape es key hp
@@ -266,7 +266,7 @@ theorem «po_b1_void/2» (s key : Lynx.Term)
     by_cases hto : HoldLedgerProof.held to
     all_goals simp_all [Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5», Elixir.HoldLedger.Spec.«unique_keys?/1»,
       Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2»,
-      Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Term.true, Lynx.Term.false]
     all_goals repeat' (split at * <;> subst_vars <;> try simp_all [])
     all_goals omega
   have shape := lookup_shape es key hp
@@ -346,7 +346,7 @@ theorem «po_b1_void_confirmed/2» (s key : Lynx.Term)
     by_cases hto : HoldLedgerProof.held to
     all_goals simp_all [Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5», Elixir.HoldLedger.Spec.«unique_keys?/1»,
       Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2»,
-      Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
+      Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Term.true, Lynx.Term.false]
     all_goals repeat' (split at * <;> subst_vars <;> try simp_all [])
     all_goals omega
   have shape := lookup_shape es key hp

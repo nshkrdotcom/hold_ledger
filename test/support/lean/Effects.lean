@@ -112,7 +112,6 @@ theorem «po_b3/2» (s event : Lynx.Term)
             Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
             Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
-            Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
             Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
 
@@ -134,8 +133,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
             Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-            Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
-            Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+            Erlang.erlang.«element/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
             Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
 

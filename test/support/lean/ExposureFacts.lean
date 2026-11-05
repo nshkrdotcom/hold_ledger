@@ -145,7 +145,7 @@ theorem remote_member (records issued : List Exposure.Entry) (seen : Lynx.Term)
       all_goals simp only [entriesTerm,Elixir.HoldLedger.Spec.«remote_valid?/3»,Erlang.erlang.«is_integer/1»,
         Lynx.Except.guard,Lynx.Except.tryWith,Lynx.Except.andAlso,bind,Except.bind] at valid
       all_goals repeat' (split at valid <;> try simp_all [Lynx.Term.true])
-      all_goals simp_all [Erlang.erlang.«>/2»,Ordering.isGT_iff_eq_gt,Int.compare_eq_gt,Erlang.erlang.«=:=/2»,exact_record]
+      all_goals simp_all [Erlang.erlang.«=:=/2»,exact_record]
       all_goals repeat' (split at * <;> try simp_all [])
       all_goals try simp_all [absent_comparison,exact_record]
       all_goals exact ih _ valid

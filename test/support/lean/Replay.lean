@@ -60,7 +60,7 @@ theorem «po_c1/2» (s events : Lynx.Term)
     case case3 => simp [ Lynx.Term.true] at hp
   have replay_valid := replay step_valid
   clear replay step_valid
-  simp only [«po_c1:requires/2», bind, Except.bind] at requires
+  simp only [«po_c1:requires/2»] at requires
   all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true])
   all_goals simp only [Lynx.Term.true,Lynx.Except.andAlso_eq_true] at requires
   all_goals repeat' split_conjunction
@@ -122,7 +122,7 @@ theorem «po_c2/3» (amount_limit hold_limit events : Lynx.Term)
   all_goals try solve | simp_all [«po_c2:requires/3», Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false] <;>
     repeat' (split at requires <;> simp_all [])
   rename_i al hl
-  simp only [«po_c2:requires/3», Erlang.erlang.«is_integer/1», bind, Except.bind] at requires
+  simp only [«po_c2:requires/3», Erlang.erlang.«is_integer/1»] at requires
   all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals

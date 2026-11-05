@@ -39,7 +39,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
       all_goals repeat' (first | split_conjunction | split at initial <;> try simp_all [Lynx.Term.true])
       all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
       all_goals simp only [Erlang.erlang.«is_integer/1», Elixir.HoldLedger.Spec.«unique_keys?/1»,
-        Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at *
+        Lynx.Except.guard, Lynx.Except.tryWith] at *
       all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
       all_goals exact ⟨_, _, _, _, _, by exact ⟨rfl, rfl, rfl, rfl, rfl⟩, by assumption, by assumption⟩
     obtain ⟨al, hl, ua, uh, es, rfl, hp, hu⟩ := shaped
@@ -124,8 +124,6 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals try simp [*,
                    Erlang.erlang.«=:=/2»,
-
-                Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
 
                    Lynx.Term.true,Lynx.Term.false] at hs
             all_goals repeat' (split at hs <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [

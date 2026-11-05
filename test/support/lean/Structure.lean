@@ -14,9 +14,9 @@ theorem «l2_identity/3» (entries key to : Lynx.Term)
     «l2_identity:ensures/3» entries key to = Except.ok Lynx.Term.true := by
   have replaced := HoldLedgerProof.replaced_2
   have identities := HoldLedgerProof.identities_1
-  simp only [Lynx.Except.andAlso_eq_true, «l2_identity:requires/3», bind, Except.bind] at requires
+  simp only [ «l2_identity:requires/3»] at requires
   all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
-  all_goals simp only [Lynx.Except.andAlso_eq_true, Elixir.HoldLedger.Spec.«unique_keys?/1»,
+  all_goals simp only [ Elixir.HoldLedger.Spec.«unique_keys?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith] at *
   all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
   all_goals obtain ⟨out, hm, hu⟩ := replaced entries key to Lynx.Term.nil (by assumption)

@@ -75,8 +75,7 @@ theorem encoded_positive {entries : List Entry}
   | nil => simp
   | cons head rest ih =>
       simp only [entriesTerm,Elixir.HoldLedger.Spec.«proper_entries?/1»,
-        Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,
-        bind,Except.bind] at proper
+        Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith] at proper
       repeat' (split at proper <;> try simp_all [Lynx.Term.true])
       all_goals simp_all [Erlang.erlang.«>/2»,Ordering.isGT_iff_eq_gt,Int.compare_eq_gt,
         Lynx.Term.true,Lynx.Term.false]
