@@ -30,8 +30,10 @@ theorem HoldLedgerProof.lookup_shape_1 : ∀ es k, Elixir.HoldLedger.Spec.«prop
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [ Erlang.erlang.«is_integer/1»,
     Erlang.erlang.«==/2», Lynx.Term.true, Lynx.Term.false]
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals first | assumption | exact ⟨_, _, _, by exact ⟨rfl, rfl, rfl⟩, by assumption⟩
 
@@ -59,6 +61,7 @@ theorem HoldLedgerProof.compatible_1 : ∀ es k, Elixir.HoldLedger.Spec.«proper
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
   all_goals try { exact ⟨Lynx.Term.atom "not_found", rfl, rfl⟩ }
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [Erlang.erlang.«==/2»,  Elixir.HoldLedger.Spec.«lookup/2»]
   all_goals repeat' (split <;> try simp_all [])
   all_goals first | assumption | exact ⟨_, rfl, rfl⟩
@@ -74,8 +77,10 @@ theorem HoldLedgerProof.lookup_shape_2 : ∀ es k, Elixir.HoldLedger.Spec.«prop
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [ Erlang.erlang.«is_integer/1»,
     Erlang.erlang.«==/2», Lynx.Term.true, Lynx.Term.false]
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals first | assumption | exact ⟨_, _, _, by exact ⟨rfl, rfl, rfl⟩, by assumption⟩
 
@@ -90,9 +95,12 @@ theorem HoldLedgerProof.compatible_2 : ∀ es k, Elixir.HoldLedger.Spec.«proper
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
   all_goals try { exact ⟨Lynx.Term.atom "not_found", rfl, rfl, Or.inl rfl⟩ }
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [Erlang.erlang.«==/2»,  Elixir.HoldLedger.Spec.«lookup/2»]
   all_goals repeat' (split <;> try simp_all [])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [Erlang.erlang.«is_integer/1»]
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals first | assumption | exact ⟨_, rfl, rfl, Or.inr ⟨_, _, _, rfl⟩⟩
 
@@ -107,9 +115,12 @@ theorem HoldLedgerProof.compatible_3 : ∀ es k, Elixir.HoldLedger.Spec.«proper
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
   all_goals try { exact ⟨Lynx.Term.atom "not_found", rfl, rfl, Or.inl rfl⟩ }
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [Erlang.erlang.«==/2»]
   all_goals repeat' (split <;> try simp_all [])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [Erlang.erlang.«is_integer/1»]
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals first | assumption | exact ⟨_, rfl, rfl, Or.inr ⟨_, _, _, rfl⟩⟩
 
@@ -122,8 +133,11 @@ theorem HoldLedgerProof.lookup_equiv_1 : ∀ es (n : Int) query,
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals repeat' (split at * <;> try simp_all [])
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Elixir.HoldLedger.Spec.«lookup/2», Erlang.erlang.«==/2»,
     HoldLedgerProof.integer_query _ _ _ he]
   all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])

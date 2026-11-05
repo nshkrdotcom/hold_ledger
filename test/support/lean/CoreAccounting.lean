@@ -24,11 +24,14 @@ theorem HoldLedgerProof.totals_1 : ∀ es, Elixir.HoldLedger.Spec.«proper_entri
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [ Elixir.HoldLedger.Spec.«hold_count/1»,
     Elixir.HoldLedger.Spec.«holding?/1», Erlang.erlang.«is_integer/1»]
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals obtain ⟨⟨a, ha⟩, c, hc⟩ :=
     (by assumption : (∃ a : Int, _) ∧ ∃ c : Int, _)
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all []
 
 theorem HoldLedgerProof.delta_1 : ∀ es k (a : Int) old to,
@@ -49,10 +52,13 @@ theorem HoldLedgerProof.delta_1 : ∀ es k (a : Int) old to,
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«==/2», Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals try obtain ⟨⟨b, hb⟩, c, hc⟩ := HoldLedgerProof.totals_1 rest (by assumption)
   all_goals try obtain ⟨out, hm, ba, hba, bc, hbc, haa, hac⟩ := ih a old to rfl rfl
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Elixir.HoldLedger.Ledger.«set_status/3»,
     Elixir.HoldLedger.Spec.«hold_amount/1», Elixir.HoldLedger.Spec.«hold_count/1»,
     HoldLedgerProof.holding_model, Erlang.erlang.«==/2»,
@@ -73,12 +79,15 @@ theorem HoldLedgerProof.accounting_1 : ∀ es, Elixir.HoldLedger.Spec.«proper_e
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false,
     Erlang.erlang.«is_integer/1», Elixir.HoldLedger.Spec.«known_status?/1»,
     Elixir.HoldLedger.Spec.«holding?/1», Elixir.HoldLedger.Spec.«terminal?/1»])
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [
     Elixir.HoldLedger.Spec.«hold_amount/1», Elixir.HoldLedger.Spec.«hold_count/1»,
     Elixir.HoldLedger.Spec.«holding?/1»]
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals obtain ⟨out, hm, a, ha, hb, c, hc, hd⟩ :=
     (by assumption : ∃ out : Lynx.Term, _ ∧ ∃ a : Int, _ ∧ _ ∧ ∃ c : Int, _ ∧ _)
+  all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [
     Elixir.HoldLedger.Spec.«hold_amount/1», Elixir.HoldLedger.Spec.«hold_count/1»,
     Elixir.HoldLedger.Spec.«holding?/1»]
@@ -101,10 +110,13 @@ theorem HoldLedgerProof.delta_2 : ∀ es k ek (a : Int) old to,
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«==/2», Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals try obtain ⟨⟨b, hb⟩, c, hc⟩ := HoldLedgerProof.totals_1 rest (by assumption)
   all_goals try obtain ⟨out, hm, ba, hba, bc, hbc, haa, hac⟩ := ih ek a old to rfl rfl rfl
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Elixir.HoldLedger.Ledger.«set_status/3»,
     Elixir.HoldLedger.Spec.«hold_amount/1», Elixir.HoldLedger.Spec.«hold_count/1»,
     HoldLedgerProof.holding_model, Erlang.erlang.«==/2»,
@@ -121,11 +133,14 @@ theorem HoldLedgerProof.nonnegative_1 : ∀ es,
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [ Elixir.HoldLedger.Spec.«hold_count/1»,
     Elixir.HoldLedger.Spec.«holding?/1», Erlang.erlang.«is_integer/1»,
     Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt]
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals obtain ⟨a, ha, c, hc, hna, hnc⟩ := (by assumption : ∃ a : Int, _ ∧ ∃ c : Int, _ ∧ 0 ≤ a ∧ 0 ≤ c)
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [
      Int.compare_eq_gt]
   all_goals first | omega | constructor <;> omega
@@ -143,13 +158,16 @@ theorem HoldLedgerProof.selected_bound_1 : ∀ es k ek (a : Int) st,
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«==/2», Erlang.erlang.«is_integer/1»,
     Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt,
     Lynx.Term.true, Lynx.Term.false]
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals subst_vars
   all_goals try obtain ⟨ba, hba, bc, hbc, hna, hnc⟩ := recur
   all_goals try obtain ⟨ba, hba, bc, hbc, hna, hnc⟩ := HoldLedgerProof.nonnegative_1 _ (by assumption)
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Elixir.HoldLedger.Spec.«hold_amount/1», Elixir.HoldLedger.Spec.«hold_count/1»,
     HoldLedgerProof.holding_model, Int.compare_eq_gt]
   all_goals repeat' (split <;> try simp_all [])
@@ -164,7 +182,9 @@ theorem HoldLedgerProof.positive_1 : ∀ es k ek (a : Int) st,
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«==/2», Erlang.erlang.«is_integer/1»,
     Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt,  Lynx.Term.true, Lynx.Term.false]
+  all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals repeat' (split at * <;> subst_vars <;> try simp_all [Int.compare_eq_gt])
   all_goals omega
