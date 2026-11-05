@@ -23,7 +23,7 @@ theorem identity_lookup (es dst key amount old : Lynx.Term)
       Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[key,amount,newer]]) := by
   fun_induction Elixir.HoldLedger.Spec.«lookup/2» es key generalizing dst amount old
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard,Lynx.Except.tryWith,bind,Except.bind] at proper
+    Lynx.Except.guard,Lynx.Except.tryWith] at proper
   all_goals repeat' (split at proper <;> try simp_all [Lynx.Term.true])
   all_goals try simp only [Erlang.erlang.«==/2»,bind,Except.bind] at lookup
   all_goals repeat' (split at lookup <;> (repeat' split_conjunction) <;> subst_vars <;>
@@ -68,7 +68,7 @@ theorem terminal_entries (es seen dst : Lynx.Term)
   have tail : Elixir.HoldLedger.Spec.«terminal_entries_preserved?/2» rest dst = Except.ok Lynx.Term.true := by
     apply ih dst
     intro key amount status hs hl ht
-    simp only [Elixir.HoldLedger.Spec.«seen?/2»,Erlang.erlang.«==/2»,bind,Except.bind] at hs
+    simp only [Elixir.HoldLedger.Spec.«seen?/2»,Erlang.erlang.«==/2»] at hs
     by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
     · simp [equal] at hs
     · have hs' : Elixir.HoldLedger.Spec.«seen?/2» seen key = Except.ok Lynx.Term.false := by

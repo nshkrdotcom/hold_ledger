@@ -15,8 +15,7 @@ theorem HoldLedgerProof.known_exact_1 : ∀ st x, Elixir.HoldLedger.Spec.«known
     st.exactCompare x = Ordering.eq → st = x := by
   intro st x hs he
   simp only [Elixir.HoldLedger.Spec.«known_status?/1»,
-    Elixir.HoldLedger.Spec.«holding?/1», Elixir.HoldLedger.Spec.«terminal?/1»,
-    bind, Except.bind] at hs
+    Elixir.HoldLedger.Spec.«holding?/1», Elixir.HoldLedger.Spec.«terminal?/1»] at hs
   repeat' (split at * <;> try simp_all [Lynx.Term.true,  HoldLedgerProof.atom_exact])
 
 theorem HoldLedgerProof.lookup_shape_1 : ∀ es k, Elixir.HoldLedger.Spec.«proper_entries?/1» es = Except.ok Lynx.Term.true →
@@ -28,7 +27,7 @@ theorem HoldLedgerProof.lookup_shape_1 : ∀ es k, Elixir.HoldLedger.Spec.«prop
   intro es k h
   fun_induction Elixir.HoldLedger.Spec.«lookup/2» es k
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [ Erlang.erlang.«is_integer/1»,
@@ -58,7 +57,7 @@ theorem HoldLedgerProof.compatible_1 : ∀ es k, Elixir.HoldLedger.Spec.«proper
   intro es k h
   fun_induction Elixir.HoldLedger.Ledger.«find/2» es k
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals try { exact ⟨Lynx.Term.atom "not_found", rfl, rfl⟩ }
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := h
@@ -75,7 +74,7 @@ theorem HoldLedgerProof.lookup_shape_2 : ∀ es k, Elixir.HoldLedger.Spec.«prop
   intro es k h
   fun_induction Elixir.HoldLedger.Ledger.«find/2» es k
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [ Erlang.erlang.«is_integer/1»,
@@ -92,7 +91,7 @@ theorem HoldLedgerProof.compatible_2 : ∀ es k, Elixir.HoldLedger.Spec.«proper
   intro es k h
   fun_induction Elixir.HoldLedger.Ledger.«find/2» es k
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals try { exact ⟨Lynx.Term.atom "not_found", rfl, rfl, Or.inl rfl⟩ }
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := h
@@ -112,7 +111,7 @@ theorem HoldLedgerProof.compatible_3 : ∀ es k, Elixir.HoldLedger.Spec.«proper
   intro es k h
   fun_induction Elixir.HoldLedger.Ledger.«find/2» es k
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals try { exact ⟨Lynx.Term.atom "not_found", rfl, rfl, Or.inl rfl⟩ }
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := h
@@ -131,7 +130,7 @@ theorem HoldLedgerProof.lookup_equiv_1 : ∀ es (n : Int) query,
   intro es n query hp he
   fun_induction Elixir.HoldLedger.Spec.«lookup/2» es query generalizing n
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
+    Lynx.Except.guard, Lynx.Except.tryWith] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]

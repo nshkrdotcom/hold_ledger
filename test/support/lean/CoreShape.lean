@@ -17,11 +17,11 @@ theorem HoldLedgerProof.valid_view_1 : ∀ state, Elixir.HoldLedger.Spec.«valid
       Elixir.HoldLedger.Spec.«hold_count/1» es = Except.ok (Lynx.Term.integer uh) ∧
       0 ≤ al ∧ 0 ≤ hl ∧ 0 ≤ ua ∧ 0 ≤ uh ∧ ua ≤ al ∧ uh ≤ hl := by
   intro state h
-  simp only [Lynx.Except.andAlso_eq_true, Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
+  simp only [ Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
     Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
   all_goals repeat' (first | split_conjunction | split at h <;> try simp_all [Lynx.Term.true])
   all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
-  all_goals simp only [Lynx.Except.andAlso_eq_true, Erlang.erlang.«is_integer/1», bind, Except.bind] at *
+  all_goals simp only [ Erlang.erlang.«is_integer/1»] at *
   all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals obtain ⟨⟨a, ha⟩, c, hc⟩ := HoldLedgerProof.totals_1 _ (by assumption)
   all_goals simp_all [Erlang.erlang.«==/2», Lynx.Term.true, Lynx.Term.false]

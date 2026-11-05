@@ -25,7 +25,7 @@ theorem HoldLedgerProof.fresh_1 : ∀ es seen k,
   fun_induction Elixir.HoldLedger.Spec.«lookup/2» es k generalizing seen
   all_goals try (rename_i ek av st rest ih; have recur := ih (ek :: seen))
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
+    Lynx.Except.guard, Lynx.Except.tryWith] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
   all_goals simp_all [Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
      Erlang.erlang.«is_integer/1»,
@@ -49,7 +49,7 @@ theorem HoldLedgerProof.structural_1 : ∀ es k st,
   intro es k st h hs
   fun_induction Elixir.HoldLedger.Ledger.«set_status/3» es k st
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try simp_all [
     Elixir.HoldLedger.Spec.«proper_entries?/1», Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
@@ -81,7 +81,7 @@ theorem HoldLedgerProof.restarted_structure_1 : ∀ es,
   intro es h
   fun_induction Elixir.HoldLedger.Ledger.«mark_unknown/1» es
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try simp_all [
     Elixir.HoldLedger.Spec.«proper_entries?/1», Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
@@ -110,7 +110,7 @@ theorem HoldLedgerProof.fresh_4 : ∀ es seen k,
   fun_induction Elixir.HoldLedger.Ledger.«find/2» es k generalizing seen
   all_goals try (rename_i ek av st rest ih; have recur := ih (ek :: seen))
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
+    Lynx.Except.guard, Lynx.Except.tryWith] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
   all_goals simp_all [Elixir.HoldLedger.Spec.«unique_keys_seen?/2»,
      Erlang.erlang.«is_integer/1»,

@@ -22,7 +22,7 @@ theorem HoldLedgerProof.totals_1 : ∀ es, Elixir.HoldLedger.Spec.«proper_entri
   intro es h
   fun_induction Elixir.HoldLedger.Spec.«hold_amount/1» es
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := h
   all_goals simp_all [ Elixir.HoldLedger.Spec.«hold_count/1»,
@@ -50,7 +50,7 @@ theorem HoldLedgerProof.delta_1 : ∀ es k (a : Int) old to,
   fun_induction Elixir.HoldLedger.Spec.«lookup/2» es k generalizing a old to
   all_goals try (rename_i ek av st rest ih; have recur := ih a old to)
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
+    Lynx.Except.guard, Lynx.Except.tryWith] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«==/2», Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
@@ -75,7 +75,7 @@ theorem HoldLedgerProof.accounting_1 : ∀ es, Elixir.HoldLedger.Spec.«proper_e
   intro es h
   fun_induction Elixir.HoldLedger.Ledger.«mark_unknown/1» es
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at h
+    Lynx.Except.guard, Lynx.Except.tryWith] at h
   all_goals repeat' (split at h <;> try simp_all [Lynx.Term.true, Lynx.Term.false,
     Erlang.erlang.«is_integer/1», Elixir.HoldLedger.Spec.«known_status?/1»,
     Elixir.HoldLedger.Spec.«holding?/1», Elixir.HoldLedger.Spec.«terminal?/1»])
@@ -108,7 +108,7 @@ theorem HoldLedgerProof.delta_2 : ∀ es k ek (a : Int) old to,
   fun_induction Elixir.HoldLedger.Ledger.«find/2» es k generalizing ek a old to
   all_goals try (rename_i stored av st rest ih; have recur := ih ek a old to)
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
+    Lynx.Except.guard, Lynx.Except.tryWith] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«==/2», Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
@@ -131,7 +131,7 @@ theorem HoldLedgerProof.nonnegative_1 : ∀ es,
   intro es hp
   fun_induction Elixir.HoldLedger.Spec.«hold_amount/1» es
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
+    Lynx.Except.guard, Lynx.Except.tryWith] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [ Elixir.HoldLedger.Spec.«hold_count/1»,
@@ -156,7 +156,7 @@ theorem HoldLedgerProof.selected_bound_1 : ∀ es k ek (a : Int) st,
   fun_induction Elixir.HoldLedger.Ledger.«find/2» es k generalizing ek a st
   all_goals try (rename_i stored av status rest ih; have recur := ih ek a st)
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
+    Lynx.Except.guard, Lynx.Except.tryWith] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«==/2», Erlang.erlang.«is_integer/1»,
@@ -180,7 +180,7 @@ theorem HoldLedgerProof.positive_1 : ∀ es k ek (a : Int) st,
   intro es k ek a st hp hf
   fun_induction Elixir.HoldLedger.Ledger.«find/2» es k generalizing ek a st
   all_goals simp only [Elixir.HoldLedger.Spec.«proper_entries?/1»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at hp
+    Lynx.Except.guard, Lynx.Except.tryWith] at hp
   all_goals repeat' (split at hp <;> try simp_all [Lynx.Term.true])
   all_goals try obtain ⟨hstatus, hrest⟩ := hp
   all_goals simp_all [Erlang.erlang.«==/2», Erlang.erlang.«is_integer/1»,
