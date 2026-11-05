@@ -18,6 +18,8 @@ import os
 import re
 import subprocess
 import signal
+import selectors
+import codecs
 import sys
 import time
 from pathlib import Path
@@ -150,23 +152,60 @@ def run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
         log: Path, timeout: int) -> dict:
     log.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
-    process = subprocess.Popen(argv, cwd=cwd, text=True,
-                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               start_new_session=True, env=env)
-    try:
-        output, _ = process.communicate(timeout=timeout)
-        code, timed_out = process.returncode, False
-    except subprocess.TimeoutExpired:
-        # The wrapper launches BEAM/Lake/Lean children which retain stdout.
-        # Terminate the whole isolated command group so timeout actually ends.
+    label = log.stem
+    print(f"[{label}] Starting; live log: {log.relative_to(ROOT)}", flush=True)
+    timed_out = False
+    next_progress = started + 15
+    deadline = started + timeout
+    # Open before launching so an old run's log cannot masquerade as live output.
+    with log.open("wb") as handle, selectors.DefaultSelector() as selector:
+        process = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   start_new_session=True, env=env)
+        selector.register(process.stdout, selectors.EVENT_READ)
+        decoder = codecs.getincrementaldecoder("utf8")(errors="replace")
         try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        output, _ = process.communicate()
-        code, timed_out = None, True
+            while selector.get_map() or process.poll() is None:
+                now = time.monotonic()
+                if not timed_out and now >= deadline:
+                    timed_out = True
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    print(f"[{label}] Timeout after {timeout}s; terminating command group", flush=True)
+                if now >= next_progress:
+                    print(f"[{label}] Still running: {now - started:.0f}s elapsed "
+                          f"(limit {timeout}s); waiting for verifier output", flush=True)
+                    next_progress = now + 15
+                wait = max(0, min(next_progress, deadline if not timed_out else next_progress) - now)
+                if not selector.get_map():
+                    wait = min(wait, 0.1)
+                for key, _ in selector.select(timeout=wait):
+                    chunk = os.read(key.fd, 65536)
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    handle.write(chunk)
+                    handle.flush()
+                    sys.stdout.write(decoder.decode(chunk))
+                    sys.stdout.flush()
+            sys.stdout.write(decoder.decode(b"", final=True))
+            sys.stdout.flush()
+            process.wait()
+        except BaseException:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
+            raise
+        finally:
+            process.stdout.close()
     elapsed = round(time.monotonic() - started, 3)
-    log.write_text(output, encoding="utf8")
+    code = None if timed_out else process.returncode
+    print(f"[{label}] Finished in {elapsed:.1f}s "
+          f"({'TIMEOUT' if timed_out else f'exit {code}'})", flush=True)
     return {"command": argv, "cwd": str(cwd), "exit": code, "timeout": timed_out,
             "wall_seconds": elapsed, "log": str(log.relative_to(ROOT))}
 
