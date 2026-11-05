@@ -8,42 +8,69 @@ There are three useful milestones: run the simulated ledger, check one law, and,
 
 The supported checkout runs on Ubuntu **26.04 x86_64**, with Elixir **1.20.4** compiled against OTP 29, Erlang/OTP **29.1.2**, `uv` **0.12.6**, and Git. uv manages Python **3.13.15** and `zstandard`. The version pins are in `.tool-versions`, `.python-version`, `lean-toolchain`, `mix.lock`, `uv.lock` and `scripts/toolchains.json`.
 
-To run the demo or tutorial proofs, select the pinned Elixir/OTP versions in your existing installation, then run from the repository root:
+## Check the checkout
+
+The canonical entry points are zero-argument Bash scripts. From the repository root:
 
 ```sh
-uv sync --locked
-uv run --locked python scripts/onboard.py --profile runtime --provision
-export ELAN_HOME="$PWD/.local/elan"
-export ELAN_TOOLCHAIN="$(cat lean-toolchain)"
-export PATH="$ELAN_HOME/bin:$PATH"
-mix deps.get
-mix compile --warnings-as-errors
+./scripts/check_quick.sh
+./scripts/check_full.sh
 ```
 
-The `runtime` profile checks Elixir, OTP and Git without checking for `bwrap`. `--provision` installs checksum-pinned Elan, Lean and Lake in ignored `.local/`. It does not install Elixir/OTP or change global tools or shell settings. The exports select the local Lean toolchain for this shell.
+Quick runs ordinary checks; full runs formal acceptance. Run both when you need
+both kinds of evidence. Each includes setup, resolves the repository root from
+its own location, and stops at the first failed command. They do not run the
+separate Phoenix app's checks, Credo, Dialyzer, documentation builds or mutations.
 
-Even ordinary `mix test` runs compile the test-only Lynx dependency through Lake, so they need Lean installed. The application itself needs only Elixir/OTP.
+Here is the breakdown of the commands in the scripts:
 
-For the full independent proof checker, install `bwrap` (Bubblewrap) separately and check the complete toolchain:
+| Command | Purpose |
+|---|---|
+| `uv sync --locked` | Prepare Python tooling using the committed lockfile. |
+| `uv run --locked python scripts/onboard.py --profile runtime --provision` | Quick: validate existing Elixir/OTP and Git; provision pinned local Elan/Lean/Lake. |
+| `uv run --locked python scripts/onboard.py --profile proofs --provision` | Full: the same setup, plus validate the full checker prerequisites, including `bwrap`. |
+| `uv run --locked python scripts/local_run.py mix deps.get` | Fetch the locked Mix dependencies using the local tool environment. |
+
+Setup reuses the existing local Elan installation, matching Lean extraction and
+toolchain link; it reruns validation. Downloads are checksum-verified and cached.
+An incompatible or incomplete installation fails with a diagnostic rather than
+silently replacing it. Neither helper installs Elixir/OTP, uv, Git or Bubblewrap,
+or changes global tools or host security settings.
+
+After setup, **quick** runs:
 
 ```sh
-uv run --locked python scripts/onboard.py --profile proofs
+uv run --locked python scripts/local_run.py mix format --check-formatted
+uv run --locked python scripts/local_run.py mix compile --warnings-as-errors
+uv run --locked python scripts/local_run.py mix test --exclude laws
+uv run --locked python -m unittest discover -s tooling_tests -v
 ```
 
-You don't need `bwrap` for the demo or focused proofs. The onboarding command checks for it but does not install it.
+These check formatting, compiler warnings, ordinary examples/properties/runtime
+faults, and the Python proof tooling. Ordinary tests still compile Lynx through
+Lake, so quick also needs the local Lean toolchain; it does not need Bubblewrap.
 
-The guides also use this wrapper:
+After setup, **full** runs:
 
 ```sh
-uv run --locked python scripts/local_run.py mix --version
+uv run --locked python scripts/run_laws.py --supported-only --stage full \
+  --report tmp/verification/checked.json
 ```
 
-`local_run.py` selects the repository-local tool environment for a single command. Use that form in examples if you don't want to rely on persistent shell exports. Do not use it as a way to bypass a failed version or checker prerequisite.
+This checks every required group with uncached proofs, fresh exports, six checker
+configurations and the allowed-axiom audit. Acceptance requires
+`release_complete: true` in the report. Full does not repeat the ordinary checks.
+Logs and exports stay under ignored `tmp/verification/`. See
+[Verification](verification.md#run-checks) for acceptance details.
+
+`local_run.py` selects the repository-local environment for one command, so no
+shell exports are needed. After either helper has completed setup, you can use
+it to run the demo or focused tutorial commands below.
 
 ## Run the demonstration
 
 ```sh
-mix run scripts/demo.exs
+uv run --locked python scripts/local_run.py mix run scripts/demo.exs
 ```
 
 The demo creates a fresh temporary journal and uses a deterministic simulated processor. It shows a lost reply, restart, reconciliation, retry and void. Its default seed is `4808`; set `HOLD_LEDGER_SEED` to another nonnegative integer to vary synthetic identities. The script prints the journal directory and leaves it for inspection. Remove that **printed temporary directory** when you are finished, not an active application journal.
@@ -118,4 +145,4 @@ use the [no-server review exercise](interactive_review.md).
 
 ## Local quality checks
 
-Run `mix test` first, then strict Credo and Dialyzer as needed. [Testing](testing.md) lists the commands and their scope; [Verification](verification.md) covers the separate, expensive formal checks. If prerequisites fail, use [Troubleshooting](troubleshooting.md) rather than changing version pins silently.
+Run `./scripts/check_quick.sh` first, then strict Credo and Dialyzer as needed. [Testing](testing.md) lists the commands and their scope; [Verification](verification.md) covers the separate, expensive formal checks. If prerequisites fail, use [Troubleshooting](troubleshooting.md) rather than changing version pins silently.

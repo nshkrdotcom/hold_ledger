@@ -29,6 +29,29 @@ For practice without installing tools, choose a [review exercise](guides/interac
 
 [Specification assurance](guides/specification_assurance.md) deals with proofs of inadequate requirements. [Verification](guides/verification.md) explains what the checkers establish. The [assurance audit](guides/audit.md) covers the whole system and is not part of the first lesson.
 
+## Run checks
+
+From the repository root, use either zero-argument Bash helper:
+
+```sh
+./scripts/check_quick.sh
+./scripts/check_full.sh
+```
+
+**Quick** includes setup, formatting, compilation, ordinary tests/properties and
+Python tooling tests. **Full** includes setup and the complete formal acceptance
+pipeline: uncached proofs, fresh exports, all six checker configurations and the
+axiom audit. Run both for ordinary and formal coverage; full does not repeat quick.
+Full writes `tmp/verification/checked.json`; acceptance requires
+`release_complete: true`. A failed or timed-out run is not acceptance.
+
+Both helpers stop on the first failure and work from any current directory when
+invoked by path. Setup reuses installed repository-local tools and dependencies.
+You must already have the supported Elixir/OTP, uv and Git; full also needs
+Bubblewrap (`bwrap`). The helpers do not install system packages.
+See [Getting started](guides/getting-started.md#check-the-checkout) for the commands
+inside each helper and [Verification](guides/verification.md#run-checks) for evidence scope.
+
 ## Try it on a supported machine
 
 The supported checkout runs on **Ubuntu 26.04 x86_64**, with Erlang/OTP **29.1.2**, Elixir **1.20.4** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, and Git. The demo and focused proofs don't need `bwrap` (Bubblewrap). The full independent checker does. Onboarding checks your existing Elixir/OTP installation; it won't install those tools.
@@ -38,16 +61,11 @@ The examples use the Lynx commit pinned in `mix.lock` and Lean **4.35.0** from `
 From the repository root, after selecting the required Elixir/OTP installation:
 
 ```sh
-uv sync --locked
-uv run --locked python scripts/onboard.py --profile runtime --provision
-export ELAN_HOME="$PWD/.local/elan"
-export ELAN_TOOLCHAIN="$(cat lean-toolchain)"
-export PATH="$ELAN_HOME/bin:$PATH"
-mix deps.get
-mix run scripts/demo.exs
+./scripts/check_quick.sh
+uv run --locked python scripts/local_run.py mix run scripts/demo.exs
 ```
 
-The demo uses a simulated processor and a fresh temporary journal; it does not move money. Lean and Lake stay in ignored `.local/`. See [Getting started](guides/getting-started.md) for the full-checker setup and [Troubleshooting](guides/troubleshooting.md) if setup fails.
+The demo uses a simulated processor and a fresh temporary journal; it does not move money. Lean and Lake stay in ignored `.local/`. The quick helper includes the setup described above. See [Getting started](guides/getting-started.md) for the full-checker setup and [Troubleshooting](guides/troubleshooting.md) if setup fails.
 
 To see a **real ledger proof attempt**, start with the duplicate-request law (`po_a4_duplicate`):
 

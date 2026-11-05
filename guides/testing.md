@@ -2,15 +2,23 @@
 
 A passing proof answers a universal question about a stated model. Tests answer different questions: does this example behave as required, does a fault path recover safely, and does a deliberately broken implementation get caught? Hold Ledger uses all of these checks because none replaces the others.
 
-Use the setup in [Getting started](getting-started.md), then run:
+The canonical ordinary check command includes setup:
 
 ```sh
-mix format --check-formatted
-mix compile --warnings-as-errors
-mix test
-mix credo --strict
-mix dialyzer
-uv run --locked python -m unittest discover -s tooling_tests -v
+./scripts/check_quick.sh
+```
+
+It checks formatting, compilation with warnings as errors, ordinary tests and
+properties (excluding formal laws), and Python tooling tests. See
+[Getting started](getting-started.md#check-the-checkout) for the command breakdown.
+For formal acceptance, run `./scripts/check_full.sh` separately; see
+[Verification](verification.md#run-checks).
+
+Additional static checks, after setup:
+
+```sh
+uv run --locked python scripts/local_run.py mix credo --strict
+uv run --locked python scripts/local_run.py mix dialyzer
 ```
 
 The ordinary suite covers deterministic transitions, malformed inputs, a worked
