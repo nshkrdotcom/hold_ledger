@@ -11,7 +11,7 @@ from pathlib import Path
 
 from provision import ROOT, PINS, local_env
 
-LYNX_COMMIT = "3b44de83fb63503e12b84233de70cf0647e7e63e"
+LYNX_COMMIT = "bcb41b182f16976a6692e8bc45e47dc638e19bef"
 ELIXIR = "1.20.4"
 OTP = "29.1.2"
 UV = "0.12.6"
