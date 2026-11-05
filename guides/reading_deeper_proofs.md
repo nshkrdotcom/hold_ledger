@@ -132,13 +132,13 @@ Read this opening excerpt alongside the complete theorem in `Request.lean`:
       Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
   all_goals cases amount <;>
     simp_all []
-  all_goals repeat' (split at requires <;> try simp_all [])
-  all_goals simp [Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
+  all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [])
+  all_goals simp [
       bind, Except.bind] at requires
-  all_goals repeat' (split at requires <;> try simp_all [])
+  all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [])
 ```
 
-At entry, `requires` says that the translated eligibility predicate returned true; the goal says that the translated postcondition must return true. The two `have` lines bring lookup compatibility and accounting facts into scope. `cases key` and `cases amount` consider the possible Elixir-term constructors. Simplification closes the noninteger cases because eligibility excludes them. `split at requires` separates branches of the translated checks.
+At entry, `requires` says that the translated eligibility predicate returned true; the goal says that the translated postcondition must return true. The two `have` lines bring lookup compatibility and accounting facts into scope. `cases key` and `cases amount` consider the possible Elixir-term constructors. Simplification closes the noninteger cases because eligibility excludes them. `split_conjunction` unpacks conjunctions produced by Boolean simplification; `split at requires` separates branches of the translated checks.
 
 The proof then opens validity and uses the accounting lemma to obtain integer totals. Track the facts each stage supplies and the goal they support:
 
