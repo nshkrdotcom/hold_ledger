@@ -7,7 +7,7 @@
       "lib/hold_ledger/spec.ex": "a00556287315dacb3d97d7ed5125f3354d463d4776212e3ec50a0566d854ac0d",
       "lib/hold_ledger/ledger.ex": "fbfd454f7daaec016ab56b042df9e50527be83b9ba285c42767d8d954190ab83",
       "test/laws/po_a2_test.exs": "1e741e72dd4c4979eb49ff9e3c942c34242cf0ed16e9358a5f8f682307180d2d",
-      "test/support/lean/Request.lean": "bb077364ce833c18043058541d073256da1c77e10e1ac9c429ee1a9f7dabb6ba"
+      "test/support/lean/Request.lean": "004fde6a16f475cfaa8ab43a9af926fe75a65ef760c30100819877d1e21cda6c"
     },
     "steps": [
       {
@@ -132,7 +132,7 @@
       "lib/hold_ledger/spec.ex": "a00556287315dacb3d97d7ed5125f3354d463d4776212e3ec50a0566d854ac0d",
       "lib/hold_ledger/ledger.ex": "fbfd454f7daaec016ab56b042df9e50527be83b9ba285c42767d8d954190ab83",
       "test/laws/po_exposure_retain_test.exs": "694148a7a12db62faac45ccf2614f900d3ab7c21a7cba80a8fe7f9eaad39a921",
-      "test/support/lean/Retention.lean": "935c57f0d4644a408ea50d80865189635cf7d3b7a819f46477da65d4df56e217"
+      "test/support/lean/Retention.lean": "833ec367379696dd28396e1a1c54642c98255ee537fa0b2f054251942686aded"
     },
     "steps": [
       {
@@ -269,7 +269,7 @@
       "lib/hold_ledger/spec.ex": "a00556287315dacb3d97d7ed5125f3354d463d4776212e3ec50a0566d854ac0d",
       "lib/hold_ledger/ledger.ex": "fbfd454f7daaec016ab56b042df9e50527be83b9ba285c42767d8d954190ab83",
       "test/laws/po_b1_timeout_test.exs": "4846467566ba2a5e903d208735997caffd1997326ee3db000877b9f3af3caa3e",
-      "test/support/lean/Lifecycle.lean": "f7cd8a71ce6c7c755956f91c6999746be81339b458b59c3a00ffe619ca866e1e"
+      "test/support/lean/Lifecycle.lean": "2f682bc1564abb8b206b5f115516b6e3643956979b107659ee8e40656ba57f94"
     },
     "steps": [
       {
@@ -341,7 +341,7 @@
       "lib/hold_ledger/spec.ex": "a00556287315dacb3d97d7ed5125f3354d463d4776212e3ec50a0566d854ac0d",
       "lib/hold_ledger/ledger.ex": "fbfd454f7daaec016ab56b042df9e50527be83b9ba285c42767d8d954190ab83",
       "test/laws/po_b1_void_test.exs": "a28a15babb1d8097ecb8d25204745416eb4ccfec94820cf9c71b6ce18808c6f7",
-      "test/support/lean/Lifecycle.lean": "f7cd8a71ce6c7c755956f91c6999746be81339b458b59c3a00ffe619ca866e1e"
+      "test/support/lean/Lifecycle.lean": "2f682bc1564abb8b206b5f115516b6e3643956979b107659ee8e40656ba57f94"
     },
     "steps": [],
     "omits": "This claim checks that the account stays valid after cancellation. Compare po_exposure_retain to check whether a hold must stay reserved."
