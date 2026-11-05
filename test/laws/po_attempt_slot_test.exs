@@ -25,7 +25,7 @@ defmodule HoldLedger.Laws.PoAttemptSlotTest do
           | ok value =>
             simp [counted, found, Erlang.erlang.«=:=/2», Lynx.Term.true, Lynx.Term.false] at requires
             repeat' (split at requires <;> try simp_all [Lynx.Term.true])
-            all_goals simpa [Lynx.Term.true] using (by assumption : value = Lynx.Term.atom "true")
+            all_goals simpa [Lynx.Term.true] using requires.2
         simp only [«po_attempt_slot:ensures/5», Elixir.HoldLedger.Attempts.«step/2»,
           Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
         repeat' (split at * <;> try simp_all [

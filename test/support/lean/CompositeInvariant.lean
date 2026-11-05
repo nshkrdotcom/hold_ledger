@@ -17,7 +17,7 @@ theorem components (state : Lynx.Term)
       Elixir.HoldLedger.Spec.«obligations_valid?/3» obligations entries .nil = Except.ok Lynx.Term.true ∧
       Elixir.HoldLedger.Spec.«all_voiding_present?/2» entries obligations = Except.ok Lynx.Term.true := by
   simp only [Elixir.HoldLedger.Spec.«composite_valid?/1»,bind,Except.bind] at valid
-  repeat' (split at * <;> try simp_all [Lynx.Term.true])
+  repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true])
   all_goals exact ⟨_,_,⟨rfl,rfl⟩,by assumption,_,by assumption,by assumption,by assumption⟩
 
 theorem obligation_shape (items entries seen : Lynx.Term)
@@ -26,7 +26,7 @@ theorem obligation_shape (items entries seen : Lynx.Term)
   fun_induction Elixir.HoldLedger.Spec.«obligations_valid?/3» items entries seen
   all_goals try simp only [Erlang.erlang.«is_integer/1»,
     Lynx.Except.guard,Lynx.Except.tryWith,Lynx.Except.andAlso,bind,Except.bind] at valid
-  all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
+  all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
   all_goals try exact ⟨[],rfl⟩
   all_goals obtain ⟨rest,equal⟩ := (by assumption : ∃ os : List Obligation, _)
   all_goals subst_vars
@@ -98,7 +98,7 @@ theorem full_view (ledger : Lynx.Term) (items : List Obligation) (entries : Lynx
   · intro combined
     have both : Elixir.HoldLedger.Spec.«obligations_valid?/3» (encode items) (CompositeEntries.encode physical) .nil = Except.ok Lynx.Term.true ∧
         Elixir.HoldLedger.Spec.«all_voiding_present?/2» (CompositeEntries.encode physical) (encode items) = Except.ok Lynx.Term.true := by
-      repeat' (split at combined <;> try simp_all [Lynx.Term.true])
+      simpa only [Lynx.Term.true,Lynx.Except.andAlso_eq_true,true_and] using combined
     obtain ⟨unique,each⟩ := metadata.mp both.1
     refine ⟨⟨unique,by intro item member; exact ⟨(each item member).2.1,(each item member).2.2.1⟩⟩,?_⟩
     intro key
@@ -127,13 +127,13 @@ theorem nonvoid_absent (items : List Obligation) (entries seen : Lynx.Term) (key
       simp only [encode,Elixir.HoldLedger.Spec.«obligations_valid?/3»,
         Erlang.erlang.«is_integer/1»,Lynx.Except.guard,Lynx.Except.tryWith,
         Lynx.Except.andAlso,bind,Except.bind] at valid
-      repeat' (split at valid <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
+      repeat' (first | split_conjunction | split at valid <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
       all_goals have tail : key ∉ rest.map Obligation.key := by simpa using ih _ (by assumption)
       all_goals by_cases same : key = item.key
       all_goals try solve | exact ⟨same,by simpa using tail⟩
       all_goals subst key
       all_goals simp_all [Elixir.HoldLedger.Spec.«voiding_entry?/1»]
-      all_goals repeat' (split at * <;> try simp_all [])
+      all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
 
 theorem assemble (ledger obligations entries : Lynx.Term)
     (ledger_valid : Elixir.HoldLedger.Spec.«valid?/1» ledger = Except.ok Lynx.Term.true)

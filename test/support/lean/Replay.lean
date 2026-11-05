@@ -62,6 +62,8 @@ theorem «po_c1/2» (s events : Lynx.Term)
   clear replay step_valid
   simp only [«po_c1:requires/2», bind, Except.bind] at requires
   all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true])
+  all_goals simp only [Lynx.Term.true,Lynx.Except.andAlso_eq_true] at requires
+  all_goals repeat' split_conjunction
   all_goals obtain ⟨out, hr, hv⟩ := replay_valid events s (by assumption) (by assumption)
   all_goals simp [«po_c1:ensures/2», hr, hv]
 
@@ -133,6 +135,8 @@ theorem «po_c2/3» (amount_limit hold_limit events : Lynx.Term)
         Elixir.HoldLedger.Spec.«hold_amount/1», Elixir.HoldLedger.Spec.«hold_count/1»,
         Erlang.erlang.«is_integer/1», Erlang.erlang.«is_list/1», Erlang.erlang.«==/2»,
             Lynx.Term.true]
+  all_goals simp only [Lynx.Term.true,Lynx.Except.andAlso_eq_true] at requires
+  all_goals repeat' split_conjunction
   all_goals
     obtain ⟨out, hr, hv⟩ := replay_valid events
       (Lynx.Term.tuple #[Lynx.Term.integer al, Lynx.Term.integer hl, Lynx.Term.integer 0, Lynx.Term.integer 0, Lynx.Term.nil])

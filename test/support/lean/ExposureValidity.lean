@@ -142,8 +142,8 @@ theorem view (ledger obligations : Lynx.Term) (entries issued records : List Ent
         Elixir.HoldLedger.Spec.«issued_valid?/3» (entriesTerm issued) (entriesTerm entries) .nil = Except.ok Lynx.Term.true ∧
         Elixir.HoldLedger.Spec.«remote_valid?/3» (entriesTerm records) (entriesTerm issued) .nil = Except.ok Lynx.Term.true ∧
         Elixir.HoldLedger.Spec.«local_remote_agree?/3» (entriesTerm entries) (entriesTerm issued) (entriesTerm records) = Except.ok Lynx.Term.true := by
-      simp only [Elixir.HoldLedger.Spec.«exposure_valid?/1»,located,bind,Except.bind] at valid
-      repeat' (split at * <;> try simp_all [Lynx.Term.true])
+      simpa only [Elixir.HoldLedger.Spec.«exposure_valid?/1»,located,bind,Except.bind,
+        Lynx.Term.true,Lynx.Except.andAlso_eq_true,and_assoc] using valid
     obtain ⟨composite,issued_valid,remote_valid,agreement⟩ := parts
     exact ⟨composite,(ExposureFacts.issued_unique issued (entriesTerm entries) [] issued_valid).1,
       (ExposureFacts.remote_unique records (entriesTerm issued) [] remote_valid).1,

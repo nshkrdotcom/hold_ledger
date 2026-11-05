@@ -247,8 +247,8 @@ theorem «po_exposure_retain/5» (state event key amount status : Lynx.Term)
     (requires : «po_exposure_retain:requires/5» state event key amount status = Except.ok Lynx.Term.true) :
     «po_exposure_retain:ensures/5» state event key amount status = Except.ok Lynx.Term.true := by
   have valid : Elixir.HoldLedger.Spec.«valid?/1» state = Except.ok Lynx.Term.true := by
-    simp only [«po_exposure_retain:requires/5»,bind,Except.bind] at requires
-    repeat' (split at * <;> try simp_all [Erlang.erlang.«not/1», Lynx.Term.true,Lynx.Term.false])
+    simp only [«po_exposure_retain:requires/5»,bind,Except.bind,Lynx.Term.true,Lynx.Except.andAlso_eq_true] at requires
+    repeat' (first | split_conjunction | split at * <;> try simp_all [Erlang.erlang.«not/1», Lynx.Term.true,Lynx.Term.false])
   obtain ⟨al,hl,ua,uh,es,rfl,hp,hu,ha,hc,hal,hhl,hua,huh,hacap,hhcap⟩ := HoldLedgerProof.valid_view_1 state valid
   have shape := HoldLedgerProof.lookup_shape_1 es key hp
   rcases shape with absent | ⟨stored,amt,old,found,known⟩
@@ -258,9 +258,9 @@ theorem «po_exposure_retain/5» (state event key amount status : Lynx.Term)
       rfl
     simp [«po_exposure_retain:requires/5»,valid,absent,absent_compare,Erlang.erlang.«element/2»,
       Erlang.erlang.«=:=/2»,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at requires
-    all_goals repeat' (split at * <;> try simp_all [Erlang.erlang.«not/1», Lynx.Term.true,Lynx.Term.false])
-  · simp only [«po_exposure_retain:requires/5»,Erlang.erlang.«element/2»,valid,bind,Except.bind] at requires
-    repeat' (split at * <;> try simp_all [Erlang.erlang.«not/1», Lynx.Term.true,Lynx.Term.false])
+    all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [Erlang.erlang.«not/1», Lynx.Term.true,Lynx.Term.false])
+  · simp only [«po_exposure_retain:requires/5»,Erlang.erlang.«element/2»,valid,bind,Except.bind,Lynx.Term.true,Lynx.Except.andAlso_eq_true] at requires
+    repeat' (first | split_conjunction | split at * <;> try simp_all [Erlang.erlang.«not/1», Lynx.Term.true,Lynx.Term.false])
     all_goals
       have equal : Erlang.erlang.«=:=/2»
         (Lynx.Term.tuple #[Lynx.Term.atom "ok",Lynx.Term.tuple #[Lynx.Term.integer stored,Lynx.Term.integer amt,old]])

@@ -36,11 +36,11 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
       clear requires replaced lookup_equiv marked shape_lookup identity_all compatible key amount event
       simp only [Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
         Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at initial
-      all_goals repeat' (split at initial <;> try simp_all [Lynx.Term.true])
-      all_goals repeat' (split at * <;> try simp_all [])
+      all_goals repeat' (first | split_conjunction | split at initial <;> try simp_all [Lynx.Term.true])
+      all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
       all_goals simp only [Erlang.erlang.«is_integer/1», Elixir.HoldLedger.Spec.«unique_keys?/1»,
         Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at *
-      all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+      all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
       all_goals exact ⟨_, _, _, _, _, by exact ⟨rfl, rfl, rfl, rfl, rfl⟩, by assumption, by assumption⟩
     obtain ⟨al, hl, ua, uh, es, rfl, hp, hu⟩ := shaped
     have hidentity := identity_all _ event initial

@@ -38,7 +38,7 @@ theorem all_present (entries : List Entry) (items : List Outbox.Obligation) :
   | cons entry rest ih =>
       by_cases voiding : entry.status = .atom "voiding"
       · simp [encode,Elixir.HoldLedger.Spec.«all_voiding_present?/2»,voiding,Outbox.present]
-        split <;> simp_all
+        simpa only [List.mem_map,Lynx.Term.true] using fun _ _ _ => ih
       · simp [encode,Elixir.HoldLedger.Spec.«all_voiding_present?/2»,voiding]
         simpa only [List.mem_map,Lynx.Term.true] using ih
 

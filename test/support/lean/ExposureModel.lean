@@ -37,7 +37,7 @@ theorem pair_view (state : Lynx.Term)
       Elixir.HoldLedger.Spec.«remote_valid?/3» records issued .nil = Except.ok Lynx.Term.true ∧
       Elixir.HoldLedger.Spec.«local_remote_agree?/3» entries issued records = Except.ok Lynx.Term.true := by
   simp only [Elixir.HoldLedger.Spec.«exposure_valid?/1»,bind,Except.bind] at valid
-  repeat' (split at * <;> try simp_all [Lynx.Term.true])
+  repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true])
   all_goals exact ⟨_,_,_,_,⟨⟨rfl,rfl⟩,rfl,rfl⟩,by assumption,_,by assumption,by assumption,by assumption,by assumption⟩
 
 /-- All actual translated model transitions preserve the full independent pair

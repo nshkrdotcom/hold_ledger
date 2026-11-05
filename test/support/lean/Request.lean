@@ -72,26 +72,26 @@ theorem «po_a2/3» (s key amount : Lynx.Term)
       Erlang.erlang.«is_integer/1», Lynx.Term.true, Lynx.Term.false]
   all_goals cases amount <;>
     simp_all []
-  all_goals repeat' (split at requires <;> try simp_all [])
+  all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [])
   all_goals simp [Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt, Int.compare_eq_gt,
       bind, Except.bind] at requires
-  all_goals repeat' (split at requires <;> try simp_all [])
+  all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [])
   all_goals try simp only [Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at requires
-  all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
-  all_goals repeat' (split at * <;> try simp_all [])
+    Lynx.Except.andAlso, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at requires
+  all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
   all_goals simp only [Elixir.HoldLedger.Spec.«valid?/1», Elixir.HoldLedger.Spec.«nonnegative_state_valid?/5»,
-    Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at *
-  all_goals repeat' (split at * <;> try simp_all [])
+    Lynx.Except.andAlso, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind] at *
+  all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
   all_goals simp only [Erlang.erlang.«is_integer/1», bind, Except.bind] at *
-  all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals obtain ⟨⟨a, ha⟩, c, hc⟩ := totals _ (by assumption)
   all_goals simp_all [Erlang.erlang.«==/2»,
     Lynx.Term.true, Lynx.Term.false]
-  all_goals repeat' (split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
+  all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
   all_goals try simp_all [Lynx.Term.true, Lynx.Term.false]
   all_goals simp only [Elixir.HoldLedger.Spec.«has_key?/2», bind, Except.bind] at *
-  all_goals repeat' (split at * <;> try simp_all [])
+  all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
   all_goals subst_vars
   all_goals try simp_all [ Lynx.Term.true, Lynx.Term.false]
   have find_eq : ∀ es k, Elixir.HoldLedger.Spec.«proper_entries?/1» es = Except.ok Lynx.Term.true →
@@ -107,7 +107,7 @@ theorem «po_a2/3» (s key amount : Lynx.Term)
     Erlang.erlang.«is_integer/1», Erlang.erlang.«==/2», Erlang.erlang.«>/2»,
     Ordering.isGT_iff_eq_gt, Int.compare_eq_gt, Int.add_comm,
     Lynx.Term.true, Lynx.Term.false]
-  all_goals repeat' (split at * <;> try simp_all [])
+  all_goals repeat' (first | split_conjunction | split at * <;> try simp_all [])
   all_goals omega
 
 theorem «po_a3/2» (s event : Lynx.Term)

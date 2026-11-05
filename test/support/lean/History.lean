@@ -81,8 +81,9 @@ theorem «po_c3/2» (s events : Lynx.Term)
     (requires : «po_c3:requires/2» s events = Except.ok Lynx.Term.true) :
     «po_c3:ensures/2» s events = Except.ok Lynx.Term.true := by
   have valid : Elixir.HoldLedger.Spec.«valid?/1» s = Except.ok Lynx.Term.true := by
-    simp only [«po_c3:requires/2»,bind,Except.bind] at requires
-    all_goals repeat' (split at requires <;> try simp_all [Lynx.Term.true])
+    simp only [«po_c3:requires/2»,Lynx.Term.true,Lynx.Except.andAlso_eq_true] at requires
+    all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [Lynx.Term.true])
+    all_goals assumption
   have proper : Elixir.HoldLedger.Spec.«proper_events?/1» events = Except.ok Lynx.Term.true := by
     simpa [«po_c3:requires/2»,valid,bind,Except.bind] using requires
   obtain ⟨final,run,expected,final_valid,ids,explained,preserved⟩ := HoldLedgerProof.history events s proper valid
