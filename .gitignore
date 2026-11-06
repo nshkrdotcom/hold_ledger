@@ -11,13 +11,13 @@
 erl_crash.dump
 
 # uv-managed Python tools
-/.venv/
+/.venv
 /__pycache__/
 *.py[cod]
 /.pytest_cache/
 
 # Local state and credentials
-/.local/
+/.local
 /.env
 /.env.*
 !/.env.example

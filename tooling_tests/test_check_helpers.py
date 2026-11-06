@@ -40,13 +40,23 @@ class CheckHelpersTest(unittest.TestCase):
             (source / 'deps').mkdir()
             (source / 'deps/cache').write_text('original')
             (source / '.local').mkdir()
+            (source / '.venv').mkdir()
             copied = check_runtime.copy_project(source, root / 'copy')
             self.assertEqual((copied / 'tracked').read_text(), 'uncommitted')
             self.assertEqual((copied / 'untracked').read_text(), 'new source')
             self.assertFalse((copied / 'deleted').exists())
             self.assertTrue((copied / '.local').is_symlink())
+            self.assertTrue((copied / '.venv').is_symlink())
             (copied / 'deps/cache').write_text('worker write')
             self.assertEqual((source / 'deps/cache').read_text(), 'original')
+            # The master copies checkout -> snapshot -> worker. Shared symlinks
+            # in the intermediate snapshot must not become source inputs.
+            worker = check_runtime.copy_project(copied, root / 'worker')
+            self.assertEqual(check_runtime.source_manifest(worker), check_runtime.source_manifest(source))
+            self.assertEqual((worker / '.venv').resolve(), source / '.venv')
+            self.assertEqual((worker / '.local').resolve(), source / '.local')
+            (worker / 'deps/cache').write_text('second worker write')
+            self.assertEqual((copied / 'deps/cache').read_text(), 'worker write')
 
     def test_master_parallel_groups_and_full_baseline_reuse(self):
         with tempfile.TemporaryDirectory() as folder:

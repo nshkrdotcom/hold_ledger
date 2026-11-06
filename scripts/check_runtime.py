@@ -73,7 +73,10 @@ def worker_environment(jobs: int, project: Path | None = None) -> dict[str, str]
 def source_files(source: Path) -> list[Path]:
     listed = subprocess.check_output(
         ['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], cwd=source)
-    return [Path(os.fsdecode(name)) for name in listed.split(b'\0') if name]
+    paths = [Path(os.fsdecode(name)) for name in listed.split(b'\0') if name]
+    # Directory-only Git ignores do not necessarily ignore symlinks. Snapshots
+    # link these prepared environments; they are infrastructure, never source.
+    return [path for path in paths if path.parts[0] not in ('.local', '.venv')]
 
 
 def source_manifest(source: Path) -> dict[str, str]:

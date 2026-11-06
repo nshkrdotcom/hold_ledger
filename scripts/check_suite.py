@@ -183,6 +183,7 @@ def main() -> int:
                     report['groups'][group] = result
                     save()
                     if result['state'] != 'passed':
+                        say(group, result.get('error', f"{result['state']} (exit {result.get('exit')})"))
                         cancel_running()
                         for pending in futures:
                             pending.cancel()
