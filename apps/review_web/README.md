@@ -524,7 +524,7 @@ and runs the Python content checks. It uses an isolated source copy and logs
 all output under `/tmp`; add `--quiet` or `--jobs N` as needed.
 
 `./scripts/check_all.sh` includes these checks alongside root tests, full formal
-acceptance, mutations and tutorials. See the root [Testing guide](../../guides/testing.md#check-helpers)
+acceptance, mutations and tutorials. See the root [Testing guide](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/testing.md#check-helpers)
 for command details and report paths. For focused app work, use
 `scripts/local_run.py --cwd apps/review_web mix test <path>` from the root.
 
