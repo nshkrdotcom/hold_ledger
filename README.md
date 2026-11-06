@@ -31,26 +31,26 @@ For practice without installing tools, choose a [review exercise](guides/interac
 
 ## Run checks
 
-From the repository root, use either zero-argument Bash helper:
+From the repository root:
 
 ```sh
-./scripts/check_quick.sh
-./scripts/check_full.sh
+./scripts/check_quick.sh  # Ordinary tests, static analysis and tooling
+./scripts/check_all.sh    # Everything, including formal checks, mutants and Phoenix
 ```
 
-**Quick** includes setup, formatting, compilation, ordinary tests/properties and
-Python tooling tests. **Full** includes setup and the complete formal acceptance
-pipeline: uncached proofs, fresh exports, all six checker configurations and the
-axiom audit. Run both for ordinary and formal coverage; full does not repeat quick.
-Full writes `tmp/verification/checked.json`; acceptance requires
-`release_complete: true`. A failed or timed-out run is not acceptance.
+Every helper runs with no arguments. It logs to a unique
+`/tmp/hold-ledger-check-<mode>.*.log` and displays output by default; add
+`--quiet` to hide live output or `--jobs N` to override automatic CPU/memory
+limits. The master uses isolated copies of the current working tree, including
+uncommitted changes, to run independent checks concurrently. Builds and reports
+stay under ignored `tmp/check-runs/`; the log identifies the exact run directory.
 
-Both helpers stop on the first failure and work from any current directory when
-invoked by path. Setup reuses installed repository-local tools and dependencies.
-You must already have the supported Elixir/OTP, uv and Git; full also needs
-Bubblewrap (`bwrap`). The helpers do not install system packages.
-See [Getting started](guides/getting-started.md#check-the-checkout) for the commands
-inside each helper and [Verification](guides/verification.md#run-checks) for evidence scope.
+For a narrower run, use `check_full.sh` (formal acceptance), `check_mutants.sh`
+(the ten mutation experiments), or `check_web.sh` (the Phoenix app). Full formal
+acceptance requires `release_complete: true` in the completed proof report.
+See [Testing](guides/testing.md#check-helpers) for each helper's scope, commands,
+logs and resource controls, and [Getting started](guides/getting-started.md) for
+prerequisites. The helpers do not change global tools or install system packages.
 
 ## Try it on a supported machine
 

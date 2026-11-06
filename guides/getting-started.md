@@ -10,62 +10,42 @@ The supported checkout runs on Ubuntu **26.04 x86_64**, with Elixir **1.20.4** c
 
 ## Check the checkout
 
-The canonical entry points are zero-argument Bash scripts. From the repository root:
+Start with ordinary checks, or run the complete suite:
 
 ```sh
 ./scripts/check_quick.sh
-./scripts/check_full.sh
+./scripts/check_all.sh
 ```
 
-Quick runs ordinary checks; full runs formal acceptance. Run both when you need
-both kinds of evidence. Each includes setup, resolves the repository root from
-its own location, and stops at the first failed command. They do not run the
-separate Phoenix app's checks, Credo, Dialyzer, documentation builds or mutations.
+No arguments or shell exports are required. Both resolve the repository root
+from their script location. Each checks the installed Elixir/OTP and Git,
+prepares locked Python/Mix dependencies, and provisions checksum-verified
+repository-local Elan/Lean/Lake. Full formal checks and mutations also require
+an existing Bubblewrap (`bwrap`). The helpers do not install system packages
+or replace global tools.
 
-Here is the breakdown of the commands in the scripts:
+Setup reuses matching local tools and cached downloads. An incompatible or
+incomplete installation fails with a diagnostic. Ordinary tests compile Lynx
+through Lake, so even the quick helper needs the local Lean toolchain.
 
-| Command | Purpose |
-|---|---|
-| `uv sync --locked` | Prepare Python tooling using the committed lockfile. |
-| `uv run --locked python scripts/onboard.py --profile runtime --provision` | Quick: validate existing Elixir/OTP and Git; provision pinned local Elan/Lean/Lake. |
-| `uv run --locked python scripts/onboard.py --profile proofs --provision` | Full: the same setup, plus validate the full checker prerequisites, including `bwrap`. |
-| `uv run --locked python scripts/local_run.py mix deps.get` | Fetch the locked Mix dependencies using the local tool environment. |
-
-Setup reuses the existing local Elan installation, matching Lean extraction and
-toolchain link; it reruns validation. Downloads are checksum-verified and cached.
-An incompatible or incomplete installation fails with a diagnostic rather than
-silently replacing it. Neither helper installs Elixir/OTP, uv, Git or Bubblewrap,
-or changes global tools or host security settings.
-
-After setup, **quick** runs:
+The helpers detect usable CPUs, CPU quotas and available memory. Independent
+work uses at most four workers by default; `--jobs N` overrides that limit and
+`--jobs 1` runs serially. `--quiet` hides live output while retaining the log.
+For example:
 
 ```sh
-uv run --locked python scripts/local_run.py mix format --check-formatted
-uv run --locked python scripts/local_run.py mix compile --warnings-as-errors
-uv run --locked python scripts/local_run.py mix test --exclude laws
-uv run --locked python -m unittest discover -s tooling_tests -v
+./scripts/check_all.sh --quiet --jobs 4
 ```
 
-These check formatting, compiler warnings, ordinary examples/properties/runtime
-faults, and the Python proof tooling. Ordinary tests still compile Lynx through
-Lake, so quick also needs the local Lean toolchain; it does not need Bubblewrap.
+Each run prints its `/tmp/hold-ledger-check-<mode>.*.log` path. Source snapshots,
+workspaces, per-group logs and reports stay under `tmp/check-runs/<run>/`.
+The snapshot includes uncommitted source changes; subsequent edits in your main
+checkout do not change the worker inputs. Run one helper at a time per checkout.
 
-After setup, **full** runs:
-
-```sh
-uv run --locked python scripts/run_laws.py --supported-only --stage full \
-  --report tmp/verification/checked.json
-```
-
-This checks every required group with uncached proofs, fresh exports, six checker
-configurations and the allowed-axiom audit. Acceptance requires
-`release_complete: true` in the report. Full does not repeat the ordinary checks.
-Logs and exports stay under ignored `tmp/verification/`. See
-[Verification](verification.md#run-checks) for acceptance details.
-
-`local_run.py` selects the repository-local environment for one command, so no
-shell exports are needed. After either helper has completed setup, you can use
-it to run the demo or focused tutorial commands below.
+[Testing](testing.md#check-helpers) lists all five helpers and unpacks their
+commands. [Verification](verification.md#run-checks) explains full proof acceptance
+and focused lower-level commands. `scripts/local_run.py` remains available for
+running one command with the repository-local tools, including the demo below.
 
 ## Run the demonstration
 
@@ -145,4 +125,4 @@ use the [no-server review exercise](interactive_review.md).
 
 ## Local quality checks
 
-Run `./scripts/check_quick.sh` first, then strict Credo and Dialyzer as needed. [Testing](testing.md) lists the commands and their scope; [Verification](verification.md) covers the separate, expensive formal checks. If prerequisites fail, use [Troubleshooting](troubleshooting.md) rather than changing version pins silently.
+Run `./scripts/check_quick.sh` first; it includes strict Credo and Dialyzer. [Testing](testing.md) lists the commands and their scope; [Verification](verification.md) covers the separate, expensive formal checks. If prerequisites fail, use [Troubleshooting](troubleshooting.md) rather than changing version pins silently.

@@ -21,7 +21,7 @@ def local_env() -> dict[str, str]:
     env["ELAN_TOOLCHAIN"] = PINS["lean_toolchain"]
     env["PATH"] = str(LOCAL / "elan/bin") + os.pathsep + env.get("PATH", "")
     # Do not write build caches into the user's home.
-    env["XDG_CACHE_HOME"] = str(LOCAL / "cache")
+    env["XDG_CACHE_HOME"] = env.get("HOLD_LEDGER_CACHE_HOME", str(LOCAL / "cache"))
     return env
 
 

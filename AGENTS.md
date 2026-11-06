@@ -50,6 +50,12 @@ mix docs --warnings-as-errors
 mix hex.build
 ```
 
+The zero-argument Bash entry points are `scripts/check_quick.sh`,
+`check_full.sh`, `check_mutants.sh`, `check_web.sh` and `check_all.sh` (all under
+`scripts/`). They share `--quiet` and `--jobs N`; see `guides/testing.md#check-helpers`
+for exact scope, source snapshots and evidence paths. Prefer these for complete
+local runs; use the commands above for focused work.
+
 Run checks appropriate to the change. Formal verification and native mutation
 runs are expensive; run them when requested or when needed to validate changes
 to a law or core behavior, not for documentation-only changes. Commands are in

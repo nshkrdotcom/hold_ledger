@@ -9,7 +9,9 @@ passed the uncached Lynx run AND every independent export checker.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime as dt
+import os
 import hashlib
 import json
 import re
@@ -19,6 +21,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from check_runtime import cancellation_scope, copy_project, resources, worker_environment
 from run_laws import (CHECKERS, REQUIRED_AXIOMS, acceptance_sources, changed_sources,
                       inspect_manifest, run as run_command)
 
@@ -37,8 +40,7 @@ MUTANTS = (
     ("M9", "09_restart_unknown", "po_b7"),
     ("M10", "10_premature_void_release", "po_exposure_retain"),
 )
-OMIT = (".git", ".local", ".venv", "_build", "deps", "tmp", "__pycache__",
-        ".pytest_cache", "doc", "hold_ledger-*.tar")
+
 
 
 def digest(path: Path) -> str:
@@ -46,7 +48,7 @@ def digest(path: Path) -> str:
 
 
 def cmd(argv: list[str], cwd: Path, *, timeout: int, log: Path) -> dict:
-    result = run_command(argv, cwd=cwd, env=None, log=log, timeout=timeout)
+    result = run_command(argv, cwd=cwd, env=worker_environment(int(os.environ.get("HOLD_LEDGER_JOBS", "1")), cwd), log=log, timeout=timeout)
     # Preserve the mutation runner's existing report schema.
     result.pop("cwd")
     return result
@@ -74,16 +76,7 @@ def patch_correctly_applies(project: Path, mutant: str, relative_dir: str,
 
 
 def scratch_project(destination: Path) -> Path:
-    project = destination / "hold_ledger"
-    shutil.copytree(ROOT, project, ignore=shutil.ignore_patterns(*OMIT))
-    for name in ("deps", ".local"):
-        # The Elixir and Lean binaries/dependencies remain at their known pinned
-        # native checkout; builds, generated files and export output stay in
-        # this disposable copy. Do not write into source dependencies.
-        original = ROOT / name
-        if original.is_dir():
-            (project / name).symlink_to(original, target_is_directory=True)
-    return project
+    return copy_project(ROOT, destination / "hold_ledger")
 
 
 def evidence_of_assertion_failure(output: str, mutant_id: str) -> bool:
@@ -248,6 +241,7 @@ def one_mutant(spec: tuple, original: bytes, spec_digest: str,
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--jobs", type=int, default=resources()["default_jobs"], help="parallel isolated mutants (default: CPU/memory bounded, at most 4)")
     p.add_argument("--baseline-report", type=Path, help="reuse matching complete cold checker acceptance")
     p.add_argument("--execute", action="store_true", help="run full native isolated mutations")
     p.add_argument("--timeout", type=int, default=1800, help="native per-check seconds")
@@ -256,6 +250,9 @@ def main() -> int:
     args = p.parse_args()
     dest = None
     try:
+        if args.jobs < 1:
+            raise RuntimeError("--jobs must be positive")
+        os.environ["HOLD_LEDGER_JOBS"] = str(args.jobs)
         if args.report:
             candidate = args.report.resolve()
             if not candidate.is_relative_to(ROOT / "tmp"):
@@ -289,14 +286,25 @@ def main() -> int:
             baselines = (accepted_baseline(args.baseline_report, MUTANTS) if args.baseline_report
                          else baseline_laws(MUTANTS, args.timeout))
             report["formal_baselines"] = baselines
+            print(f"Running {len(MUTANTS)} isolated mutants with {args.jobs} workers", flush=True)
             all_detected = True
-            for entry in MUTANTS:
-                result = one_mutant(entry, original, spec_hash, baselines,
-                                    args.timeout, args.suite_timeout)
-                report["mutants"][entry[0]] = result
-                all_detected &= result["mutant_concrete"]["assertion_counterexample"]
-                print(f"{entry[0]} concrete={'DETECTED' if result['mutant_concrete']['assertion_counterexample'] else 'NOT DETECTED'}; "
-                      f"formal={result['formal_attribution']}", flush=True)
+            with cancellation_scope(), ThreadPoolExecutor(max_workers=args.jobs) as pool:
+                futures = {pool.submit(one_mutant, entry, original, spec_hash, baselines,
+                                       args.timeout, args.suite_timeout): entry for entry in MUTANTS}
+                for future in as_completed(futures):
+                    entry = futures[future]
+                    try:
+                        result = future.result()
+                    except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
+                        result = {"id": entry[0], "state": "INCOMPLETE", "error": str(error)}
+                        all_detected = False
+                    report["mutants"][entry[0]] = result
+                    detected = result.get("mutant_concrete", {}).get("assertion_counterexample", False)
+                    all_detected &= detected
+                    print(f"{entry[0]} concrete={'DETECTED' if detected else 'INCOMPLETE'}; "
+                          f"formal={result.get('formal_attribution', 'UNAVAILABLE')}", flush=True)
+                    if dest:
+                        dest.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
             report["all_concrete_detected"] = bool(all_detected)
         if (ROOT / LEDGER).read_bytes() != original or digest(ROOT / SPEC) != spec_hash:
             raise RuntimeError("Live normative/reducer sources changed; isolation failure")
@@ -306,6 +314,11 @@ def main() -> int:
         if not args.execute:
             print("Ordinary execution / formal checker NOT RUN; no mutation claims")
         return 0 if not args.execute or report.get("all_concrete_detected") else 2
+    except KeyboardInterrupt:
+        if dest:
+            dest.write_text(json.dumps({"mode": "INCOMPLETE", "all_concrete_detected": False,
+                                        "error": "Cancelled"}) + "\n")
+        return 130
     except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
         if dest:
             dest.write_text(json.dumps({"mode": "INCOMPLETE", "all_concrete_detected": False,
@@ -315,4 +328,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    with cancellation_scope():
+        raise SystemExit(main())

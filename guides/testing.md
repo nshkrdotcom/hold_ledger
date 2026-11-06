@@ -2,24 +2,96 @@
 
 A passing proof answers a universal question about a stated model. Tests answer different questions: does this example behave as required, does a fault path recover safely, and does a deliberately broken implementation get caught? Hold Ledger uses all of these checks because none replaces the others.
 
-The canonical ordinary check command includes setup:
+## Check helpers
+
+All five Bash helpers work with no arguments and include locked dependency and
+local tool setup. Run them from the repository root or invoke them by path.
+
+| Helper | Checks |
+|---|---|
+| `./scripts/check_quick.sh` | Root formatting, compilation and ordinary tests/properties with warnings as errors; strict Credo; Dialyzer; Python tooling tests; catalog registration and static mutation patch checks. No formal proof attempts. |
+| `./scripts/check_full.sh` | Every required law group, uncached proof checking, fresh exports, all six independent checker configurations and the axiom audit. Does not repeat quick checks. |
+| `./scripts/check_mutants.sh` | A fresh targeted formal baseline, then all ten isolated mutants. Each runs its correct-source witness, mutated witness, ordinary suite and mapped formal attempt. |
+| `./scripts/check_web.sh` | Phoenix `mix precommit` (compile, format, strict Credo, Dialyzer and tests), documentation, asset setup/build and Python content checks. |
+| `./scripts/check_all.sh` | Everything above, plus bounded BEAM/Lean differential checks, executable tutorials, demo, root documentation/package builds and original claim-reading production. Runs full formal acceptance once and reuses its validated baseline for mutants. |
+
+The master runs independent groups concurrently, then runs the mutants with the
+same worker budget. Lean's shared proof batch remains dependency-ordered. The
+mutant witness, ordinary suite and targeted formal attempt remain sequential
+within each mutant. Auto-detection respects CPU affinity, cgroup CPU/memory
+limits and available memory, choosing at most four workers and roughly 3 GiB
+of available memory per worker. This is a scheduling budget, not a hard memory
+limit. BEAM schedulers are bounded per worker.
+
+Every helper accepts the same options:
 
 ```sh
-./scripts/check_quick.sh
+./scripts/check_all.sh              # Automatic workers; live output and a log
+./scripts/check_all.sh --quiet      # Log output; print log path and final status
+./scripts/check_all.sh --jobs 1     # Serial execution
+./scripts/check_all.sh --jobs 6     # Explicit worker budget
+./scripts/check_all.sh --help
 ```
 
-It checks formatting, compilation with warnings as errors, ordinary tests and
-properties (excluding formal laws), and Python tooling tests. See
-[Getting started](getting-started.md#check-the-checkout) for the command breakdown.
-For formal acceptance, run `./scripts/check_full.sh` separately; see
-[Verification](verification.md#run-checks).
+### Source copies, logs and reports
 
-Additional static checks, after setup:
+Setup finishes before workers start. The runner snapshots the current source,
+including tracked edits and nonignored untracked files, and checks hashes before
+and after the copy. Workers have independent dependency copies, builds, caches,
+exports, reports and assets. Installed tools and the prepared Python environment
+are shared. Temporary copies use reflinks when supported, with ordinary copies
+as the fallback; writable files are never hardlinked. `tmp/` is already ignored.
+You can edit the main checkout after the snapshot without changing worker inputs.
 
-```sh
-uv run --locked python scripts/local_run.py mix credo --strict
-uv run --locked python scripts/local_run.py mix dialyzer
-```
+The helper prints a unique combined stdout/stderr log under
+`/tmp/hold-ledger-check-<mode>.*.log`. Follow the printed file with `tail -f`.
+Each command and its exit status are logged; silent commands emit 15-second
+heartbeats. Concurrent terminal lines carry their group name.
+
+The log identifies `tmp/check-runs/<run>/`, containing:
+
+- `status.json`: resources, source hashes and each requested group's result.
+- `logs/<group>.log`: command output for that group.
+- `snapshot/`: the source used by every worker.
+- `workers/<group>/`: isolated project and detailed generated evidence.
+
+For full or master runs, formal acceptance is recorded in
+`workers/full/tmp/verification/checked.json`; it requires `release_complete: true`.
+In a master run, the mutation report is
+`workers/full/tmp/verification/mutants.json`. Standalone mutation runs use
+`workers/mutants/tmp/verification/mutants.json`. Other reports retain their usual
+paths within their worker project. These locations preserve source-bound evidence
+without overwriting an earlier run. A passing orchestration status does not
+replace reading the formal report.
+
+A failed command stops its group; the master cancels remaining work and exits
+nonzero. Ctrl-C or termination stops child processes, including nested Lean
+sessions. Cancelled or incomplete checks cannot count as acceptance. Run one
+helper at a time per checkout. Workspaces and reports are retained for inspection;
+remove a completed run's printed directory when you no longer need it.
+
+### Commands inside the helpers
+
+`scripts/check_suite.py` defines the command groups, and `check_runtime.py`
+provides resource detection and source isolation. The Bash wrappers share
+`check_common.sh` for CLI options and logging. Setup uses `uv sync --locked`,
+`onboard.py --provision`, locked Mix dependencies and `verify_pins.py`.
+
+The quick group runs `mix format --check-formatted`,
+`mix compile --warnings-as-errors`, `mix test --exclude laws --warnings-as-errors`,
+`mix credo --strict`, `mix dialyzer`, Python `unittest` discovery in `tooling_tests`,
+`run_laws.py --supported-only --inspect-only` and static `run_mutants.py`.
+The full group runs `run_laws.py --supported-only --stage full`.
+The mutation group runs `run_mutants.py --execute --jobs N`; the master adds
+`--baseline-report` pointing to the full group's report. Reuse checks source
+hashes, export hash/size, checker acknowledgments and permitted axioms.
+
+The master's other groups run `run_differential.py --samples 100 --timeout 300`,
+`check_tutorials.py`, `mix run scripts/demo.exs`, `mix docs --warnings-as-errors`,
+`mix hex.build`, and the claim-reading producer under `MIX_ENV=test`.
+The web group runs `mix precommit`, `mix docs --warnings-as-errors`,
+`mix assets.setup`, `mix assets.build`, and Python `unittest` discovery in
+`apps/review_web/scripts`. All Mix commands use `scripts/local_run.py`.
 
 The ordinary suite covers deterministic transitions, malformed inputs, a worked
 trace, independent spec comparisons, precondition witnesses and journal/runtime
@@ -90,12 +162,16 @@ Check that all patches apply in isolated copies, without native execution:
 uv run --locked python scripts/run_mutants.py
 ```
 
-The optional native experiment first verifies the targeted baseline laws, then
-runs concrete assertions, ordinary tests and targeted formal attempts on copies:
+Run the complete native experiment with the helper:
 
 ```sh
-uv run --locked python scripts/run_mutants.py --execute --report tmp/mutants.json
+./scripts/check_mutants.sh
 ```
+
+It verifies the targeted baseline laws once, then runs up to four mutants in
+parallel by default. Each mutant still runs its assertions, ordinary suite and
+formal attempt in order. Failed assertions on a deliberately broken copy are
+expected evidence; an infrastructure failure is incomplete, not detection.
 
 A complete matching uncached acceptance report can supply the baseline without
 repeating the same checks:

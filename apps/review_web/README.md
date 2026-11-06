@@ -514,19 +514,19 @@ no model request.
 From the repository root:
 
 ```sh
-uv run --locked python scripts/local_run.py mix test test/claim_source_parity_test.exs
-uv run --locked python scripts/local_run.py mix test --exclude laws
-uv run --locked python scripts/local_run.py --cwd apps/review_web mix test test/hold_ledger_review/claim_lens_test.exs test/hold_ledger_review_web/claim_lens_live_test.exs
-uv run --locked python scripts/local_run.py --cwd apps/review_web mix precommit
-uv run --locked python scripts/local_run.py --cwd apps/review_web mix docs --warnings-as-errors
-uv run --locked python scripts/local_run.py --cwd apps/review_web mix assets.build
-python3 -m unittest discover -s apps/review_web/scripts -p 'test_*.py' -v
+./scripts/check_web.sh
 ```
 
-`precommit` compiles with warnings treated as errors, checks formatting, runs
-strict Credo and Dialyzer, and runs Phoenix tests. Python content checks validate
-the authored catalog, glossary and help data. Compilation and runtime interaction
-need their corresponding checks.
+This zero-argument helper prepares dependencies and runs `mix precommit`,
+which compiles with warnings as errors, checks formatting, runs strict Credo
+and Dialyzer, and runs Phoenix tests. It also builds documentation and assets
+and runs the Python content checks. It uses an isolated source copy and logs
+all output under `/tmp`; add `--quiet` or `--jobs N` as needed.
+
+`./scripts/check_all.sh` includes these checks alongside root tests, full formal
+acceptance, mutations and tutorials. See the root [Testing guide](../../guides/testing.md#check-helpers)
+for command details and report paths. For focused app work, use
+`scripts/local_run.py --cwd apps/review_web mix test <path>` from the root.
 
 With Phoenix running, use a separate terminal:
 

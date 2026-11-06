@@ -2,6 +2,21 @@
 
 Start with the symptom you actually see; a missing native tool, a failing proof, and an unresolved payment outcome require different responses. Do not edit an agreed law, remove an uncertain hold, or disable a checker to get a green result. If you're just setting up the project, begin with [Getting started](getting-started.md).
 
+## Check helper output and resources
+
+Each `scripts/check_*.sh` entry point prints a combined log path under `/tmp`.
+Use `tail -f` on that exact file. `--quiet` only hides terminal output; it does
+not disable logging. The log identifies the run directory under
+`tmp/check-runs/`, with `status.json`, per-group logs and worker reports.
+See [Testing](testing.md#check-helpers) for each helper's scope and report paths.
+
+If concurrent checks put too much pressure on the machine, rerun with `--jobs 1`
+or a smaller explicit budget. A timeout or failed worker remains a failure.
+Only one helper can prepare dependencies in a checkout at a time; the lock is
+released when the helper exits. If snapshotting reports source drift, finish
+your edit and rerun. After the log says `Source snapshot ready`, edits to the
+main checkout do not change that run's worker inputs.
+
 ## Runtime or toolchain mismatch
 
 ```sh
@@ -66,6 +81,9 @@ compiled output, `.venv/` Python helpers, and `tmp/` proof logs/exports and
 mutation scratch copies. `doc/` and `hold_ledger-*.tar` are generated docs/package
 outputs. They are ignored and can be regenerated. Removing `.local/` requires
 reprovisioning; remove only known disposable paths, never an active journal.
+The check helpers retain source copies, private dependencies and generated
+builds under `tmp/check-runs/`. Remove a completed run's directory when its
+evidence is no longer needed; do not remove an active run's workspace.
 
 ## A hold stays voiding or an adapter is rejected
 
