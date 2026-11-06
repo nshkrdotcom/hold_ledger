@@ -201,6 +201,7 @@ class CheckHelpersTest(unittest.TestCase):
 
     def test_mutant_pool_runs_all_ten_and_retains_individual_errors(self):
         import run_mutants
+        (run_mutants.ROOT / 'tmp').mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=run_mutants.ROOT / 'tmp') as folder:
             report = Path(folder) / 'mutants.json'
             barrier = threading.Barrier(2)
