@@ -162,7 +162,7 @@ An agent can carry out this workflow under agreed policy:
 
 [Agentic verification](guides/agentic_verification.md) has a worked exercise and prompts; [Human review](guides/human_review.md) explains what may be delegated and includes a decision practice set. The repository's `AGENTS.md` contains instructions for an agent working on this codebase.
 
-The optional [Phoenix learning and review app](apps/review_web/README.md)
+The optional [Phoenix learning and review app](https://github.com/nshkrdotcom/hold_ledger/blob/main/apps/review_web/README.md)
 connects a computed payment walkthrough to Elixir laws, Lynx translation and
 Lean proof evidence. Start at `/`, follow the lesson at `/start`, investigate
 cases in `/lab`, or practice reviewing a changed claim at `/lens/po_a2`.
@@ -174,27 +174,10 @@ when submitted. Case checks, source readings, formal reports and human judgments
 remain separate evidence. The app contacts no payment processor. The
 [manual exercise](guides/interactive_review.md) also works without the app.
 
-## Documentation map
+## Guides
 
-Start with the learning path above. Use this table to find a lesson, a procedure or a reference when you need it.
-
-| Guide | Use it for |
-|---|---|
-| [Formal verification crash course](guides/formal_verification_crash_course.md) | Run a first Lynx law, write another and read a ledger proof |
-| [Reading deeper proofs](guides/reading_deeper_proofs.md) | Inspect predicates, follow shared proofs and read recursive history models |
-| [Getting started](guides/getting-started.md) | Prerequisites, local tools and first run |
-| [Agentic verification](guides/agentic_verification.md) | Contract challenges, agent prompts and review exercises |
-| [Human review](guides/human_review.md) | Change classification, escalation and seven review exercises |
-| [Review exercises](guides/interactive_review.md) | Judge payment outcomes, compare changed guarantees and interpret evidence without installing tools |
-| [Specification assurance](guides/specification_assurance.md) | Vacuity, missing guarantees, contract comparison and research |
-| [Architecture](guides/architecture.md) | How the pure core, reference model, runtime and proofs fit together |
-| [Specification](guides/specification.md) | The exact ledger state and event contract |
-| [Runtime and recovery](guides/runtime.md) | Journal, tasks, reconciliation and durable voids |
-| [Processors](guides/processors.md) | The simulator and required remote-service behavior |
-| [Testing](guides/testing.md) | Tests, mutations, differential checks and benchmarks |
-| [Verification](guides/verification.md) | Law catalog, proof commands, acceptance and provenance |
-| [Troubleshooting](guides/troubleshooting.md) | Setup, proof and runtime failure symptoms |
-| [Assurance audit](guides/audit.md) | Advanced review of models, foundation and runtime assumptions |
+The [guide index](guides/README.md) collects the lessons, check procedures,
+system references and review exercises.
 
 ## License
 

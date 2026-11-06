@@ -60,7 +60,7 @@ defmodule HoldLedger.MixProject do
     )
 
     guide_groups = [
-      "Getting Started": ["README.md", "guides/getting-started.md"],
+      "Getting Started": ["README.md", "guides/README.md", "guides/getting-started.md"],
       "Learning Formal Verification": learning_guides,
       "Review Practice": [
         "guides/interactive_review.md",
@@ -92,6 +92,7 @@ defmodule HoldLedger.MixProject do
       extras:
         Enum.map(Enum.uniq(ordered_extras ++ Path.wildcard("guides/*.md")), fn
           "LICENSE" -> {"LICENSE", [title: "MIT License"]}
+          "guides/README.md" -> {"guides/README.md", [filename: "guides", title: "Guides"]}
           path -> path
         end),
       groups_for_extras: guide_groups,

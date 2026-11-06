@@ -28,7 +28,7 @@ diff and reporting its evidence, use [Human review](human_review.md).
 
 ## Use the optional workbench
 
-The [Phoenix workbench](../apps/review_web/README.md) lets you edit the examples,
+The [Phoenix workbench](https://github.com/nshkrdotcom/hold_ledger/blob/main/apps/review_web/README.md) lets you edit the examples,
 inspect source, compare claim results and save your judgment. Its P01–P08
 labels match the payment exercises. It calculates individual examples and
 can display a separately supplied proof report. Read that report to find

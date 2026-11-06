@@ -5,7 +5,7 @@ Try these eight cases before reading their answers. Each asks you to judge
 a proposed outcome against the payment policy. You need no tools.
 
 The P01–P08 labels identify the same cases in the optional
-[Phoenix workbench](../apps/review_web/README.md). Start with the local
+[Phoenix workbench](https://github.com/nshkrdotcom/hold_ledger/blob/main/apps/review_web/README.md). Start with the local
 cancellation below; it gives you a correct outcome to compare with the mistakes.
 
 Use [the specification](specification.md) to judge the outcomes. Amounts below are **integer cents**. A hold

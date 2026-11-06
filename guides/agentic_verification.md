@@ -8,7 +8,7 @@ Follow that void request from a requirement to a challenged contract and a revie
 
 A Lynx law has a precondition (`requires:`) and a postcondition (`expects:`). The precondition selects inputs; the postcondition states what the function must return for them. A **witness** is an input satisfying the precondition. A **counterexample** also makes the postcondition false. An impossible precondition makes a claim **vacuous**: the proof has no qualifying inputs to cover.
 
-For the exercise, an `:authorized` hold has processor approval and still consumes capacity. A local void moves it to `:voiding`, where it stays held while confirmation is pending. Trusted confirmation makes it `:voided` and releases capacity. The [lifecycle diagram](../README.md#the-ledger-in-a-few-steps) places these states in the full request flow.
+For the exercise, an `:authorized` hold has processor approval and still consumes capacity. A local void moves it to `:voiding`, where it stays held while confirmation is pending. Trusted confirmation makes it `:voided` and releases capacity. The [lifecycle diagram](https://github.com/nshkrdotcom/hold_ledger/blob/main/README.md#the-ledger-in-a-few-steps) places these states in the full request flow.
 
 ## Read the evidence before accepting a result
 

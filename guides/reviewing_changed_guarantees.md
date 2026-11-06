@@ -223,6 +223,6 @@ and names anything unresolved. For example:
 Continue with [Reading review evidence](reading_review_evidence.md) and
 [Human review](human_review.md) for source, report and assumption checks.
 
-The optional [change workspace](../apps/review_web/README.md) computes these
+The optional [change workspace](https://github.com/nshkrdotcom/hold_ledger/blob/main/apps/review_web/README.md) computes these
 three kinds of comparison for supported cases. For the logic behind contract
 comparison, see [Specification assurance](specification_assurance.md#comparison-needs-a-reference).
