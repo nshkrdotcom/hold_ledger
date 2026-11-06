@@ -12,10 +12,16 @@ groups =
     {module, _} =
       Enum.find(compiled, fn {module, _} -> function_exported?(module, :__ex_unit__, 0) end)
 
-    [{_name, laws, suffixes, cutoffs, preludes, _options}] =
+    [{_name, laws, translation, _options}] =
       module.__info__(:attributes)[:proof_groups]
 
-    if map_size(suffixes) != 0 or MapSet.size(cutoffs) != 0 or preludes != [] do
+    if Enum.any?(translation, fn
+         {:termination_suffixes, value} -> map_size(value) != 0
+         {:cutoffs, value} -> MapSet.size(value) != 0
+         {:dynamic, value} -> Enum.any?(value)
+         {:preludes, value} -> value != []
+         _ -> true
+       end) do
       raise "Batch verification does not accept per-group translation overrides"
     end
 
@@ -33,8 +39,6 @@ native = Enum.filter(selection, &(Map.get(&1, "kind") == "lean"))
 files =
   HoldLedger.ProofCase.assemble_many(
     groups,
-    %{},
-    MapSet.new(),
     [],
     Enum.map(native, & &1["module"])
   )

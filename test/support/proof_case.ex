@@ -19,16 +19,14 @@ defmodule HoldLedger.ProofCase do
             __MODULE__,
             unquote(name),
             unquote(group_laws),
-            unquote(Macro.escape(suffixes)),
-            unquote(Macro.escape(cutoffs)),
-            unquote(Macro.escape(preludes)),
+            unquote(Macro.escape(translation)),
             unquote(Macro.escape(options))
           )
         end
       end
 
     quote do
-      {name, group_laws, suffixes, cutoffs, preludes, options} =
+      {name, group_laws, translation, options} =
         Lynx.Case.__laws__(
           __MODULE__,
           unquote(__CALLER__.file),
@@ -41,7 +39,7 @@ defmodule HoldLedger.ProofCase do
       Module.put_attribute(
         __MODULE__,
         :proof_groups,
-        {name, group_laws, suffixes, cutoffs, preludes, options}
+        {name, group_laws, translation, options}
       )
 
       unquote(definition)
@@ -109,19 +107,13 @@ defmodule HoldLedger.ProofCase do
     Enum.reverse(declarations)
   end
 
-  def assemble(module, laws, suffixes, cutoffs, preludes) do
-    assemble_many([{module, laws}], suffixes, cutoffs, preludes)
+  def assemble(module, laws, translation) do
+    assemble_many([{module, laws}], translation)
   end
 
-  def assemble_many(
-        groups,
-        suffixes \\ %{},
-        cutoffs \\ MapSet.new(),
-        preludes \\ [],
-        native \\ []
-      ) do
+  def assemble_many(groups, translation_opts \\ [], native \\ []) do
     translation =
-      Lynx.Translation.new(termination_suffixes: suffixes, cutoffs: cutoffs, preludes: preludes)
+      Lynx.Translation.new(translation_opts)
       |> Lynx.Translation.add(Lynx.Bytecode.fetch!(HoldLedger.ProofContracts))
       |> Lynx.Translation.translate(
         HoldLedger.ProofContracts,
@@ -283,8 +275,8 @@ defmodule HoldLedger.ProofCase do
     end
   end
 
-  def verify(module, name, laws, suffixes, cutoffs, preludes, options) do
-    files = assemble(module, laws, suffixes, cutoffs, preludes)
+  def verify(module, name, laws, translation, options) do
+    files = assemble(module, laws, translation)
     dir = Path.join(["tmp", inspect(module), String.replace(Atom.to_string(name), " ", "-")])
     opts = [options: options, debug_dir: dir, debug: :lean]
 

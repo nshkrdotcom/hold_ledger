@@ -21,8 +21,8 @@ dir = Path.join("tmp/verification/claim-reading", identity)
 File.mkdir_p!(dir)
 claims = Map.new(selected, fn {slug, module} ->
   Code.compile_file("test/laws/#{slug}_test.exs")
-  [{_, laws, suffixes, cutoffs, preludes, options}] = module.__info__(:attributes)[:proof_groups]
-  files = HoldLedger.ProofCase.assemble(module, laws, suffixes, cutoffs, preludes)
+  [{_, laws, translation, options}] = module.__info__(:attributes)[:proof_groups]
+  files = HoldLedger.ProofCase.assemble(module, laws, translation)
   debug = Path.join(dir, slug)
   started = System.monotonic_time(:millisecond)
   reports = Lynx.Commands.verify!(Path.expand("deps/lynx/Lean"), files,
