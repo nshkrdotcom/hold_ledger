@@ -537,9 +537,9 @@ npx playwright install chromium
 npm test
 ```
 
-Supply real compatible `PART3_TEST_BASELINE_ID` and `PART3_TEST_PROPOSAL_ID`
-values for isolated-source comparison. Claim Lens checks are in
-`test/browser/0810_claim_lens.spec.cjs`.
+The browser suite tests application behavior and requires no operator-provided
+snapshot IDs. Hypothetical staged source replay is outside formal acceptance;
+the maintained suite retains source chooser and Claim Lens coverage.
 
 From the browser-test directory, `npm run test:presentation` loads the app's
 help JavaScript and content into local fixtures without Phoenix. The normal

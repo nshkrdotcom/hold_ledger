@@ -11,12 +11,16 @@ In this directory:
 ```sh
 npm ci
 npx playwright install chromium
-PART3_TEST_BASELINE_ID=<fresh-baseline-id> PART3_TEST_PROPOSAL_ID=<fresh-exact-fit-proposal-id> npm test
+npm test
 ```
 
-Use two compatible, operator-trusted snapshots containing the current evaluator. The proposal should be a disposable exact-fit admission-law exclusion, with governing policy and actual Ledger unchanged. Provision snapshot dependencies offline before starting the test. These are controlled experiments, not production policy changes.
-
-Without valid, distinct and operator-trusted IDs, the isolated replay test **fails**; it must not silently skip while the browser command exits successfully. A complete local run supplies real IDs, checks the exact-fit proposal in the running application, and has no skipped comparison test. Other tests execute the real local reducer, reference and coupled model, including local-command/UI parity. The command test opens no listener and owns separate scratch stores.
+These tests cover the separate review application's behavior. They are not
+formal-verification acceptance criteria and require no externally supplied
+snapshot identities. The fixture-dependent hypothetical exact-fit replay was
+removed from this suite under the 2026-11-10 scope correction. Source chooser,
+claim lens and existing comparison unit tests remain. The optional source
+comparison feature accepts deliberately selected local source trees; it is
+neither historical-data migration nor evidence of mathematical correctness.
 
 Tests wait for connected LiveViews and concrete outcomes. They exercise creation/reopen, contrast, contract clauses, actual Lean sources and assumptions, timeline branches, candidate JSON, explicit recalculation, structured starting states, remote delivery/observation, two-tab CAS, reconnect, source/proof access, favicon, keyboard and mobile layout. They make no provider calls or formal acceptance claims. Generated records, command requests and screenshots belong under ignored local paths.
 
