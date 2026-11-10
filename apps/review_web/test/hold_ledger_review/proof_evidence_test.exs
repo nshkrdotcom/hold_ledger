@@ -122,8 +122,10 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
     # A complete-looking slug list with a selected/synthetic export cannot
     # claim the canonical single-batch release, even if all booleans say true.
     assert :incomplete = ProofEvidence.status(root, full, ["po_b1_void"])
+
     assert :incomplete =
              ProofEvidence.status(root, Map.put(full, "batch", true), ["po_b1_void"])
+
     File.write!(path, "tampered")
     assert :incomplete = ProofEvidence.status(root, r, ["po_b1_void"])
   end

@@ -198,26 +198,30 @@ defmodule HoldLedgerReview.ProofEvidence do
       required = Enum.map(inventory["obligations"], & &1["slug"]) |> Enum.sort()
       registered = Enum.map(catalog["laws"], & &1["slug"]) |> Enum.sort()
       coverage = r["obligation_coverage"] || %{}
-      exports = r["exports"]
 
-      # A collection of individually checked or synthetic selected laws is
-      # not the one cold, exported 49-group batch required for release.
-      full_batch =
-        r["batch"] == true and r["correct_export"] == true and
-          get_in(r, ["execution", "exit"]) == 0 and
-          get_in(r, ["execution", "timeout"]) == false and
-          is_list(exports) and length(exports) == 1 and
-          hd(exports)["path"] == "tmp/verification/exports/full-suite/suite.ndjson" and
-          exports_checked?(root, exports) and
-          Enum.all?(r["laws"], fn {_slug, law} ->
-            law["native_passed"] == true and law["exports"] == exports
-          end)
-
-      full_batch and coverage["complete"] == true and coverage["missing"] == [] and
+      full_batch?(root, r) and coverage["complete"] == true and coverage["missing"] == [] and
         coverage["required"] == required and coverage["accepted"] == required and
         required == registered and Enum.sort(Map.keys(r["laws"])) == required
     else
       _ -> false
     end
   end
+
+  # Selected or synthetic checked laws cannot replace a cold full-suite export.
+  defp full_batch?(root, report) do
+    report["batch"] == true and report["correct_export"] == true and
+      get_in(report, ["execution", "exit"]) == 0 and
+      get_in(report, ["execution", "timeout"]) == false and
+      full_suite_export?(root, report["exports"]) and
+      Enum.all?(report["laws"], fn {_slug, law} ->
+        law["native_passed"] == true and law["exports"] == report["exports"]
+      end)
+  end
+
+  defp full_suite_export?(root, [export] = exports) do
+    export["path"] == "tmp/verification/exports/full-suite/suite.ndjson" and
+      exports_checked?(root, exports)
+  end
+
+  defp full_suite_export?(_, _), do: false
 end

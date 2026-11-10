@@ -384,25 +384,15 @@ defmodule HoldLedgerReview.ProofReading do
          true <- index["schema_version"] == 1,
          true <- is_map(index["sources"]) and map_size(index["sources"]) > 0,
          true <- MapSet.new(Map.keys(index["sources"])) == focused_source_paths(),
-         true <- is_map(index["claims"]) and
-                   MapSet.new(Map.keys(index["claims"])) ==
-                     MapSet.new(~w(po_a2 po_b1_void po_exposure_retain)),
-         true <-
-           Enum.all?(
-             ~w(mix.lock uv.lock .tool-versions verification/laws.json verification/obligations.json test/support/proof_case.ex lib/hold_ledger/ledger.ex lib/hold_ledger/spec.ex),
-             &Map.has_key?(index["sources"], &1)
-           ),
-         true <-
-           Enum.all?(index["sources"], fn {path, sha} ->
-             is_binary(sha) and Regex.match?(~r/\A[0-9a-f]{64}\z/, sha) and
-               ProofEvidence.digest_file(Config.root(), path) == sha
-           end),
+         true <- focused_claims?(index["claims"]),
+         true <- focused_sources?(index["sources"]),
          row when is_map(row) <- index["claims"][slug],
          true <- row["status"] == "elaborated" and row["full_acceptance"] == false,
-         true <- is_list(row["reports"]) and row["reports"] != [] and
-                   Enum.all?(row["reports"], fn report ->
-                     report["status"] == "ok" and report["cached"] == false
-                   end),
+         true <-
+           is_list(row["reports"]) and row["reports"] != [] and
+             Enum.all?(row["reports"], fn report ->
+               report["status"] == "ok" and report["cached"] == false
+             end),
          true <- is_list(row["artifacts"]) and row["artifacts"] != [],
          true <- Enum.all?(row["artifacts"], &focused_artifact?(&1, slug)) do
       Map.put(row, "scope", "focused_original_lean_elaboration_not_full_acceptance")
@@ -411,6 +401,23 @@ defmodule HoldLedgerReview.ProofReading do
     end
   rescue
     _ -> %{"status" => "missing_or_stale", "scope" => "no_fresh_producer_artifact"}
+  end
+
+  defp focused_claims?(claims) do
+    is_map(claims) and
+      MapSet.new(Map.keys(claims)) == MapSet.new(~w(po_a2 po_b1_void po_exposure_retain))
+  end
+
+  defp focused_sources?(sources) do
+    Enum.all?(
+      ~w(mix.lock uv.lock .tool-versions verification/laws.json verification/obligations.json test/support/proof_case.ex lib/hold_ledger/ledger.ex lib/hold_ledger/spec.ex),
+      &Map.has_key?(sources, &1)
+    ) and Enum.all?(sources, &focused_source?/1)
+  end
+
+  defp focused_source?({path, sha}) do
+    is_binary(sha) and Regex.match?(~r/\A[0-9a-f]{64}\z/, sha) and
+      ProofEvidence.digest_file(Config.root(), path) == sha
   end
 
   defp focused_artifact?(%{"path" => path, "sha256" => sha, "bytes" => size}, slug)
@@ -426,7 +433,8 @@ defmodule HoldLedgerReview.ProofReading do
           _ -> false
         end
 
-      _ -> false
+      _ ->
+        false
     end
   end
 
@@ -449,7 +457,11 @@ defmodule HoldLedgerReview.ProofReading do
       end)
 
     extras = [
-      "mix.exs", "mix.lock", "uv.lock", ".tool-versions", "lean-toolchain",
+      "mix.exs",
+      "mix.lock",
+      "uv.lock",
+      ".tool-versions",
+      "lean-toolchain",
       "apps/review_web/scripts/produce_claim_readings.exs"
     ]
 
