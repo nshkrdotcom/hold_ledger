@@ -15,13 +15,7 @@ groups =
     [{_name, laws, translation, _options}] =
       module.__info__(:attributes)[:proof_groups]
 
-    if Enum.any?(translation, fn
-         {:termination_suffixes, value} -> map_size(value) != 0
-         {:cutoffs, value} -> MapSet.size(value) != 0
-         {:dynamic, value} -> Enum.any?(value)
-         {:preludes, value} -> value != []
-         _ -> true
-       end) do
+    if HoldLedger.ProofCase.batch_overrides?(translation) do
       raise "Batch verification does not accept per-group translation overrides"
     end
 

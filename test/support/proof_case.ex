@@ -166,6 +166,22 @@ defmodule HoldLedger.ProofCase do
     if System.get_env("HOLD_LEDGER_PROOF_CACHE") == "1", do: cache_files(files), else: files
   end
 
+  # Shared cold batches cannot merge distinct law-group translation overrides.
+  # New Lynx includes an empty postludes default; all unknown or malformed
+  # metadata remains an unsupported override, rather than silently ignored.
+  def batch_overrides?(translation) when is_list(translation) do
+    Enum.any?(translation, fn
+      {:termination_suffixes, value} when is_map(value) -> map_size(value) != 0
+      {:cutoffs, %MapSet{} = value} -> MapSet.size(value) != 0
+      {:dynamic, %MapSet{} = value} -> MapSet.size(value) != 0
+      {:preludes, value} when is_list(value) -> value != []
+      {:postludes, value} when is_list(value) -> value != []
+      _ -> true
+    end)
+  end
+
+  def batch_overrides?(_), do: true
+
   def native_anchors([]), do: []
 
   def native_anchors(groups) do

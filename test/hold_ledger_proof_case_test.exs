@@ -10,6 +10,33 @@ defmodule HoldLedger.ProofCaseTest do
     assert function_exported?(HoldLedger.ProofContracts, :"l1_find:requires", 2)
   end
 
+  test "batch metadata accepts empty Lynx postludes but no per-group overrides" do
+    defaults = [
+      termination_suffixes: %{},
+      cutoffs: MapSet.new(),
+      dynamic: MapSet.new(),
+      preludes: [],
+      postludes: []
+    ]
+
+    refute HoldLedger.ProofCase.batch_overrides?(defaults)
+
+    for override <- [
+          Keyword.put(defaults, :postludes, [:nonempty]),
+          Keyword.put(defaults, :preludes, [:nonempty]),
+          Keyword.put(defaults, :dynamic, MapSet.new([{:erlang, :apply, 2}])),
+          Keyword.put(defaults, :termination_suffixes, %{unknown: :x}),
+          Keyword.put(defaults, :cutoffs, MapSet.new([{:erlang, :abs, 1}])),
+          Keyword.put(defaults, :new_upstream_field, []),
+          Keyword.put(defaults, :postludes, :malformed),
+          [invalid_option: []]
+        ] do
+      assert HoldLedger.ProofCase.batch_overrides?(override)
+    end
+
+    assert HoldLedger.ProofCase.batch_overrides?(:not_a_keyword_list)
+  end
+
   test "missing, skipped and empty law results fail closed" do
     module = HoldLedger.Laws.Example
     laws = [example: 1]

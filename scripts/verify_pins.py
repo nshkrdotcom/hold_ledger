@@ -11,7 +11,7 @@ from pathlib import Path
 
 from provision import ROOT, PINS, local_env
 
-LYNX_COMMIT = "81c9f7ffa69a6b56bf5c831cd41559afd54abff2"
+LYNX_COMMIT = "a217bb1da71385b15e85042585e6c80d483bec1f"
 ELIXIR = "1.20.4"
 OTP = "29.1.2"
 UV = "0.12.6"
@@ -32,6 +32,9 @@ def main() -> int:
             raise RuntimeError("Only Ubuntu 26.04 x86_64 is a claimed supported runner")
         if (ROOT / "lean-toolchain").read_text().strip() != PINS["lean_toolchain"]:
             raise RuntimeError("Lean pin drift")
+        mix_spec = (ROOT / "mix.exs").read_text()
+        if f'ref: "{LYNX_COMMIT}"' not in mix_spec:
+            raise RuntimeError("mix.exs Lynx full SHA mismatch")
         lock = (ROOT / "mix.lock").read_text()
         if LYNX_COMMIT not in lock:
             raise RuntimeError("mix.lock Lynx full SHA mismatch")

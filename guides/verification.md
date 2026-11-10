@@ -31,7 +31,7 @@ PO-B5/voided establish one-step terminal absorption; PO-C3 lifts identity,
 terminal preservation, approval evidence and independent-oracle agreement to
 proper finite event histories.
 
-This checkout pins Lynx `81c9f7ffa69a6b56bf5c831cd41559afd54abff2`,
+This checkout pins Lynx `a217bb1da71385b15e85042585e6c80d483bec1f`,
 with Lean 4.35.0. Proof-only checks verify the supplied Lean proofs against their statements; full-stage
 acceptance additionally requires fresh exports, all six checker acknowledgments,
 and the permitted-axiom audit. A launched or partially completed run is not
@@ -245,7 +245,7 @@ event terms on valid ledgers. `run/2` is specified for proper finite event
 lists. Effects are pure descriptions of intended processor actions.
 The precise executable `requires:` and `expects:` are in each law file.
 
-The [pinned Lynx README](https://github.com/josevalim/lynx/blob/81c9f7ffa69a6b56bf5c831cd41559afd54abff2/README.md#disclaimer) describes human design and review of the Elixir code, translation layer and Erlang runtime model. It also states that coding agents produced the proofs and Lean deserialization layer with limited review. Kernel checking validates the resulting proof terms against their statements; it does not establish that deserialization and translation faithfully represent the source program. Review those boundaries separately from proof authorship.
+The [pinned Lynx README](https://github.com/josevalim/lynx/blob/a217bb1da71385b15e85042585e6c80d483bec1f/README.md#disclaimer) describes human design and review of the Elixir code, translation layer and Erlang runtime model. It also states that coding agents produced the proofs and Lean deserialization layer with limited review. Kernel checking validates the resulting proof terms against their statements; it does not establish that deserialization and translation faithfully represent the source program. Review those boundaries separately from proof authorship.
 
 Proofs do not establish the compiler/translator's correctness, authenticated
 processor outcomes, receiver deduplication, durable hardware flushes, BEAM/OS
