@@ -32,7 +32,7 @@ theorem HoldLedgerProof.lookup_compare (stored a st key amount : Lynx.Term) :
   rw [← HoldLedgerProof.atom_compare st "unknown"]
   simp only [Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq]
   cases hk : stored.compare key <;> cases ha : a.compare amount <;> cases hs : st.compare (Lynx.Term.atom "unknown") <;>
-    simp_all [  HoldLedgerProof.atom_compare]
+    simp_all
 
 theorem HoldLedgerProof.atom_compare_left (a : String) (x : Lynx.Term) :
     (Lynx.Term.atom a).compare x = Ordering.eq ↔ x = Lynx.Term.atom a := by
