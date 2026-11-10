@@ -72,7 +72,9 @@ class LawRunnerTests(unittest.TestCase):
             module = "Elixir.Example." + law["slug"]
             theorem = f"{law['law']}/{law['arity']}"
             report["laws"][law["slug"]] = {"passed": True, "module": module, "laws": [theorem]}
-            report["reports"].append({"module": module + ".laws", "status": "ok", "theorems": [{"name": theorem}]})
+            report["reports"].append({"module": module + ".laws", "status": "ok",
+                                      "cached": False, "diagnostics": [],
+                                      "theorems": [{"name": theorem}]})
         self.assertTrue(run_laws.valid_batch_report(report, laws))
         report["reports"][0]["cached"] = True
         self.assertFalse(run_laws.valid_batch_report(report, laws))
@@ -82,6 +84,24 @@ class LawRunnerTests(unittest.TestCase):
         report["reports"][0]["status"] = "ok"
         report["reports"][0]["theorems"] = []
         self.assertFalse(run_laws.valid_batch_report(report, laws))
+
+    def test_cold_batch_rejects_missing_cache_and_diagnostic_provenance(self):
+        law = run_laws.inspect_manifest()[0]
+        theorem = f"{law['law']}/{law['arity']}"
+        module = 'Elixir.HoldLedger.Laws.Provenance'
+        good = {'laws': {law['slug']: {'passed': True, 'module': module, 'laws': [theorem]}},
+                'reports': [{'module': module + '.laws', 'status': 'ok',
+                             'cached': False, 'diagnostics': [],
+                             'theorems': [{'name': theorem}]}]}
+        self.assertTrue(run_laws.valid_batch_report(good, [law]))
+        for key, value in [('cached', None), ('cached', 'false'),
+                           ('diagnostics', None), ('diagnostics', [{}]),
+                           ('diagnostics', [{'severity': 'error'}]),
+                           ('diagnostics', [{'severity': 'warning'}])]:
+            bad = {'laws': good['laws'], 'reports': [dict(good['reports'][0], **{key: value})]}
+            self.assertFalse(run_laws.valid_batch_report(bad, [law]), (key, value))
+        duplicate = {'laws': good['laws'], 'reports': good['reports'] * 2}
+        self.assertFalse(run_laws.valid_batch_report(duplicate, [law]))
 
     def test_batch_warnings_cannot_count_as_clean_acceptance(self):
         law = run_laws.inspect_manifest()[0]
@@ -147,12 +167,12 @@ class LawRunnerTests(unittest.TestCase):
         law = next(law for law in run_laws.inspect_manifest() if law.get('kind') == 'lean')
         report = {'laws': {law['slug']: {'passed': True, 'kind': 'lean',
                    'module': law['module'], 'laws': law['theorems'], 'qualified_names_checked': law['theorems']}},
-                  'reports': [{'module': law['module'], 'status': 'ok', 'cached': False},
-                              {'module': 'HoldLedgerProof.RequiredObligations', 'status': 'ok', 'cached': False}]}
+                  'reports': [{'module': law['module'], 'status': 'ok', 'cached': False, 'diagnostics': []},
+                              {'module': 'HoldLedgerProof.RequiredObligations', 'status': 'ok', 'cached': False, 'diagnostics': []}]}
         self.assertTrue(run_laws.valid_batch_report(report, [law]))
         report['reports'] = []
         self.assertFalse(run_laws.valid_batch_report(report, [law]))
-        report['reports'] = [{'module': law['module'], 'status': 'skipped', 'cached': False}]
+        report['reports'] = [{'module': law['module'], 'status': 'skipped', 'cached': False, 'diagnostics': []}]
         self.assertFalse(run_laws.valid_batch_report(report, [law]))
         report['reports'] = [{'module': law['module'], 'status': 'ok', 'cached': False}]
         report['laws'][law['slug']]['laws'] = []
@@ -163,9 +183,9 @@ class LawRunnerTests(unittest.TestCase):
         record = {'passed': True, 'kind': 'lean', 'module': law['module'],
                   'laws': law['theorems'], 'qualified_names_checked': law['theorems']}
         report = {'laws': {law['slug']: record}, 'reports': [
-            {'module': law['module'], 'status': 'ok', 'cached': False}]}
+            {'module': law['module'], 'status': 'ok', 'cached': False, 'diagnostics': []}]}
         self.assertFalse(run_laws.valid_batch_report(report, [law]))
-        report['reports'].append({'module': 'HoldLedgerProof.RequiredObligations', 'status': 'ok', 'cached': False})
+        report['reports'].append({'module': 'HoldLedgerProof.RequiredObligations', 'status': 'ok', 'cached': False, 'diagnostics': []})
         self.assertTrue(run_laws.valid_batch_report(report, [law]))
         record['qualified_names_checked'] = ['Wrong.namespace']
         self.assertFalse(run_laws.valid_batch_report(report, [law]))

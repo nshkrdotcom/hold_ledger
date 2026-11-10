@@ -20,6 +20,14 @@ import check_suite
 
 
 class CheckHelpersTest(unittest.TestCase):
+    def test_successful_snapshot_does_not_accept_source_drift(self):
+        original = {'lib/ledger.ex': 'old'}
+        with patch.object(check_suite, 'source_manifest', return_value=original):
+            check_suite.require_unchanged_source(original)
+        with patch.object(check_suite, 'source_manifest', return_value={'lib/ledger.ex': 'new'}):
+            with self.assertRaisesRegex(RuntimeError, 'Source changed'):
+                check_suite.require_unchanged_source(original)
+
     def test_source_copy_includes_dirty_and_untracked_files_and_private_dependencies(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

@@ -24,6 +24,7 @@ from pathlib import Path
 from check_runtime import cancellation_scope, copy_project, resources, worker_environment
 from run_laws import (CHECKERS, REQUIRED_AXIOMS, acceptance_sources, changed_sources,
                       inspect_manifest, run as run_command)
+from obligations import required_inventory
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = Path("lib/hold_ledger/ledger.ex")
@@ -129,20 +130,38 @@ def accepted_baseline(path: Path, mutants: list[tuple]) -> dict:
     report = json.loads(path.read_text(encoding="utf8"))
     manifest = report.get("source_sha256", {})
     expected = {str(source.relative_to(ROOT)) for source in acceptance_sources()}
-    if (not report.get("release_complete") or not report.get("checker_claim")
-            or not report.get("accepted_proof_claim") or report.get("source_changes_during_run")
-            or set(manifest) != expected or changed_sources(manifest, acceptance_sources())):
+    obligations = required_inventory(ROOT / "verification/obligations.json")
+    required = {item["slug"] for item in obligations}
+    records = report.get("laws", {})
+    coverage = report.get("obligation_coverage", {})
+    if (report.get("mode") != "EXECUTED" or report.get("stage") != "full"
+            or report.get("cache") != "LYNX_CACHE=0" or report.get("batch") is not True
+            or report.get("complete") is not True or report.get("correct_export") is not True
+            or report.get("release_complete") is not True or report.get("checker_claim") is not True
+            or report.get("accepted_proof_claim") is not True
+            or report.get("source_changes_during_run") != []
+            or not isinstance(manifest, dict) or set(manifest) != expected
+            or changed_sources(manifest, acceptance_sources())
+            or not isinstance(records, dict) or set(records) != required
+            or any(item.get("passed") is not True or item.get("native_passed") is not True
+                   for item in records.values())
+            or coverage.get("complete") is not True or coverage.get("missing") != []
+            or set(coverage.get("accepted", [])) != required
+            or set(coverage.get("required", [])) != required):
         raise RuntimeError("Formal baseline must accept the complete unchanged source")
     exports = report.get("exports", [])
-    if not exports:
-        raise RuntimeError("Formal baseline has no checked exports")
+    if not isinstance(exports, list) or len(exports) != 1:
+        raise RuntimeError("Formal baseline must have exactly one checked suite export")
     for export in exports:
+        if export.get("path") != "tmp/verification/exports/full-suite/suite.ndjson":
+            raise RuntimeError("Formal baseline export is not the full-suite artifact")
         artifact = (ROOT / export["path"]).resolve()
         if (not artifact.is_relative_to(ROOT / "tmp") or not artifact.is_file()
-                or not export.get("passed") or not export.get("allowed_axioms") or not export.get("axiom_list")
+                or export.get("passed") is not True or export.get("allowed_axioms") is not True
+                or not export.get("axiom_list")
                 or set(export.get("axiom_list", [])) - REQUIRED_AXIOMS
                 or set(export.get("checker_acceptance", {})) != set(CHECKERS)
-                or not all(export["checker_acceptance"].values())
+                or not all(value is True for value in export["checker_acceptance"].values())
                 or artifact.stat().st_size != export.get("export_bytes")
                 or digest(artifact) != export.get("export_sha256")):
             raise RuntimeError("Formal baseline export identity/checkers do not match")

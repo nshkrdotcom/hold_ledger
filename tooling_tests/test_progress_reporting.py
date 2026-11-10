@@ -63,6 +63,8 @@ class ProgressTests(unittest.TestCase):
                 self.assertLess(result['wall_seconds'], 6)
                 if "os.close" not in code:
                     self.assertTrue(log.read_text())
+                if result['timeout']:
+                    self.assertTrue(log.read_text(), 'timeouts must leave an auditable log')
 
     def test_silent_command_reports_elapsed_time(self):
         with tempfile.TemporaryDirectory(dir=run_laws.ROOT / 'tmp') as folder:

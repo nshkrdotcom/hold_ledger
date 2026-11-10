@@ -193,6 +193,12 @@ def run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
                         sys.stdout.flush()
                 sys.stdout.write(decoder.decode(b"", final=True))
                 sys.stdout.flush()
+                if timed_out and handle.tell() == 0:
+                    # Even a child killed before its first flush needs an
+                    # auditable failure record; this is NOT child output or
+                    # successful verifier evidence.
+                    handle.write(f"[runner] TIMEOUT after {timeout}s; child emitted no captured stdout\n".encode())
+                    handle.flush()
                 process.wait()
             except BaseException:
                 try:
@@ -279,19 +285,30 @@ def valid_law_result(output: str) -> bool:
 
 
 def valid_batch_report(report: dict, laws: list[dict]) -> bool:
-    if not laws:
+    if not laws or not isinstance(report, dict):
         return False
     records = report.get("laws", {})
     reports = report.get("reports", [])
-    if set(records) != {law["slug"] for law in laws} or not reports:
+    if (not isinstance(records, dict) or not isinstance(reports, list) or not reports
+            or set(records) != {law["slug"] for law in laws}
+            or not all(isinstance(item, dict) for item in reports)):
         return False
-    if any(diagnostic.get("severity") in ("warning", "error")
-           for item in reports for diagnostic in item.get("diagnostics", [])):
+    modules = [item.get("module") for item in reports]
+    if any(not isinstance(module, str) or not module for module in modules) or len(set(modules)) != len(modules):
         return False
-    if any(item.get("status") != "ok" or item.get("cached") is True for item in reports):
+    # A missing `cached` or `diagnostics` field does not prove a cold, clean
+    # Lynx run. Only actual uncached reports with inspected diagnostics count.
+    if any(item.get("status") != "ok" or item.get("cached") is not False
+           or not isinstance(item.get("diagnostics"), list) for item in reports):
+        return False
+    if any(not isinstance(diagnostic, dict) or
+           diagnostic.get("severity") not in ("information", "info", "hint")
+           for item in reports for diagnostic in item["diagnostics"]):
         return False
     for law in laws:
         record = records[law["slug"]]
+        if not isinstance(record, dict):
+            return False
         if law.get('kind') == 'lean':
             matching = [item for item in reports if item.get('module') == law['module']]
             if (record.get('passed') is not True or record.get('module') != law['module']

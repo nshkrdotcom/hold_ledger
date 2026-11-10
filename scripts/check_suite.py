@@ -103,7 +103,8 @@ def commands(group: str) -> list[list[str]]:
                 mix + ['hex.build']]
     if group == 'readings':
         return [local + ['env', 'MIX_ENV=test', 'mix', 'run',
-                         'apps/review_web/scripts/produce_claim_readings.exs']]
+                         'apps/review_web/scripts/produce_claim_readings.exs'],
+                python + ['scripts/validate_readings.py']]
     raise ValueError(f'Unknown check group: {group}')
 
 
@@ -118,6 +119,12 @@ def run_group(group: str, snapshot: Path, run_dir: Path, jobs: int) -> dict:
         if code:
             return {'state': 'failed', 'exit': code, 'workspace': str(project)}
     return {'state': 'passed', 'exit': 0, 'workspace': str(project)}
+
+
+def require_unchanged_source(manifest: dict[str, str]) -> None:
+    """A successful worker snapshot is not acceptance for a drifting checkout."""
+    if source_manifest(ROOT) != manifest:
+        raise RuntimeError('Source changed during check helper execution; final acceptance invalid')
 
 
 def main() -> int:
@@ -198,6 +205,7 @@ def main() -> int:
                                                'exit': code, 'workspace': str(project)}
                 if code:
                     raise RuntimeError('Mutation campaign failed')
+            require_unchanged_source(manifest)
             report['state'] = 'passed'
             say('checks', f'All requested checks passed. Reports and workspaces: {run_dir}')
             return 0

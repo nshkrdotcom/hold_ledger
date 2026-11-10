@@ -3,6 +3,7 @@
 # replacement for formal_gate.py or ProofEvidence required-scope acceptance.
 ExUnit.start(autorun: false)
 Code.require_file("test/support/proof_case.ex")
+System.delete_env("HOLD_LEDGER_PROOF_CACHE")
 
 selected = [
   {"po_a2", HoldLedger.Laws.PoA2Test},
@@ -28,6 +29,10 @@ claims = Map.new(selected, fn {slug, module} ->
   reports = Lynx.Commands.verify!(Path.expand("deps/lynx/Lean"), files,
     options: options, debug_dir: debug, debug: :lean, check_source: true)
   :ok = HoldLedger.ProofCase.validate_reports!(reports, module, laws)
+  unless Enum.all?(reports, fn report ->
+    report.status == :ok and report.cached == false and
+      Enum.all?(report.diagnostics, &(&1.severity not in [:error, :warning]))
+  end), do: raise("Focused reading did not produce clean uncached Lean reports")
   artifacts = Path.wildcard(Path.join(debug, "**/*.lean")) |> Enum.map(fn path ->
     %{"path" => path, "sha256" => sha.(File.read!(path)), "bytes" => File.stat!(path).size}
   end)
@@ -43,4 +48,7 @@ if not Enum.all?(sources, fn {path, digest} -> sha.(File.read!(path)) == digest 
 index = %{"schema_version" => 1, "sources" => sources, "claims" => claims,
   "scope" => "focused_original_lean_elaboration_not_full_acceptance", "generated_at" => DateTime.to_iso8601(DateTime.utc_now())}
 File.write!(Path.join(dir, "index.json"), Jason.encode!(index, pretty: true))
-File.cp!(Path.join(dir, "index.json"), "tmp/verification/claim-reading/index.json")
+published = "tmp/verification/claim-reading/index.json"
+staged = published <> ".pending-#{System.unique_integer([:positive])}"
+File.cp!(Path.join(dir, "index.json"), staged)
+File.rename!(staged, published)

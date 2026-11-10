@@ -157,7 +157,9 @@ defmodule HoldLedgerReview.ProofReading do
            String.starts_with?(item["path"], "tmp/verification/claim-reading/") and
              String.ends_with?(item["path"], ".lean"),
          {:ok, bytes} <- Anchor.read_under(Config.root(), item["path"]),
-         true <- byte_size(bytes) <= 256_000 and Anchor.sha(bytes) == sha do
+         true <-
+           byte_size(bytes) <= 256_000 and byte_size(bytes) == item["bytes"] and
+             Anchor.sha(bytes) == sha do
       {:ok, bytes}
     else
       _ -> {:error, :missing_or_stale_artifact}
@@ -381,6 +383,10 @@ defmodule HoldLedgerReview.ProofReading do
          {:ok, index} <- Jason.decode(bytes),
          true <- index["schema_version"] == 1,
          true <- is_map(index["sources"]) and map_size(index["sources"]) > 0,
+         true <- MapSet.new(Map.keys(index["sources"])) == focused_source_paths(),
+         true <- is_map(index["claims"]) and
+                   MapSet.new(Map.keys(index["claims"])) ==
+                     MapSet.new(~w(po_a2 po_b1_void po_exposure_retain)),
          true <-
            Enum.all?(
              ~w(mix.lock uv.lock .tool-versions verification/laws.json verification/obligations.json test/support/proof_case.ex lib/hold_ledger/ledger.ex lib/hold_ledger/spec.ex),
@@ -388,20 +394,68 @@ defmodule HoldLedgerReview.ProofReading do
            ),
          true <-
            Enum.all?(index["sources"], fn {path, sha} ->
-             ProofEvidence.digest_file(Config.root(), path) == sha
+             is_binary(sha) and Regex.match?(~r/\A[0-9a-f]{64}\z/, sha) and
+               ProofEvidence.digest_file(Config.root(), path) == sha
            end),
          row when is_map(row) <- index["claims"][slug],
          true <- row["status"] == "elaborated" and row["full_acceptance"] == false,
+         true <- is_list(row["reports"]) and row["reports"] != [] and
+                   Enum.all?(row["reports"], fn report ->
+                     report["status"] == "ok" and report["cached"] == false
+                   end),
          true <- is_list(row["artifacts"]) and row["artifacts"] != [],
-         true <-
-           Enum.all?(row["artifacts"], fn item ->
-             ProofEvidence.digest_file(Config.root(), item["path"]) == item["sha256"]
-           end) do
+         true <- Enum.all?(row["artifacts"], &focused_artifact?(&1, slug)) do
       Map.put(row, "scope", "focused_original_lean_elaboration_not_full_acceptance")
     else
       _ -> %{"status" => "missing_or_stale", "scope" => "no_fresh_producer_artifact"}
     end
   rescue
     _ -> %{"status" => "missing_or_stale", "scope" => "no_fresh_producer_artifact"}
+  end
+
+  defp focused_artifact?(%{"path" => path, "sha256" => sha, "bytes" => size}, slug)
+       when is_binary(path) and is_binary(sha) and is_integer(size) and size > 0 do
+    case Path.split(path) do
+      ["tmp", "verification", "claim-reading", identity, ^slug | _] ->
+        with true <- String.ends_with?(path, ".lean"),
+             true <- Regex.match?(~r/\A[0-9a-f]{64}\z/, identity),
+             true <- Regex.match?(~r/\A[0-9a-f]{64}\z/, sha),
+             {:ok, bytes} <- Anchor.read_under(Config.root(), path) do
+          byte_size(bytes) == size and Anchor.sha(bytes) == sha
+        else
+          _ -> false
+        end
+
+      _ -> false
+    end
+  end
+
+  defp focused_artifact?(_, _), do: false
+
+  defp focused_source_paths do
+    root = Config.root()
+
+    patterns = [
+      "lib/**/*.ex",
+      "test/laws/*.exs",
+      "test/support/**/*.{ex,lean,json}",
+      "verification/*.json",
+      "scripts/*.py"
+    ]
+
+    selected =
+      Enum.flat_map(patterns, fn pattern ->
+        Path.wildcard(Path.join(root, pattern)) |> Enum.map(&Path.relative_to(&1, root))
+      end)
+
+    extras = [
+      "mix.exs", "mix.lock", "uv.lock", ".tool-versions", "lean-toolchain",
+      "apps/review_web/scripts/produce_claim_readings.exs"
+    ]
+
+    (selected ++ extras)
+    |> Enum.uniq()
+    |> Enum.filter(&File.regular?(Path.join(root, &1)))
+    |> MapSet.new()
   end
 end

@@ -1,7 +1,10 @@
 const {test,expect}=require('@playwright/test');
 const baseline=process.env.PART3_TEST_BASELINE_ID, proposal=process.env.PART3_TEST_PROPOSAL_ID;
 test('actual isolated source replay distinguishes a tightened exact-fit premise',async({page})=>{
-  test.skip(!/^[a-f0-9]{64}$/.test(baseline||'')||!/^[a-f0-9]{64}$/.test(proposal||''),'NOT RUN: real staged compatible IDs required');
+  // A missing fixture is a failed mandatory browser gate, not a green skip.
+  expect(baseline||'','trusted baseline snapshot ID').toMatch(/^[a-f0-9]{64}$/);
+  expect(proposal||'','trusted proposal snapshot ID').toMatch(/^[a-f0-9]{64}$/);
+  expect(proposal,'proposal must differ from baseline').not.toBe(baseline);
   await page.goto('/claims/po_a2');await expect(page).toHaveURL(/\/claims\/po_a2\/trace-/);
   await expect(page.locator('[data-phx-main]')).toHaveClass(/phx-connected/);
   await page.locator('#choose-sources').click();
