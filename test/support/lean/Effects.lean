@@ -94,14 +94,14 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try (subst out; solve | simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true])
         all_goals cases amount <;> try simp [] at hs
         all_goals try (subst out; solve | simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true])
         rename_i n amountn
@@ -111,11 +111,11 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
             Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
             Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
 
-                 HoldLedgerProof.atom_compare])
+                 ])
           all_goals repeat' split_conjunction
           all_goals subst_vars
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -133,11 +133,11 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
             Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-            Erlang.erlang.«element/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
             Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
 
-                 HoldLedgerProof.atom_compare])
+                 ])
           all_goals repeat' split_conjunction
           all_goals subst_vars
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -152,7 +152,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try (subst out; solve | simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true])
         rename_i n
@@ -162,7 +162,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -188,7 +188,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
             Elixir.HoldLedger.Spec.«authorize_intent?/6»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare, Erlang.erlang.«and/2»,
+            Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,  Erlang.erlang.«and/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -211,7 +211,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try (subst out; solve | simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true])
         rename_i n
@@ -221,7 +221,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -247,7 +247,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -270,7 +270,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try (subst out; solve | simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true])
         rename_i n
@@ -280,7 +280,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -306,7 +306,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
             Elixir.HoldLedger.Spec.«authorize_intent?/6»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare, Erlang.erlang.«and/2»,
+            Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,  Erlang.erlang.«and/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -329,7 +329,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try (subst out; solve | simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true])
         rename_i n
@@ -339,12 +339,12 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
             Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
             Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
 
-                 HoldLedgerProof.atom_compare])
+                 ])
           all_goals repeat' split_conjunction
           all_goals subst_vars
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -363,12 +363,12 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
             Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
             Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
 
-                 HoldLedgerProof.atom_compare])
+                 ])
           all_goals repeat' split_conjunction
           all_goals subst_vars
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -383,7 +383,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try (subst out; solve | simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true])
         rename_i n
@@ -393,7 +393,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -419,7 +419,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
              Elixir.HoldLedger.Spec.«void_intent?/4»,
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-            Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -442,7 +442,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try (subst out; solve | simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true])
         rename_i n
@@ -452,7 +452,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -478,7 +478,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
           all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
 
             Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+            Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
               Lynx.Except.andAlso,    Lynx.Term.true, Lynx.Term.false]
           all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -502,12 +502,12 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
           Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
           Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-          Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+          Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
           Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
         all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
 
-               HoldLedgerProof.atom_compare])
+               ])
         all_goals repeat' split_conjunction
         all_goals subst_vars
         all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -523,12 +523,12 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5»,
           Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
           Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-          Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare,
+          Erlang.erlang.«element/2»,   Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,
 
           Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false]
         all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [
 
-               HoldLedgerProof.atom_compare])
+               ])
         all_goals repeat' split_conjunction
         all_goals subst_vars
         all_goals try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
@@ -549,7 +549,7 @@ theorem «po_b3/2» (s event : Lynx.Term)
         all_goals repeat' (split at * <;> (repeat' split_conjunction) <;> subst_vars <;> try simp_all [Elixir.HoldLedger.Spec.«effects_valid?/5», Elixir.HoldLedger.Spec.«consistent_effects?/5», Elixir.HoldLedger.Spec.«effect_valid?/2»,
           Elixir.HoldLedger.Spec.«authorize_intent?/6», Elixir.HoldLedger.Spec.«void_intent?/4»,
           Elixir.HoldLedger.Spec.«not_applied_result?/1», Elixir.HoldLedger.Spec.«applied_result?/1»,
-          Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.atom_compare, Erlang.erlang.«and/2»,
+          Erlang.erlang.«element/2»,  Erlang.erlang.«=:=/2», Erlang.erlang.«==/2», Erlang.erlang.«/=/2»,  Erlang.erlang.«and/2»,
 
           Lynx.Except.guard, Lynx.Except.tryWith, Lynx.Except.andAlso,  bind, Except.bind, Lynx.Term.true, Lynx.Term.false])
         all_goals repeat' split_conjunction

@@ -206,7 +206,7 @@ theorem lookup_compare_status (stored a st key amount : Lynx.Term) (tag : String
   rw [← atom_compare st tag]
   simp only [Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq]
   cases hk : stored.compare key <;> cases ha : a.compare amount <;> cases hs : st.compare (Lynx.Term.atom tag) <;>
-    simp_all [  atom_compare]
+    simp_all [  ]
 
 theorem terminal_comparison (s event key amount : Lynx.Term) (tag : String)
     (terminal : tag = "declined" ∨ tag = "voided")
