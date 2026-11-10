@@ -14,7 +14,7 @@ defmodule HoldLedger.MixProject do
       homepage_url: @source_url,
       package: package(),
       docs: docs(),
-      elixir: "~> 1.20.4",
+      elixir: "~> 1.20.5",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_paths: ["test"],

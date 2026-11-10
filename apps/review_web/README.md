@@ -55,7 +55,7 @@ This app is a separate Phoenix project at `apps/review_web`, with a local path
 dependency on the repository root. Run the commands below from that root.
 
 Follow [Getting started](https://github.com/nshkrdotcom/hold_ledger/blob/main/guides/getting-started.md) for the pinned
-Elixir/OTP pair, Python and `uv`. The app's CI uses Elixir 1.20.4 and OTP 29.1.2.
+Elixir/OTP pair, Python and `uv`. The app's CI uses Elixir 1.20.5 and OTP 29.1.2.
 Onboarding checks the installed Elixir/OTP and provisions the pinned local proof
 tools; Python and `uv` support repository tooling rather than the application
 runtime.

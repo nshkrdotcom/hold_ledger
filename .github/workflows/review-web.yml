@@ -43,7 +43,7 @@ jobs:
       - uses: erlef/setup-beam@v1.24.1
         with:
           otp-version: '29.1.2'
-          elixir-version: '1.20.4'
+          elixir-version: '1.20.5'
           version-type: strict
       - name: Locked dependencies, compilation and tests
         run: |

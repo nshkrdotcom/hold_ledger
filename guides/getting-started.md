@@ -6,7 +6,7 @@ There are three useful milestones: run the simulated ledger, check one law, and,
 
 ## Environment
 
-The supported checkout runs on Ubuntu **26.04 x86_64**, with Elixir **1.20.4** compiled against OTP 29, Erlang/OTP **29.1.2**, `uv` **0.12.6**, and Git. uv manages Python **3.13.15** and `zstandard`. The version pins are in `.tool-versions`, `.python-version`, `lean-toolchain`, `mix.lock`, `uv.lock` and `scripts/toolchains.json`.
+The supported checkout runs on Ubuntu **26.04 x86_64**, with Elixir **1.20.5** compiled against OTP 29, Erlang/OTP **29.1.2**, `uv` **0.12.6**, and Git. uv manages Python **3.13.15** and `zstandard`. The version pins are in `.tool-versions`, `.python-version`, `lean-toolchain`, `mix.lock`, `uv.lock` and `scripts/toolchains.json`.
 
 ## Check the checkout
 

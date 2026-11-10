@@ -18,8 +18,8 @@ class PreflightTests(unittest.TestCase):
         self.results = {
             name: {"status": "ok", "output": output}
             for name, output in {
-                "elixir": "Elixir 1.20.4 (compiled with Erlang/OTP 29)",
-                "mix": "Mix 1.20.4 (compiled with Erlang/OTP 29)",
+                "elixir": "Elixir 1.20.5 (compiled with Erlang/OTP 29)",
+                "mix": "Mix 1.20.5 (compiled with Erlang/OTP 29)",
                 "otp": "29.1.2", "git": "git version 2.53.0",
                 "elan": "elan 4.1.2", "lean": "Lean (version 4.35.0, x86_64)",
                 "lake": "Lake version 5.0.0-src (Lean version 4.35.0)",
@@ -31,8 +31,9 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(validate("proofs", self.results), [])
 
     def test_incompatible_runtime_fails_closed(self):
-        for name, output in [("elixir", "Elixir 1.20.40 (compiled with Erlang/OTP 29)"),
-                             ("elixir", "Elixir 1.20.4 (compiled with Erlang/OTP 28)"),
+        for name, output in [("elixir", "Elixir 1.20.4 (compiled with Erlang/OTP 29)"),
+                             ("elixir", "Elixir 1.20.50 (compiled with Erlang/OTP 29)"),
+                             ("elixir", "Elixir 1.20.5 (compiled with Erlang/OTP 28)"),
                              ("otp", "29"), ("otp", "29.1.20")]:
             with self.subTest(name=name, output=output):
                 changed = {**self.results, name: {"status": "ok", "output": output}}

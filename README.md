@@ -54,7 +54,7 @@ prerequisites. The helpers do not change global tools or install system packages
 
 ## Try it on a supported machine
 
-The supported checkout runs on **Ubuntu 26.04 x86_64**, with Erlang/OTP **29.1.2**, Elixir **1.20.4** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, and Git. The demo and focused proofs don't need `bwrap` (Bubblewrap). The full independent checker does. Onboarding checks your existing Elixir/OTP installation; it won't install those tools.
+The supported checkout runs on **Ubuntu 26.04 x86_64**, with Erlang/OTP **29.1.2**, Elixir **1.20.5** (built with OTP 29), Python **3.13.15** through `uv` **0.12.6**, and Git. The demo and focused proofs don't need `bwrap` (Bubblewrap). The full independent checker does. Onboarding checks your existing Elixir/OTP installation; it won't install those tools.
 
 The examples use the Lynx commit pinned in `mix.lock` and Lean **4.35.0** from `lean-toolchain`; [Verification](guides/verification.md#coverage-and-provenance) identifies the exact versions.
 

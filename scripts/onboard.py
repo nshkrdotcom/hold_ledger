@@ -20,8 +20,8 @@ OTP_QUERY = ('Root=code:root_dir(), Rel=erlang:system_info(otp_release), '
 def validate(profile: str, results: dict) -> list[str]:
     errors = []
     patterns = {
-        "elixir": r"Elixir 1\.20\.4 \(compiled with Erlang/OTP 29\)",
-        "mix": r"Mix 1\.20\.4 \(compiled with Erlang/OTP 29\)",
+        "elixir": r"Elixir 1\.20\.5 \(compiled with Erlang/OTP 29\)",
+        "mix": r"Mix 1\.20\.5 \(compiled with Erlang/OTP 29\)",
         "otp": r"\A29\.1\.2\s*\Z",
         "git": r"git version ",
     }
@@ -30,8 +30,8 @@ def validate(profile: str, results: dict) -> list[str]:
                          "lake": r"Lean version 4\.35\.0(?:[ ,)])",
                          "bwrap": r"bubblewrap "})
     help_text = {
-        "elixir": "Please expose your existing Elixir 1.20.4 (built with OTP 29) on PATH; if using asdf, activate that environment. We will not replace it.",
-        "mix": "Please expose Mix 1.20.4 from the same Elixir installation on PATH.",
+        "elixir": "Please expose your existing Elixir 1.20.5 (built with OTP 29) on PATH; if using asdf, activate that environment. We will not replace it.",
+        "mix": "Please expose Mix 1.20.5 from the same Elixir installation on PATH.",
         "otp": "Please select the existing OTP 29.1.2 installation; its releases/29/OTP_VERSION must be readable.",
         "git": "Please make an existing Git installation available on PATH; no apt or sudo installation is performed.",
         "elan": "Run: uv run --locked python scripts/onboard.py --provision (installs Elan locally).",
