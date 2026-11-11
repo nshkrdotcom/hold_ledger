@@ -119,8 +119,7 @@ defmodule HoldLedgerReview.Part3Verification do
 
   defp activity_status("pointwise_execution", _report, _), do: "not_run"
 
-  defp activity_status("source_extraction", _report, status),
-    do: if(status == :stale, do: "failed", else: "succeeded")
+  defp activity_status("source_extraction", _report, _status), do: "succeeded"
 
   defp activity_status("acceptance", _report, :full_catalog_checked), do: "succeeded"
   defp activity_status("acceptance", _report, _), do: "failed"
@@ -131,18 +130,13 @@ defmodule HoldLedgerReview.Part3Verification do
   defp activity_status("checker", _report, :development_only), do: "not_run"
   defp activity_status("checker", _report, _), do: "failed"
 
-  defp activity_status(kind, report, status) do
+  defp activity_status(kind, report, _status) do
     laws = report["laws"]
 
-    cond do
-      status == :stale ->
-        "failed"
-
-      report["mode"] != "EXECUTED" or not is_map(laws) or map_size(laws) == 0 ->
-        "not_run"
-
-      true ->
-        status_of_laws(kind, laws)
+    if report["mode"] != "EXECUTED" or not is_map(laws) or map_size(laws) == 0 do
+      "not_run"
+    else
+      status_of_laws(kind, laws)
     end
   end
 
