@@ -97,7 +97,9 @@ test('full actual proof source stays beside selected source stage',async({page})
   await expect.poll(()=>page.locator('#proof-script').evaluate(el=>el.scrollTop)).toBeGreaterThan(0);
   const link=page.locator('#lemma-links a').first();
   const response=await page.request.get(await link.getAttribute('href'));expect(response.status()).toBe(200);
-  const stale=await page.request.get((await link.getAttribute('href')).replace(/[a-f0-9]{64}$/,'0'.repeat(64)));expect(stale.status()).toBe(404);
+  const source=await link.getAttribute('href');
+  const missingSource=source.replace(/\/source\/[^/]+\//,'/source/missing-source/');expect(missingSource).not.toBe(source);
+  const missing=await page.request.get(missingSource);expect(missing.status()).toBe(404);
   await tab(page,'artifacts');await expect(page.locator('#formal-status')).toHaveText('Not supplied');
 });
 

@@ -65,8 +65,10 @@ test('retention lens distinguishes terminal evidence and source-linked statement
   const response = await page.request.get(url);
   expect(response.status()).toBe(200);
   expect(await response.text()).toContain('not Spec.release_evidence?');
-  const stale = await page.request.get(url.replace(/[a-f0-9]{64}$/, '0'.repeat(64)));
-  expect(stale.status()).toBe(404);
+  const missingSource = url.replace(/\/source\/[^/]+\//, '/source/missing-source/');
+  expect(missingSource).not.toBe(url);
+  const missing = await page.request.get(missingSource);
+  expect(missing.status()).toBe(404);
   const policy = await page.locator('#lens-policy a').getAttribute('href');
   const policyResponse = await page.request.get(policy);
   expect(policyResponse.status()).toBe(200);
