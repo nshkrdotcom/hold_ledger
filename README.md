@@ -13,6 +13,8 @@ The ledger tracks payment holds. A processor can authorize a hold even when your
 
 You’ll write laws in Elixir, inspect the Lean code that Lynx generates, and work through the proofs. Later guides cover working with coding agents and checking whether the claims you’ve proved match your requirements.
 
+## Introduction
+
 A formal proof can be correct and still leave a release decision stuck. The theorem holds for the model, but the team responsible for the running service cannot tell whether that model describes what the software does. A more elegant proof won't answer their question.
 
 AI may make proofs cheaper to write and repair. That helps, but it leaves a different bill: establishing that a specification describes the right behavior and that a model bears a credible relation to the code people run. When those links hold, a proof may expose a defect, clear a stalled release, or preserve a rule future developers must respect. The running code need not change for the evidence to be useful.
