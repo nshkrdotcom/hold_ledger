@@ -13,6 +13,58 @@ The ledger tracks payment holds. A processor can authorize a hold even when your
 
 You’ll write laws in Elixir, inspect the Lean code that Lynx generates, and work through the proofs. Later guides cover working with coding agents and checking whether the claims you’ve proved match your requirements.
 
+A formal proof can be correct and still leave a release decision stuck. The theorem holds for the model, but the team responsible for the running service cannot tell whether that model describes what the software does. A more elegant proof won't answer their question.
+
+AI may make proofs cheaper to write and repair. That helps, but it leaves a different bill: establishing that a specification describes the right behavior and that a model bears a credible relation to the code people run. When those links hold, a proof may expose a defect, clear a stalled release, or preserve a rule future developers must respect. The running code need not change for the evidence to be useful.
+
+The value depends on what uncertainty the evidence removes and what people can do with it. A new feature, a high-consequence service, and a huge but easily recoverable internal application need different amounts of assurance.
+
+## The migration that could pay for itself
+
+Consider a fictional payment service replacing its journal. It keeps old and new storage paths running in parallel to compare recovery behavior. Parallel operation costs an extra $18,000 a week. The approved fallback plan is to watch both paths for eight more weeks before retiring the old one. More observation isn't a mathematical guarantee, but it's the risk decision the team has already made.
+
+The release approvers are worried about one failure: a late task result, or a worker dying between a processor response and journal acknowledgment, might free capacity or record a final outcome that recovery cannot reconstruct. The engineering lead and operational risk owner set an early-exit rule *before* commissioning more work: an invariant covering every modeled transition, and controlled BEAM tests comparing the service's `GenServer`, task monitors, and journal with those transitions. They will also review the exceptions, including reliance on the storage system's durability contract. They know that even this package cannot cover every real scheduler order.
+
+One option is a $12,000 fault-injection harness that takes two weeks. It drives chosen timeouts, `:DOWN` messages, failed acknowledgments, and replay sequences through the real code. The harness is useful on its own. But for this release, a set of successful traces cannot establish what happens in the untested combinations of those events. The approvers have made that limitation an explicit reason not to retire the old journal yet.
+
+A second option costs $48,000 **in total**, including that harness, and takes three weeks. It adds an inductive proof of a precise rule: once an attempt has been sent, no allowed model transition retires it or frees its occupied slot before the outcome has been durably acknowledged. That covers modeled event combinations the harness never happened to schedule. The harness checks concrete traces against abstract transitions and the replayed journal state. The proof gives breadth inside the model; the harness gives evidence about the model's contact with the implementation. Neither substitutes for the other. The approvers review the unmodeled scheduler behavior and durability assumptions. They accept the remaining risk and authorize cutover. No bug has to be found for the evidence to matter.
+
+If the old path can be retired at the end of week three rather than week eight, that eliminates **five weeks** of parallel running, not eight. At $18,000 a week, that's $90,000 in gross avoided cost. Subtract the $48,000 work and an estimated $6,000 for first-year proof upkeep: $36,000 remains, before any transition costs that differ between the options. Let the exercise slip to week five and the advantage vanishes. The timetable matters as much as the theorem.
+
+That comparison only works under the release conditions stated above. If the $12,000 harness alone could have won sign-off in week two, six saved weeks would mean $108,000 gross, or $96,000 after the harness bill. Here it cannot meet the agreed release rule. That is why the additional proof is worth considering. If the approvers would accept tests alone, or a simpler design eliminated the risky transition, the larger effort would lose its justification.
+
+## The large system that needs less proof
+
+A second fictional example is a reporting platform spanning dozens of services. Its exports contain private customer data, and mistakes can disrupt regulatory filings. A proposal asks for $220,000 to formalize much of the existing transformation pipeline, plus ongoing maintenance. The risks are real, but the proposed scope is a poor fit.
+
+Consider the export boundary. A queued export could use stale permissions and deliver a report to a requester who no longer has access, perhaps from another tenant. The proposed suite spends most of its effort on aggregation and formatting, assuming the permission service and queue behave correctly. Its proofs might be sound and still leave the most consequential failure almost untouched.
+
+Suppose the security owner sets a concrete requirement: an export must not deliver a report to a requester lacking authority for its tenant at delivery time, even if permissions changed after the job was queued. A $45,000 effort could check that property in a bounded export model, challenge delayed authorization changes, and run conformance tests against the real queue and permission checks. It would not verify the whole platform. It might satisfy the important risk limit better than the $220,000 proposal. If financial-reporting rules also require independent evidence of aggregate correctness, or if failures propagate across both components, the scope should change. The issue isn't that the reporting system is harmless. It's that the proposed proof may be aimed at the wrong part of it.
+
+These examples can't be reduced to expected incident cost alone. A company may set a maximum tolerable loss, a safety invariant it refuses to relax, or a contractual evidence requirement. For a rare catastrophic failure, compare options against that limit first. Only then ask which qualifying approach costs less. Unknown dependencies may justify a small exploratory model before the right property is even clear.
+
+The payoff can arrive later. A specification may settle a dispute about intended behavior, speed an incident investigation, or keep a redesign from reviving an old mistake. These are real uses of verified knowledge. They deserve an owner, a likely lifespan, and an upkeep budget, even when no immediate release depends on them.
+
+## What AI actually makes cheap
+
+It's tempting to assume AI-generated proofs will leave teams buried in maintenance. That isn't necessarily true. For a Lean theorem whose statement and trusted assumptions are held fixed, a proof checker gives unusually crisp feedback on an attempted repair. An agent can try a new derivation and learn quickly whether it checks. That does not tell us whether the theorem was the right one, and it doesn't apply in the same way to a bounded scheduler search. A successful bounded check means no violation was found within the states and depth examined, not that an invariant holds for all executions.
+
+AI can produce code faster, too. If that increases the number of changes a team ships, the need for verification can grow even if the defect rate per change stays constant. A proof integrated into development may prevent a bad design from reaching production. The economics of that work are quite different from retroactively proving an established system correct.
+
+The harder problem is **specification fidelity**. If one model writes the feature, its tests, and the property to prove, it may repeat the same misunderstanding in all three. Running two agents from the same mistaken requirements doesn't create independence. Independence must come from the source of authority, not a second prompt. Domain owners need to supply the business rules, failure limits, and incident history; reviewers need to challenge the model without deferring to what the code already does. Then use model-based tests and deliberately forced runtime schedules to look for mismatches. None of this is free, and using AI to generate the harness does not remove the need for that review.
+
+This repo attempts to provide a useful example of this boundary. It uses Lynx to translate Elixir laws into obligations checked with Lean, a proof assistant. Its acceptance inventory has 49 proof groups, including 14 native Lean groups with 21 required named theorems (the *native anchors*), and six checker configurations. Those anchors require specific theorems to be checked. They do not establish that a running `GenServer` handles every `:DOWN` race or journal replay as a concurrent model predicts. A proof about stale replies and attempt retirement needs a separate, explicit link to actual events before it can support that claim.
+
+The migration notes record a genuine tooling defect: an optional batch guard expected a list where Lynx supplied a `MapSet`. That fix matters, but it is not a discovered ledger-runtime bug. Nor are deliberately broken test variants, correctly rejected by checkers, production defects. The reviewed snapshots don't include the Git history needed for a full findings tally. Hold Ledger runs a simulated processor and is meant to teach verification, so avoided payment losses would be the wrong measure of its value anyway.
+
+## A stopping rule that doesn't punish the first week
+
+Formal methods have a startup cost. Teams must learn the tools, get the proof runner working, and often build a reusable fault harness. A review after the first week would mostly measure that expense. Budget an initial learning period explicitly, then evaluate the next tranche after one representative property and its connection to the running system have been tested. Separate one-time setup from the cost of maintaining the next hundred obligations.
+
+At that review, keep separate records of reproduced defects, established properties and their assumptions, decisions changed, and artifacts likely to be reused. For the last category, name the future maintainer or release gate rather than assigning a made-up dollar value to possible reuse. Compare the next tranche with a narrower model, tests, a simpler architecture, or leaving the code alone. The same scrutiny belongs on any expensive testing or observability program. Nobody needs an ROI meeting for each unit test.
+
+A passing proof that finds no bug may pay for itself by settling a real uncertainty. It may also make the next redesign easier. But as proof production gets cheaper, the temptation to prove everything will grow. Spend first on the questions that can change a decision or protect something consequential. And know what evidence would justify stopping.
+
 ## Choose where to start
 
 If you're new to Lean, start with the crash course. You'll run a small proof, break a capacity check, and write a law. Then read Reading deeper proofs for the shared lemmas and induction used by the ledger. The agent and review guides are a separate track.
