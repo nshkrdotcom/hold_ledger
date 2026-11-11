@@ -15,13 +15,29 @@ local tool setup. Run them from the repository root or invoke them by path.
 | `./scripts/check_web.sh` | Phoenix `mix precommit` (compile, format, strict Credo, Dialyzer and tests), documentation, asset setup/build and Python content checks. |
 | `./scripts/check_all.sh` | Everything above, plus bounded BEAM/Lean differential checks, executable tutorials, demo, root documentation/package builds and original claim-reading production. Runs full formal acceptance once and reuses its validated baseline for mutants. |
 
-The master runs independent groups concurrently, then runs the mutants with the
-same worker budget. Lean's shared proof batch remains dependency-ordered. The
-mutant witness, ordinary suite and targeted formal attempt remain sequential
-within each mutant. Auto-detection respects CPU affinity, cgroup CPU/memory
-limits and available memory, choosing at most four workers and roughly 3 GiB
-of available memory per worker. This is a scheduling budget, not a hard memory
-limit. BEAM schedulers are bounded per worker.
+The master starts independent groups concurrently, giving the full formal group
+priority. Mutants become eligible as soon as that full baseline passes, without
+waiting for unrelated groups. One shared CPU and estimated-memory budget covers
+both ordinary groups and the mutant pool. Each mutant keeps its witness,
+ordinary suite and formal attempt in order; Lean's shared proof batch retains
+its dependency order.
+
+Automatic selection uses every usable CPU, respecting affinity, cgroup quotas
+and inherited CPU allocations. There is no four-worker or half-CPU cap. Actual
+concurrency is bounded by runnable tasks and estimated memory. The scheduler
+reserves the larger of 2 GiB or 10% of available memory, then budgets 12 GiB for
+full formal checking, 6 GiB for web, 4 GiB for quick, 3 GiB each for differential,
+tutorials and readings, 2 GiB for packaging, and 6 GiB per mutant. These estimates
+are scheduling reservations, not hard process limits. An oversized single task
+runs alone. Memory estimates should be revised using measured peaks.
+
+On a 24-CPU machine with sufficient memory, up to seven independent groups or
+ten mutants can run concurrently. There are only seven top-level groups and
+ten mutants. BEAM schedulers receive each task's CPU allocation without a fixed
+four-scheduler cap. Nested workers replace runner-generated scheduler settings;
+explicit operator `ERL_FLAGS` remain intact. A single Lynx batch still elaborates
+sequentially in the pinned dependency; adding workers does not parallelize one
+proof. All six checker requirements and cold/source-integrity gates remain.
 
 Every helper accepts the same options:
 
@@ -29,7 +45,7 @@ Every helper accepts the same options:
 ./scripts/check_all.sh              # Automatic workers; live output and a log
 ./scripts/check_all.sh --quiet      # Log output; print log path and final status
 ./scripts/check_all.sh --jobs 1     # Serial execution
-./scripts/check_all.sh --jobs 6     # Explicit worker budget
+./scripts/check_all.sh --jobs 6     # Worker ceiling; CPU/memory limits still apply
 ./scripts/check_all.sh --help
 ```
 
@@ -50,7 +66,7 @@ heartbeats. Concurrent terminal lines carry their group name.
 
 The log identifies `tmp/check-runs/<run>/`, containing:
 
-- `status.json`: resources, source hashes and each requested group's result.
+- `status.json`: detected resources, worker ceiling, per-group CPU/memory allocations, source hashes and each group's result.
 - `logs/<group>.log`: command output for that group.
 - `snapshot/`: the source used by every worker.
 - `workers/<group>/`: isolated project and detailed generated evidence.
@@ -168,8 +184,9 @@ Run the complete native experiment with the helper:
 ./scripts/check_mutants.sh
 ```
 
-It verifies the targeted baseline laws once, then runs up to four mutants in
-parallel by default. Each mutant still runs its assertions, ordinary suite and
+It verifies the targeted baseline laws once, then runs as many independent
+mutants as usable CPUs and the memory budget permit, up to all ten. Each mutant
+still runs its assertions, ordinary suite and
 formal attempt in order. Failed assertions on a deliberately broken copy are
 expected evidence; an infrastructure failure is incomplete, not detection.
 

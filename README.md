@@ -40,8 +40,9 @@ From the repository root:
 
 Every helper runs with no arguments. It logs to a unique
 `/tmp/hold-ledger-check-<mode>.*.log` and displays output by default; add
-`--quiet` to hide live output or `--jobs N` to override automatic CPU/memory
-limits. The master uses isolated copies of the current working tree, including
+`--quiet` to hide live output or `--jobs N` to set a worker ceiling. Automatic
+scheduling uses available CPUs within workload memory budgets and task counts.
+The master uses isolated copies of the current working tree, including
 uncommitted changes, to run independent checks concurrently. Builds and reports
 stay under ignored `tmp/check-runs/`; the log identifies the exact run directory.
 

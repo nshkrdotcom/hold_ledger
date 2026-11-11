@@ -28,13 +28,16 @@ Setup reuses matching local tools and cached downloads. An incompatible or
 incomplete installation fails with a diagnostic. Ordinary tests compile Lynx
 through Lake, so even the quick helper needs the local Lean toolchain.
 
-The helpers detect usable CPUs, CPU quotas and available memory. Independent
-work uses at most four workers by default; `--jobs N` overrides that limit and
-`--jobs 1` runs serially. `--quiet` hides live output while retaining the log.
-For example:
+The helpers detect usable CPUs, CPU quotas and available memory. Automatic
+selection uses available cores across independent tasks, bounded by workload
+memory estimates and the number of runnable tasks. `--jobs N` sets a worker
+ceiling; `--jobs 1` is available for serial debugging. BEAM receives a share of
+the CPU budget per task. A single Lynx proof batch remains dependency-ordered.
+See [Testing](testing.md#check-helpers) for memory reservations and scheduling.
+`--quiet` hides live output while retaining the log:
 
 ```sh
-./scripts/check_all.sh --quiet --jobs 4
+./scripts/check_all.sh --quiet
 ```
 
 Each run prints its `/tmp/hold-ledger-check-<mode>.*.log` path. Source snapshots,

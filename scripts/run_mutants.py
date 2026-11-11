@@ -21,7 +21,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from check_runtime import cancellation_scope, copy_project, resources, worker_environment
+from check_runtime import cancellation_scope, copy_project, resources, worker_environment, worker_count, MUTANT_MEMORY_BYTES
 from run_laws import (CHECKERS, REQUIRED_AXIOMS, acceptance_sources, changed_sources,
                       inspect_manifest, run as run_command)
 from obligations import required_inventory
@@ -260,7 +260,7 @@ def one_mutant(spec: tuple, original: bytes, spec_digest: str,
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--jobs", type=int, default=resources()["default_jobs"], help="parallel isolated mutants (default: CPU/memory bounded, at most 4)")
+    p.add_argument("--jobs", type=int, help="worker ceiling (default: all usable CPUs, bounded by memory and mutant count)")
     p.add_argument("--baseline-report", type=Path, help="reuse matching complete cold checker acceptance")
     p.add_argument("--execute", action="store_true", help="run full native isolated mutations")
     p.add_argument("--timeout", type=int, default=1800, help="native per-check seconds")
@@ -269,8 +269,10 @@ def main() -> int:
     args = p.parse_args()
     dest = None
     try:
-        if args.jobs < 1:
+        if args.jobs is not None and args.jobs < 1:
             raise RuntimeError("--jobs must be positive")
+        capacity = resources()
+        args.jobs = worker_count(capacity, len(MUTANTS), MUTANT_MEMORY_BYTES, args.jobs)
         os.environ["HOLD_LEDGER_JOBS"] = str(args.jobs)
         if args.report:
             candidate = args.report.resolve()
@@ -284,6 +286,7 @@ def main() -> int:
         spec_hash = digest(ROOT / SPEC)
         report = {"mode": "EXECUTED" if args.execute else "STATIC_ONLY",
                   "date_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+                  "jobs": args.jobs, "resources": capacity,
                   "ledger_sha256": hashlib.sha256(original).hexdigest(),
                   "spec_sha256": spec_hash, "mutants": {}}
         (ROOT / "tmp").mkdir(exist_ok=True)

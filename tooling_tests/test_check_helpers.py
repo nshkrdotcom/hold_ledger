@@ -89,7 +89,7 @@ class CheckHelpersTest(unittest.TestCase):
             def copy(source, destination):
                 destination.mkdir(parents=True)
                 return destination
-            def command(argv, *args):
+            def command(argv, *args, **kwargs):
                 calls.append(argv)
                 return 0
             with patch.object(check_suite, 'ROOT', root), \
@@ -102,7 +102,8 @@ class CheckHelpersTest(unittest.TestCase):
                 self.assertEqual(check_suite.main(), 0)
             self.assertEqual(peak, 2)
             self.assertIn('--baseline-report', calls[-1])
-            self.assertEqual(calls[-1][-2:], ['--jobs', '2'])
+            self.assertEqual(calls[-1][-2], '--jobs')
+            self.assertIn(int(calls[-1][-1]), (1, 2))
             report = json.loads(next(root.glob('tmp/check-runs/*/status.json')).read_text())
             self.assertEqual(report['state'], 'passed')
             self.assertEqual(len(report['groups']), 8)

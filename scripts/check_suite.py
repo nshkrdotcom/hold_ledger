@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed, CancelledError
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED, CancelledError
 import datetime as dt
 import fcntl
 import json
@@ -18,7 +18,8 @@ import threading
 import time
 
 from check_runtime import (cancel_running, cancellation_scope, copy_project,
-                           resources, source_manifest, tracked_process, worker_environment)
+                           resources, source_manifest, tracked_process, worker_environment,
+                           GROUP_MEMORY_GIB, MUTANT_MEMORY_BYTES, GIB)
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_LOCK = threading.Lock()
@@ -29,8 +30,9 @@ def say(label: str, message: str) -> None:
         print(f'[{label}] {message}', flush=True)
 
 
-def command(argv: list[str], project: Path, label: str, log: Path, jobs: int) -> int:
-    env = worker_environment(jobs, project)
+def command(argv: list[str], project: Path, label: str, log: Path, jobs: int, *,
+            cpu_budget: int | None = None) -> int:
+    env = worker_environment(jobs, project, cpu_budget=cpu_budget)
     say(label, '+ ' + shlex.join(argv))
     started = time.monotonic()
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -108,17 +110,116 @@ def commands(group: str) -> list[list[str]]:
     raise ValueError(f'Unknown check group: {group}')
 
 
-def run_group(group: str, snapshot: Path, run_dir: Path, jobs: int) -> dict:
+def run_group(group: str, snapshot: Path, run_dir: Path, cpu_budget: int) -> dict:
     project = run_dir / 'workers' / group
     say(group, f'Preparing isolated workspace: {project}')
     copy_project(snapshot, project)
     for argv in commands(group):
-        if group == 'mutants':
-            argv += ['--jobs', str(jobs)]
-        code = command(argv, project, group, run_dir / 'logs' / f'{group}.log', jobs)
+        code = command(argv, project, group, run_dir / 'logs' / f'{group}.log', 1,
+                       cpu_budget=cpu_budget)
         if code:
             return {'state': 'failed', 'exit': code, 'workspace': str(project)}
     return {'state': 'passed', 'exit': 0, 'workspace': str(project)}
+
+
+def run_mutation_group(snapshot: Path, run_dir: Path, jobs: int, cpu_budget: int,
+                       baseline: Path | None) -> dict:
+    project = baseline if baseline is not None else run_dir / 'workers/mutants'
+    if baseline is None:
+        copy_project(snapshot, project)
+    argv = commands('mutants')[0]
+    if baseline is not None:
+        argv += ['--baseline-report', 'tmp/verification/checked.json']
+    argv += ['--jobs', str(jobs)]
+    code = command(argv, project, 'mutants', run_dir / 'logs/mutants.log', jobs,
+                   cpu_budget=cpu_budget)
+    return {'state': 'passed' if code == 0 else 'failed', 'exit': code,
+            'workspace': str(project)}
+
+
+def schedule_groups(mode: str, snapshot: Path, run_dir: Path, capacity: dict,
+                    jobs: int, report: dict, save) -> None:
+    """Dispatch ready work within shared CPU/estimated-memory budgets."""
+    pending = (['full', 'quick', 'web', 'differential', 'tutorials', 'package', 'readings']
+               if mode == 'all' else [mode])
+    active = {}
+    failed = False
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        while pending or active:
+            used_cpu = sum(item[1] for item in active.values())
+            used_memory = sum(item[2] for item in active.values())
+            used_slots = sum(item[3] for item in active.values())
+            for group in list(pending):
+                free_cpu = capacity['cpus'] - used_cpu
+                free_slots = jobs - used_slots
+                free_memory = capacity['memory_budget_bytes'] - used_memory
+                if free_cpu < 1 or free_slots < 1:
+                    break
+                if group == 'mutants':
+                    workers = min(10, free_slots, free_cpu,
+                                  max(0, free_memory) // MUTANT_MEMORY_BYTES)
+                    if workers < 1:
+                        if active:
+                            continue
+                        workers = 1  # An oversized task runs alone, never deadlocks.
+                    memory = workers * MUTANT_MEMORY_BYTES
+                    cpu = free_cpu
+                    baseline = (Path(report['groups']['full']['workspace'])
+                                if mode == 'all' else None)
+                    future = pool.submit(run_mutation_group, snapshot, run_dir,
+                                         workers, cpu, baseline)
+                else:
+                    workers = 1
+                    memory = GROUP_MEMORY_GIB[group] * GIB
+                    if memory > free_memory and active:
+                        continue
+                    # Divide free CPUs among work that actually fits, not jobs
+                    # waiting for memory. A lone runnable group gets all CPUs.
+                    remaining_memory = free_memory
+                    ready = 0
+                    for candidate in pending:
+                        cost = (MUTANT_MEMORY_BYTES if candidate == 'mutants'
+                                else GROUP_MEMORY_GIB[candidate] * GIB)
+                        if cost <= remaining_memory:
+                            count = (min(10, remaining_memory // cost)
+                                     if candidate == 'mutants' else 1)
+                            ready += count
+                            remaining_memory -= count * cost
+                    concurrency = max(1, min(free_slots, free_cpu, ready))
+                    cpu = max(1, free_cpu // concurrency)
+                    future = pool.submit(run_group, group, snapshot, run_dir, cpu)
+                allocation = {'cpu_budget': cpu, 'memory_estimate_bytes': memory,
+                              'workers': workers}
+                report.setdefault('allocations', {})[group] = allocation
+                active[future] = (group, cpu, memory, workers)
+                pending.remove(group)
+                used_cpu += cpu
+                used_memory += memory
+                used_slots += workers
+                save()
+            if not active:
+                break
+            completed, _ = wait(active, return_when=FIRST_COMPLETED)
+            for future in completed:
+                group, _, _, _ = active.pop(future)
+                try:
+                    result = future.result()
+                except CancelledError:
+                    result = {'state': 'cancelled'}
+                except Exception as error:
+                    result = {'state': 'failed', 'error': str(error)}
+                report['groups'][group] = result
+                save()
+                if result['state'] != 'passed':
+                    failed = True
+                    pending.clear()
+                    cancel_running()
+                    for other in active:
+                        other.cancel()
+                elif group == 'full' and mode == 'all' and not failed:
+                    pending.append('mutants')
+    if failed:
+        raise RuntimeError('Check group failed; see per-group logs')
 
 
 def require_unchanged_source(manifest: dict[str, str]) -> None:
@@ -136,6 +237,7 @@ def main() -> int:
     jobs = args.jobs if args.jobs is not None else capacity['default_jobs']
     if jobs < 1:
         parser.error('--jobs must be positive')
+    jobs = min(jobs, capacity['cpus'])
     base = ROOT / 'tmp/check-runs'
     base.mkdir(parents=True, exist_ok=True)
     # Setup mutates the main dependency directories; helpers must not race it.
@@ -147,7 +249,8 @@ def main() -> int:
         run_dir = Path(tempfile.mkdtemp(prefix=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ-'), dir=base))
         say('checks', f'Run directory: {run_dir}')
         say('checks', f'{capacity["cpus"]} available CPUs; '
-            f'{capacity["available_memory_bytes"] / 1024**3:.1f} GiB available memory; workers={jobs}')
+            f'{capacity["available_memory_bytes"] / 1024**3:.1f} GiB available memory; worker ceiling={jobs}; '
+            f'{capacity["memory_budget_bytes"] / GIB:.1f} GiB scheduling budget')
         report = {'mode': args.mode, 'resources': capacity, 'jobs': jobs, 'state': 'running', 'groups': {}}
         status = run_dir / 'status.json'
         def save():
@@ -165,7 +268,8 @@ def main() -> int:
                 setup.append([sys.executable, 'scripts/local_run.py', '--cwd', 'apps/review_web',
                               'mix', 'deps.get', '--check-locked'])
             for argv in setup:
-                code = command(argv, ROOT, 'setup', run_dir / 'logs/setup.log', jobs)
+                code = command(argv, ROOT, 'setup', run_dir / 'logs/setup.log', 1,
+                               cpu_budget=capacity['cpus'])
                 if code:
                     raise RuntimeError(f'Setup failed (exit {code})')
             manifest = source_manifest(ROOT)
@@ -174,37 +278,7 @@ def main() -> int:
                 raise RuntimeError('Source changed while taking the snapshot; rerun the helper')
             report['source_sha256'] = manifest
             say('checks', f'Source snapshot ready: {snapshot}')
-            groups = (['quick', 'web', 'differential', 'tutorials', 'package', 'readings', 'full']
-                      if args.mode == 'all' else [args.mode])
-            # Mutations are the second wave: reuse only the completed full report.
-            with ThreadPoolExecutor(max_workers=jobs) as pool:
-                futures = {pool.submit(run_group, group, snapshot, run_dir, jobs): group for group in groups}
-                for future in as_completed(futures):
-                    group = futures[future]
-                    try:
-                        result = future.result()
-                    except CancelledError:
-                        result = {'state': 'cancelled'}
-                    except Exception as error:
-                        result = {'state': 'failed', 'error': str(error)}
-                    report['groups'][group] = result
-                    save()
-                    if result['state'] != 'passed':
-                        say(group, result.get('error', f"{result['state']} (exit {result.get('exit')})"))
-                        cancel_running()
-                        for pending in futures:
-                            pending.cancel()
-            if any(result['state'] != 'passed' for result in report['groups'].values()):
-                raise RuntimeError('Check group failed; see per-group logs')
-            if args.mode == 'all':
-                project = Path(report['groups']['full']['workspace'])
-                argv = commands('mutants')[0] + ['--baseline-report', 'tmp/verification/checked.json',
-                                                '--jobs', str(jobs)]
-                code = command(argv, project, 'mutants', run_dir / 'logs/mutants.log', jobs)
-                report['groups']['mutants'] = {'state': 'passed' if code == 0 else 'failed',
-                                               'exit': code, 'workspace': str(project)}
-                if code:
-                    raise RuntimeError('Mutation campaign failed')
+            schedule_groups(args.mode, snapshot, run_dir, capacity, jobs, report, save)
             require_unchanged_source(manifest)
             report['state'] = 'passed'
             say('checks', f'All requested checks passed. Reports and workspaces: {run_dir}')
