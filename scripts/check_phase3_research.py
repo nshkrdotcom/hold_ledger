@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from provision import ROOT, local_env
@@ -35,6 +36,22 @@ def main() -> int:
         print("Phase 3 research fixture FAILED; no counterexample result accepted",
               file=sys.stderr)
         return 1
+    # Missing compiled imports must fail, rather than look like a successful search.
+    with tempfile.TemporaryDirectory(prefix="hold-ledger-research-") as directory:
+        missing = Path(directory) / "MissingImport.lean"
+        missing.write_text("import HoldLedger0300DeliberatelyMissing\n", encoding="utf-8")
+        try:
+            negative = subprocess.run(
+                ["lake", "--dir", "deps/lynx/Lean", "env", "lean", str(missing)],
+                cwd=ROOT, env=local_env(), capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            print(f"Missing-import negative unresolved: {error}", file=sys.stderr)
+            return 1
+        diagnostic = negative.stdout + negative.stderr
+        if negative.returncode == 0 or "unknown module prefix" not in diagnostic:
+            print(f"Missing-import negative FAILED: {diagnostic}", file=sys.stderr)
+            return 1
+    print("Missing compiled import rejected as expected.")
     print("Phase 3 research Lean fixture compiled; negative cases guarded, "
           "positive bounded goal kernel-checked. NOT a runtime law.")
     return 0

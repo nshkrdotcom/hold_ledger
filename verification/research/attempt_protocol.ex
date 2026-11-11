@@ -220,7 +220,7 @@ defmodule HoldLedger.Verification.AttemptProtocol do
           end
         end)
         |> case do
-          {waiting, found} -> explore(waiting, found, depth, variant, limit)
+          {waiting, %MapSet{} = found} -> explore(waiting, found, depth, variant, limit)
           violation -> violation
         end
     end

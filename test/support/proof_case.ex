@@ -172,49 +172,49 @@ defmodule HoldLedger.ProofCase do
       if length(keys) != length(Enum.uniq(keys)),
         do: raise(ArgumentError, "duplicate translation options")
 
-      Enum.each(translation, fn
-        {:termination_suffixes, value} when is_map(value) and map_size(value) == 0 ->
-          :ok
-
-        {:cutoffs, %MapSet{} = value} ->
-          if MapSet.size(value) != 0, do: raise(ArgumentError, "nonempty batch cutoffs")
-
-        {:dynamic, %MapSet{} = value} ->
-          if MapSet.size(value) != 0, do: raise(ArgumentError, "nonempty batch dynamic targets")
-
-        {:preludes, []} ->
-          :ok
-
-        {:postludes, sources} when is_list(sources) ->
-          if not Enum.all?(sources, &valid_postlude?/1),
-            do: raise(ArgumentError, "invalid batch postludes")
-
-        other ->
-          raise ArgumentError, "unsupported batch translation option: #{inspect(other)}"
-      end)
+      Enum.each(translation, &validate_batch_option!/1)
 
       Keyword.get(translation, :postludes, [])
     end)
   end
 
-  defp valid_postlude?(%Lynx.Lean{source: source, file: file, span: span, indentation: indent}) do
-    valid_span =
-      case span do
-        line when is_integer(line) and line > 0 -> true
-        {line, col} when is_integer(line) and line > 0 and is_integer(col) and col > 0 -> true
-        _ -> false
-      end
+  defp validate_batch_option!({:termination_suffixes, value})
+       when is_map(value) and map_size(value) == 0, do: :ok
 
-    is_binary(source) and String.trim(source) != "" and is_binary(file) and file != "" and
-      valid_span and is_integer(indent) and indent >= 0 and
+  defp validate_batch_option!({kind, %MapSet{} = value}) when kind in [:cutoffs, :dynamic] do
+    if MapSet.size(value) != 0, do: raise(ArgumentError, "nonempty batch #{kind}")
+  end
+
+  defp validate_batch_option!({:preludes, []}), do: :ok
+
+  defp validate_batch_option!({:postludes, sources}) when is_list(sources) do
+    if not Enum.all?(sources, &valid_postlude?/1),
+      do: raise(ArgumentError, "invalid batch postludes")
+  end
+
+  defp validate_batch_option!(other),
+    do: raise(ArgumentError, "unsupported batch translation option: #{inspect(other)}")
+
+  defp valid_postlude?(%Lynx.Lean{source: source, file: file, span: span, indentation: indent})
+       when is_binary(source) and is_binary(file) and file != "" and
+              is_integer(indent) and indent >= 0 do
+    valid_span?(span) and String.trim(source) != "" and
       not Regex.match?(~r/^\s*(?:module|public import|public section)\b/m, source)
   end
 
   defp valid_postlude?(_), do: false
 
+  defp valid_span?(line) when is_integer(line) and line > 0, do: true
+
+  defp valid_span?({line, col})
+       when is_integer(line) and line > 0 and is_integer(col) and col > 0, do: true
+
+  defp valid_span?(_), do: false
+
   @doc "Place shared Lean support before postludes, while retaining generated law imports."
   def attach_support(files, support) do
     {proofs, nonproofs} = Enum.split_with(files, &String.ends_with?(&1["module"], ".laws"))
+
     {postludes, definitions} =
       Enum.split_with(nonproofs, &(&1["module"] == "Erlang.postlude"))
 

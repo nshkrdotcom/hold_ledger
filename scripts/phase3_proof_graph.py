@@ -79,7 +79,7 @@ def analyze() -> dict:
     if "theorem «l1_find/2»" in sources["Lookup"].read_text(encoding="utf-8"):
         raise ValueError("Old L1 shared theorem remains after migration")
     if not all(t in (ROOT / "test/laws/l1_find_test.exs").read_text(encoding="utf-8")
-               for t in ("theorem l1_contract", "postlude ~LEAN")):
+               for t in ("theorem l1_contract", "postlude(~LEAN")):
         raise ValueError("Migrated group-local L1 theorem missing")
     # A genuinely non-anchored theorem is moved; Lookup remains in use by A4.
     if len([k for k in mapping if mapping[k] == "Lookup"]) != 3:

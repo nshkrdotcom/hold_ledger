@@ -132,9 +132,10 @@ defmodule HoldLedger.ProofCaseTest do
 
     assert_raise ArgumentError, fn ->
       HoldLedger.ProofCase.batch_postludes!([
-        {Example, Keyword.put(defaults, :postludes, [
-          %Lynx.Lean{first | source: "module\ntheorem bogus : True := by trivial"}
-        ])}
+        {Example,
+         Keyword.put(defaults, :postludes, [
+           %Lynx.Lean{first | source: "module\ntheorem bogus : True := by trivial"}
+         ])}
       ])
     end
   end
@@ -168,8 +169,13 @@ defmodule HoldLedger.ProofCaseTest do
 
   test "postlude and support source changes invalidate transitive cache keys" do
     definitions = [%{"module" => "Elixir.Example", "imports" => [], "contents" => ["source"]}]
+
     support = [
-      %{"module" => "HoldLedgerProof.Lookup", "imports" => ["Elixir.Example"], "contents" => ["lemma"]}
+      %{
+        "module" => "HoldLedgerProof.Lookup",
+        "imports" => ["Elixir.Example"],
+        "contents" => ["lemma"]
+      }
     ]
 
     postlude = %{
@@ -197,15 +203,21 @@ defmodule HoldLedger.ProofCaseTest do
 
     assert keys.(assembled) == keys.(assembled)
     changed_support = List.update_at(assembled, 1, &Map.put(&1, "contents", ["changed lemma"]))
+
     [same_definition, changed_helper, changed_postlude, changed_law] =
       Enum.zip_with(keys.(assembled), keys.(changed_support), &(&1 != &2))
 
     refute same_definition
     assert changed_helper and changed_postlude and changed_law
 
-    changed_postlude = List.update_at(assembled, 2, &Map.put(&1, "contents", ["changed local theorem"]))
+    changed_postlude =
+      List.update_at(assembled, 2, &Map.put(&1, "contents", ["changed local theorem"]))
+
     assert Enum.zip_with(keys.(assembled), keys.(changed_postlude), &(&1 != &2)) == [
-             false, false, true, true
+             false,
+             false,
+             true,
+             true
            ]
   end
 
@@ -217,8 +229,10 @@ defmodule HoldLedger.ProofCaseTest do
 
     for support <- [
           [%{"module" => "Elixir.Example", "imports" => []}],
-          [%{"module" => "HoldLedgerProof.Dup", "imports" => []},
-           %{"module" => "HoldLedgerProof.Dup", "imports" => []}]
+          [
+            %{"module" => "HoldLedgerProof.Dup", "imports" => []},
+            %{"module" => "HoldLedgerProof.Dup", "imports" => []}
+          ]
         ] do
       assert_raise ArgumentError, fn ->
         HoldLedger.ProofCase.attach_support(generated, support)

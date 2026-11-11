@@ -1,7 +1,7 @@
 module
 
 -- Research-only, derived from target Lynx `Lean/LynxTest/Counterexample.lean`.
--- Copy into a disposable branch using the reviewed Lynx toolchain; never treat
+-- Run locally with the pinned Lynx toolchain; never treat
 -- `#guard_msgs` as a production proof obligation.
 import Lynx
 import Lynx.Runner.Elab
@@ -64,5 +64,25 @@ error: Found a schedule that takes more than 4 steps; increase the depth:
 example : Concurrent.check answered 4 (.start {} race) = true := by
   lynx_counterexample
   cbv
+
+/-- error: lynx_counterexample runs closed programs, but this one depends on [program] -/
+#guard_msgs in
+example (program : Result) : Concurrent.check answered 32 (.start {} program) = true := by
+  lynx_counterexample
+
+/-- error: lynx_counterexample expects a program returning a term, not Nat -/
+#guard_msgs in
+example : Concurrent.check (fun (_ : Outcome Nat) => true) 1
+    (.start {} (.ok 0)) = true := by
+  lynx_counterexample
+
+-- A successful diagnostic leaves the proof obligation open.
+/--
+error: unsolved goals
+⊢ Concurrent.check answered 32 (Concurrent.Config.start { } race) = true
+-/
+#guard_msgs in
+example : Concurrent.check answered 32 (.start {} race) = true := by
+  lynx_counterexample
 
 end HoldLedger0300.CounterexamplePilot

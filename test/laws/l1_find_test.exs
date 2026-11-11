@@ -10,7 +10,7 @@ defmodule HoldLedger.Laws.L1FindTest do
   laws "l1_find" do
     # Opt-in postlude smoke check: refers to the actual translated find/2.
     # This does not replace or weaken the original L1 theorem.
-    postlude ~LEAN"""
+    postlude(~LEAN"""
     namespace HoldLedgerProof.Postludes.L1Find
 
     theorem translated_find_reflexive (entries key : Lynx.Term) :
@@ -42,7 +42,7 @@ defmodule HoldLedger.Laws.L1FindTest do
         Erlang.erlang.«==/2», Lynx.Term.true]
 
     end HoldLedgerProof.Postludes.L1Find
-    """
+    """)
 
     law(l1_find(entries, key),
       requires: Spec.proper_entries?(entries) and Spec.unique_keys?(entries),
