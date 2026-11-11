@@ -66,6 +66,38 @@ defmodule HoldLedger.TestGenerators do
     ])
   end
 
+  # Separate C1 candidate distributions: existing law witness distributions
+  # remain byte-for-byte untouched. Explicitly add void confirmation here.
+  def map_candidate_event do
+    frequency([
+      {5, event()},
+      {2, map(key(), fn k -> {:void_confirmed, k} end)},
+      {2, malformed_event()},
+      {1, constant(:restart)}
+    ])
+  end
+
+  def map_candidate_step_case do
+    bind(valid_state(), fn state ->
+      keys = Enum.map(elem(state, 4), fn {key, _, _} -> key end)
+
+      if keys == [] do
+        map(map_candidate_event(), fn event -> {state, event} end)
+      else
+        frequency([
+          {4,
+           bind(member_of(keys), fn key ->
+             map(
+               one_of([event_for_key(key), constant({:void_confirmed, key})]),
+               fn event -> {state, event} end
+             )
+           end)},
+          {3, map(map_candidate_event(), fn event -> {state, event} end)}
+        ])
+      end
+    end)
+  end
+
   def initial do
     fixed_list([integer(0..20_000), integer(0..7)])
     |> map(fn [amount_cap, slot_cap] -> {amount_cap, slot_cap, 0, 0, []} end)
