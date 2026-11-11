@@ -10,33 +10,6 @@ defmodule HoldLedger.ProofCaseTest do
     assert function_exported?(HoldLedger.ProofContracts, :"l1_find:requires", 2)
   end
 
-  test "batch metadata accepts empty Lynx postludes but no per-group overrides" do
-    defaults = [
-      termination_suffixes: %{},
-      cutoffs: MapSet.new(),
-      dynamic: MapSet.new(),
-      preludes: [],
-      postludes: []
-    ]
-
-    refute HoldLedger.ProofCase.batch_overrides?(defaults)
-
-    for override <- [
-          Keyword.put(defaults, :postludes, [:nonempty]),
-          Keyword.put(defaults, :preludes, [:nonempty]),
-          Keyword.put(defaults, :dynamic, MapSet.new([{:erlang, :apply, 2}])),
-          Keyword.put(defaults, :termination_suffixes, %{unknown: :x}),
-          Keyword.put(defaults, :cutoffs, MapSet.new([{:erlang, :abs, 1}])),
-          Keyword.put(defaults, :new_upstream_field, []),
-          Keyword.put(defaults, :postludes, :malformed),
-          [invalid_option: []]
-        ] do
-      assert HoldLedger.ProofCase.batch_overrides?(override)
-    end
-
-    assert HoldLedger.ProofCase.batch_overrides?(:not_a_keyword_list)
-  end
-
   test "missing, skipped and empty law results fail closed" do
     module = HoldLedger.Laws.Example
     laws = [example: 1]
@@ -108,6 +81,161 @@ defmodule HoldLedger.ProofCaseTest do
 
     assert Enum.zip_with(original, changed, &(&1["cache_key"] != &2["cache_key"])) == [true, true]
     assert original == HoldLedger.ProofCase.cache_files(files)
+  end
+
+  test "batch postludes preserve source order and reject unsupported overrides" do
+    first = %Lynx.Lean{
+      source: "theorem first : True := by trivial",
+      file: "first.lean",
+      span: 1,
+      indentation: 0
+    }
+
+    second = %Lynx.Lean{
+      source: "theorem second : True := by trivial",
+      file: "second.lean",
+      span: {2, 1},
+      indentation: 0
+    }
+
+    defaults = [
+      termination_suffixes: %{},
+      cutoffs: MapSet.new(),
+      dynamic: MapSet.new(),
+      preludes: [],
+      postludes: []
+    ]
+
+    assert [^first, ^second] =
+             HoldLedger.ProofCase.batch_postludes!([
+               {First, Keyword.put(defaults, :postludes, [first])},
+               {Second, Keyword.put(defaults, :postludes, [second])}
+             ])
+
+    for override <- [
+          [unknown: []],
+          [cutoffs: MapSet.new([{:erlang, :abs, 1}])],
+          [termination_suffixes: %{{:foo, :bar, 0} => :bad}],
+          [dynamic: MapSet.new([{:erlang, :apply, 2}])],
+          [preludes: [first]],
+          [postludes: ["not Lean"]],
+          [postludes: [%Lynx.Lean{source: "", file: "first.lean", span: 1, indentation: 0}]]
+        ] do
+      assert_raise ArgumentError, fn ->
+        HoldLedger.ProofCase.batch_postludes!([{Example, Keyword.merge(defaults, override)}])
+      end
+    end
+
+    assert_raise ArgumentError, fn ->
+      HoldLedger.ProofCase.batch_postludes!([{Example, [postludes: [], postludes: []]}])
+    end
+
+    assert_raise ArgumentError, fn ->
+      HoldLedger.ProofCase.batch_postludes!([
+        {Example, Keyword.put(defaults, :postludes, [
+          %Lynx.Lean{first | source: "module\ntheorem bogus : True := by trivial"}
+        ])}
+      ])
+    end
+  end
+
+  test "postlude imports shared support after translated definitions, before laws" do
+    files = [
+      %{"module" => "Elixir.Example", "imports" => []},
+      %{"module" => "Erlang.postlude", "imports" => ["Elixir.Example"]},
+      %{"module" => "Elixir.Example.laws", "imports" => ["Elixir.Example", "Erlang.postlude"]}
+    ]
+
+    support = [%{"module" => "HoldLedgerProof.Lookup", "imports" => ["Elixir.Example"]}]
+    [generated, helper, postlude, laws] = HoldLedger.ProofCase.attach_support(files, support)
+
+    assert Enum.map([generated, helper, postlude, laws], & &1["module"]) == [
+             "Elixir.Example",
+             "HoldLedgerProof.Lookup",
+             "Erlang.postlude",
+             "Elixir.Example.laws"
+           ]
+
+    assert postlude["imports"] == ["Elixir.Example", "HoldLedgerProof.Lookup"]
+    assert laws["imports"] == ["Elixir.Example", "Erlang.postlude", "HoldLedgerProof.Lookup"]
+
+    assert_raise ArgumentError, fn ->
+      HoldLedger.ProofCase.attach_support(files, [
+        %{"module" => "HoldLedgerProof.Bad", "imports" => ["Erlang.postlude"]}
+      ])
+    end
+  end
+
+  test "postlude and support source changes invalidate transitive cache keys" do
+    definitions = [%{"module" => "Elixir.Example", "imports" => [], "contents" => ["source"]}]
+    support = [
+      %{"module" => "HoldLedgerProof.Lookup", "imports" => ["Elixir.Example"], "contents" => ["lemma"]}
+    ]
+
+    postlude = %{
+      "module" => "Erlang.postlude",
+      "imports" => ["Elixir.Example"],
+      "contents" => ["local theorem"]
+    }
+
+    law = %{
+      "module" => "Elixir.Example.laws",
+      "imports" => ["Elixir.Example", "Erlang.postlude"],
+      "contents" => ["law"]
+    }
+
+    files = definitions ++ [postlude, law]
+    assembled = HoldLedger.ProofCase.attach_support(files, support)
+    keys = fn fs -> Enum.map(HoldLedger.ProofCase.cache_files(fs), & &1["cache_key"]) end
+
+    assert Enum.map(assembled, & &1["module"]) == [
+             "Elixir.Example",
+             "HoldLedgerProof.Lookup",
+             "Erlang.postlude",
+             "Elixir.Example.laws"
+           ]
+
+    assert keys.(assembled) == keys.(assembled)
+    changed_support = List.update_at(assembled, 1, &Map.put(&1, "contents", ["changed lemma"]))
+    [same_definition, changed_helper, changed_postlude, changed_law] =
+      Enum.zip_with(keys.(assembled), keys.(changed_support), &(&1 != &2))
+
+    refute same_definition
+    assert changed_helper and changed_postlude and changed_law
+
+    changed_postlude = List.update_at(assembled, 2, &Map.put(&1, "contents", ["changed local theorem"]))
+    assert Enum.zip_with(keys.(assembled), keys.(changed_postlude), &(&1 != &2)) == [
+             false, false, true, true
+           ]
+  end
+
+  test "adapter rejects duplicate module identity, even if the source is different" do
+    generated = [
+      %{"module" => "Elixir.Example", "imports" => []},
+      %{"module" => "Erlang.postlude", "imports" => []}
+    ]
+
+    for support <- [
+          [%{"module" => "Elixir.Example", "imports" => []}],
+          [%{"module" => "HoldLedgerProof.Dup", "imports" => []},
+           %{"module" => "HoldLedgerProof.Dup", "imports" => []}]
+        ] do
+      assert_raise ArgumentError, fn ->
+        HoldLedger.ProofCase.attach_support(generated, support)
+      end
+    end
+  end
+
+  test "L1 migrated proof has one postlude owner, unchanged contract" do
+    lookup = File.read!("test/support/lean/Lookup.lean")
+    group = File.read!("test/laws/l1_find_test.exs")
+
+    refute lookup =~ "theorem «l1_find/2»"
+    assert lookup =~ "theorem «po_a4_duplicate/4»"
+    assert group =~ "theorem l1_contract (entries key : Lynx.Term)"
+    assert group =~ "exact HoldLedgerProof.Postludes.L1Find.l1_contract entries key requires"
+    assert group =~ "requires: Spec.proper_entries?(entries) and Spec.unique_keys?(entries)"
+    assert group =~ "expects: Ledger.find(entries, key) == Spec.lookup(entries, key)"
   end
 
   test "native anchors resolve full theorem identities and reject source injection" do

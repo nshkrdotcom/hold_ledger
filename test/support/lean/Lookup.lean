@@ -8,17 +8,6 @@ public section
 set_option maxHeartbeats 16000000
 namespace Elixir.HoldLedger.ProofContracts
 
-theorem «l1_find/2» (entries key : Lynx.Term)
-    (requires : «l1_find:requires/2» entries key = Except.ok Lynx.Term.true) :
-    «l1_find:ensures/2» entries key = Except.ok Lynx.Term.true := by
-  have compatible := HoldLedgerProof.compatible_1
-  unfold «l1_find:requires/2» at requires
-  cases hp : Elixir.HoldLedger.Spec.«proper_entries?/1» entries <;>
-    simp_all [Lynx.Term.true]
-  all_goals repeat' (first | split_conjunction | split at requires <;> try simp_all [])
-  all_goals obtain ⟨v, hf, hl⟩ := compatible entries key (by assumption)
-  all_goals simp [«l1_find:ensures/2», hf, hl, Erlang.erlang.«==/2», Lynx.Term.true]
-
 theorem «po_a4_duplicate/4» (s key amount status : Lynx.Term)
     (requires : «po_a4_duplicate:requires/4» s key amount status = Except.ok Lynx.Term.true) :
     «po_a4_duplicate:ensures/4» s key amount status = Except.ok Lynx.Term.true := by

@@ -5,7 +5,7 @@ Code.require_file("../test/test_helper.exs", __DIR__)
 [selection_path, output_path, export_path] = System.argv()
 selection = selection_path |> File.read!() |> JSON.decode!()
 
-groups =
+selected =
   for entry <- selection, Map.get(entry, "kind") != "lean" do
     compiled = Code.require_file(entry["file"])
 
@@ -15,12 +15,15 @@ groups =
     [{_name, laws, translation, _options}] =
       module.__info__(:attributes)[:proof_groups]
 
-    if HoldLedger.ProofCase.batch_overrides?(translation) do
-      raise "Batch verification does not accept per-group translation overrides"
-    end
-
-    {module, laws}
+    {module, laws, translation}
   end
+
+groups = Enum.map(selected, fn {module, laws, _translation} -> {module, laws} end)
+
+postludes =
+  selected
+  |> Enum.map(fn {module, _laws, translation} -> {module, translation} end)
+  |> HoldLedger.ProofCase.batch_postludes!()
 
 mode =
   if System.get_env("HOLD_LEDGER_PROOF_CACHE") == "1",
@@ -33,7 +36,7 @@ native = Enum.filter(selection, &(Map.get(&1, "kind") == "lean"))
 files =
   HoldLedger.ProofCase.assemble_many(
     groups,
-    [],
+    [postludes: postludes],
     Enum.map(native, & &1["module"])
   )
 

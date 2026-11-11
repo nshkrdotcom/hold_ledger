@@ -1,0 +1,696 @@
+{
+  "scope": "source-only graph; not a kernel proof or independent checker result",
+  "counts": {
+    "dsl_groups": 35,
+    "native_groups": 14,
+    "total_groups": 49,
+    "native_anchors": 21,
+    "shared_lean_modules": 39
+  },
+  "native_anchors": [
+    "HoldLedgerProof.Recovery.committed_replay",
+    "HoldLedgerProof.Exposure.retained_history",
+    "HoldLedgerProof.Exposure.exposure_bounds",
+    "HoldLedgerProof.AttemptSafety.translated_history_safety",
+    "HoldLedgerProof.AttemptSafety.committing_quiet",
+    "HoldLedgerProof.CompositeSafety.init_valid",
+    "HoldLedgerProof.CompositeSafety.composite_preserves",
+    "HoldLedgerProof.CompositeSafety.composite_view",
+    "HoldLedgerProof.CompositeSafety.composite_oracle",
+    "HoldLedgerProof.CompositeSafety.composite_history",
+    "HoldLedgerProof.CompositeSafety.composite_oracle_history",
+    "HoldLedgerProof.CompositeSafety.confirmation_once",
+    "HoldLedgerProof.CompositeSafety.open_obligation",
+    "HoldLedgerProof.CompositeSafety.recovery_valid",
+    "HoldLedgerProof.ExposureModel.model_init_valid",
+    "HoldLedgerProof.ExposureModel.model_preserves",
+    "HoldLedgerProof.ExposureModel.model_history",
+    "HoldLedgerProof.ExposureModel.void_before_issue",
+    "HoldLedgerProof.ExposureModel.model_bounds",
+    "HoldLedgerProof.AttemptSafety.persist_once",
+    "HoldLedgerProof.AttemptSafety.retire_requires_persist"
+  ],
+  "migration": {
+    "from": "Elixir.HoldLedger.ProofContracts.«l1_find/2» in Lookup.lean",
+    "to": "HoldLedgerProof.Postludes.L1Find.l1_contract in test/laws/l1_find_test.exs",
+    "remaining_old_name_consumers": [],
+    "new_name_consumers": [
+      "test/laws/l1_find_test.exs"
+    ],
+    "retained_files": [
+      "test/support/lean/Lookup.lean"
+    ],
+    "deletions": []
+  },
+  "modules": [
+    {
+      "module": "HoldLedgerProof.Accounting",
+      "path": "test/support/lean/Accounting.lean",
+      "sha256": "4819a1862dbc9a7af5ab9c87b49e0830de712ffc119fbd697b576e47cf1a7078",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreAccounting",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CoreStructure"
+      ],
+      "used_by_modules": [],
+      "dsl_groups": [
+        "l3_accounting",
+        "l5_fresh",
+        "l6_restart"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.AttemptSafety",
+      "path": "test/support/lean/AttemptSafety.lean",
+      "sha256": "77b2b658c0aa9bf5c7fc7c430b21e83d379c57113071e642967cd5c5cef51f01",
+      "imports": [],
+      "used_by_modules": [],
+      "dsl_groups": [],
+      "native_groups": [
+        "po_attempt_history",
+        "po_attempt_persist"
+      ]
+    },
+    {
+      "module": "HoldLedgerProof.Authorization",
+      "path": "test/support/lean/Authorization.lean",
+      "sha256": "850d8369fcbe81b40ecabbd5f59631488ec556ddc4a1232a047e66aff8be02e7",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CorePreservation"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.History"
+      ],
+      "dsl_groups": [
+        "po_b4"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Capacity",
+      "path": "test/support/lean/Capacity.lean",
+      "sha256": "84f9881fb93e8e9bc264ca2b0b2c3128ba15bbbce4ed67a2c674c2e0b31818b1",
+      "imports": [],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureBound"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.CompositeEntries",
+      "path": "test/support/lean/CompositeEntries.lean",
+      "sha256": "851482acd8b1229f171855aeb1dcce2a81038246f3e69fa6541f71165d6a509c",
+      "imports": [
+        "HoldLedgerProof.Voiding",
+        "HoldLedgerProof.OutboxTheory"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.CompositeInvariant"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.CompositeInvariant",
+      "path": "test/support/lean/CompositeInvariant.lean",
+      "sha256": "31c0ae327213dfbf2e76e3cd24eefc93f36fbc06138c617ef62ca5fbd1be839a",
+      "imports": [
+        "HoldLedgerProof.CompositeEntries"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.CompositeSafety"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.CompositeSafety",
+      "path": "test/support/lean/CompositeSafety.lean",
+      "sha256": "bedcbd574fa897a1df2eab1f479efdbd940083a3cf0d77bd99040e0c3d5a0d3e",
+      "imports": [
+        "HoldLedgerProof.CompositeInvariant",
+        "HoldLedgerProof.Voiding",
+        "HoldLedgerProof.Recovery"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureFacts",
+        "HoldLedgerProof.ExposureModel"
+      ],
+      "dsl_groups": [],
+      "native_groups": [
+        "po_composite_confirmation",
+        "po_composite_history",
+        "po_composite_init",
+        "po_composite_open",
+        "po_composite_oracle",
+        "po_composite_preservation",
+        "po_composite_recovery_valid"
+      ]
+    },
+    {
+      "module": "HoldLedgerProof.CoreAccounting",
+      "path": "test/support/lean/CoreAccounting.lean",
+      "sha256": "7e1eaabe0838e41101e50b2513ee2e5f07ec2869e90c139a3d64070a311ec9ef",
+      "imports": [
+        "HoldLedgerProof.Induction"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Accounting",
+        "HoldLedgerProof.CoreShape",
+        "HoldLedgerProof.Lifecycle",
+        "HoldLedgerProof.Request"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.CoreLookup",
+      "path": "test/support/lean/CoreLookup.lean",
+      "sha256": "95036abbc747ab906959297121e4b0c72cf5a38a08da10a4c0f931008758d2d9",
+      "imports": [
+        "HoldLedgerProof.Induction"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Accounting",
+        "HoldLedgerProof.Authorization",
+        "HoldLedgerProof.CorePreservation",
+        "HoldLedgerProof.HistoryRelations",
+        "HoldLedgerProof.Identity",
+        "HoldLedgerProof.Lifecycle",
+        "HoldLedgerProof.Lookup",
+        "HoldLedgerProof.Oracle",
+        "HoldLedgerProof.Request",
+        "HoldLedgerProof.Retention",
+        "HoldLedgerProof.Terminal",
+        "HoldLedgerProof.Uncertainty"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.CorePreservation",
+      "path": "test/support/lean/CorePreservation.lean",
+      "sha256": "14ee9b38c13a9f61f0a97b243588f36cd3b32a7c99246553485e635e3ac05b3f",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreLookup"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Authorization",
+        "HoldLedgerProof.HistoryRelations",
+        "HoldLedgerProof.Identity",
+        "HoldLedgerProof.Oracle",
+        "HoldLedgerProof.Retention",
+        "HoldLedgerProof.Structure",
+        "HoldLedgerProof.Terminal",
+        "HoldLedgerProof.Uncertainty"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.CoreShape",
+      "path": "test/support/lean/CoreShape.lean",
+      "sha256": "72a0773dc95ea614e42fc193a435d43ec38567581f323dccd9b5f9c3cc781c5c",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreAccounting"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Lifecycle",
+        "HoldLedgerProof.Oracle",
+        "HoldLedgerProof.Request",
+        "HoldLedgerProof.Retention",
+        "HoldLedgerProof.Terminal"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.CoreStructure",
+      "path": "test/support/lean/CoreStructure.lean",
+      "sha256": "b1b7e30c13f0fc24f3ae37f78fac5319c0151061e538ba2a5b635c6e244e7e95",
+      "imports": [
+        "HoldLedgerProof.Induction"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Accounting",
+        "HoldLedgerProof.Lifecycle",
+        "HoldLedgerProof.Request",
+        "HoldLedgerProof.Structure"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Effects",
+      "path": "test/support/lean/Effects.lean",
+      "sha256": "a76afd2fc9cdf4cd4a847d6b3ae08013c10c93cf53b0ca31e129b9b85252a6de",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.Step"
+      ],
+      "used_by_modules": [],
+      "dsl_groups": [
+        "po_b3"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.ExposureBound",
+      "path": "test/support/lean/ExposureBound.lean",
+      "sha256": "06bebdf94e02af3c04c607a43ff3f421f0e8d1dffd4dd46f33bb07384020395c",
+      "imports": [
+        "HoldLedgerProof.ExposureTrace",
+        "HoldLedgerProof.Capacity",
+        "HoldLedgerProof.Terminal"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureFacts"
+      ],
+      "dsl_groups": [],
+      "native_groups": [
+        "po_exposure_bounds"
+      ]
+    },
+    {
+      "module": "HoldLedgerProof.ExposureCells",
+      "path": "test/support/lean/ExposureCells.lean",
+      "sha256": "5a24964efeb4a951f5666b6d9420e213854ece710cc5f91f286a7caeef13a40b",
+      "imports": [
+        "HoldLedgerProof.ExposureFacts"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureUpdates"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.ExposureFacts",
+      "path": "test/support/lean/ExposureFacts.lean",
+      "sha256": "47e6b2257b750d0d3fa1cba931f0bab320dda397f32d4687c7336859b953c923",
+      "imports": [
+        "HoldLedgerProof.CompositeSafety",
+        "HoldLedgerProof.ExposureBound"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureCells"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.ExposureModel",
+      "path": "test/support/lean/ExposureModel.lean",
+      "sha256": "e92d925e533b0dea09de9f0e5c83d00cfc4a78a34b3d58cf2b606a130276fb6d",
+      "imports": [
+        "HoldLedgerProof.CompositeSafety",
+        "HoldLedgerProof.ExposureTransitions"
+      ],
+      "used_by_modules": [],
+      "dsl_groups": [],
+      "native_groups": [
+        "po_exposure_model",
+        "po_exposure_model_bounds"
+      ]
+    },
+    {
+      "module": "HoldLedgerProof.ExposureTrace",
+      "path": "test/support/lean/ExposureTrace.lean",
+      "sha256": "dba1bb7e671ab3540a180a0369e012fca5db5f9a3cb52964bcf96f7150ece0c3",
+      "imports": [
+        "HoldLedgerProof.Retention",
+        "HoldLedgerProof.Oracle"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureBound"
+      ],
+      "dsl_groups": [],
+      "native_groups": [
+        "po_exposure_history"
+      ]
+    },
+    {
+      "module": "HoldLedgerProof.ExposureTransitions",
+      "path": "test/support/lean/ExposureTransitions.lean",
+      "sha256": "c57290cb77e841ab1aacc58ee327ffc7d2acc753a677107e40dfca03fc56e4be",
+      "imports": [
+        "HoldLedgerProof.ExposureValidity"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureModel"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.ExposureUpdates",
+      "path": "test/support/lean/ExposureUpdates.lean",
+      "sha256": "15afebdf3ad6db20728cacf9276d77c47b89d36fa93fbdbf0f228716dadcc661",
+      "imports": [
+        "HoldLedgerProof.ExposureCells"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureValidity"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.ExposureValidity",
+      "path": "test/support/lean/ExposureValidity.lean",
+      "sha256": "c24d4e00e8fe8e13d64c11833bc1faf0bfd7729b81439b4245b9b3a477684ce2",
+      "imports": [
+        "HoldLedgerProof.ExposureUpdates"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureTransitions"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.History",
+      "path": "test/support/lean/History.lean",
+      "sha256": "b8923cf46fb5c7a10f061371e8daf8a9fb32f84564396c11fd3c15fbd92dcef6",
+      "imports": [
+        "HoldLedgerProof.Oracle",
+        "HoldLedgerProof.HistoryRelations",
+        "HoldLedgerProof.Authorization",
+        "HoldLedgerProof.Identity",
+        "HoldLedgerProof.Terminal"
+      ],
+      "used_by_modules": [],
+      "dsl_groups": [
+        "po_c3"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.HistoryRelations",
+      "path": "test/support/lean/HistoryRelations.lean",
+      "sha256": "392542d39e1d6148e85a323987f55e5b850144cb8a81a42e305372106150b941",
+      "imports": [
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CorePreservation"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.History"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Identity",
+      "path": "test/support/lean/Identity.lean",
+      "sha256": "8ba5244b514c417d570cd332f09629f9bcbd6e9327ba271a482f9d02409c432f",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CorePreservation"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.History",
+        "HoldLedgerProof.Uncertainty"
+      ],
+      "dsl_groups": [
+        "po_b6",
+        "po_b7"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Induction",
+      "path": "test/support/lean/Induction.lean",
+      "sha256": "b90752ff5e674eee44c1f06f927278bfff7575e805ce97a3afaec3f81aebf0e0",
+      "imports": [
+        "HoldLedgerProof.Tactics"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Accounting",
+        "HoldLedgerProof.Authorization",
+        "HoldLedgerProof.CoreAccounting",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CorePreservation",
+        "HoldLedgerProof.CoreShape",
+        "HoldLedgerProof.CoreStructure",
+        "HoldLedgerProof.Effects",
+        "HoldLedgerProof.Identity",
+        "HoldLedgerProof.Lifecycle",
+        "HoldLedgerProof.Lookup",
+        "HoldLedgerProof.Replay",
+        "HoldLedgerProof.Request",
+        "HoldLedgerProof.Step",
+        "HoldLedgerProof.Structure",
+        "HoldLedgerProof.Uncertainty"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Lifecycle",
+      "path": "test/support/lean/Lifecycle.lean",
+      "sha256": "2f682bc1564abb8b206b5f115516b6e3643956979b107659ee8e40656ba57f94",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreAccounting",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CoreShape",
+        "HoldLedgerProof.CoreStructure"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Step"
+      ],
+      "dsl_groups": [
+        "po_b1_dispatch",
+        "po_b1_processor_result",
+        "po_b1_restart",
+        "po_b1_retry",
+        "po_b1_timeout",
+        "po_b1_void",
+        "po_b1_void_confirmed"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Lookup",
+      "path": "test/support/lean/Lookup.lean",
+      "sha256": "62a4d7a61f9678ea7c3a47081cf21d8ea9e9f3969923ee0cb9fdee36810bf0e4",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreLookup"
+      ],
+      "used_by_modules": [],
+      "dsl_groups": [
+        "l1_find",
+        "po_a4_conflict",
+        "po_a4_duplicate"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Oracle",
+      "path": "test/support/lean/Oracle.lean",
+      "sha256": "cc2a9edaa9b9229bf7f85be424f8d85150bd8fbb806d66e2ecf14293291a18c3",
+      "imports": [
+        "HoldLedgerProof.CoreShape",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CorePreservation",
+        "HoldLedgerProof.Step"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureTrace",
+        "HoldLedgerProof.History",
+        "HoldLedgerProof.Voiding"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.OutboxTheory",
+      "path": "test/support/lean/OutboxTheory.lean",
+      "sha256": "8dd8dc864123c9b85a924b70762aaf4f66b806352c13e9d303525ca756abd8f0",
+      "imports": [],
+      "used_by_modules": [
+        "HoldLedgerProof.CompositeEntries"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Recovery",
+      "path": "test/support/lean/Recovery.lean",
+      "sha256": "2ec15fbdacc05dfca90bd0ff96de5e2df4eec648c5d7d30e6b06577da097fbbe",
+      "imports": [],
+      "used_by_modules": [
+        "HoldLedgerProof.CompositeSafety"
+      ],
+      "dsl_groups": [],
+      "native_groups": [
+        "po_composite_recovery"
+      ]
+    },
+    {
+      "module": "HoldLedgerProof.Replay",
+      "path": "test/support/lean/Replay.lean",
+      "sha256": "35803360546f1b4ce2247c0ec7464b8582793bcaaf37d1a59b272a94a18204be",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.Step",
+        "HoldLedgerProof.Request"
+      ],
+      "used_by_modules": [],
+      "dsl_groups": [
+        "po_c1",
+        "po_c2"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Request",
+      "path": "test/support/lean/Request.lean",
+      "sha256": "004fde6a16f475cfaa8ab43a9af926fe75a65ef760c30100819877d1e21cda6c",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreAccounting",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CoreShape",
+        "HoldLedgerProof.CoreStructure"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Replay",
+        "HoldLedgerProof.Step"
+      ],
+      "dsl_groups": [
+        "po_a1",
+        "po_a2",
+        "po_a3",
+        "po_i"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Retention",
+      "path": "test/support/lean/Retention.lean",
+      "sha256": "833ec367379696dd28396e1a1c54642c98255ee537fa0b2f054251942686aded",
+      "imports": [
+        "HoldLedgerProof.CoreShape",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CorePreservation"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureTrace"
+      ],
+      "dsl_groups": [
+        "po_exposure_retain"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Step",
+      "path": "test/support/lean/Step.lean",
+      "sha256": "78bbe8190cb530ae03c0bbd157041c547869f5c664a1797dc3ef55db8ab27ac8",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.Request",
+        "HoldLedgerProof.Lifecycle"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.Effects",
+        "HoldLedgerProof.Oracle",
+        "HoldLedgerProof.Replay"
+      ],
+      "dsl_groups": [
+        "po_s"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Structure",
+      "path": "test/support/lean/Structure.lean",
+      "sha256": "79b91e03e265f96de1d8741973165940a425797e76af3e962b0a3095b00d8404",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CorePreservation",
+        "HoldLedgerProof.CoreStructure"
+      ],
+      "used_by_modules": [],
+      "dsl_groups": [
+        "l2_identity",
+        "l4_structure"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Tactics",
+      "path": "test/support/lean/Tactics.lean",
+      "sha256": "6bae9e38359ea49d98ac02e7f9de295e147e77e8c79e9bd1def7d74fd9697663",
+      "imports": [],
+      "used_by_modules": [
+        "HoldLedgerProof.Induction"
+      ],
+      "dsl_groups": [
+        "po_attempt_poison",
+        "po_attempt_retired",
+        "po_attempt_slot",
+        "po_terminal_fence"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Terminal",
+      "path": "test/support/lean/Terminal.lean",
+      "sha256": "d87f0a408593b39a31c4d51ec2d5e60d1870cd3057a6a1d4766043530a87b899",
+      "imports": [
+        "HoldLedgerProof.CoreShape",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CorePreservation"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.ExposureBound",
+        "HoldLedgerProof.History"
+      ],
+      "dsl_groups": [
+        "po_b5_declined",
+        "po_b5_voided"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Uncertainty",
+      "path": "test/support/lean/Uncertainty.lean",
+      "sha256": "ee3d94d6452cd29d4ca627c9c671695567d152c7ab5379d5c577e4bdc060bbe8",
+      "imports": [
+        "HoldLedgerProof.Induction",
+        "HoldLedgerProof.CoreLookup",
+        "HoldLedgerProof.CorePreservation",
+        "HoldLedgerProof.Identity"
+      ],
+      "used_by_modules": [],
+      "dsl_groups": [
+        "po_b2"
+      ],
+      "native_groups": []
+    },
+    {
+      "module": "HoldLedgerProof.Voiding",
+      "path": "test/support/lean/Voiding.lean",
+      "sha256": "e36db5a565a584fa11d0d2d48b9746c1a3cc08d7d95a09207c0ce181b11e99c9",
+      "imports": [
+        "HoldLedgerProof.Oracle"
+      ],
+      "used_by_modules": [
+        "HoldLedgerProof.CompositeEntries",
+        "HoldLedgerProof.CompositeSafety"
+      ],
+      "dsl_groups": [],
+      "native_groups": []
+    }
+  ]
+}

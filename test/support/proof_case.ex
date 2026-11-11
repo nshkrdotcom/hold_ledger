@@ -148,7 +148,6 @@ defmodule HoldLedger.ProofCase do
       end)
 
     files = Lynx.Translation.assemble(translation, cache: false)
-    {proofs, definitions} = Enum.split_with(files, &String.ends_with?(&1["module"], ".laws"))
     support = support_files(Enum.flat_map(groups, &elem(&1, 1)))
 
     {_, support} =
@@ -157,30 +156,83 @@ defmodule HoldLedger.ProofCase do
         load_support(name, state, [])
       end)
 
-    imports = Enum.map(support, & &1["module"])
-
-    files =
-      definitions ++
-        support ++ Enum.map(proofs, &Map.update!(&1, "imports", fn deps -> deps ++ imports end))
+    files = attach_support(files, support)
 
     if System.get_env("HOLD_LEDGER_PROOF_CACHE") == "1", do: cache_files(files), else: files
   end
 
-  # Shared cold batches cannot merge distinct law-group translation overrides.
-  # New Lynx includes an empty postludes default; all unknown or malformed
-  # metadata remains an unsupported override, rather than silently ignored.
-  def batch_overrides?(translation) when is_list(translation) do
-    Enum.any?(translation, fn
-      {:termination_suffixes, value} when is_map(value) -> map_size(value) != 0
-      {:cutoffs, %MapSet{} = value} -> MapSet.size(value) != 0
-      {:dynamic, %MapSet{} = value} -> MapSet.size(value) != 0
-      {:preludes, value} when is_list(value) -> value != []
-      {:postludes, value} when is_list(value) -> value != []
-      _ -> true
+  @doc "Collect well-formed local postludes for the cold batch; fail on all other overrides."
+  def batch_postludes!(group_translations) do
+    Enum.flat_map(group_translations, fn {_module, translation} ->
+      if not Keyword.keyword?(translation),
+        do: raise(ArgumentError, "invalid translation options")
+
+      keys = Keyword.keys(translation)
+
+      if length(keys) != length(Enum.uniq(keys)),
+        do: raise(ArgumentError, "duplicate translation options")
+
+      Enum.each(translation, fn
+        {:termination_suffixes, value} when is_map(value) and map_size(value) == 0 ->
+          :ok
+
+        {:cutoffs, %MapSet{} = value} ->
+          if MapSet.size(value) != 0, do: raise(ArgumentError, "nonempty batch cutoffs")
+
+        {:dynamic, %MapSet{} = value} ->
+          if MapSet.size(value) != 0, do: raise(ArgumentError, "nonempty batch dynamic targets")
+
+        {:preludes, []} ->
+          :ok
+
+        {:postludes, sources} when is_list(sources) ->
+          if not Enum.all?(sources, &valid_postlude?/1),
+            do: raise(ArgumentError, "invalid batch postludes")
+
+        other ->
+          raise ArgumentError, "unsupported batch translation option: #{inspect(other)}"
+      end)
+
+      Keyword.get(translation, :postludes, [])
     end)
   end
 
-  def batch_overrides?(_), do: true
+  defp valid_postlude?(%Lynx.Lean{source: source, file: file, span: span, indentation: indent}) do
+    valid_span =
+      case span do
+        line when is_integer(line) and line > 0 -> true
+        {line, col} when is_integer(line) and line > 0 and is_integer(col) and col > 0 -> true
+        _ -> false
+      end
+
+    is_binary(source) and String.trim(source) != "" and is_binary(file) and file != "" and
+      valid_span and is_integer(indent) and indent >= 0 and
+      not Regex.match?(~r/^\s*(?:module|public import|public section)\b/m, source)
+  end
+
+  defp valid_postlude?(_), do: false
+
+  @doc "Place shared Lean support before postludes, while retaining generated law imports."
+  def attach_support(files, support) do
+    {proofs, nonproofs} = Enum.split_with(files, &String.ends_with?(&1["module"], ".laws"))
+    {postludes, definitions} =
+      Enum.split_with(nonproofs, &(&1["module"] == "Erlang.postlude"))
+
+    if Enum.any?(support, &("Erlang.postlude" in &1["imports"])),
+      do: raise(ArgumentError, "shared support cannot import Erlang.postlude")
+
+    names = Enum.map(files ++ support, &Map.fetch!(&1, "module"))
+
+    if length(names) != length(Enum.uniq(names)),
+      do: raise(ArgumentError, "duplicate generated or shared Lean module")
+
+    if length(postludes) > 1,
+      do: raise(ArgumentError, "multiple Erlang.postlude modules")
+
+    imports = Enum.map(support, & &1["module"])
+    link = fn file -> Map.update!(file, "imports", &Enum.uniq(&1 ++ imports)) end
+    definitions ++ support ++ Enum.map(postludes, link) ++ Enum.map(proofs, link)
+  end
 
   def native_anchors([]), do: []
 
