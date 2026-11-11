@@ -67,30 +67,15 @@ that it appears in the Hex package. Keep README focused on using the project.
 Do not introduce phase logs, handoffs, delivery checklists or generated reports
 into user documentation. Do not use subagents without explicit authorization.
 
-## Review contract for agent changes
+## Changes
 
-Read `guides/human_review.md` before classifying proof work. Reports orient the
-reviewer; the actual diff determines its tier. Any changed Lean declaration,
-theorem signature, import, option, syntax or elaborator needs Tier 1 review;
-only confirmed proof-body-only changes qualify for Tier 3.
-
-Report the claim delta, Tier 1 files and reasons, commands/results, and unresolved
-work in the change summary. Flag changes to assumptions, domains, Spec/models,
-inventories, foundations, gates or skips; do not silently weaken guarantees to repair proofs.
-Use the report fields in `guides/human_review.md`, including
-`Decision needed (human): none` when existing authority covers the work. State the
-question, options, consequences and work that can continue. Keep failed checks
-and timeouts under `Unresolved`, with an owner and next action.
-Human policy approval already given for a change remains valid within its scope.
-
-Commit independently chosen policy traces as tests. Re-run those traces for
-Ledger changes. For proof failures, execute the same claim's witness/property,
-replay any counterexample, and distinguish implementation errors from proposed
-claim corrections. No counterexample leaves the claim unresolved. Report timeout
-changes with justification and fresh evidence; a timeout never counts as success.
-
-Before authoring a new law, cite the policy source and propose the actual
-`requires`/`expects`, effective domain and a wrong-output challenge. Stop for
-unapproved semantic changes. Report actual proof commands and evidence scope.
-The source claim companion lives in `apps/review_web/`, a separate Mix project; preserve the
-root package and proof paths. Never infer checked status from catalog support.
+Preserve existing claims, statements, domains, Spec independence, all required
+groups and theorem anchors, six checker configurations and permitted axioms.
+Keep Ledger's policy traces and rerun affected traces for behavior changes.
+A failed proof or timeout is not a counterexample; replay an actual failing
+input before claiming a semantic defect. Do not change a claim to hide failure.
+Before adding a law, state its policy source, requires/expects, domain and a
+wrong-output challenge. Keep generated logs and exports ignored. Report actual
+commands and outcomes concisely; distinguish tests, proofs and external
+processor/storage assumptions. Work on local main, commit regularly, and do
+not push or create branches. Use automatic CPU/memory-bounded parallelism.

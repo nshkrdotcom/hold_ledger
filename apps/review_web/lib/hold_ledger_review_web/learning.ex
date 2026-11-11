@@ -201,7 +201,7 @@ defmodule HoldLedgerReviewWeb.Learning do
   def generated_source(_), do: nil
 
   defp generated_excerpt(slug, item) do
-    with {:ok, bytes} <- ProofReading.artifact(slug, item["sha256"]),
+    with {:ok, bytes} <- ProofReading.artifact(slug, item["id"]),
          lines = String.split(bytes, "\n"),
          index when is_integer(index) <-
            Enum.find_index(lines, fn line ->
@@ -212,10 +212,10 @@ defmodule HoldLedgerReviewWeb.Learning do
            end) do
       %{
         path: item["path"],
-        sha256: item["sha256"],
+        sha256: item["id"],
         line: index + 1,
         text: lines |> Enum.drop(index) |> Enum.take(32) |> Enum.join("\n"),
-        url: "/claims/#{slug}/generated/#{item["sha256"]}"
+        url: "/claims/#{slug}/generated/#{item["id"]}"
       }
     else
       _ -> nil

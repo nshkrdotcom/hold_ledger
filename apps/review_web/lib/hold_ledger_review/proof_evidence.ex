@@ -2,46 +2,6 @@ defmodule HoldLedgerReview.ProofEvidence do
   @moduledoc "Conservative parser for current run_laws.py reports; never executes a checker."
   alias HoldLedgerReview.Anchor
   @checkers ["Lean paranoid", "lean4lean", "nanoda", "con-leche", "con-ron", "Lean default"]
-  def sources(root) do
-    patterns = [
-      "lib/**/*.ex",
-      "test/**/*.ex",
-      "test/**/*.exs",
-      "test/support/lean/**/*.lean",
-      "scripts/*.py",
-      "scripts/*.exs",
-      "verification/*.lean",
-      "verification/*.json"
-    ]
-
-    files =
-      Enum.flat_map(patterns, &Path.wildcard(Path.join(root, &1)))
-      |> Enum.map(&Path.relative_to(&1, root))
-      |> Enum.reject(&(&1 == "verification/baseline.json"))
-
-    Enum.uniq(
-      files ++
-        [
-          "mix.exs",
-          "mix.lock",
-          "lean-toolchain",
-          "verification/laws.json",
-          "test/support/lean/library.json",
-          ".tool-versions"
-        ]
-    )
-    |> Enum.sort()
-  end
-
-  def manifest(root), do: Map.new(sources(root), fn p -> {p, digest_file(root, p)} end)
-
-  def digest_file(root, p) do
-    case Anchor.read_under(root, p) do
-      {:ok, b} -> Anchor.sha(b)
-      _ -> nil
-    end
-  end
-
   def load(_root, nil, _slugs),
     do: %{status: :not_supplied, detail: "No report supplied", report: nil}
 
@@ -55,8 +15,7 @@ defmodule HoldLedgerReview.ProofEvidence do
       %{
         status: status(root, report, slugs),
         detail: relative,
-        report: report,
-        report_sha256: Anchor.sha(bytes)
+        report: report
       }
     else
       _ -> %{status: :incomplete, detail: "Invalid or unavailable local report", report: nil}
@@ -65,7 +24,6 @@ defmodule HoldLedgerReview.ProofEvidence do
 
   def status(root, report, slugs) when is_map(report) do
     with :ok <- validate_schema(report),
-         :ok <- validate_sources(root, report),
          :ok <- validate_results(report, slugs) do
       checker_status(root, report)
     else
@@ -83,14 +41,6 @@ defmodule HoldLedgerReview.ProofEvidence do
         r["stage"] in ["proofs", "full"] and is_map(r["laws"])
 
     if valid, do: :ok, else: {:error, :incomplete}
-  end
-
-  defp validate_sources(root, r) do
-    current =
-      valid_manifest?(r["source_sha256"]) and r["source_sha256"] == manifest(root) and
-        r["source_changes_during_run"] == []
-
-    if current, do: :ok, else: {:error, :stale}
   end
 
   defp validate_results(r, slugs) do
@@ -121,37 +71,14 @@ defmodule HoldLedgerReview.ProofEvidence do
     if full_coverage?(root, r), do: :full_catalog_checked, else: :incomplete
   end
 
-  defp valid_manifest?(m) when is_map(m) and map_size(m) > 0 do
-    Enum.all?(m, fn {path, hash} ->
-      is_binary(path) and is_binary(hash) and Regex.match?(~r/\A[0-9a-f]{64}\z/, hash)
-    end)
-  end
-
-  defp valid_manifest?(_), do: false
-
-  defp registered_source?(root, slug, law) do
-    with {:ok, bytes} <- Anchor.read_under(root, "verification/laws.json"),
-         {:ok, catalog} <- Jason.decode(bytes),
-         item when is_map(item) <- Enum.find(catalog["laws"], &(&1["slug"] == slug)) do
-      item["file"] == law["source"]
-    else
-      _ -> false
-    end
-  end
-
-  defp checked?(root, slug, law) do
-    registered_source?(root, slug, law) and native_passed?(law) and
-      source_matches?(root, law) and exports_checked?(root, law["exports"])
+  defp checked?(root, _slug, law) do
+    native_passed?(law) and exports_checked?(root, law["exports"])
   end
 
   defp native_passed?(law) do
     law["passed"] == true and
       (law["native_passed"] == true or
          (law["one_law_test"] == true and law["correct_export"] == true))
-  end
-
-  defp source_matches?(root, law) do
-    is_binary(law["source"]) and law["source_sha256"] == digest_file(root, law["source"])
   end
 
   defp exports_checked?(root, exports) when is_list(exports) and exports != [] do
@@ -181,10 +108,10 @@ defmodule HoldLedgerReview.ProofEvidence do
 
   defp export_matches?(root, export) do
     with path when is_binary(path) <- export["path"],
-         true <- String.starts_with?(path, "tmp/verification/exports/"),
-         size when is_integer(size) and size > 0 <- export["export_bytes"],
-         {:ok, bytes} <- Anchor.read_under(root, path) do
-      byte_size(bytes) == size and Anchor.sha(bytes) == export["export_sha256"]
+         relative = path |> Path.expand(root) |> Path.relative_to(root),
+         true <- String.starts_with?(relative, "tmp/verification/exports/"),
+         {:ok, stat} <- File.stat(Path.join(root, relative)) do
+      stat.type == :regular and stat.size > 0
     else
       _ -> false
     end

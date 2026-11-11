@@ -52,8 +52,7 @@ Every helper accepts the same options:
 ### Source copies, logs and reports
 
 Setup finishes before workers start. The runner snapshots the current source,
-including tracked edits and nonignored untracked files, and checks hashes before
-and after the copy. Workers have independent dependency copies, builds, caches,
+including tracked edits and nonignored untracked files. Workers have independent dependency copies, builds, caches,
 exports, reports and assets. Installed tools and the prepared Python environment
 are shared. Temporary copies use reflinks when supported, with ordinary copies
 as the fallback; writable files are never hardlinked. `tmp/` is already ignored.
@@ -66,7 +65,7 @@ heartbeats. Concurrent terminal lines carry their group name.
 
 The log identifies `tmp/check-runs/<run>/`, containing:
 
-- `status.json`: detected resources, worker ceiling, per-group CPU/memory allocations, source hashes and each group's result.
+- `status.json`: detected resources, worker ceiling, per-group CPU/memory allocations and each group's result.
 - `logs/<group>.log`: command output for that group.
 - `snapshot/`: the source used by every worker.
 - `workers/<group>/`: isolated project and detailed generated evidence.
@@ -76,7 +75,7 @@ For full or master runs, formal acceptance is recorded in
 In a master run, the mutation report is
 `workers/full/tmp/verification/mutants.json`. Standalone mutation runs use
 `workers/mutants/tmp/verification/mutants.json`. Other reports retain their usual
-paths within their worker project. These locations preserve source-bound evidence
+paths within their worker project. These locations retain execution results
 without overwriting an earlier run. A passing orchestration status does not
 replace reading the formal report.
 
@@ -99,8 +98,8 @@ The quick group runs `mix format --check-formatted`,
 `run_laws.py --supported-only --inspect-only` and static `run_mutants.py`.
 The full group runs `run_laws.py --supported-only --stage full`.
 The mutation group runs `run_mutants.py --execute --jobs N`; the master adds
-`--baseline-report` pointing to the full group's report. Reuse checks source
-hashes, export hash/size, checker acknowledgments and permitted axioms.
+`--baseline-report` pointing to the full group's report. Reuse checks
+the required laws, checker acknowledgments and permitted axioms.
 
 The master's other groups run `run_differential.py --samples 100 --timeout 300`,
 `check_tutorials.py`, `mix run scripts/demo.exs`, `mix docs --warnings-as-errors`,
@@ -198,8 +197,8 @@ uv run --locked python scripts/run_mutants.py --execute \
   --baseline-report tmp/verification/checked.json --report tmp/mutants.json
 ```
 
-The runner requires the entire source manifest to match and rechecks the stored
-export hash/size, six checker acknowledgments and axiom audit before reuse.
+The runner requires a completed full proof run with all six checker acknowledgments
+and the permitted-axiom audit before baseline reuse.
 This is expensive and is not part of routine basic checks. A planted mutation
 is a detection experiment, not a newly discovered application bug. A failed
 formal attempt alone is not a counterexample. The live reducer and Spec are
@@ -280,7 +279,7 @@ histories. The report lists comparison counts by module and function.
 
 The codec is independently implemented in `verification/DifferentialCodec.lean`.
 Cross-engine golden vectors exercise encode and decode in both directions.
-The harness retains every encoded case and source hashes.
+The harness retains the encoded comparison cases.
 
 On a semantic mismatch,
 the shrinker tries a limited number of smaller cases and accepts only candidates that reproduce the evaluator mismatch;

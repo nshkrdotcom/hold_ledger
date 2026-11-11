@@ -93,7 +93,7 @@ and one conclusion the theorem does not establish. Do not recommend approval.
 **Evidence-bound handoff**
 
 ```text
-Prepare a packet for [claim]: revision/dirty state, source hashes, policy
+Prepare a packet for [claim]: revision/dirty state, results, policy
 anchors, law statements, witness and wrong-output evaluations, exact commands
 and failures, checked exports and runtime limits. Distinguish ordinary tests,
 development proofs and independent checked evidence. Present open questions;
@@ -343,7 +343,7 @@ Decision needed (human): None; the retention rule already governs this case.
 
 **Reviewer:** “Keep the existing retention and effect requirements. The proposed validity-only replacement loses both guarantees. Run the listed checks and report their actual results. No new policy decision is needed; a failure should be investigated against the existing contract.”
 
-After running the checks, replace each `not run` entry with the exact command, result and log or report path. Include source hashes with formal evidence. [Human review](human_review.md#what-to-inspect-in-the-agent-report) gives the general report format.
+After running the checks, replace each `not run` entry with the exact command, result and log or report path. Include results with formal evidence. [Human review](human_review.md#what-to-inspect-in-the-agent-report) gives the general report format.
 
 ## Check a report against its diff
 

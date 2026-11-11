@@ -38,7 +38,7 @@ Write down the unacceptable behavior before reading the explanation. Then ask:
    remote processor honesty.
 
 Practice with the [manual review exercise](interactive_review.md). Open the web guide at `/`, or go directly to Case Lab at `/lab`.
-Record a separate human judgment: case/claim, reviewed source digest, policy
+Record a separate human judgment: case/claim, reviewed result, policy
 anchor, witness, wrong alternative and predicate finding, proof status, limits,
 decision and reason. Acceptance/rejection needs a rationale and cited evidence;
 insufficient evidence need not invent either. Retain the source-bound review history when sources
@@ -132,7 +132,7 @@ Review tier: <Tier 1/2/3, Documentation, or not applicable; reasons and ambiguit
 Changed files: <paths, including dependencies and tools>
 Challenge evidence: <valid witness, forbidden output, boundary/temporal trace>
 Ordinary checks: <exact commands, results, log or report paths>
-Formal evidence: <law group, proof/full stage, status, source hashes>
+Formal evidence: <law group, proof/full stage, status, results>
 Trusted assumptions: <processor, compiler/translator, journal, etc.>
 Unresolved: <failed check, timeout or limitation; owner and next action>
 Decision needed (human): <none, or question, options, consequences and work that can continue>
@@ -187,7 +187,7 @@ The [Testing guide](testing.md#deliberate-mutations) describes the optional isol
 
 With a readable base-to-head diff, README/guides-only edits do not trigger the full formal job. `scripts/formal_gate.py` selects it for paths such as `lib/`, laws and `mix.exs`; an explicit request or unavailable diff also requires it.
 
-Match fresh exports and report source hashes to the reviewed declarations. A cached development pass or a catalog label does not establish full acceptance. Keep pure proof checks, ordinary tests, runtime fault tests and processor assumptions separate.
+Match fresh exports and report results to the reviewed declarations. A cached development pass or a catalog label does not establish full acceptance. Keep pure proof checks, ordinary tests, runtime fault tests and processor assumptions separate.
 
 For Tier 2 runtime changes, follow the [server and journal audit](audit.md#server-and-journal-follow-one-confirmation-through-failure): caller authentication; late worker correlation; sync-before-transition/effects ordering; crash replay and incomplete-tail handling; and remote retry identity. Require runtime or fault-injection regressions for changed paths. Rerun the committed policy traces whenever Ledger changes.
 

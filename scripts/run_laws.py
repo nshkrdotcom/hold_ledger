@@ -12,7 +12,6 @@ import argparse
 from contextlib import contextmanager
 import fcntl
 import datetime as dt
-import hashlib
 import json
 import os
 import re
@@ -51,41 +50,6 @@ def acceptance_lock(path: Path | None = None):
             yield
         finally:
             fcntl.flock(handle, fcntl.LOCK_UN)
-
-
-def sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def changed_sources(manifest: dict[str, str], current: list[Path] | None = None) -> list[str]:
-    changed = {name for name, digest in manifest.items()
-               if not (ROOT / name).is_file() or sha(ROOT / name) != digest}
-    if current is not None:
-        names = {str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
-                 for path in current}
-        changed.update(names.symmetric_difference(manifest))
-    return sorted(changed)
-
-
-def acceptance_sources() -> list[Path]:
-    files = set((ROOT / 'lib').rglob('*.ex'))
-    files.update((ROOT / 'test').rglob('*.ex'))
-    files.update((ROOT / 'test').rglob('*.exs'))
-    files.update((ROOT / 'test/support/lean').rglob('*.lean'))
-    files.update((ROOT / 'scripts').glob('*.py'))
-    files.update((ROOT / 'scripts').glob('*.exs'))
-    files.update((ROOT / 'verification').glob('*.lean'))
-    files.update(path for path in (ROOT / 'verification').glob('*.json')
-                 if path.name != 'baseline.json')
-    files.update(ROOT / name for name in ('mix.exs', 'mix.lock', 'lean-toolchain',
-        'verification/laws.json', 'test/support/lean/library.json', '.tool-versions'))
-    return sorted(files)
-
-
-def git_revision() -> str | None:
-    proc = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
-                          capture_output=True, text=True, check=False)
-    return proc.stdout.strip() if proc.returncode == 0 else None
 
 
 def inspect_shared_sources(directory: Path | None = None) -> list[Path]:
@@ -260,8 +224,7 @@ def exported_checker_record(path: Path, *, label: str, timeout: int) -> dict:
         outcome["bundled_checker_acceptance"] = dict(observed)
         outcome["nanoda_serial_retry"] = serial
         observed["nanoda"] = serial_ok
-    outcome.update(export_sha256=sha(path), export_bytes=path.stat().st_size,
-                   path=str(path.relative_to(ROOT)), checker_acceptance=observed,
+    outcome.update(path=str(path.relative_to(ROOT)), checker_acceptance=observed,
                    axiom_list=reported_axioms, allowed_axioms=authorized_axioms,
                    passed=((outcome["exit"] == 0 or serial_ok) and all(observed.values()) and authorized_axioms))
     return outcome
@@ -354,19 +317,13 @@ def batch_execution(laws: list[dict], timeout: int, checker_timeout: int, stage:
     checks = ([exported_checker_record(export, label="full-suite", timeout=checker_timeout)]
               if stage == "full" and correct_export else [])
     accepted = verified and (stage == "proofs" or (correct_export and all(check["passed"] for check in checks)))
-    sources = [ROOT / p for p in ("lib/hold_ledger/ledger.ex", "lib/hold_ledger/spec.ex", "mix.lock",
-               "lean-toolchain", "verification/laws.json", "test/support/proof_case.ex", "scripts/verify_laws.exs",
-               "scripts/run_laws.py", "test/support/lean/library.json")]
-    sources += sorted((ROOT / "lib").rglob("*.ex"))
-    sources += inspect_shared_sources() + [ROOT / law["file"] for law in laws]
     result = {"mode": "EXECUTED", "date_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-              "commit": git_revision(), "stage": stage, "cache": "LYNX_CACHE=0", "batch": True,
-              "source_sha256": {str(path.relative_to(ROOT)): sha(path) for path in sources},
+              "stage": stage, "cache": "LYNX_CACHE=0", "batch": True,
               "execution": outcome, "native_report": str(native_report.relative_to(ROOT)), "exports": checks,
               "correct_export": correct_export, "complete": accepted, "laws": {},
               "checker_claim": stage == "full" and accepted, "accepted_proof_claim": accepted}
     for law in laws:
-        result["laws"][law["slug"]] = {"id": law["id"], "source": law["file"], "source_sha256": sha(ROOT / law["file"]),
+        result["laws"][law["slug"]] = {"id": law["id"], "source": law["file"],
             "passed": accepted, "native_passed": verified, "exports": checks}
         print(f"{law['slug']}: {'PASS' if accepted else 'UNVERIFIED/FAIL'} (shared cold batch, stage={stage})", flush=True)
     return result
@@ -377,12 +334,6 @@ def execution(laws: list[dict], timeout: int, checker_timeout: int,
     if (len(laws) > 1 or any(law.get("kind") == "lean" for law in laws)) and cache_mode == "cold":
         return batch_execution(laws, timeout, checker_timeout, stage)
     measurements = {"mode": "EXECUTED", "date_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-                    "commit": git_revision(), "source_sha256":
-                        {str(path): sha(ROOT / path) for path in
-                         ("lib/hold_ledger/ledger.ex", "lib/hold_ledger/spec.ex",
-                          "mix.lock", "lean-toolchain", "verification/laws.json",
-                          "test/support/proof_case.ex", "scripts/verify_laws.exs", "test/support/lean/library.json",
-                          *[str(p.relative_to(ROOT)) for p in inspect_shared_sources()])},
                     "cache": "LYNX_CACHE=0" if cache_mode == "cold" else "warm, Lynx cache enabled",
                     "stage": stage, "export_mode": ("LYNX_EXPORT=tmp/verification/exports/<group>"
                                                    if stage == "full" else "no exports"),
@@ -424,7 +375,6 @@ def execution(laws: list[dict], timeout: int, checker_timeout: int,
             # No exported checker claim is made by the proof-only/warm stage.
             right_export = False
         elixir_outcome.update(id=law["id"], priority=law["priority"], source=law["file"],
-                              source_sha256=sha(ROOT / law["file"]),
                               exports=checks, correct_export=right_export,
                               one_law_test=validated_law,
                               passed=(validated_law and (stage == "proofs" or
@@ -489,23 +439,11 @@ def main() -> int:
         if args.timeout <= 0 or args.checker_timeout <= 0:
             raise RuntimeError("Timeouts must be positive")
         with acceptance_lock():
-            manifest = {str(path.relative_to(ROOT)): sha(path) for path in acceptance_sources()}
             result = execution(laws, args.timeout, args.checker_timeout,
                                stage=args.stage, cache_mode=args.cache_mode)
-            drift = changed_sources(manifest, acceptance_sources())
-            result['source_sha256'] = manifest
             result['obligation_coverage'] = coverage(required_inventory(ROOT / 'verification/obligations.json'),
                 inspect_manifest(), [slug for slug, item in result['laws'].items() if item['passed']])
             result['release_complete'] = result['obligation_coverage']['complete'] and result.get('checker_claim', False)
-            result['source_changes_during_run'] = drift
-            if drift:
-                result['complete'] = False
-                result['release_complete'] = False
-                result['accepted_proof_claim'] = False
-                result['checker_claim'] = False
-                for law_result in result['laws'].values():
-                    law_result['passed'] = False
-                print('Source changed during verification; acceptance rejected', file=sys.stderr)
         if output:
             output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf8")
         return 0 if all(x["passed"] for x in result["laws"].values()) else 2

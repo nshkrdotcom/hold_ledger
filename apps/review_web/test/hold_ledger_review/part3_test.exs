@@ -420,8 +420,6 @@ defmodule HoldLedgerReview.Part3Test do
       "mode" => "EXECUTED",
       "stage" => "full",
       "laws" => %{"po_a2" => %{"passed" => false}},
-      "source_sha256" => HoldLedgerReview.ProofEvidence.manifest(root),
-      "source_changes_during_run" => [],
       "complete" => false
     }
 

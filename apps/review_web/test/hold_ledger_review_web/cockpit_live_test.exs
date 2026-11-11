@@ -271,7 +271,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
     refute Map.has_key?(saved, "ai_jobs")
   end
 
-  test "source URLs bind registered path and bytes; export does not certify a proof", %{
+  test "source URLs serve registered files; export does not certify a proof", %{
     conn: conn
   } do
     {_, doc} = open(conn)
@@ -283,7 +283,7 @@ defmodule HoldLedgerReviewWeb.CockpitLiveTest do
              File.read!(source["path"] |> then(&Path.join(HoldLedgerReview.Config.root(), &1)))
 
     assert response(
-             get(conn, String.replace(path, source["sha256"], String.duplicate("0", 64))),
+             get(conn, String.replace(path, source["id"], "missing-source")),
              404
            )
 

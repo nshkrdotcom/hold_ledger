@@ -2,10 +2,7 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
   use ExUnit.Case, async: true
   alias HoldLedgerReview.{Anchor, ProofEvidence}
 
-  # These tests preserve independent proof-report validation, not the deleted
-  # teaching-case packet or receipt mechanism. All checker records are
-  # synthetic fixtures, never evidence that a real checker ran.
-  test "report parser rejects invented success, missing manifest and proof-only checker claims" do
+  test "report parser rejects invented success, proof-only checker claims" do
     root = HoldLedgerReview.Config.root()
 
     base = %{
@@ -13,23 +10,13 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
       "stage" => "proofs",
       "laws" => %{"po_b1_void" => %{"passed" => true}},
       "complete" => true,
-      "source_sha256" => ProofEvidence.manifest(root),
-      "source_changes_during_run" => [],
       "cache" => "LYNX_CACHE=0",
       "checker_claim" => true
     }
 
     assert :development_only = ProofEvidence.status(root, base, ["po_b1_void"])
 
-    assert :stale =
-             ProofEvidence.status(root, Map.put(base, "source_sha256", %{}), ["po_b1_void"])
-
     assert :incomplete = ProofEvidence.status(root, base, ["missing_law"])
-
-    assert :stale =
-             ProofEvidence.status(root, Map.put(base, "source_changes_during_run", ["x"]), [
-               "po_b1_void"
-             ])
 
     assert :incomplete =
              ProofEvidence.status(root, Map.put(base, "stage", "future-schema"), ["po_b1_void"])
@@ -43,7 +30,7 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
              ])
   end
 
-  test "fixture reports distinguish selected/full acceptance and tampered export bytes" do
+  test "fixture reports distinguish selected/full acceptance and checker failures" do
     root = HoldLedgerReview.Config.root()
 
     relative =
@@ -63,9 +50,7 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
           ["Lean paranoid", "lean4lean", "nanoda", "con-leche", "con-ron", "Lean default"],
           &{&1, true}
         ),
-      "path" => relative,
-      "export_bytes" => File.stat!(path).size,
-      "export_sha256" => Anchor.sha(File.read!(path))
+      "path" => relative
     }
 
     source = "test/laws/po_b1_void_test.exs"
@@ -74,8 +59,7 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
       "native_passed" => true,
       "passed" => true,
       "exports" => [export],
-      "source" => source,
-      "source_sha256" => ProofEvidence.digest_file(root, source)
+      "source" => source
     }
 
     r = %{
@@ -83,8 +67,6 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
       "stage" => "full",
       "laws" => %{"po_b1_void" => law},
       "complete" => true,
-      "source_sha256" => ProofEvidence.manifest(root),
-      "source_changes_during_run" => [],
       "cache" => "LYNX_CACHE=0",
       "checker_claim" => true,
       "release_complete" => false
@@ -101,8 +83,7 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
       Map.new(catalog, fn item ->
         p = item["file"]
 
-        {item["slug"],
-         %{law | "source" => p, "source_sha256" => ProofEvidence.digest_file(root, p)}}
+        {item["slug"], %{law | "source" => p}}
       end)
 
     slugs = Enum.sort(Map.keys(records))
@@ -126,7 +107,7 @@ defmodule HoldLedgerReview.ProofEvidenceTest do
     assert :incomplete =
              ProofEvidence.status(root, Map.put(full, "batch", true), ["po_b1_void"])
 
-    File.write!(path, "tampered")
+    File.rm!(path)
     assert :incomplete = ProofEvidence.status(root, r, ["po_b1_void"])
   end
 

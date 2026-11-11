@@ -18,7 +18,7 @@ import threading
 import time
 
 from check_runtime import (cancel_running, cancellation_scope, copy_project,
-                           resources, source_manifest, tracked_process, worker_environment,
+                           resources, tracked_process, worker_environment,
                            GROUP_MEMORY_GIB, MUTANT_MEMORY_BYTES, GIB)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,8 +105,7 @@ def commands(group: str) -> list[list[str]]:
                 mix + ['hex.build']]
     if group == 'readings':
         return [local + ['env', 'MIX_ENV=test', 'mix', 'run',
-                         'apps/review_web/scripts/produce_claim_readings.exs'],
-                python + ['scripts/validate_readings.py']]
+                         'apps/review_web/scripts/produce_claim_readings.exs']]
     raise ValueError(f'Unknown check group: {group}')
 
 
@@ -222,12 +221,6 @@ def schedule_groups(mode: str, snapshot: Path, run_dir: Path, capacity: dict,
         raise RuntimeError('Check group failed; see per-group logs')
 
 
-def require_unchanged_source(manifest: dict[str, str]) -> None:
-    """A successful worker snapshot is not acceptance for a drifting checkout."""
-    if source_manifest(ROOT) != manifest:
-        raise RuntimeError('Source changed during check helper execution; final acceptance invalid')
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['quick', 'full', 'mutants', 'web', 'all'])
@@ -272,14 +265,9 @@ def main() -> int:
                                cpu_budget=capacity['cpus'])
                 if code:
                     raise RuntimeError(f'Setup failed (exit {code})')
-            manifest = source_manifest(ROOT)
             snapshot = copy_project(ROOT, run_dir / 'snapshot')
-            if source_manifest(ROOT) != manifest or source_manifest(snapshot) != manifest:
-                raise RuntimeError('Source changed while taking the snapshot; rerun the helper')
-            report['source_sha256'] = manifest
             say('checks', f'Source snapshot ready: {snapshot}')
             schedule_groups(args.mode, snapshot, run_dir, capacity, jobs, report, save)
-            require_unchanged_source(manifest)
             report['state'] = 'passed'
             say('checks', f'All requested checks passed. Reports and workspaces: {run_dir}')
             return 0

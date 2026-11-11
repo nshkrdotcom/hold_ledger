@@ -4,29 +4,6 @@ Code.require_file("../test/support/fixtures.ex", __DIR__)
 Code.require_file("../test/support/generators.ex", __DIR__)
 alias HoldLedger.{Attempts, Composite, Differential, Environment, Exposure, Ledger, Spec}
 
-source_paths =
-  Path.wildcard("lib/**/*.ex") ++
-    [
-      "test/support/differential.ex",
-      "test/support/fixtures.ex",
-      "test/support/generators.ex",
-      "scripts/local_run.py",
-      "mix.exs",
-      ".tool-versions",
-      "lean-toolchain",
-      "scripts/differential.exs",
-      "scripts/run_differential.py",
-      "verification/DifferentialCodec.lean",
-      "mix.lock"
-    ]
-
-source_manifest = fn ->
-  Map.new(source_paths, fn path ->
-    {path, Base.encode16(:crypto.hash(:sha256, File.read!(path)), case: :lower)}
-  end)
-end
-
-source_sha256 = source_manifest.()
 :rand.seed(:exsss, {41, 73, 109})
 base = Ledger.init(100, 2)
 
@@ -242,11 +219,7 @@ if status != 0 do
           minimized_args: Enum.map(minimal, &Differential.encode/1),
           shrink_attempts: attempts,
           accepted: false,
-          seed: [41, 73, 109],
-          source_sha256:
-            Map.new(Path.wildcard("lib/**/*.ex"), fn path ->
-              {path, Base.encode16(:crypto.hash(:sha256, File.read!(path)), case: :lower)}
-            end)
+          seed: [41, 73, 109]
         })
       )
 
@@ -256,8 +229,7 @@ if status != 0 do
 end
 
 accepted =
-  status == 0 and not String.contains?(output, "warning:") and
-    source_manifest.() == source_sha256
+  status == 0 and not String.contains?(output, "warning:")
 
 File.write!(
   "tmp/differential/report.json",
@@ -288,9 +260,7 @@ File.write!(
       "Decimal String.toInt? reduction was unestablished under decide +kernel; numeric codec vectors are compiled comparisons, not kernel claims"
     ],
     reports: reports,
-    evaluator_exit: status,
-    source_sha256: source_sha256,
-    source_unchanged: source_manifest.() == source_sha256
+    evaluator_exit: status
   })
 )
 

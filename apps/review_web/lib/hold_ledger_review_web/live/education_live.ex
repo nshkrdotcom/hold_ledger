@@ -1167,7 +1167,7 @@ defmodule HoldLedgerReviewWeb.EducationLive do
               <summary>Available matching generated artifacts</summary>
               <ul>
                 <li :for={artifact <- @reading["focused"]["artifacts"]}>
-                  <a href={"/claims/po_a2/generated/" <> artifact["sha256"]}><code>{artifact["path"]}</code></a>
+                  <a href={"/claims/po_a2/generated/" <> artifact["id"]}><code>{artifact["path"]}</code></a>
                 </li>
               </ul>
             </details>

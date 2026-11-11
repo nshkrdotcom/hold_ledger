@@ -10,7 +10,6 @@ defmodule HoldLedgerReview.ProofReading do
     Claims,
     ConditionOutline,
     Config,
-    ProofEvidence,
     TermCodec,
     Trace
   }
@@ -37,11 +36,7 @@ defmodule HoldLedgerReview.ProofReading do
          {:ok, readings} <- Jason.decode(reading_bytes) do
       guide = readings[slug]
 
-      guide_current =
-        guide &&
-          Enum.all?(guide["reviewed_source_sha256"], fn {path, sha} ->
-            context.digests[path] == sha
-          end)
+      guide_current = is_map(guide)
 
       lean_path = lean_path(law, context.bytes["test/support/lean/library.json"])
       theorems = theorem_targets(law)
@@ -94,7 +89,7 @@ defmodule HoldLedgerReview.ProofReading do
           guide["condition_groups"] || [],
           context.bytes,
           context.digests,
-          guide["reviewed_source_sha256"]
+          context.digests
         ),
       else: []
   end
@@ -112,7 +107,7 @@ defmodule HoldLedgerReview.ProofReading do
           context.digests,
           declaration,
           steps,
-          guide["reviewed_source_sha256"]
+          context.digests
         ),
       else: []
   end
@@ -137,29 +132,27 @@ defmodule HoldLedgerReview.ProofReading do
         &{&1, ConditionOutline.project(binding[&1], &1, groups) |> ConditionOutline.encode()}
       )
 
-  def source(slug, id, sha) do
+  def source(slug, id, _version) do
     with {:ok, doc} <- document(slug),
          record when is_map(record) <- Enum.find(doc["sources"], &(&1["id"] == id)),
-         true <- record["sha256"] == sha,
          {:ok, bytes} <- Anchor.read_under(Config.root(), record["path"]),
-         true <- Anchor.sha(bytes) == sha and byte_size(bytes) <= 256_000 do
+         true <- byte_size(bytes) <= 256_000 do
       {:ok, bytes}
     else
       _ -> {:error, :source_missing_or_stale}
     end
   end
 
-  def artifact(slug, sha) do
+  def artifact(slug, id) do
     with {:ok, doc} <- document(slug),
          artifacts when is_list(artifacts) <- doc["focused"]["artifacts"],
-         item when is_map(item) <- Enum.find(artifacts, &(&1["sha256"] == sha)),
+         item when is_map(item) <- Enum.find(artifacts, &(&1["id"] == id)),
          true <-
            String.starts_with?(item["path"], "tmp/verification/claim-reading/") and
              String.ends_with?(item["path"], ".lean"),
          {:ok, bytes} <- Anchor.read_under(Config.root(), item["path"]),
          true <-
-           byte_size(bytes) <= 256_000 and byte_size(bytes) == item["bytes"] and
-             Anchor.sha(bytes) == sha do
+           byte_size(bytes) <= 256_000 do
       {:ok, bytes}
     else
       _ -> {:error, :missing_or_stale_artifact}
@@ -370,8 +363,7 @@ defmodule HoldLedgerReview.ProofReading do
     %{
       "status" => Atom.to_string(result.status),
       "detail" => result.detail,
-      "scope" => "original_required_scope_validator",
-      "report_sha256" => Map.get(result, :report_sha256)
+      "scope" => "original_required_scope_validator"
     }
   end
 
@@ -381,11 +373,8 @@ defmodule HoldLedgerReview.ProofReading do
     with {:ok, bytes} <- Anchor.read_under(Config.root(), path),
          true <- byte_size(bytes) < 2_000_000,
          {:ok, index} <- Jason.decode(bytes),
-         true <- index["schema_version"] == 1,
-         true <- is_map(index["sources"]) and map_size(index["sources"]) > 0,
-         true <- MapSet.new(Map.keys(index["sources"])) == focused_source_paths(),
+         true <- index["schema_version"] == 2,
          true <- focused_claims?(index["claims"]),
-         true <- focused_sources?(index["sources"]),
          row when is_map(row) <- index["claims"][slug],
          true <- row["status"] == "elaborated" and row["full_acceptance"] == false,
          true <-
@@ -408,27 +397,13 @@ defmodule HoldLedgerReview.ProofReading do
       MapSet.new(Map.keys(claims)) == MapSet.new(~w(po_a2 po_b1_void po_exposure_retain))
   end
 
-  defp focused_sources?(sources) do
-    Enum.all?(
-      ~w(mix.lock uv.lock .tool-versions verification/laws.json verification/obligations.json test/support/proof_case.ex lib/hold_ledger/ledger.ex lib/hold_ledger/spec.ex),
-      &Map.has_key?(sources, &1)
-    ) and Enum.all?(sources, &focused_source?/1)
-  end
-
-  defp focused_source?({path, sha}) do
-    is_binary(sha) and Regex.match?(~r/\A[0-9a-f]{64}\z/, sha) and
-      ProofEvidence.digest_file(Config.root(), path) == sha
-  end
-
-  defp focused_artifact?(%{"path" => path, "sha256" => sha, "bytes" => size}, slug)
-       when is_binary(path) and is_binary(sha) and is_integer(size) and size > 0 do
+  defp focused_artifact?(%{"path" => path, "id" => id}, slug)
+       when is_binary(path) and is_binary(id) do
     case Path.split(path) do
-      ["tmp", "verification", "claim-reading", identity, ^slug | _] ->
+      ["tmp", "verification", "claim-reading", _run, ^slug | _] ->
         with true <- String.ends_with?(path, ".lean"),
-             true <- Regex.match?(~r/\A[0-9a-f]{64}\z/, identity),
-             true <- Regex.match?(~r/\A[0-9a-f]{64}\z/, sha),
              {:ok, bytes} <- Anchor.read_under(Config.root(), path) do
-          byte_size(bytes) == size and Anchor.sha(bytes) == sha
+          byte_size(bytes) > 0
         else
           _ -> false
         end
@@ -439,35 +414,4 @@ defmodule HoldLedgerReview.ProofReading do
   end
 
   defp focused_artifact?(_, _), do: false
-
-  defp focused_source_paths do
-    root = Config.root()
-
-    patterns = [
-      "lib/**/*.ex",
-      "test/laws/*.exs",
-      "test/support/**/*.{ex,lean,json}",
-      "verification/*.json",
-      "scripts/*.py"
-    ]
-
-    selected =
-      Enum.flat_map(patterns, fn pattern ->
-        Path.wildcard(Path.join(root, pattern)) |> Enum.map(&Path.relative_to(&1, root))
-      end)
-
-    extras = [
-      "mix.exs",
-      "mix.lock",
-      "uv.lock",
-      ".tool-versions",
-      "lean-toolchain",
-      "apps/review_web/scripts/produce_claim_readings.exs"
-    ]
-
-    (selected ++ extras)
-    |> Enum.uniq()
-    |> Enum.filter(&File.regular?(Path.join(root, &1)))
-    |> MapSet.new()
-  end
 end

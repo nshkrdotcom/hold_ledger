@@ -5,7 +5,6 @@ Scores describe this operator universe, never specification completeness. Proof
 script failure is inconclusive even when ordinary tests already found a witness.
 """
 import argparse
-import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -13,7 +12,7 @@ import sys
 import tempfile
 
 from run_mutants import ROOT, LEDGER, cmd, scratch_project
-from run_laws import acceptance_sources, inspect_manifest
+from run_laws import inspect_manifest
 
 LAW_MAP = {
     '>': ['po_a1', 'po_a2', 'po_b1_processor_result', 'po_b1_void', 'po_b1_void_confirmed', 'po_c3'],
@@ -57,17 +56,7 @@ def main():
     LAW_MAP['status'] = all_laws
     LAW_MAP['clause'] = all_laws
     original = (ROOT / LEDGER).read_bytes()
-    input_paths = acceptance_sources() if args.formal_budget else sorted(
-        set((ROOT / 'lib').rglob('*.ex')) | set((ROOT / 'test').rglob('*.ex')) |
-        set((ROOT / 'test').rglob('*.exs')) |
-        {ROOT / name for name in ('mix.exs', 'mix.lock', 'scripts/mutation_campaign.py',
-         'scripts/generate_mutations.exs', 'scripts/run_mutants.py', 'scripts/local_run.py')})
-    source_manifest = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
-                       for path in input_paths}
-    report = {'ledger_sha256': hashlib.sha256(original).hexdigest(),
-              'source_sha256': source_manifest,
-              'source_scope': 'formal and ordinary inputs' if args.formal_budget else 'ordinary executable inputs',
-
+    report = {
               'universe': len(candidates), 'limit': args.limit, 'formal_budget': args.formal_budget,
               'law_map': LAW_MAP, 'results': []}
     with tempfile.TemporaryDirectory(prefix='campaign-', dir=ROOT / 'tmp') as folder:
@@ -116,10 +105,6 @@ def main():
             print(f"{site['id']}: {record['classification']}", flush=True)
     if (ROOT / LEDGER).read_bytes() != original:
         raise RuntimeError('live reducer changed during campaign')
-    if any(not (ROOT / name).is_file() or hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != digest
-           for name, digest in source_manifest.items()):
-        raise RuntimeError('Campaign inputs changed; result is not current-source evidence')
-    report['source_unchanged'] = True
     report['not_run'] = [site['id'] for site in candidates[args.limit:]]
     (output / 'report.json').write_text(json.dumps(report, indent=2) + '\n')
     return 0

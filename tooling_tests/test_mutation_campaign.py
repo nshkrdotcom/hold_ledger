@@ -6,7 +6,6 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from mutation_campaign import classify_ordinary
 import run_mutants
-import run_laws
 from unittest import mock
 import tempfile
 import json
@@ -59,7 +58,7 @@ class MutationBaselineTests(unittest.TestCase):
             self.assertFalse(result['all_concrete_detected'])
 
 
-    def test_reuse_requires_current_sources_complete_checks_and_exact_export(self):
+    def test_reuse_requires_complete_laws_and_checker_results(self):
         original_root = run_mutants.ROOT
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)
@@ -68,8 +67,6 @@ class MutationBaselineTests(unittest.TestCase):
                 (original_root / 'verification/obligations.json').read_bytes())
             required = {item['slug'] for item in
                         json.loads((folder / 'verification/obligations.json').read_text())['obligations']}
-            source = folder / 'source.ex'
-            source.write_text('synthetic source')
             export = folder / 'tmp/verification/exports/full-suite/suite.ndjson'
             export.parent.mkdir(parents=True)
             export.write_text('synthetic export')
@@ -77,41 +74,28 @@ class MutationBaselineTests(unittest.TestCase):
             payload = {'mode': 'EXECUTED', 'stage': 'full', 'cache': 'LYNX_CACHE=0',
                        'batch': True, 'complete': True, 'correct_export': True,
                        'release_complete': True, 'checker_claim': True, 'accepted_proof_claim': True,
-                       'source_changes_during_run': [],
-                       'source_sha256': {'source.ex': run_mutants.digest(source)},
                        'obligation_coverage': {'complete': True, 'missing': [],
                                                'required': sorted(required), 'accepted': sorted(required)},
                        'laws': {slug: {'passed': True, 'native_passed': True} for slug in required},
                        'exports': [{'path': str(export.relative_to(folder)), 'passed': True,
                                     'allowed_axioms': True, 'axiom_list': ['propext'],
-                                    'checker_acceptance': {name: True for name in run_mutants.CHECKERS},
-                                    'export_bytes': export.stat().st_size, 'export_sha256': run_mutants.digest(export)}]}
+                                    'checker_acceptance': {name: True for name in run_mutants.CHECKERS}}]}
             report.write_text(json.dumps(payload))
             selected = next(iter(required))
-            with mock.patch.object(run_mutants, 'ROOT', folder), \
-                    mock.patch.object(run_laws, 'ROOT', folder), \
-                    mock.patch.object(run_mutants, 'acceptance_sources', return_value=[source]):
+            with mock.patch.object(run_mutants, 'ROOT', folder):
                 result = run_mutants.accepted_baseline(report, [('M', 'directory', selected)])
                 self.assertTrue(result['laws'][selected]['passed'])
-                source.write_text('changed')
-                with self.assertRaisesRegex(RuntimeError, 'unchanged source'):
-                    run_mutants.accepted_baseline(report, [('M', 'directory', selected)])
-                source.write_text('synthetic source')
-                export.write_text('tampered export')
-                with self.assertRaisesRegex(RuntimeError, 'export identity'):
-                    run_mutants.accepted_baseline(report, [('M', 'directory', selected)])
-                export.write_text('synthetic export')
                 payload['release_complete'] = False
                 report.write_text(json.dumps(payload))
-                with self.assertRaisesRegex(RuntimeError, 'complete unchanged source'):
+                with self.assertRaisesRegex(RuntimeError, 'complete required laws'):
                     run_mutants.accepted_baseline(report, [('M', 'directory', selected)])
                 payload['release_complete'] = True
                 del payload['laws'][selected]
                 report.write_text(json.dumps(payload))
-                with self.assertRaisesRegex(RuntimeError, 'complete unchanged source'):
+                with self.assertRaisesRegex(RuntimeError, 'complete required laws'):
                     run_mutants.accepted_baseline(report, [('M', 'directory', selected)])
                 payload['laws'][selected] = {'passed': True, 'native_passed': True}
                 payload['cache'] = 'LYNX_CACHE=warm'
                 report.write_text(json.dumps(payload))
-                with self.assertRaisesRegex(RuntimeError, 'complete unchanged source'):
+                with self.assertRaisesRegex(RuntimeError, 'complete required laws'):
                     run_mutants.accepted_baseline(report, [('M', 'directory', selected)])

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import math
-import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -106,11 +105,6 @@ def source_files(source: Path) -> list[Path]:
     # Directory-only Git ignores do not necessarily ignore symlinks. Snapshots
     # link these prepared environments; they are infrastructure, never source.
     return [path for path in paths if path.parts[0] not in ('.local', '.venv')]
-
-
-def source_manifest(source: Path) -> dict[str, str]:
-    return {str(path): hashlib.sha256((source / path).read_bytes()).hexdigest()
-            for path in source_files(source) if (source / path).is_file()}
 
 
 def copy_directory(source: Path, destination: Path) -> None:

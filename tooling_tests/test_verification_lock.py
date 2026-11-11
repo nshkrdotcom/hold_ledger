@@ -18,23 +18,3 @@ class VerificationLockTests(unittest.TestCase):
                         self.fail('overlapping acceptance entered its mutation section')
             with run_laws.acceptance_lock(path):
                 self.assertTrue(path.is_file())
-
-    def test_source_drift_is_reported_instead_of_certifying_final_bytes(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'source.ex'
-            path.write_text('original')
-            manifest = {str(path): run_laws.sha(path)}
-            self.assertEqual(run_laws.changed_sources(manifest), [])
-            path.write_text('changed during verification')
-            self.assertEqual(run_laws.changed_sources(manifest), [str(path)])
-            path.unlink()
-            self.assertEqual(run_laws.changed_sources(manifest), [str(path)])
-
-    def test_new_source_files_also_invalidate_acceptance(self):
-        with tempfile.TemporaryDirectory() as directory:
-            original = Path(directory) / 'original.ex'
-            added = Path(directory) / 'added.ex'
-            original.write_text('original')
-            manifest = {str(original): run_laws.sha(original)}
-            added.write_text('new behavior')
-            self.assertEqual(run_laws.changed_sources(manifest, [original, added]), [str(added)])

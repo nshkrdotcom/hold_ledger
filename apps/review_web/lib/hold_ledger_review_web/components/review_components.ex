@@ -558,10 +558,10 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         >{ReviewCopy.evidence_status(@reading["formal"]["status"])}</span>.
       </p><ul id="generated-artifacts">
         <li :for={item <- @reading["focused"]["artifacts"] || []}>
-          <button class="text-button" phx-click="inspect_artifact" phx-value-sha={item["sha256"]}>{Path.basename(
+          <button class="text-button" phx-click="inspect_artifact" phx-value-sha={item["id"]}>{Path.basename(
             item["path"]
           )}</button><a
-            href={"/claims/#{@reading["slug"]}/generated/#{item["sha256"]}"}
+            href={"/claims/#{@reading["slug"]}/generated/#{item["id"]}"}
             target="_blank"
             rel="noopener"
           >{Path.basename(item["path"])} ↗</a>
@@ -601,7 +601,7 @@ defmodule HoldLedgerReviewWeb.ReviewComponents do
         </p>
         <a
           :for={item <- Enum.filter(version["artifacts"], &(&1["status"] == "present"))}
-          href={"/comparisons/#{@package["id"]}/artifact/#{version["side"]}/#{item["sha256"]}"}
+          href={"/comparisons/#{@package["id"]}/artifact/#{version["side"]}/#{item["id"]}"}
         >{item["kind"]}: {item["path"]}</a>
       </section>
     </section>

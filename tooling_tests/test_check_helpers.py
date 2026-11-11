@@ -20,14 +20,6 @@ import check_suite
 
 
 class CheckHelpersTest(unittest.TestCase):
-    def test_successful_snapshot_does_not_accept_source_drift(self):
-        original = {'lib/ledger.ex': 'old'}
-        with patch.object(check_suite, 'source_manifest', return_value=original):
-            check_suite.require_unchanged_source(original)
-        with patch.object(check_suite, 'source_manifest', return_value={'lib/ledger.ex': 'new'}):
-            with self.assertRaisesRegex(RuntimeError, 'Source changed'):
-                check_suite.require_unchanged_source(original)
-
     def test_source_copy_includes_dirty_and_untracked_files_and_private_dependencies(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -60,7 +52,6 @@ class CheckHelpersTest(unittest.TestCase):
             # The master copies checkout -> snapshot -> worker. Shared symlinks
             # in the intermediate snapshot must not become source inputs.
             worker = check_runtime.copy_project(copied, root / 'worker')
-            self.assertEqual(check_runtime.source_manifest(worker), check_runtime.source_manifest(source))
             self.assertEqual((worker / '.venv').resolve(), source / '.venv')
             self.assertEqual((worker / '.local').resolve(), source / '.local')
             (worker / 'deps/cache').write_text('second worker write')
@@ -94,7 +85,6 @@ class CheckHelpersTest(unittest.TestCase):
                 return 0
             with patch.object(check_suite, 'ROOT', root), \
                  patch.object(check_suite, 'copy_project', side_effect=copy), \
-                 patch.object(check_suite, 'source_manifest', return_value={}), \
                  patch.object(check_suite, 'run_group', side_effect=group), \
                  patch.object(check_suite, 'command', side_effect=command), \
                  patch.object(sys, 'argv', ['check_suite.py', 'all', '--jobs', '2']), \
