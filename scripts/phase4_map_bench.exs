@@ -41,7 +41,8 @@ for size <- [0, 16, 256, 2048] do
 
   unless Spec.valid?(state) and MapLedger.decode(candidate) === state and
            MapLedger.decode(next_new) === next_old and
-           Ledger.find(entries, size + 1) === MapLedger.find(candidate, size + 1) do
+           Ledger.find(entries, size + 1) === MapLedger.find(candidate, size + 1) and
+           Spec.expected_step(state, event) === {next_old, result, effects} do
     raise "equivalence check failed at size #{size}"
   end
 

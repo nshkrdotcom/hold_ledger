@@ -25,6 +25,7 @@ defmodule HoldLedger.MapEquivalenceTest do
 
       {next, result, effects} = MapLedger.step(encoded, event)
       assert MapLedger.valid?(next)
+
       assert {MapLedger.decode(next), result, effects} ===
                {expected_state, expected_result, expected_effects}
     end
@@ -120,8 +121,10 @@ defmodule HoldLedger.MapEquivalenceTest do
     Enum.reduce(events, {initial, MapLedger.encode(initial)}, fn event, {old, candidate} ->
       {next_old, expected_result, expected_effects} = Spec.expected_step(old, event)
       {next_candidate, result, effects} = MapLedger.step(candidate, event)
+
       assert {MapLedger.decode(next_candidate), result, effects} ===
                {next_old, expected_result, expected_effects}
+
       assert Spec.identity_preserved?(old, next_old)
       {next_old, next_candidate}
     end)
@@ -143,8 +146,10 @@ defmodule HoldLedger.MapEquivalenceTest do
       {next_candidate, result, effects} = MapLedger.step(candidate, event)
       {reference_state, reference_result, reference_effects} = Spec.expected_step(state, event)
       assert MapLedger.valid?(next_candidate)
+
       assert {MapLedger.decode(next_candidate), result, effects} ===
                {reference_state, reference_result, reference_effects}
+
       assert {reference_state, reference_result, reference_effects} === Ledger.step(state, event)
       assert Spec.valid?(reference_state)
       assert Spec.identity_preserved?(state, reference_state)
@@ -162,8 +167,10 @@ defmodule HoldLedger.MapEquivalenceTest do
         Enum.reduce(events, {state, MapLedger.encode(state)}, fn event, {old, candidate} ->
           {next, expected_result, expected_effects} = Spec.expected_step(old, event)
           {mapped, result, effects} = MapLedger.step(candidate, event)
+
           assert {MapLedger.decode(mapped), result, effects} ===
                    {next, expected_result, expected_effects}
+
           assert Spec.valid?(next)
           {next, mapped}
         end)

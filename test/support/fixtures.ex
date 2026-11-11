@@ -71,8 +71,8 @@ defmodule HoldLedger.TestFixtures do
       {voided, {:request, 1, 10}, voided, :duplicate, []},
       {voided, {:request, 1, 9}, voided, :conflict, []},
       {declined, {:request, 1, 10}, declined, :duplicate, []},
-      {voided, {:request, 2, 5}, {10, 1, 5, 1, [{2, 5, :reserved}, {1, 10, :voided}]},
-       :admitted, []},
+      {voided, {:request, 2, 5}, {10, 1, 5, 1, [{2, 5, :reserved}, {1, 10, :voided}]}, :admitted,
+       []},
       {reserved, {:void, 99}, reserved, :not_found, []},
       {sent, {:transport_ack, 1}, sent, :stale, []},
       {authorized, {:processor_result, 1, :approved}, authorized, :stale, []},
@@ -83,8 +83,13 @@ defmodule HoldLedger.TestFixtures do
       {reserved, [:improper | :tail], reserved, :malformed, []},
       {mixed(), :restart,
        {1000, 4, 700, 3,
-        [{11, 300, :unknown}, {12, 200, :unknown}, {13, 200, :authorized},
-         {14, 100, :declined}, {15, 100, :voided}]}, :restarted, []}
+        [
+          {11, 300, :unknown},
+          {12, 200, :unknown},
+          {13, 200, :authorized},
+          {14, 100, :declined},
+          {15, 100, :voided}
+        ]}, :restarted, []}
     ]
   end
 

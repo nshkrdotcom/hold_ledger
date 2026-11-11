@@ -81,21 +81,25 @@ defmodule HoldLedger.TestGenerators do
     bind(valid_state(), fn state ->
       keys = Enum.map(elem(state, 4), fn {key, _, _} -> key end)
 
-      if keys == [] do
-        map(map_candidate_event(), fn event -> {state, event} end)
-      else
-        frequency([
-          {4,
-           bind(member_of(keys), fn key ->
-             map(
-               one_of([event_for_key(key), constant({:void_confirmed, key})]),
-               fn event -> {state, event} end
-             )
-           end)},
-          {3, map(map_candidate_event(), fn event -> {state, event} end)}
-        ])
-      end
+      map_candidate_case_for_keys(state, keys)
     end)
+  end
+
+  defp map_candidate_case_for_keys(state, []) do
+    map(map_candidate_event(), fn event -> {state, event} end)
+  end
+
+  defp map_candidate_case_for_keys(state, keys) do
+    frequency([
+      {4,
+       bind(member_of(keys), fn key ->
+         map(
+           one_of([event_for_key(key), constant({:void_confirmed, key})]),
+           fn event -> {state, event} end
+         )
+       end)},
+      {3, map(map_candidate_event(), fn event -> {state, event} end)}
+    ])
   end
 
   def initial do

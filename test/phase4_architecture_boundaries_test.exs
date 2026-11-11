@@ -29,7 +29,7 @@ defmodule HoldLedger.Phase4ArchitectureBoundariesTest do
     # mistaking a version option for a verified behavioral contract.
     version_1 = :sets.from_list([1, 1, 2], version: 1)
     assert :sets.size(version_1) == 2
-    assert_raise ArgumentError, fn -> :sets.new(version: 3) end
+    assert_raise CaseClauseError, fn -> :sets.new(version: 3) end
   end
 
   test "phash2 ranges are bounded; deterministic collisions are not identity" do
@@ -39,7 +39,8 @@ defmodule HoldLedger.Phase4ArchitectureBoundariesTest do
 
     for term <- [0, -1, 1, 1.0, :atom, [], {1, 2}, %{a: 2}, <<1, 2>>] do
       assert :erlang.phash2(term) in 0..134_217_727
-      for range <- [1, 2, 17, 256] do
+
+      for range <- [1, 2, 17, 256, 4_294_967_296] do
         assert :erlang.phash2(term, range) in 0..(range - 1)
       end
     end
@@ -64,6 +65,7 @@ defmodule HoldLedger.Phase4ArchitectureBoundariesTest do
     # After restart, the saved owner/placement epoch would need to determine
     # routing; recomputing against a new shard count is insufficient.
     saved = %{key: key, epoch: 1, partitions: 2, owner: 1}
+
     recalculated_after_restart =
       Task.async(fn -> :erlang.phash2(key, 1) end) |> Task.await()
 

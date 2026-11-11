@@ -218,6 +218,7 @@ defmodule HoldLedger.Research.MapLedger do
 
       {:ok, {amount, status}} when status in [:sent, :unknown] ->
         next = change_status(state, key, :declined)
+
         {%{next | used_amount: next.used_amount - amount, used_holds: next.used_holds - 1},
          :declined, []}
 
@@ -236,6 +237,7 @@ defmodule HoldLedger.Research.MapLedger do
     case Map.fetch(state.cells, key) do
       {:ok, {amount, :reserved}} ->
         next = change_status(state, key, :voided)
+
         {%{next | used_amount: next.used_amount - amount, used_holds: next.used_holds - 1},
          :voided, []}
 
@@ -256,6 +258,7 @@ defmodule HoldLedger.Research.MapLedger do
     case Map.fetch(state.cells, key) do
       {:ok, {amount, :voiding}} ->
         next = change_status(state, key, :voided)
+
         {%{next | used_amount: next.used_amount - amount, used_holds: next.used_holds - 1},
          :voided, []}
 
