@@ -81,6 +81,7 @@ def run(label, command, code=None, expected=0, fresh=False):
             build = Path(tempfile.mkdtemp(prefix=label + '-', dir=parent)) / 'build'
             copy_test_build(ROOT, build)
             environment['MIX_BUILD_PATH'] = str(build)
+            environment['MIX_ENV'] = 'test'
             index = command.index('mix') + 2
             command = command[:index] + ['--no-compile', '--no-deps-check'] + command[index:]
         if fresh:
