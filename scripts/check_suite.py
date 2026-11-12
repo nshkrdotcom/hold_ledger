@@ -21,6 +21,8 @@ from check_runtime import (cancel_running, cancellation_scope, copy_project,
                            resources, tracked_process, worker_environment,
                            GROUP_MEMORY_GIB, MUTANT_MEMORY_BYTES, GIB)
 
+from check_scheduler import Demand, ResourcePool
+
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_LOCK = threading.Lock()
 
@@ -142,16 +144,13 @@ def schedule_groups(mode: str, snapshot: Path, run_dir: Path, capacity: dict,
     pending = (['full', 'quick', 'web', 'differential', 'tutorials', 'package', 'readings']
                if mode == 'all' else [mode])
     active = {}
+    reservations = ResourcePool(capacity, jobs)
     failed = False
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         while pending or active:
-            used_cpu = sum(item[1] for item in active.values())
-            used_memory = sum(item[2] for item in active.values())
-            used_slots = sum(item[3] for item in active.values())
             for group in list(pending):
-                free_cpu = capacity['cpus'] - used_cpu
-                free_slots = jobs - used_slots
-                free_memory = capacity['memory_budget_bytes'] - used_memory
+                free = reservations.available()
+                free_cpu, free_slots, free_memory = free['cpu'], free['slots'], free['memory']
                 if free_cpu < 1 or free_slots < 1:
                     break
                 if group == 'mutants':
@@ -165,8 +164,7 @@ def schedule_groups(mode: str, snapshot: Path, run_dir: Path, capacity: dict,
                     cpu = free_cpu
                     baseline = (Path(report['groups']['full']['workspace'])
                                 if mode == 'all' else None)
-                    future = pool.submit(run_mutation_group, snapshot, run_dir,
-                                         workers, cpu, baseline)
+                    launch = (run_mutation_group, snapshot, run_dir, workers, cpu, baseline)
                 else:
                     workers = 1
                     memory = GROUP_MEMORY_GIB[group] * GIB
@@ -186,21 +184,29 @@ def schedule_groups(mode: str, snapshot: Path, run_dir: Path, capacity: dict,
                             remaining_memory -= count * cost
                     concurrency = max(1, min(free_slots, free_cpu, ready))
                     cpu = max(1, free_cpu // concurrency)
-                    future = pool.submit(run_group, group, snapshot, run_dir, cpu)
-                allocation = {'cpu_budget': cpu, 'memory_estimate_bytes': memory,
+                    launch = (run_group, group, snapshot, run_dir, cpu)
+                lease = reservations.try_acquire(group, Demand(cpu, memory, workers))
+                if lease is None:
+                    continue
+                try:
+                    future = pool.submit(*launch)
+                except BaseException:
+                    reservations.release(group)
+                    raise
+                allocation = {'oversized_singleton': lease['oversized_singleton'], 'cpu_budget': cpu, 'memory_estimate_bytes': memory,
                               'workers': workers}
                 report.setdefault('allocations', {})[group] = allocation
                 active[future] = (group, cpu, memory, workers)
                 pending.remove(group)
-                used_cpu += cpu
-                used_memory += memory
-                used_slots += workers
                 save()
             if not active:
+                if pending:
+                    raise RuntimeError(f'Insufficient resources for pending groups: {pending}')
                 break
             completed, _ = wait(active, return_when=FIRST_COMPLETED)
             for future in completed:
                 group, _, _, _ = active.pop(future)
+                reservations.release(group)
                 try:
                     result = future.result()
                 except CancelledError:
@@ -211,6 +217,7 @@ def schedule_groups(mode: str, snapshot: Path, run_dir: Path, capacity: dict,
                 save()
                 if result['state'] != 'passed':
                     failed = True
+                    reservations.cancel()
                     pending.clear()
                     cancel_running()
                     for other in active:

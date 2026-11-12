@@ -22,8 +22,11 @@ both ordinary groups and the mutant pool. Each mutant keeps its witness,
 ordinary suite and formal attempt in order; Lean's shared proof batch retains
 its dependency order.
 
-Automatic selection uses every usable CPU, respecting affinity, cgroup quotas
-and inherited CPU allocations. There is no four-worker or half-CPU cap. Actual
+Automatic selection uses every usable CPU, respecting affinity, effective cpusets,
+cgroup quotas and inherited CPU allocations. Detection resolves cgroup controller
+mount roots and reports fractional CPU capacity, PID headroom, free disk space
+and pressure alongside the integer execution width. Task admission reserves
+CPU, memory and worker slots together; exclusive build owners cannot overlap. There is no four-worker or half-CPU cap. Actual
 concurrency is bounded by runnable tasks and estimated memory. The scheduler
 reserves the larger of 2 GiB or 10% of available memory, then budgets 12 GiB for
 full formal checking, 6 GiB for web, 4 GiB for quick, 3 GiB each for differential,
@@ -87,8 +90,9 @@ remove a completed run's printed directory when you no longer need it.
 
 ### Commands inside the helpers
 
-`scripts/check_suite.py` defines the command groups, and `check_runtime.py`
-provides resource detection and source isolation. The Bash wrappers share
+`scripts/check_suite.py` defines the command groups, `check_resources.py` detects
+machine capacity, `check_scheduler.py` owns resource reservations, and
+`check_runtime.py` provides source isolation and child cleanup. The Bash wrappers share
 `check_common.sh` for CLI options and logging. Setup uses `uv sync --locked`,
 `onboard.py --provision`, locked Mix dependencies and `verify_pins.py`.
 
@@ -293,3 +297,11 @@ That limitation is recorded in the differential report, not counted as a passing
 numeric-parser kernel proof.
 
 To understand how a maintained law is written, return to the [crash course](formal_verification_crash_course.md#read-a-ledger-law). To claim full proof acceptance, use the exact source, exports and checker requirements in [Verification](verification.md).
+
+### Durable command jobs
+
+To keep output and final status after a terminal or chat interruption, run a
+command through `scripts/logged_job.py --directory tmp/jobs/<unique-name> -- <command>`.
+The directory must be new. It contains `output.log` from command start and an
+atomically updated `status.json` with command, PID, completion time and exit code.
+Cancellation records an incomplete result and cleans up the command's process tree.

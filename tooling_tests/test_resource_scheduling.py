@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import check_runtime as runtime
+import check_resources as detection
 import check_suite as suite
 
 GIB = runtime.GIB
@@ -29,7 +30,7 @@ class ResourceTests(unittest.TestCase):
             (root / 'sys/fs/cgroup/parent/leaf').mkdir(parents=True, exist_ok=True)
             def fake_path(name):
                 return root / str(name).lstrip('/')
-            with patch.object(runtime, 'Path', side_effect=fake_path), \
+            with patch.object(detection, 'Path', side_effect=fake_path), \
                  patch.object(runtime.os, 'sched_getaffinity', return_value=set(range(affinity))), \
                  patch.object(runtime.os, 'sysconf', side_effect=lambda name: 4096 if name == 'SC_PAGE_SIZE' else 96 * GIB // 4096), \
                  patch.dict(os.environ, {} if inherited is None else {'HOLD_LEDGER_CPU_BUDGET': str(inherited)}, clear=True):
@@ -49,6 +50,13 @@ class ResourceTests(unittest.TestCase):
         self.assertEqual(result['cpus'], 2)
         self.assertEqual(result['available_memory_bytes'], 16 * GIB)
         self.assertEqual(result['memory_budget_bytes'], 14 * GIB)
+
+    def test_fractional_quota_and_cpuset_are_reported(self):
+        result = self.detect({'/sys/fs/cgroup/parent/cpu.max': '150000 100000',
+                              '/sys/fs/cgroup/parent/cpuset.cpus.effective': '2-3,7'})
+        self.assertEqual(result['cpus'], 1)
+        self.assertEqual(result['cpu_capacity'], 1.5)
+        self.assertEqual(result['usable_cpus'], [2, 3, 7])
 
     def test_nested_cpu_budget_is_not_exceeded(self):
         self.assertEqual(self.detect(inherited=3)['cpus'], 3)
@@ -177,3 +185,35 @@ class SchedulerTests(unittest.TestCase):
                 suite.schedule_groups('all', Path('/fixture'), Path('/fixture'),
                                       {'cpus': 24, 'memory_budget_bytes': 80 * GIB}, 24, report, lambda: None)
         mutants.assert_not_called()
+
+
+class LeaseTests(unittest.TestCase):
+    def test_atomic_admission_exclusive_writer_and_release(self):
+        from check_scheduler import Demand, ResourcePool
+        pool = ResourcePool({'cpus': 4, 'memory_budget_bytes': 8 * GIB}, 4)
+        self.assertIsNotNone(pool.try_acquire('compile', Demand(2, 3 * GIB, exclusive=('build',))))
+        self.assertIsNone(pool.try_acquire('docs', Demand(1, GIB, exclusive=('build',))))
+        self.assertIsNone(pool.try_acquire('proof', Demand(3, GIB)))
+        pool.release('compile')
+        self.assertIsNotNone(pool.try_acquire('proof', Demand(4, 8 * GIB)))
+        self.assertEqual(pool.available()['cpu'], 0)
+
+    def test_live_memory_is_not_double_subtracted_and_pid_limit_blocks(self):
+        from check_scheduler import Demand, ResourcePool
+        pool = ResourcePool({'cpus': 4, 'memory_budget_bytes': 8 * GIB}, 4)
+        pool.try_acquire('first', Demand(1, 3 * GIB))
+        self.assertIsNotNone(pool.try_acquire('second', Demand(1, 4 * GIB),
+                                            headroom={'memory_budget_bytes': 5 * GIB, 'pid_headroom': 3}))
+        self.assertIsNone(pool.try_acquire('third', Demand(1, 0, pids=4),
+                                         headroom={'memory_budget_bytes': GIB, 'pid_headroom': 3}))
+
+    def test_oversized_task_is_explicit_and_alone(self):
+        from check_scheduler import Demand, ResourcePool
+        pool = ResourcePool({'cpus': 4, 'memory_budget_bytes': GIB}, 4)
+        lease = pool.try_acquire('large', Demand(1, 2 * GIB))
+        self.assertTrue(lease['oversized_singleton'])
+        self.assertIsNone(pool.try_acquire('small', Demand(1, 1)))
+        pool.release('large')
+        pool.cancel()
+        with self.assertRaises(InterruptedError):
+            pool.try_acquire('cancelled', Demand(1, 1))

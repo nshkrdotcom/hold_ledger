@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-import math
 import os
 from pathlib import Path
 import shutil
@@ -11,46 +10,10 @@ import signal
 import subprocess
 import threading
 
-GIB = 1024 ** 3
+from check_resources import GIB, resources
 _children: set[int] = set()
 _lock = threading.Lock()
 _cancelled = threading.Event()
-
-
-def resources() -> dict:
-    cpus = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else (os.cpu_count() or 1)
-    available = os.sysconf('SC_AVPHYS_PAGES') * os.sysconf('SC_PAGE_SIZE')
-    try:
-        fields = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
-        available = int(fields['MemAvailable'].split()[0]) * 1024
-    except (OSError, KeyError, ValueError):
-        pass
-    # Consult the current cgroup and its ancestors, not the host CPU count alone.
-    groups = Path('/sys/fs/cgroup')
-    try:
-        relative = next(line[3:] for line in Path('/proc/self/cgroup').read_text().splitlines()
-                        if line.startswith('0::'))
-        current = groups / relative.lstrip('/')
-        if not current.is_dir():
-            current = groups
-        for directory in (current, *current.parents):
-            if not directory.is_relative_to(groups):
-                break
-            cpu = directory / 'cpu.max'
-            if cpu.is_file():
-                quota, period = cpu.read_text().split()
-                if quota != 'max':
-                    cpus = min(cpus, max(1, math.floor(int(quota) / int(period))))
-            memory = directory / 'memory.max'
-            if memory.is_file() and (limit := memory.read_text().strip()) != 'max':
-                used = int((directory / 'memory.current').read_text())
-                available = min(available, max(0, int(limit) - used))
-    except (OSError, StopIteration, ValueError):
-        pass
-    cpus = min(cpus, max(1, int(os.environ.get('HOLD_LEDGER_CPU_BUDGET', cpus))))
-    reserve = max(2 * GIB, available // 10)
-    return {'cpus': cpus, 'available_memory_bytes': available,
-            'memory_budget_bytes': max(0, available - reserve), 'default_jobs': cpus}
 
 
 # Scheduling estimates, not enforced process limits. Full verification has exceeded 10 GiB.
