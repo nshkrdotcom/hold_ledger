@@ -1,10 +1,11 @@
 """Generated graph validity and transitive artifact selection."""
 from pathlib import Path
 import sys
+import subprocess
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from verify_modules import dependency_graph, transitive_dependencies, lean_process_env
+from verify_modules import dependency_graph, transitive_dependencies, lean_process_env, exchange_request, responses
 
 
 class ModuleGraphTests(unittest.TestCase):
@@ -34,3 +35,39 @@ class ModuleGraphTests(unittest.TestCase):
         for nodes in cases:
             with self.subTest(nodes=nodes), self.assertRaises(ValueError):
                 dependency_graph(nodes)
+
+
+class ModuleTransportTests(unittest.TestCase):
+    def test_request_remains_open_until_chunked_completion_and_large_input(self):
+        program = """
+import json, os, select, sys
+request = json.loads(sys.stdin.readline())
+assert len(request['payload']) == 200000
+if select.select([sys.stdin], [], [], .05)[0]:
+    sys.exit(9)
+os.write(1, b'{"status":"o')
+os.write(1, b'k"}\\n{"status":"done"}\\n')
+assert sys.stdin.read() == ''
+"""
+        with subprocess.Popen([sys.executable, '-c', program], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE) as child:
+            output = exchange_request(child, {'payload': 'x' * 200000}, timeout=5)
+            self.assertEqual(child.returncode, 0)
+            self.assertEqual(responses(output.decode()), [{'status': 'ok'}])
+
+    def test_early_exit_is_not_a_completed_request(self):
+        with subprocess.Popen([sys.executable, '-c', 'import sys; sys.stdin.readline()'],
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE) as child:
+            output = exchange_request(child, {}, timeout=5)
+            with self.assertRaisesRegex(RuntimeError, 'no completion'):
+                responses(output.decode())
+
+    def test_silent_worker_keeps_finite_timeout_and_is_reaped(self):
+        from check_runtime import tracked_process
+        program = 'import sys; sys.stdin.readline(); sys.stdin.read()'
+        with subprocess.Popen([sys.executable, '-c', program], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, start_new_session=True) as child:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                with tracked_process(child):
+                    exchange_request(child, {}, timeout=.1)
+            self.assertIsNotNone(child.returncode)

@@ -5,6 +5,8 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 import json
 import os
+import selectors
+import time
 from pathlib import Path
 import subprocess
 import sys
@@ -62,17 +64,61 @@ def lean_process_env(env, cpu):
     return limited
 
 
+def exchange_request(process, request, timeout=1800):
+    """Keep stdin open until completion: upstream cancels active requests on EOF."""
+    payload = memoryview((json.dumps(request) + '\n').encode())
+    output, pending = bytearray(), bytearray()
+    deadline = time.monotonic() + timeout
+    os.set_blocking(process.stdin.fileno(), False)
+    os.set_blocking(process.stdout.fileno(), False)
+    completed = False
+    with selectors.DefaultSelector() as selector:
+        selector.register(process.stdin, selectors.EVENT_WRITE)
+        selector.register(process.stdout, selectors.EVENT_READ)
+        while not completed:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(process.args, timeout)
+            for key, _ in selector.select(remaining):
+                if key.fileobj is process.stdin:
+                    count = os.write(process.stdin.fileno(), payload)
+                    payload = payload[count:]
+                    if not payload:
+                        selector.unregister(process.stdin)
+                else:
+                    chunk = os.read(process.stdout.fileno(), 65536)
+                    if not chunk:
+                        completed = True
+                        break
+                    output.extend(chunk)
+                    pending.extend(chunk)
+                    while b'\n' in pending:
+                        line, _, tail = pending.partition(b'\n')
+                        pending = bytearray(tail)
+                        if json.loads(line).get('status') in ('done', 'failure'):
+                            completed = True
+        selector.unregister(process.stdout)
+    process.stdin.close()
+    process.stdin = None
+    os.set_blocking(process.stdout.fileno(), True)
+    tail, _ = process.communicate(timeout=max(.01, deadline - time.monotonic()))
+    output.extend(tail)
+    return bytes(output)
+
+
 def invoke(argv, directory, label, *, env, request=None, cpu=1, memory=2 * GIB):
     with command_lease('lean:' + label, memory=memory, max_cpu=cpu) as lease:
         with (directory / (label + '.log')).open('ab') as log:
             process = subprocess.Popen(lease_command(argv, lease), cwd=ROOT,
-                env=lean_process_env(env, cpu),
+                env=lean_process_env(env, lease.allocation['cpu']),
                 stdin=subprocess.PIPE if request is not None else subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=log, start_new_session=True)
             lease.started(process.pid)
             with tracked_process(process):
-                output, _ = process.communicate(
-                    (json.dumps(request) + '\n').encode() if request is not None else None, timeout=1800)
+                if request is None:
+                    output, _ = process.communicate(timeout=1800)
+                else:
+                    output = exchange_request(process, request)
             log.write(output)
             if process.returncode != 0:
                 raise RuntimeError(f'{label} exited {process.returncode}; see {log.name}')

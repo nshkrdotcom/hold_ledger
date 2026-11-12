@@ -74,6 +74,8 @@ class LynxUpgradeIntegrationTest(unittest.TestCase):
             commands = (target / "lib/lynx/commands.ex").read_text()
             self.assertIn('scripts/verify_modules.py', commands)
             self.assertIn('@protocol_version "2.0"', commands)
+            self.assertIn('ref = Port.monitor(port)', commands)
+            self.assertIn('collect_responses(port, ref, [])', commands)
 
 
 class LocalRunUpgradeTest(unittest.TestCase):

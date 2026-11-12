@@ -1,7 +1,8 @@
 diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
+index 0f3a4a3d9a4b7abbaeadd89d8e4feb06615a059f..4fd1be12d4dd8d3151165372d39a87525fcf4f86 100644
 --- a/Lean/Lynx/Runner.lean
 +++ b/Lean/Lynx/Runner.lean
-@@ -2375,18 +2375,20 @@
+@@ -2395,18 +2395,20 @@ private def writeSources (dir : System.FilePath) (sources : Array (Name × Strin
  /-- Verify against explicit imports, reusing only successfully audited module artifacts. -/
  private def verify (files : Array Json) (options : Array (TSyntax `command)) (runtime : Runtime)
      (cacheDirectory : System.FilePath) (export? : Option System.FilePath)
@@ -26,7 +27,7 @@ diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
        let reexport := !(← IO.ofExcept (arr entry "contents")).isEmpty ||
          !((arr entry "preludes").toOption.getD #[]).isEmpty
        let mut imports := runtimeImports
-@@ -2397,7 +2399,7 @@
+@@ -2417,7 +2419,7 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
        for name in names do
          let moduleName ← IO.ofExcept <| (identifier name).run runtime.env |>.run' {}
          let moduleName := moduleName.getId
@@ -35,7 +36,7 @@ diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
              !verified.contains name then
            missingImport := true
            diagnostics := diagnostics.push (diagnostic origin moduleString "error"
-@@ -2413,7 +2415,7 @@
+@@ -2433,7 +2435,7 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
        -- Syntax extensions are available only after importing this file's declared
        -- dependencies. Never decode all proofs against the bare runtime up front.
        let env ← if missingImport then pure runtime.env else importFile runtime imports artifacts
@@ -44,7 +45,7 @@ diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
        let source ← renderFile file env
        let sourceModule ← IO.ofExcept <| (identifier file.moduleName).run runtime.env |>.run' {}
        sources := sources.push (sourceModule.getId, source)
-@@ -2427,7 +2429,7 @@
+@@ -2447,7 +2449,7 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
          let moduleName ← IO.ofExcept <| (identifier file.moduleName).run runtime.env |>.run' {}
          let mainModule := moduleName.getId
          let key := if file.imports.any uncached.contains then none else file.cacheKey
@@ -53,7 +54,7 @@ diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
          if let some saved ← if fileFailed || key.isNone then pure none else cachedDiagnostics directory then
            diagnostics := saved
            cacheHit := true
-@@ -2455,6 +2457,16 @@
+@@ -2476,6 +2478,16 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
                    unless #[``propext, ``Classical.choice, ``Quot.sound].contains axiomName do
                      errors := errors.push (diagnostic file.fileName file.moduleName "error"
                        s!"unexpected axiom: {axiomName}" info.location (some name))
@@ -70,7 +71,7 @@ diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
                return errors
              let errors ← (audit.run' { fileName := file.fileName, fileMap := file.fileMap }
                { env := state.env }).toIO (fun _ => IO.userError "law axiom audit failed")
-@@ -2491,7 +2503,7 @@
+@@ -2512,7 +2524,7 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
  private def runFiles (j : Json) (cache : IO.Ref (Option Runtime)) (emit : Json → IO Unit) : IO Unit := do
    let (files, options) ← IO.ofExcept do
      fields j ["command", "version", "files", "cache_dir", "options", "export", "debug_dir", "debug",
@@ -79,7 +80,7 @@ diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
      pure (← arr j "files", ← optionCommands j)
    let directory := System.FilePath.mk (← IO.ofExcept (str j "cache_dir"))
    let export? := (str j "export").toOption.map System.FilePath.mk
-@@ -2511,16 +2523,58 @@
+@@ -2532,16 +2544,58 @@ private def runFiles (j : Json) (cache : IO.Ref (Option Runtime)) (emit : Json
      let directory ← if files.any (fun file => (field file "cache_key").isOk) then
        pure (directory / s!"lean-{Lean.versionString}-{← runtimeFingerprint}{optionKey}")
        else pure directory
@@ -142,7 +143,7 @@ diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
    catch err =>
      emit (Json.mkObj [("status", toJson "failure"), ("message", toJson err.toString)])
 diff --git a/lib/lynx/commands.ex b/lib/lynx/commands.ex
-index 9f10247..14cdd94 100644
+index 2aa425e89e94e7590877245a9a9e540ed4ba5cc4..852aae32eab7fb8be1b9eb383ed7c3d7e1b9a41d 100644
 --- a/lib/lynx/commands.ex
 +++ b/lib/lynx/commands.ex
 @@ -1,7 +1,7 @@
@@ -163,6 +164,6 @@ index 9f10247..14cdd94 100644
 +    port = Port.open({:spawn_executable, String.to_charlist(executable)},
 +      [:binary, :exit_status, :use_stdio, :hide, {:line, 1_000_000},
 +       args: [Path.expand("scripts/verify_modules.py"), Path.expand(project_dir)]])
+     ref = Port.monitor(port)
  
      try do
-       Port.command(port, JSON.encode!(request) <> "\n")
