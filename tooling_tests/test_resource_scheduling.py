@@ -151,6 +151,18 @@ class SchedulerTests(unittest.TestCase):
                 self.assertTrue(second.is_set())
                 self.assertEqual(errors, [])
 
+    def test_paired_task_minimum_survives_fair_sharing_and_one_cpu_hosts(self):
+        from check_scheduler import Coordinator, command_lease
+        for cpus, expected in ((4, 2), (1, 1)):
+            capacity = {'cpus': cpus, 'memory_budget_bytes': 8 * GIB}
+            with tempfile.TemporaryDirectory() as folder, \
+                 patch('check_scheduler.resources', return_value=capacity):
+                with Coordinator(Path(folder), capacity, cpus, parallelism=cpus) as coordinator, \
+                     patch.dict(os.environ, {'HOLD_LEDGER_COORDINATOR': coordinator.path}):
+                    with command_lease('paired', memory=GIB, min_cpu=2, max_cpu=2) as lease:
+                        self.assertEqual(lease.allocation['cpu'], expected)
+                        self.assertEqual(len(lease.allocation['cpu_ids']), expected)
+
     def test_compiler_parent_delegates_before_module_workers_request_resources(self):
         from check_scheduler import Coordinator, command_lease, delegate_parent
         capacity = {'cpus': 2, 'memory_budget_bytes': 4 * GIB}

@@ -159,9 +159,10 @@ class Coordinator:
                         raise ValueError('Expected acquire')
                     task = data['task']
                     memory, maximum = int(data['memory']), int(data['max_cpu'])
+                    minimum = min(int(data.get('min_cpu', 1)), owner.pool.capacity['cpus'])
                     pids = int(data.get('pids', 1))
                     exclusive = tuple(data.get('exclusive', []))
-                    if maximum < 1 or memory < 0 or pids < 1:
+                    if minimum < 1 or maximum < minimum or memory < 0 or pids < 1:
                         raise ValueError('Invalid resource demand')
                     with owner.pool.condition:
                         owner.waiters.append(task)
@@ -176,7 +177,7 @@ class Coordinator:
                                 free = owner.pool.available()
                                 # Reserve fair initial widths while independent stages are runnable.
                                 width = max(1, math.ceil(owner.pool.capacity['cpus'] / owner.parallelism))
-                                cpu = min(maximum, max(1, min(free['cpu'], width)))
+                                cpu = min(maximum, max(minimum, min(free['cpu'], width)))
                                 profile_key = str(data.get('label')) + '@' + str(cpu)
                                 estimate = owner.history.get(profile_key, {})
                                 demand = Demand(cpu, max(memory, estimate.get('memory', 0)),
@@ -382,19 +383,19 @@ class CommandLease:
 
 
 @contextlib.contextmanager
-def command_lease(label: str, *, memory: int, max_cpu: int = 1, pids: int = 1,
+def command_lease(label: str, *, memory: int, max_cpu: int = 1, min_cpu: int = 1, pids: int = 1,
                   exclusive: tuple[str, ...] = ()):
     address = os.environ.get('HOLD_LEDGER_COORDINATOR')
     if not address:
         with execution_scope():
-            with command_lease(label, memory=memory, max_cpu=max_cpu, pids=pids, exclusive=exclusive) as lease:
+            with command_lease(label, memory=memory, max_cpu=max_cpu, min_cpu=min_cpu, pids=pids, exclusive=exclusive) as lease:
                 yield lease
         return
     with socket.socket(socket.AF_UNIX) as connection:
         connection.connect(address)
         with connection.makefile('rwb') as stream:
             stream.write((json.dumps({'operation': 'acquire', 'task': uuid.uuid4().hex,
-                                      'label': label, 'memory': memory, 'max_cpu': max_cpu,
+                                      'label': label, 'memory': memory, 'max_cpu': max_cpu, 'min_cpu': min_cpu,
                                       'pids': pids, 'exclusive': exclusive}) + '\n').encode())
             stream.flush()
             line = stream.readline(65537)

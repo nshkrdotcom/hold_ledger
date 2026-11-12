@@ -35,7 +35,7 @@ def browser_file(profile: str, file: Path, directory: Path) -> dict:
     directory.mkdir(parents=True)
     static = profile == 'presentation' or file.name == 'presentation_help.spec.cjs'
     memory = (2 if static else 4) * GIB
-    with command_lease(f'browser:{profile}:{file.name}', memory=memory, max_cpu=2) as lease:
+    with command_lease(f'browser:{profile}:{file.name}', memory=memory, max_cpu=2, min_cpu=1 if static else 2) as lease:
         env = worker_environment(1, cpu_budget=lease.allocation['cpu'])
         temporary = directory / 'temp'
         temporary.mkdir()
