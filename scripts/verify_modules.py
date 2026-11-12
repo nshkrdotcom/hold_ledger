@@ -55,10 +55,18 @@ def transitive_dependencies(graph, name):
     return found
 
 
+def lean_process_env(env, cpu):
+    """Match internal elaboration threads to the leased CPUs unless overridden."""
+    limited = dict(env)
+    limited.setdefault('LEAN_NUM_THREADS', str(cpu))
+    return limited
+
+
 def invoke(argv, directory, label, *, env, request=None, cpu=1, memory=2 * GIB):
     with command_lease('lean:' + label, memory=memory, max_cpu=cpu) as lease:
         with (directory / (label + '.log')).open('ab') as log:
-            process = subprocess.Popen(lease_command(argv, lease), cwd=ROOT, env=env,
+            process = subprocess.Popen(lease_command(argv, lease), cwd=ROOT,
+                env=lean_process_env(env, cpu),
                 stdin=subprocess.PIPE if request is not None else subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=log, start_new_session=True)
             lease.started(process.pid)

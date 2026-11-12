@@ -4,10 +4,17 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from verify_modules import dependency_graph, transitive_dependencies
+from verify_modules import dependency_graph, transitive_dependencies, lean_process_env
 
 
 class ModuleGraphTests(unittest.TestCase):
+    def test_lean_threads_follow_cpu_lease_unless_operator_overrides(self):
+        original = {'PATH': '/bin'}
+        self.assertEqual(lean_process_env(original, 1)['LEAN_NUM_THREADS'], '1')
+        self.assertEqual(lean_process_env(original, 4)['LEAN_NUM_THREADS'], '4')
+        self.assertEqual(lean_process_env({'LEAN_NUM_THREADS': '2'}, 1)['LEAN_NUM_THREADS'], '2')
+        self.assertNotIn('LEAN_NUM_THREADS', original)
+
     def test_diamond_keeps_shared_ancestor_in_transitive_inputs(self):
         graph = dependency_graph([
             {'module': 'Root', 'imports': ['Lean']},
