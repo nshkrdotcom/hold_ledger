@@ -150,6 +150,20 @@ class SchedulerTests(unittest.TestCase):
                 self.assertTrue(second.is_set())
                 self.assertEqual(errors, [])
 
+    def test_compiler_parent_delegates_before_module_workers_request_resources(self):
+        from check_scheduler import Coordinator, command_lease, delegate_parent
+        capacity = {'cpus': 2, 'memory_budget_bytes': 4 * GIB}
+        with tempfile.TemporaryDirectory() as folder, \
+             patch('check_scheduler.resources', return_value=capacity):
+            with Coordinator(Path(folder), capacity, 2) as coordinator, \
+                 patch.dict(os.environ, {'HOLD_LEDGER_COORDINATOR': coordinator.path}):
+                with command_lease('compiler', memory=4 * GIB, max_cpu=2,
+                                   exclusive=('build',)) as parent:
+                    with patch.dict(os.environ, {'HOLD_LEDGER_PARENT_LEASE': parent.allocation['task']}):
+                        delegate_parent()
+                    with command_lease('module', memory=2 * GIB, exclusive=('build',)):
+                        pass
+
     def test_failed_full_never_dispatches_mutants(self):
         report = {'groups': {}}
         def group(name, *args):

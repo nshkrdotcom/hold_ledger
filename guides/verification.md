@@ -26,7 +26,13 @@ terminal preservation, approval evidence and independent-oracle agreement to
 proper finite event histories.
 
 This checkout pins Lynx `a217bb1da71385b15e85042585e6c80d483bec1f`,
-with Lean 4.35.0. Proof-only checks verify the supplied Lean proofs against their statements; full-stage
+with Lean 4.35.0. The local source applies the maintained patch in
+`verification/patches/lynx-parallel-runner.patch`. The runner supplies exact
+import plans and compiled artifacts to `scripts/verify_modules.py`, which
+checks independent modules in isolated processes. Every module is cold-checked
+once in the run, with full transitive import artifacts; failed modules prevent
+publication and the combined export. Support-module proof dependencies are
+audited before publication. Proof-only checks verify the supplied Lean proofs against their statements; full-stage
 acceptance additionally requires fresh exports, all six checker acknowledgments,
 and the permitted-axiom audit. A launched or partially completed run is not
 acceptance. Retain the actual result when reporting a proof run.

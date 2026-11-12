@@ -105,7 +105,7 @@ def main() -> int:
     base = ROOT / 'tmp/browser-runs'
     base.mkdir(parents=True, exist_ok=True)
     directory = Path(tempfile.mkdtemp(prefix='run-', dir=base))
-    for step in ('assets.setup', 'assets.build'):
+    for step in ('assets.setup', 'assets.build', 'phx.digest'):
         prepared = run_command(
             [sys.executable, str(ROOT / 'scripts/local_run.py'), '--cwd', 'apps/review_web',
              'mix', step], cwd=ROOT, env=dict(os.environ, MIX_ENV='test'),

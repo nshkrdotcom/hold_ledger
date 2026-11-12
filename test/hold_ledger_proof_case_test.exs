@@ -148,7 +148,12 @@ defmodule HoldLedger.ProofCaseTest do
     ]
 
     support = [%{"module" => "HoldLedgerProof.Lookup", "imports" => ["Elixir.Example"]}]
-    [generated, helper, postlude, laws] = HoldLedger.ProofCase.attach_support(files, support)
+
+    [generated, helper, postlude, laws] =
+      HoldLedger.ProofCase.attach_support(files, support, %{
+        "Erlang.postlude" => ["HoldLedgerProof.Lookup"],
+        "Elixir.Example.laws" => ["HoldLedgerProof.Lookup"]
+      })
 
     assert Enum.map([generated, helper, postlude, laws], & &1["module"]) == [
              "Elixir.Example",
@@ -161,9 +166,13 @@ defmodule HoldLedger.ProofCaseTest do
     assert laws["imports"] == ["Elixir.Example", "Erlang.postlude", "HoldLedgerProof.Lookup"]
 
     assert_raise ArgumentError, fn ->
-      HoldLedger.ProofCase.attach_support(files, [
-        %{"module" => "HoldLedgerProof.Bad", "imports" => ["Erlang.postlude"]}
-      ])
+      HoldLedger.ProofCase.attach_support(
+        files,
+        [
+          %{"module" => "HoldLedgerProof.Bad", "imports" => ["Erlang.postlude"]}
+        ],
+        %{}
+      )
     end
   end
 
@@ -191,7 +200,13 @@ defmodule HoldLedger.ProofCaseTest do
     }
 
     files = definitions ++ [postlude, law]
-    assembled = HoldLedger.ProofCase.attach_support(files, support)
+
+    assembled =
+      HoldLedger.ProofCase.attach_support(files, support, %{
+        "Erlang.postlude" => ["HoldLedgerProof.Lookup"],
+        "Elixir.Example.laws" => ["HoldLedgerProof.Lookup"]
+      })
+
     keys = fn fs -> Enum.map(HoldLedger.ProofCase.cache_files(fs), & &1["cache_key"]) end
 
     assert Enum.map(assembled, & &1["module"]) == [
@@ -235,7 +250,7 @@ defmodule HoldLedger.ProofCaseTest do
           ]
         ] do
       assert_raise ArgumentError, fn ->
-        HoldLedger.ProofCase.attach_support(generated, support)
+        HoldLedger.ProofCase.attach_support(generated, support, %{})
       end
     end
   end

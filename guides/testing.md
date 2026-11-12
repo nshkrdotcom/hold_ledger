@@ -34,8 +34,9 @@ distinct: a lightweight launcher delegates its command reservations.
 Each stage receives a CPU allocation bounded by its request and the run's
 current parallelism. As groups finish, subsequent stages can take wider
 allocations. Generated BEAM flags follow the granted width; explicit operator
-flags remain intact. The pinned Lynx batch is still sequential internally;
-module elaboration parallelism is subsequent implementation work. All six
+flags remain intact. The repository's maintained Lynx extension replaces the serial batch;
+module elaboration uses dependency-ready isolated Lean processes with transitive
+run-local imports and one final combined export. All six
 checker requirements and cold proof acceptance gates remain.
 
 Every helper accepts the same options:

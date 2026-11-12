@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 from check_runtime import stop_tree, tracked_process, worker_environment
-from check_scheduler import command_lease, delegates, managed_run
+from check_scheduler import lease_command, command_lease, delegates, managed_run
 from check_resources import resources, GIB
 from obligations import check_registration, coverage, orphan_modules, required_inventory
 
@@ -116,6 +116,9 @@ def inspect_manifest() -> list[dict]:
 
 def _run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
         log: Path, timeout: int, lease=None) -> dict:
+    if lease is not None:
+        env = dict(os.environ if env is None else env)
+        env['HOLD_LEDGER_PARENT_LEASE'] = lease.allocation['task']
     log.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     label = log.stem
@@ -125,7 +128,7 @@ def _run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
     deadline = started + timeout
     # Open before launching so an old run's log cannot masquerade as live output.
     with log.open("wb") as handle, selectors.DefaultSelector() as selector:
-        process = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE,
+        process = subprocess.Popen(lease_command(argv, lease), cwd=cwd, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    start_new_session=True, env=env)
         if lease is not None:

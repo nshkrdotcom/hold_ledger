@@ -21,7 +21,7 @@ from check_runtime import (cancel_running, cancellation_scope, copy_project,
                            resources, tracked_process, worker_environment,
                            GROUP_MEMORY_GIB, MUTANT_MEMORY_BYTES, GIB)
 
-from check_scheduler import command_lease, delegates, execution_scope
+from check_scheduler import lease_command, command_lease, delegates, execution_scope
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_LOCK = threading.Lock()
@@ -35,13 +35,15 @@ def say(label: str, message: str) -> None:
 def _command(argv: list[str], project: Path, label: str, log: Path, jobs: int, *,
             cpu_budget: int | None = None, lease=None) -> int:
     env = worker_environment(jobs, project, cpu_budget=cpu_budget)
+    if lease is not None:
+        env['HOLD_LEDGER_PARENT_LEASE'] = lease.allocation['task']
     say(label, '+ ' + shlex.join(argv))
     started = time.monotonic()
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open('ab') as output:
         output.write(('\n+ ' + shlex.join(argv) + '\n').encode('utf8'))
         output.flush()
-        child = subprocess.Popen(argv, cwd=project, env=env, stdout=subprocess.PIPE,
+        child = subprocess.Popen(lease_command(argv, lease), cwd=project, env=env, stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT, start_new_session=True)
         if lease is not None:
             lease.started(child.pid)

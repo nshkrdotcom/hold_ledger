@@ -156,7 +156,29 @@ defmodule HoldLedger.ProofCase do
         load_support(name, state, [])
       end)
 
-    files = attach_support(files, support)
+    library = "test/support/lean/library.json" |> File.read!() |> JSON.decode!()
+
+    scopes =
+      Map.new(groups, fn {module, laws} ->
+        roots =
+          Enum.map(laws, fn {name, _} ->
+            "HoldLedgerProof." <> Map.fetch!(library, Atom.to_string(name))
+          end)
+
+        {Atom.to_string(module) <> ".laws", roots}
+      end)
+
+    postlude_roots =
+      Enum.flat_map(groups, fn {module, _laws} ->
+        [{_name, _declared, translation, _options}] = module.__info__(:attributes)[:proof_groups]
+
+        if Keyword.get(translation, :postludes, []) == [],
+          do: [],
+          else: Map.fetch!(scopes, Atom.to_string(module) <> ".laws")
+      end)
+
+    scopes = Map.put(scopes, "Erlang.postlude", Enum.uniq(postlude_roots))
+    files = attach_support(files, support, scopes)
 
     if System.get_env("HOLD_LEDGER_PROOF_CACHE") == "1", do: cache_files(files), else: files
   end
@@ -212,7 +234,7 @@ defmodule HoldLedger.ProofCase do
   defp valid_span?(_), do: false
 
   @doc "Place shared Lean support before postludes, while retaining generated law imports."
-  def attach_support(files, support) do
+  def attach_support(files, support, scopes) do
     {proofs, nonproofs} = Enum.split_with(files, &String.ends_with?(&1["module"], ".laws"))
 
     {postludes, definitions} =
@@ -229,8 +251,11 @@ defmodule HoldLedger.ProofCase do
     if length(postludes) > 1,
       do: raise(ArgumentError, "multiple Erlang.postlude modules")
 
-    imports = Enum.map(support, & &1["module"])
-    link = fn file -> Map.update!(file, "imports", &Enum.uniq(&1 ++ imports)) end
+    link = fn file ->
+      imports = Map.fetch!(scopes, file["module"])
+      Map.update!(file, "imports", &Enum.uniq(&1 ++ imports))
+    end
+
     definitions ++ support ++ Enum.map(postludes, link) ++ Enum.map(proofs, link)
   end
 

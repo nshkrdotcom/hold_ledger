@@ -63,7 +63,10 @@ class ResourcePool:
             reserved_pids = 0 if headroom is not None else sum(x['demand'].pids for x in self.active.values())
             if pid_limit is not None and demand.pids + reserved_pids > pid_limit:
                 return None
-            lease = {'task': task, 'demand': demand, 'started': time.monotonic(),
+            used_ids = {cpu for lease in self.active.values() for cpu in lease['cpu_ids']}
+            allowed = self.capacity.get('usable_cpus', list(range(self.capacity['cpus'])))
+            cpu_ids = [cpu for cpu in allowed if cpu not in used_ids][:demand.cpu]
+            lease = {'task': task, 'demand': demand, 'cpu_ids': cpu_ids, 'started': time.monotonic(),
                      'oversized_singleton': oversized}
             self.active[task] = lease
             return lease
@@ -128,6 +131,15 @@ class Coordinator:
                 granted = False
                 try:
                     data = json.loads(self.rfile.readline(65537))
+                    if data.get('operation') == 'delegate':
+                        parent = data['task']
+                        with owner.pool.condition:
+                            if parent in owner.pool.active:
+                                owner.pool.release(parent)
+                                owner.event('delegated', parent)
+                        self.wfile.write(b'{"delegated":true}\n')
+                        self.wfile.flush()
+                        return
                     if data.get('operation') != 'acquire':
                         raise ValueError('Expected acquire')
                     task = data['task']
@@ -168,7 +180,7 @@ class Coordinator:
                             owner.pool.condition.wait(timeout=1)
                     owner.event('granted', task, cpu=cpu, memory=memory,
                                 oversized_singleton=lease['oversized_singleton'])
-                    self.wfile.write((json.dumps({'cpu': cpu, 'memory': memory}) + '\n').encode())
+                    self.wfile.write((json.dumps({'cpu': cpu, 'cpu_ids': lease['cpu_ids'], 'memory': memory, 'task': task}) + '\n').encode())
                     self.wfile.flush()
                     while line := self.rfile.readline(65537):
                         message = json.loads(line)
@@ -192,7 +204,8 @@ class Coordinator:
                         if task in owner.waiters:
                             owner.waiters.remove(task)
                         if granted:
-                            owner.pool.release(task)
+                            if task in owner.pool.active:
+                                owner.pool.release(task)
                             owner.event('released', task)
                         owner.pool.condition.notify_all()
 
@@ -303,3 +316,24 @@ def delegates(argv: list[str]) -> bool:
     names = {'run_laws.py', 'run_mutants.py', 'mutation_campaign.py', 'check_tutorials.py',
              'run_differential.py', 'check_kernels_concurrent.py', 'run_browser.py'}
     return any(Path(arg).name in names for arg in argv) or ('-m' in argv and 'unittest' in argv)
+
+
+def delegate_parent():
+    """A compiler host surrenders its stage lease when its module driver takes over."""
+    task = os.environ.pop('HOLD_LEDGER_PARENT_LEASE', None)
+    address = os.environ.get('HOLD_LEDGER_COORDINATOR')
+    if task and address:
+        with socket.socket(socket.AF_UNIX) as connection:
+            connection.connect(address)
+            with connection.makefile('rwb') as stream:
+                stream.write((json.dumps({'operation': 'delegate', 'task': task}) + '\n').encode())
+                stream.flush()
+                if not stream.readline():
+                    raise InterruptedError('Coordinator lost while delegating parent lease')
+
+
+def lease_command(argv, lease):
+    """Contain all runtime threads to the CPUs reserved by this lease."""
+    if lease is None:
+        return argv
+    return ['taskset', '--cpu-list', ','.join(str(cpu) for cpu in lease.allocation['cpu_ids']), *argv]

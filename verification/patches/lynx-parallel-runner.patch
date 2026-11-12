@@ -1,0 +1,169 @@
+diff --git a/Lean/Lynx/Runner.lean b/Lean/Lynx/Runner.lean
+index f484b1c..2972738 100644
+--- a/Lean/Lynx/Runner.lean
++++ b/Lean/Lynx/Runner.lean
+@@ -2320,18 +2320,20 @@ private def writeSources (dir : System.FilePath) (sources : Array (Name × Strin
+ /-- Verify against explicit imports, reusing only successfully audited module artifacts. -/
+ private def verify (files : Array Json) (options : Array (TSyntax `command)) (runtime : Runtime)
+     (cacheDirectory : System.FilePath) (export? : Option System.FilePath)
+-    (debug? : Option Debug) (checkSource : Bool) (emit : Json → IO Unit) : IO Unit := do
++    (debug? : Option Debug) (checkSource : Bool) (emit : Json → IO Unit)
++    (inventory : Array Json) (inputArtifacts : NameMap ImportArtifacts)
++    (inputVerified : Std.HashSet String) (artifactOutput : Option System.FilePath) : IO Unit := do
+   IO.FS.withTempDir fun temporary => do
+-    let mut artifacts : NameMap ImportArtifacts := {}
++    let mut artifacts : NameMap ImportArtifacts := inputArtifacts
+     let mut sources : Array (Name × String) := #[]
+     let mut exported : Array Name := #[]
+-    let mut verified : Std.HashSet String := {}
++    let mut verified : Std.HashSet String := inputVerified
+     let mut uncached : Std.HashSet String := {}
+     for entry in files do
+       let started ← IO.monoMsNow
+       let moduleString ← IO.ofExcept (str entry "module")
+       let origin ← IO.ofExcept (str entry "file")
+-      let names ← IO.ofExcept (inputImports files entry runtime.env)
++      let names ← IO.ofExcept (inputImports inventory entry runtime.env)
+       let reexport := !(← IO.ofExcept (arr entry "contents")).isEmpty ||
+         !((arr entry "preludes").toOption.getD #[]).isEmpty
+       let mut imports := runtimeImports
+@@ -2342,7 +2344,7 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
+       for name in names do
+         let moduleName ← IO.ofExcept <| (identifier name).run runtime.env |>.run' {}
+         let moduleName := moduleName.getId
+-        if files.any (fun other => (str other "module").toOption == some name) &&
++        if inventory.any (fun other => (str other "module").toOption == some name) &&
+             !verified.contains name then
+           missingImport := true
+           diagnostics := diagnostics.push (diagnostic origin moduleString "error"
+@@ -2358,7 +2360,7 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
+       -- Syntax extensions are available only after importing this file's declared
+       -- dependencies. Never decode all proofs against the bare runtime up front.
+       let env ← if missingImport then pure runtime.env else importFile runtime imports artifacts
+-      let file ← decodeFile files entry env options
++      let file ← decodeFile inventory entry env options
+       let source ← renderFile file env
+       let sourceModule ← IO.ofExcept <| (identifier file.moduleName).run runtime.env |>.run' {}
+       sources := sources.push (sourceModule.getId, source)
+@@ -2372,7 +2374,7 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
+         let moduleName ← IO.ofExcept <| (identifier file.moduleName).run runtime.env |>.run' {}
+         let mainModule := moduleName.getId
+         let key := if file.imports.any uncached.contains then none else file.cacheKey
+-        let directory := key.map (cacheDirectory / ·) |>.getD (temporary / toString (hash mainModule))
++        let directory := artifactOutput.getD (key.map (cacheDirectory / ·) |>.getD (temporary / toString (hash mainModule)))
+         if let some saved ← if fileFailed || key.isNone then pure none else cachedDiagnostics directory then
+           diagnostics := saved
+           cacheHit := true
+@@ -2400,6 +2402,16 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
+                   unless #[``propext, ``Classical.choice, ``Quot.sound].contains axiomName do
+                     errors := errors.push (diagnostic file.fileName file.moduleName "error"
+                       s!"unexpected axiom: {axiomName}" info.location (some name))
++              if file.theorems.isEmpty then
++                for (name, info) in (← getEnv).constants.toList do
++                  unless env.contains name do
++                    match info with
++                    | .thmInfo _ | .axiomInfo _ =>
++                      for axiomName in ← collectAxioms name do
++                        unless #[``propext, ``Classical.choice, ``Quot.sound].contains axiomName do
++                          errors := errors.push (diagnostic file.fileName file.moduleName "error"
++                            s!"unexpected axiom in {name}: {axiomName}")
++                    | _ => pure ()
+               return errors
+             let errors ← (audit.run' { fileName := file.fileName, fileMap := file.fileMap }
+               { env := state.env }).toIO (fun _ => IO.userError "law axiom audit failed")
+@@ -2436,7 +2448,7 @@ private def verify (files : Array Json) (options : Array (TSyntax `command)) (ru
+ private def runFiles (j : Json) (cache : IO.Ref (Option Runtime)) (emit : Json → IO Unit) : IO Unit := do
+   let (files, options) ← IO.ofExcept do
+     fields j ["command", "version", "files", "cache_dir", "options", "export", "debug_dir", "debug",
+-      "check_source"]
++      "check_source", "inventory", "artifact_inputs", "artifact_output"]
+     pure (← arr j "files", ← optionCommands j)
+   let directory := System.FilePath.mk (← IO.ofExcept (str j "cache_dir"))
+   let export? := (str j "export").toOption.map System.FilePath.mk
+@@ -2456,16 +2468,58 @@ private def runFiles (j : Json) (cache : IO.Ref (Option Runtime)) (emit : Json 
+     let directory ← if files.any (fun file => (field file "cache_key").isOk) then
+       pure (directory / s!"lean-{Lean.versionString}-{← runtimeFingerprint}{optionKey}")
+       else pure directory
++    let inventory := (arr j "inventory").toOption.getD files
++    let mut artifacts : NameMap ImportArtifacts := {}
++    let mut verified : Std.HashSet String := {}
++    for input in (arr j "artifact_inputs").toOption.getD #[] do
++      let name ← IO.ofExcept (str input "module")
++      let moduleName ← IO.ofExcept <| (identifier name).run runtime.env |>.run' {}
++      let path := System.FilePath.mk (← IO.ofExcept (str input "directory"))
++      artifacts := artifacts.insert moduleName.getId (cachedArtifacts path)
++      verified := verified.insert name
++    let artifactOutput := (str j "artifact_output").toOption.map System.FilePath.mk
+     verify files options runtime directory export? debug? checkSource emit
++      inventory artifacts verified artifactOutput
++
++/-- Extract the same import edges that verification will use, including prelude headers. -/
++private def planFiles (j : Json) (cache : IO.Ref (Option Runtime)) (emit : Json → IO Unit) : IO Unit := do
++  let files ← IO.ofExcept (arr j "files")
++  let runtime ← getRuntime cache
++  let mut nodes := #[]
++  for entry in files do
++    let name ← IO.ofExcept (str entry "module")
++    let mut imports ← IO.ofExcept (inputImports files entry runtime.env)
++    for imported in ← preludeImports entry do
++      unless imports.contains imported.module.toString do
++        imports := imports.push imported.module.toString
++    nodes := nodes.push (Json.mkObj [("module", toJson name), ("imports", toJson imports)])
++  emit (Json.mkObj [("status", toJson "plan"), ("nodes", Json.arr nodes)])
++
++/-- Export only the complete registry of modules compiled by the current coordinator. -/
++private def exportArtifacts (j : Json) (cache : IO.Ref (Option Runtime)) : IO Unit := do
++  let runtime ← getRuntime cache
++  let mut artifacts : NameMap ImportArtifacts := {}
++  let mut modules := #[]
++  for input in ← IO.ofExcept (arr j "artifact_inputs") do
++    let name ← IO.ofExcept (str input "module")
++    let moduleName ← IO.ofExcept <| (identifier name).run runtime.env |>.run' {}
++    let path := System.FilePath.mk (← IO.ofExcept (str input "directory"))
++    artifacts := artifacts.insert moduleName.getId (cachedArtifacts path)
++    modules := modules.push moduleName.getId
++  let path := System.FilePath.mk (← IO.ofExcept (str j "export"))
++  IO.FS.withTempDir fun temporary => exportModules path modules artifacts temporary
+ 
+ private def run (request : String) (cache : IO.Ref (Option Runtime)) (emit : Json → IO Unit) : IO Unit := do
+   try
+     let j ← IO.ofExcept (Json.parse request)
+     let command ← IO.ofExcept (str j "command")
+     let version ← IO.ofExcept (str j "version")
+-    unless version == "1.0" do throw (IO.userError "unsupported version")
+-    unless command == "verify" do throw (IO.userError s!"unsupported runner command '{command}'")
+-    runFiles j cache emit
++    unless version == "2.0" do throw (IO.userError "unsupported version")
++    match command with
++    | "verify" => runFiles j cache emit
++    | "plan" => planFiles j cache emit
++    | "export" => exportArtifacts j cache
++    | _ => throw (IO.userError s!"unsupported runner command '{command}'")
+     emit (Json.mkObj [("status", toJson "done")])
+   catch err =>
+     emit (Json.mkObj [("status", toJson "failure"), ("message", toJson err.toString)])
+diff --git a/lib/lynx/commands.ex b/lib/lynx/commands.ex
+index 9f10247..14cdd94 100644
+--- a/lib/lynx/commands.ex
++++ b/lib/lynx/commands.ex
+@@ -1,7 +1,7 @@
+ defmodule Lynx.Commands do
+   @moduledoc "Invokes the Lean runner and Lake."
+ 
+-  @protocol_version "1.0"
++  @protocol_version "2.0"
+   @statuses %{"ok" => :ok, "error" => :error, "skipped" => :skipped}
+   @severities %{"error" => :error, "warning" => :warning, "information" => :information}
+ 
+@@ -16,7 +16,10 @@ defmodule Lynx.Commands do
+   """
+   @spec runner!(String.t(), map()) :: [map()]
+   def runner!(project_dir, request) do
+-    port = open_lake(project_dir, ["--quiet", "exe", "Lynx/Lynx.Runner"], [{:line, 1_000_000}])
++    executable = System.find_executable("python3") || raise "python3 is required for module scheduling"
++    port = Port.open({:spawn_executable, String.to_charlist(executable)},
++      [:binary, :exit_status, :use_stdio, :hide, {:line, 1_000_000},
++       args: [Path.expand("scripts/verify_modules.py"), Path.expand(project_dir)]])
+ 
+     try do
+       Port.command(port, JSON.encode!(request) <> "\n")

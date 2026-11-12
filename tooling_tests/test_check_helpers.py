@@ -83,7 +83,9 @@ class CheckHelpersTest(unittest.TestCase):
             def command(argv, *args, **kwargs):
                 calls.append(argv)
                 return 0
-            with patch.object(check_suite, 'ROOT', root), \
+            capacity = dict(check_runtime.resources(), cpus=2, default_jobs=2)
+            with patch.object(check_suite, 'resources', return_value=capacity), \
+                 patch.object(check_suite, 'ROOT', root), \
                  patch.object(check_suite, 'copy_project', side_effect=copy), \
                  patch.object(check_suite, 'run_group', side_effect=group), \
                  patch.object(check_suite, 'command', side_effect=command), \
