@@ -16,7 +16,7 @@ import uuid
 
 from check_resources import GIB, resources
 from check_runtime import cancellation_scope, stop_tree, tracked_process, worker_environment, worker_count
-from check_scheduler import command_lease, managed_run
+from check_scheduler import command_lease, managed_run, lease_command
 from run_laws import run as run_command
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,9 +51,9 @@ def browser_file(profile: str, file: Path, directory: Path) -> dict:
                                HOLD_LEDGER_BROWSER_PROFILE=profile, HOLD_LEDGER_BROWSER_TOKEN=token,
                                HOLD_LEDGER_BROWSER_READY=str(ready))
                     server = subprocess.Popen(
-                        [sys.executable, str(ROOT / 'scripts/local_run.py'), '--cwd', 'apps/review_web',
-                         'mix', 'run', '--no-compile', '--no-start', '--no-halt',
-                         'test/support/question_browser_server.exs'],
+                        lease_command([sys.executable, str(ROOT / 'scripts/local_run.py'), '--cwd', 'apps/review_web',
+                                       'mix', 'run', '--no-compile', '--no-start', '--no-halt',
+                                       'test/support/question_browser_server.exs'], lease),
                         cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=server_log,
                         stderr=subprocess.STDOUT, start_new_session=True)
                     stack.enter_context(tracked_process(server))
@@ -72,7 +72,7 @@ def browser_file(profile: str, file: Path, directory: Path) -> dict:
                 argv = ['npx', '--no-install', 'playwright', 'test', file.name, '--config', CONFIG[profile],
                         '--workers', '1', '--retries', '0', '--reporter', 'list,json',
                         '--output', str(directory / 'artifacts')]
-                child = subprocess.Popen(argv, cwd=BROWSER, env=env, stdin=subprocess.DEVNULL,
+                child = subprocess.Popen(lease_command(argv, lease), cwd=BROWSER, env=env, stdin=subprocess.DEVNULL,
                                          stdout=browser_log, stderr=subprocess.STDOUT, start_new_session=True)
                 lease.started(child.pid)
                 with tracked_process(child):
