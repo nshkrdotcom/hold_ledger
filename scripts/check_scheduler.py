@@ -120,7 +120,8 @@ class Coordinator:
             self.history = {}
         self.observed = {}
         self.connections = set()
-        self.socket_directory = tempfile.TemporaryDirectory(prefix='hold-ledger-leases-')
+        # AF_UNIX paths must stay short even inside deeply nested private TMPDIRs.
+        self.socket_directory = tempfile.TemporaryDirectory(prefix='hold-ledger-leases-', dir='/tmp')
         self.path = str(Path(self.socket_directory.name) / 'coordinator.sock')
         owner = self
 

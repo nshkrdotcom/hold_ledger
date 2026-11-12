@@ -125,7 +125,8 @@ class SchedulerTests(unittest.TestCase):
         errors = []
         capacity = {'cpus': 4, 'memory_budget_bytes': 8 * GIB}
         with tempfile.TemporaryDirectory() as folder, \
-             patch('check_scheduler.resources', return_value=capacity):
+             patch('check_scheduler.resources', return_value=capacity), \
+             patch('tempfile.tempdir', folder):
             with Coordinator(Path(folder), capacity, 4) as coordinator, \
                  patch.dict(os.environ, {'HOLD_LEDGER_COORDINATOR': coordinator.path}):
                 def worker(label, started, wait=False):
