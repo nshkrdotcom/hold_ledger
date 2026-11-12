@@ -51,6 +51,9 @@ class LynxUpgradeIntegrationTest(unittest.TestCase):
         self.assertEqual(sha, LYNX_COMMIT, "Lynx checkout is not pinned to expected commit")
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp)
+            # Private TMPDIRs may live inside a check snapshot Git worktree.
+            # Prevent git apply from discovering that enclosing repository.
+            subprocess.run(["git", "init", "--quiet"], cwd=target, check=True)
             for name in ("Lean/Lynx/Runner.lean", "lib/lynx/commands.ex"):
                 data = subprocess.check_output(
                     ["git", "-C", str(dependency), "show", f"HEAD:{name}"]
