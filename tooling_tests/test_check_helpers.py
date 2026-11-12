@@ -77,7 +77,7 @@ class CheckHelpersTest(unittest.TestCase):
                 workspace = run_dir / 'workers' / name
                 workspace.mkdir(parents=True)
                 return {'state': 'passed', 'workspace': str(workspace)}
-            def copy(source, destination):
+            def copy(source, destination, **_options):
                 destination.mkdir(parents=True)
                 return destination
             def command(argv, *args, **kwargs):

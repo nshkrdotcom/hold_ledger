@@ -37,7 +37,10 @@ def browser_file(profile: str, file: Path, directory: Path) -> dict:
     memory = (2 if static else 4) * GIB
     with command_lease(f'browser:{profile}:{file.name}', memory=memory, max_cpu=2) as lease:
         env = worker_environment(1, cpu_budget=lease.allocation['cpu'])
-        env.update(MIX_ENV='test', PLAYWRIGHT_JSON_OUTPUT_FILE=str(directory / 'results.json'))
+        temporary = directory / 'temp'
+        temporary.mkdir()
+        env.update(MIX_ENV='test', TMPDIR=str(temporary),
+                   PLAYWRIGHT_JSON_OUTPUT_FILE=str(directory / 'results.json'))
         server = None
         with ExitStack() as stack, (directory / 'server.log').open('wb') as server_log, (directory / 'browser.log').open('wb') as browser_log:
             try:

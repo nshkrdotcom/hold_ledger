@@ -113,11 +113,15 @@ File.mkdir_p!(Path.dirname(codec_path))
 if codec_status != 0 or String.contains?(codec_output, "warning:"),
   do: raise("codec compilation failed: #{codec_output}")
 
-source =
-  "module\nimport all Init.Data.String.Search\nimport all Init.Data.String.Slice\nimport all HoldLedgerDifferentialCodec\npublic meta import HoldLedgerDifferentialCodec\nimport all Elixir.HoldLedger.Environment\nimport all Elixir.HoldLedger.Composite\nimport all Elixir.HoldLedger.Attempts\npublic meta import Elixir.HoldLedger.Environment\npublic meta import Elixir.HoldLedger.Composite\npublic meta import Elixir.HoldLedger.Attempts\nimport all Elixir.HoldLedger.Exposure\npublic meta import Elixir.HoldLedger.Exposure\nimport all Elixir.HoldLedger.Ledger\nimport all Elixir.HoldLedger.Spec\npublic meta import Elixir.HoldLedger.Ledger\npublic meta import Elixir.HoldLedger.Spec\npublic meta import Lynx.Term.DataTypes\nimport all Lynx.Term.Compare\nimport all Lynx.Modules.Erlang.erlang.Guards\nset_option maxRecDepth 100000\nset_option maxHeartbeats 16000000\n" <>
-    Enum.map_join(Enum.with_index(cases), "\n", fn {entry, i} ->
-      Differential.assertion(entry, i, i < 3)
-    end)
+header =
+  "module\nimport all Init.Data.String.Search\nimport all Init.Data.String.Slice\nimport all HoldLedgerDifferentialCodec\npublic meta import HoldLedgerDifferentialCodec\nimport all Elixir.HoldLedger.Environment\nimport all Elixir.HoldLedger.Composite\nimport all Elixir.HoldLedger.Attempts\npublic meta import Elixir.HoldLedger.Environment\npublic meta import Elixir.HoldLedger.Composite\npublic meta import Elixir.HoldLedger.Attempts\nimport all Elixir.HoldLedger.Exposure\npublic meta import Elixir.HoldLedger.Exposure\nimport all Elixir.HoldLedger.Ledger\nimport all Elixir.HoldLedger.Spec\npublic meta import Elixir.HoldLedger.Ledger\npublic meta import Elixir.HoldLedger.Spec\npublic meta import Lynx.Term.DataTypes\nimport all Lynx.Term.Compare\nimport all Lynx.Modules.Erlang.erlang.Guards\nset_option maxRecDepth 100000\nset_option maxHeartbeats 16000000\n"
+
+assertions =
+  Enum.map(Enum.with_index(cases), fn {entry, index} ->
+    Differential.assertion(entry, index, index < 3)
+  end)
+
+source = header <> Enum.join(assertions, "\n")
 
 reports =
   Lynx.Commands.verify!(Path.expand("deps/lynx/Lean"), files,
@@ -171,9 +175,22 @@ File.write!(
   )
 )
 
+extras = String.replace_prefix(source, header <> Enum.join(assertions, "\n"), "") <> goldens
+
+batch_sources =
+  assertions
+  |> Enum.chunk_every(128)
+  |> Enum.with_index()
+  |> Enum.map(fn {batch, index} ->
+    path = Path.expand("tmp/differential/Batch#{index}.lean")
+    File.write!(path, header <> Enum.join(batch, "\n") <> if(index == 0, do: extras, else: ""))
+    path
+  end)
+
+File.write!("tmp/differential/batches.json", JSON.encode!(batch_sources))
+
 {output, status} =
-  System.cmd("lake", ["env", "lean", Path.expand("tmp/differential/HoldLedgerDifferential.lean")],
-    cd: "deps/lynx/Lean",
+  System.cmd("python3", ["scripts/evaluate_lean.py", "tmp/differential/batches.json"],
     env: [{"LEAN_PATH", Path.expand("tmp/differential")}],
     stderr_to_stdout: true
   )
@@ -193,9 +210,15 @@ if status != 0 do
         probe = header <> Differential.assertion({module, function, candidate}, 0, false)
         File.write!("tmp/differential/Shrink.lean", probe)
 
+        File.write!(
+          "tmp/differential/shrink-batches.json",
+          JSON.encode!([Path.expand("tmp/differential/Shrink.lean")])
+        )
+
         {diagnostics, exit} =
-          System.cmd("lake", ["env", "lean", Path.expand("tmp/differential/Shrink.lean")],
-            cd: "deps/lynx/Lean",
+          System.cmd(
+            "python3",
+            ["scripts/evaluate_lean.py", "tmp/differential/shrink-batches.json"],
             env: [{"LEAN_PATH", Path.expand("tmp/differential")}],
             stderr_to_stdout: true
           )

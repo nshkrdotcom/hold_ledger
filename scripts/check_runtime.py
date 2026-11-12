@@ -56,6 +56,9 @@ def worker_environment(jobs: int, project: Path | None = None, *,
     env['PYTHONUNBUFFERED'] = '1'
     if project is not None:
         env['HOLD_LEDGER_CACHE_HOME'] = str(project / 'tmp/cache')
+        temporary = project / 'tmp/os-temp'
+        temporary.mkdir(parents=True, exist_ok=True)
+        env['TMPDIR'] = str(temporary.resolve())
         # Workers use the already locked, prepared Python environment.
         env['UV_NO_SYNC'] = '1'
     return env
@@ -77,7 +80,7 @@ def copy_directory(source: Path, destination: Path) -> None:
         subprocess.run(['cp', '-a', '--reflink=auto', str(source), str(destination)], check=True)
 
 
-def copy_project(source: Path, destination: Path, *, dependencies: bool = True) -> Path:
+def copy_project(source: Path, destination: Path, *, dependencies: bool = True, web: bool = False) -> Path:
     subprocess.run(['git', 'clone', '--shared', '--quiet', str(source), str(destination)], check=True)
     # Git clone alone would silently omit uncommitted and untracked source changes.
     for relative in source_files(source):
@@ -97,9 +100,10 @@ def copy_project(source: Path, destination: Path, *, dependencies: bool = True) 
             shutil.copy2(src, dst)
     if dependencies:
         copy_directory(source / 'deps', destination / 'deps')
-        copy_directory(source / 'apps/review_web/deps', destination / 'apps/review_web/deps')
-        copy_directory(source / 'apps/review_web/test/browser/node_modules',
-                       destination / 'apps/review_web/test/browser/node_modules')
+        if web:
+            copy_directory(source / 'apps/review_web/deps', destination / 'apps/review_web/deps')
+            copy_directory(source / 'apps/review_web/test/browser/node_modules',
+                           destination / 'apps/review_web/test/browser/node_modules')
     for name in ('.local', '.venv'):
         if (source / name).is_dir():
             (destination / name).symlink_to((source / name).resolve(), target_is_directory=True)

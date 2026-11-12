@@ -14,21 +14,44 @@ selected = [
 dir = Path.join("tmp/verification/claim-reading", "run-#{System.system_time(:microsecond)}")
 File.mkdir_p!(dir)
 
-claims =
-  Map.new(selected, fn {slug, module} ->
+groups =
+  Enum.map(selected, fn {slug, module} ->
     Code.compile_file("test/laws/#{slug}_test.exs")
-    [{_, laws, translation, options}] = module.__info__(:attributes)[:proof_groups]
-    files = HoldLedger.ProofCase.assemble(module, laws, translation)
-    debug = Path.join(dir, slug)
-    started = System.monotonic_time(:millisecond)
+    [{_, laws, translation, _options}] = module.__info__(:attributes)[:proof_groups]
+    {slug, module, laws, translation}
+  end)
 
-    reports =
-      Lynx.Commands.verify!(Path.expand("deps/lynx/Lean"), files,
-        options: options,
-        debug_dir: debug,
-        debug: :lean,
-        check_source: true
-      )
+postludes =
+  HoldLedger.ProofCase.batch_postludes!(
+    Enum.map(groups, fn {_, module, _, translation} -> {module, translation} end)
+  )
+
+files =
+  HoldLedger.ProofCase.assemble_many(
+    Enum.map(groups, fn {_, module, laws, _} -> {module, laws} end), postludes: postludes)
+
+shared_debug = Path.join(dir, "shared")
+started = System.monotonic_time(:millisecond)
+
+reports =
+  Lynx.Commands.verify!(Path.expand("deps/lynx/Lean"), files,
+    options: [maxHeartbeats: 16_000_000],
+    debug_dir: shared_debug,
+    debug: :lean,
+    check_source: true
+  )
+
+elapsed = System.monotonic_time(:millisecond) - started
+
+claims =
+  Map.new(groups, fn {slug, module, laws, _translation} ->
+    debug = Path.join(dir, slug)
+
+    for path <- Path.wildcard(Path.join(shared_debug, "**/*.lean")) do
+      target = Path.join(debug, Path.relative_to(path, shared_debug))
+      File.mkdir_p!(Path.dirname(target))
+      File.cp!(path, target)
+    end
 
     :ok = HoldLedger.ProofCase.validate_reports!(reports, module, laws)
 
@@ -49,7 +72,9 @@ claims =
     {slug,
      %{
        "status" => "elaborated",
-       "elapsed_ms" => System.monotonic_time(:millisecond) - started,
+       "elapsed_ms" => elapsed,
+       "elapsed_scope" => "shared_focused_batch",
+       "batch_claims" => Enum.map(selected, &elem(&1, 0)),
        "artifacts" => artifacts,
        "reports" =>
          Enum.map(reports, fn report ->

@@ -6,3 +6,8 @@ Code.require_file("support/proof_case.ex", __DIR__)
 Code.require_file("support/controlled_processor.ex", __DIR__)
 
 Code.require_file("support/differential.ex", __DIR__)
+
+if formatter = System.get_env("HOLD_LEDGER_EXUNIT_FORMATTER") do
+  Code.require_file(formatter)
+  ExUnit.configure(formatters: [ExUnit.CLIFormatter, HoldLedger.ExUnitTiming])
+end

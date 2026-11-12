@@ -189,10 +189,10 @@ def _run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
 
 
 def run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
-        log: Path, timeout: int) -> dict:
+        log: Path, timeout: int, cpu_budget: int | None = None) -> dict:
     if delegates(argv):
         return _run(argv, cwd=cwd, env=env, log=log, timeout=timeout)
-    with command_lease(log.stem, memory=6 * GIB, max_cpu=resources()['cpus'],
+    with command_lease(log.stem, memory=6 * GIB, max_cpu=cpu_budget or resources()['cpus'],
                        exclusive=(str(cwd / '_build'),)) as lease:
         # Keep caller-provided proof/cache options; replace only generated runtime flags.
         child_env = worker_environment(1, cwd, cpu_budget=lease.allocation['cpu'])

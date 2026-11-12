@@ -108,7 +108,12 @@ def commands(group: str) -> list[list[str]]:
         return [python + ['scripts/run_mutants.py', '--execute', '--report',
                           'tmp/verification/mutants.json']]
     if group == 'web':
-        return [web + ['precommit'], web + ['docs', '--warnings-as-errors'],
+        return [web + ['format', '--check-formatted'],
+                local + ['--cwd', 'apps/review_web', 'env', 'MIX_ENV=test', 'mix', 'compile', '--warnings-as-errors'],
+                local + ['--cwd', 'apps/review_web', 'env', 'MIX_ENV=test', 'mix', 'credo', '--strict'],
+                local + ['--cwd', 'apps/review_web', 'env', 'MIX_ENV=test', 'mix', 'dialyzer'],
+                python + ['scripts/run_exunit.py', '--project', 'apps/review_web', '--prepared'],
+                web + ['docs', '--warnings-as-errors'],
                 python + ['-m', 'unittest', 'discover', '-s', 'apps/review_web/scripts',
                           '-p', 'test_*.py', '-v'],
                 python + ['scripts/run_browser.py', 'all']]
@@ -128,7 +133,7 @@ def commands(group: str) -> list[list[str]]:
 def run_group(group: str, snapshot: Path, run_dir: Path, cpu_budget: int) -> dict:
     project = run_dir / 'workers' / group
     say(group, f'Preparing isolated workspace: {project}')
-    copy_project(snapshot, project)
+    copy_project(snapshot, project, web=group == 'web')
     for argv in commands(group):
         code = command(argv, project, group, run_dir / 'logs' / f'{group}.log', 1,
                        cpu_budget=cpu_budget)
@@ -247,7 +252,7 @@ def main() -> int:
                                cpu_budget=capacity['cpus'])
                 if code:
                     raise RuntimeError(f'Setup failed (exit {code})')
-            snapshot = copy_project(ROOT, run_dir / 'snapshot')
+            snapshot = copy_project(ROOT, run_dir / 'snapshot', web=args.mode in ('all', 'web'))
             say('checks', f'Source snapshot ready: {snapshot}')
             schedule_groups(args.mode, snapshot, run_dir, capacity, jobs, report, save)
             report['state'] = 'passed'

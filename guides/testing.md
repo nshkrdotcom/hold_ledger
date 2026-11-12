@@ -12,7 +12,7 @@ local tool setup. Run them from the repository root or invoke them by path.
 | `./scripts/check_quick.sh` | Root formatting, compilation and ordinary tests/properties with warnings as errors; strict Credo; Dialyzer; Python tooling tests; catalog registration and static mutation patch checks. No formal proof attempts. |
 | `./scripts/check_full.sh` | Every required law group, uncached proof checking, fresh exports, all six independent checker configurations and the axiom audit. Does not repeat quick checks. |
 | `./scripts/check_mutants.sh` | A fresh targeted formal baseline, then all ten isolated mutants. Each runs its correct-source witness, mutated witness, ordinary suite and mapped formal attempt. |
-| `./scripts/check_web.sh` | Phoenix `mix precommit` (compile, format, strict Credo, Dialyzer and tests), documentation, asset setup/build, Python content checks and all three managed browser profiles. |
+| `./scripts/check_web.sh` | Phoenix compilation, formatting, strict Credo, Dialyzer and isolated ExUnit shards, documentation, asset setup/build, Python content checks and all three managed browser profiles. |
 | `./scripts/check_all.sh` | Everything above, plus bounded BEAM/Lean differential checks, executable tutorials, demo, root documentation/package builds and original claim-reading production. Runs full formal acceptance once and reuses its validated baseline for mutants. |
 
 The master starts independent group orchestrators concurrently. Each executable
@@ -304,3 +304,24 @@ command through `scripts/logged_job.py --directory tmp/jobs/<unique-name> -- <co
 The directory must be new. It contains `output.log` from command start and an
 atomically updated `status.json` with command, PID, completion time and exit code.
 Cancellation records an incomplete result and cleans up the command's process tree.
+
+### Isolated test and evaluation workers
+
+The Phoenix helper and `mix precommit` balance test files across independent
+BEAM VMs. Each shard owns a relocated build and temp directory. Existing
+application singletons, ETS tables and environment-changing tests remain
+isolated without weakening their assertions. Per-file timing observations
+improve subsequent balancing; exact file coverage and aggregate results are
+retained under `tmp/exunit-runs/`.
+
+Differential histories are generated once with their original seed. Independent
+assertion batches execute concurrently with stable case indices and all eight
+kernel pilots retained. Tutorial tasks use private builds and preserve the
+expected compiler/tactic failures. Generated mutation campaigns select formal
+survivors in manifest order after parallel ordinary execution.
+
+Resource admission can backfill smaller ready work while an older task waits;
+after 30 seconds the oldest task takes priority. Process-tree RSS/PID samples
+increase underestimated reservations and seed conservative future estimates.
+These remain scheduling estimates, not hard memory limits; shared RSS pages
+may be counted more than once. Observations stay in ignored local storage.

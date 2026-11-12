@@ -120,7 +120,7 @@ def verify(request: dict, project: Path, directory: Path) -> list[dict]:
                               files=[{k: v for k, v in by_name[name].items() if k != 'cache_key'}],
                               inventory=files, artifact_inputs=inputs, artifact_output=str(staging))
         worker_request.pop('export', None)
-        records = responses(invoke([str(binary)], directory, 'node-' + ids[name],
+        records = responses(invoke([str(binary)], directory, 'module-' + name,
                                    env=env, request=worker_request))
         if len(records) != 1 or records[0].get('module') != name:
             raise RuntimeError(f'Worker returned wrong module for {name}')
@@ -196,9 +196,8 @@ def main() -> int:
         request = json.loads(sys.stdin.readline())
         if request['version'] != '2.0' or request['command'] != 'verify':
             raise ValueError('Expected version 2.0 verification request')
+        # Restore the coordinator's allowed CPU scope after surrendering the host lease.
         delegate_parent()
-        # The coordinator enforces the original run ceiling after parent delegation.
-        os.environ.pop('HOLD_LEDGER_CPU_BUDGET', None)
         root = ROOT / 'tmp/verification/modules'
         root.mkdir(parents=True, exist_ok=True)
         directory = Path(tempfile.mkdtemp(prefix='run-', dir=root))

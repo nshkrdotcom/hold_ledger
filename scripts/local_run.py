@@ -22,7 +22,10 @@ if "MIX_ENV=test" in args.command or "test" in args.command or "precommit" in ar
     mode = "test"
 if args.cwd.resolve() == ROOT and mode == "test" and "mix" in args.command:
     source = ROOT / "deps/lynx/lib/lynx/commands.ex"
-    beam = ROOT / "_build/test/lib/lynx/ebin/Elixir.Lynx.Commands.beam"
+    build = Path(os.environ.get("MIX_BUILD_PATH", str(ROOT / "_build/test")))
+    if not build.is_absolute():
+        build = ROOT / build
+    beam = build / "lib/lynx/ebin/Elixir.Lynx.Commands.beam"
     action = args.command[args.command.index("mix") + 1:]
     if action and action[0] not in ("deps.get", "deps.compile") and source.exists():
         if not beam.exists() or source.stat().st_mtime_ns > beam.stat().st_mtime_ns:

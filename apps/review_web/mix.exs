@@ -125,7 +125,7 @@ defmodule HoldLedgerReview.MixProject do
         "format --check-formatted",
         "credo --strict",
         "dialyzer",
-        "test --warnings-as-errors"
+        "cmd python3 ../../scripts/run_exunit.py --project . --prepared"
       ]
     ]
   end

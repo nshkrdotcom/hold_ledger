@@ -1,7 +1,7 @@
 """Atomic resource admission shared by check task schedulers."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import threading
 import time
 
@@ -87,6 +87,9 @@ class ResourcePool:
 # The top-level process owns the pool; no detached scheduling daemon is needed.
 import contextlib
 import functools
+import fcntl
+import math
+import sys
 import json
 import os
 from pathlib import Path
@@ -107,6 +110,15 @@ class Coordinator:
         self.events = (directory / 'leases.jsonl').open('a', buffering=1)
         self.events_lock = threading.Lock()
         self.waiters: list[str] = []
+        self.queued_at = {}
+        self.stop_monitor = threading.Event()
+        self.profile = str((os.uname().nodename, capacity['cpus']))
+        self.history_path = Path(__file__).resolve().parents[1] / '.local/checks/resource-estimates.json'
+        try:
+            self.history = json.loads(self.history_path.read_text()).get(self.profile, {})
+        except (OSError, ValueError):
+            self.history = {}
+        self.observed = {}
         self.connections = set()
         self.socket_directory = tempfile.TemporaryDirectory(prefix='hold-ledger-leases-')
         self.path = str(Path(self.socket_directory.name) / 'coordinator.sock')
@@ -137,7 +149,9 @@ class Coordinator:
                             if parent in owner.pool.active:
                                 owner.pool.release(parent)
                                 owner.event('delegated', parent)
-                        self.wfile.write(b'{"delegated":true}\n')
+                        reply = {'delegated': True, 'cpus': owner.pool.capacity['cpus'],
+                                 'cpu_ids': owner.pool.capacity.get('usable_cpus', [])[:owner.pool.capacity['cpus']]}
+                        self.wfile.write((json.dumps(reply) + '\n').encode())
                         self.wfile.flush()
                         return
                     if data.get('operation') != 'acquire':
@@ -150,17 +164,22 @@ class Coordinator:
                         raise ValueError('Invalid resource demand')
                     with owner.pool.condition:
                         owner.waiters.append(task)
+                        owner.queued_at[task] = time.monotonic()
                     owner.event('queued', task, label=data.get('label'))
                     while True:
                         with owner.pool.condition:
                             if owner.pool.cancelled:
                                 raise InterruptedError('Coordinator cancelled')
-                            if owner.waiters[0] == task:
+                            oldest = owner.waiters[0]
+                            if oldest == task or time.monotonic() - owner.queued_at[oldest] < 30:
                                 free = owner.pool.available()
                                 # Reserve fair initial widths while independent stages are runnable.
-                                width = max(1, owner.pool.capacity['cpus'] // owner.parallelism)
+                                width = max(1, math.ceil(owner.pool.capacity['cpus'] / owner.parallelism))
                                 cpu = min(maximum, max(1, min(free['cpu'], width)))
-                                demand = Demand(cpu, memory, pids=pids, exclusive=exclusive)
+                                profile_key = str(data.get('label')) + '@' + str(cpu)
+                                estimate = owner.history.get(profile_key, {})
+                                demand = Demand(cpu, max(memory, estimate.get('memory', 0)),
+                                                pids=max(pids, estimate.get('pids', 1)), exclusive=exclusive)
                                 headroom = resources()
                                 used_cpu = owner.pool.capacity['cpus'] - free['cpu']
                                 live_free = headroom['cpus'] - used_cpu
@@ -169,7 +188,10 @@ class Coordinator:
                                     continue
                                 lease = owner.pool.try_acquire(task, demand, headroom=headroom)
                                 if lease:
-                                    owner.waiters.pop(0)
+                                    owner.waiters.remove(task)
+                                    owner.queued_at.pop(task, None)
+                                    lease['processes'] = children
+                                    lease['profile_key'] = profile_key
                                     owner.pool.condition.notify_all()
                                     granted = True
                                     break
@@ -178,18 +200,20 @@ class Coordinator:
                             if readable and not self.connection.recv(1, socket.MSG_PEEK):
                                 return
                             owner.pool.condition.wait(timeout=1)
-                    owner.event('granted', task, cpu=cpu, memory=memory,
+                    owner.event('granted', task, cpu=cpu, memory=lease['demand'].memory, pids=lease['demand'].pids,
                                 oversized_singleton=lease['oversized_singleton'])
-                    self.wfile.write((json.dumps({'cpu': cpu, 'cpu_ids': lease['cpu_ids'], 'memory': memory, 'task': task}) + '\n').encode())
+                    self.wfile.write((json.dumps({'cpu': cpu, 'cpu_ids': lease['cpu_ids'], 'memory': lease['demand'].memory, 'task': task}) + '\n').encode())
                     self.wfile.flush()
                     while line := self.rfile.readline(65537):
                         message = json.loads(line)
                         if message['operation'] == 'started':
                             child = int(message['pid'])
-                            children.add(child)
+                            with owner.pool.condition:
+                                children.add(child)
                             owner.event('started', task, pid=child)
                         elif message['operation'] == 'release':
-                            children.clear()
+                            with owner.pool.condition:
+                                children.clear()
                             return
                         else:
                             raise ValueError('Unknown lease operation')
@@ -203,10 +227,13 @@ class Coordinator:
                     with owner.pool.condition:
                         if task in owner.waiters:
                             owner.waiters.remove(task)
+                            owner.queued_at.pop(task, None)
                         if granted:
                             if task in owner.pool.active:
                                 owner.pool.release(task)
-                            owner.event('released', task)
+                            owner.event('released', task, elapsed_seconds=time.monotonic() - lease['started'],
+                                        peak_tree_rss_bytes=lease.get('peak_tree_rss_bytes'),
+                                        sampled_cpu_seconds=lease.get('sampled_cpu_seconds'))
                         owner.pool.condition.notify_all()
 
         class Server(socketserver.ThreadingUnixStreamServer):
@@ -216,6 +243,63 @@ class Coordinator:
         self.server = Server(self.path, Handler)
         os.chmod(self.path, 0o600)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.monitor = threading.Thread(target=self.observe, daemon=True)
+
+    def observe(self):
+        page = os.sysconf('SC_PAGE_SIZE')
+        ticks = os.sysconf('SC_CLK_TCK')
+        while not self.stop_monitor.wait(1):
+            processes = {}
+            for path in Path('/proc').glob('[0-9]*/stat'):
+                try:
+                    fields = path.read_text().rsplit(')', 1)[1].split()
+                    processes[int(path.parent.name)] = (int(fields[1]),
+                        int(fields[21]) * page, sum(int(fields[i]) for i in (11, 12, 13, 14)) / ticks,
+                        int(fields[17]))
+                except (OSError, ValueError, IndexError):
+                    continue
+            with self.pool.condition:
+                for task, lease in self.pool.active.items():
+                    members = set(lease.get('processes', ()))
+                    while extra := {pid for pid, data in processes.items() if data[0] in members} - members:
+                        members.update(extra)
+                    samples = [processes[pid] for pid in members if pid in processes]
+                    if not samples:
+                        continue
+                    rss = sum(data[1] for data in samples)
+                    key = lease['profile_key']
+                    bounds = self.observed.setdefault(key, {'memory': 0, 'pids': 0, 'sampled_cpu_seconds': 0})
+                    bounds['memory'] = max(bounds['memory'], math.ceil(rss * 1.25))
+                    bounds['pids'] = max(bounds['pids'], sum(data[3] for data in samples))
+                    bounds['sampled_cpu_seconds'] = max(bounds['sampled_cpu_seconds'], sum(data[2] for data in samples))
+                    lease['peak_tree_rss_bytes'] = max(lease.get('peak_tree_rss_bytes', 0), rss)
+                    lease['sampled_cpu_seconds'] = max(lease.get('sampled_cpu_seconds', 0), sum(data[2] for data in samples))
+                    demand = lease['demand']
+                    if bounds['memory'] > demand.memory or bounds['pids'] > demand.pids:
+                        lease['demand'] = replace(demand, memory=max(demand.memory, bounds['memory']),
+                                                  pids=max(demand.pids, bounds['pids']))
+                        self.event('reservation-increased', task, memory=lease['demand'].memory,
+                                   pids=lease['demand'].pids, sampled_tree_rss_bytes=rss)
+                self.pool.condition.notify_all()
+
+    def save_observations(self):
+        if not self.observed:
+            return
+        self.history_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.history_path.with_suffix('.lock').open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                history = json.loads(self.history_path.read_text())
+            except (OSError, ValueError):
+                history = {}
+            profile = history.setdefault(self.profile, {})
+            for key, observed in self.observed.items():
+                entry = profile.setdefault(key, {})
+                for field, value in observed.items():
+                    entry[field] = max(entry.get(field, 0), value)
+            pending = self.history_path.with_suffix('.tmp')
+            pending.write_text(json.dumps(history, indent=2) + '\n')
+            pending.replace(self.history_path)
 
     def event(self, state: str, task: str | None, **values):
         with self.events_lock:
@@ -223,9 +307,12 @@ class Coordinator:
 
     def __enter__(self):
         self.thread.start()
+        self.monitor.start()
         return self
 
     def __exit__(self, *_):
+        self.stop_monitor.set()
+        self.monitor.join()
         self.pool.cancel()
         self.server.shutdown()
         with self.pool.condition:
@@ -239,6 +326,7 @@ class Coordinator:
         self.thread.join()
         self.events.close()
         self.socket_directory.cleanup()
+        self.save_observations()
 
 
 @contextlib.contextmanager
@@ -267,7 +355,17 @@ def managed_run(function):
     @functools.wraps(function)
     def wrapped(*args, **kwargs):
         module = Path(function.__globals__.get('__file__', '')).stem
-        parallelism = 10 if module in ('run_mutants', 'mutation_campaign') else 1
+        parallelism = 1
+        if module in ('run_mutants', 'mutation_campaign'):
+            from check_runtime import worker_count, MUTANT_MEMORY_BYTES
+            requested = None
+            if '--jobs' in sys.argv:
+                try:
+                    requested = int(sys.argv[sys.argv.index('--jobs') + 1])
+                except (ValueError, IndexError):
+                    requested = 1
+            tasks = 10 if module == 'run_mutants' else 100
+            parallelism = worker_count(resources(), tasks, MUTANT_MEMORY_BYTES, requested)
         with execution_scope(parallelism=parallelism):
             return function(*args, **kwargs)
     return wrapped
@@ -314,7 +412,7 @@ def command_lease(label: str, *, memory: int, max_cpu: int = 1, pids: int = 1,
 
 def delegates(argv: list[str]) -> bool:
     names = {'run_laws.py', 'run_mutants.py', 'mutation_campaign.py', 'check_tutorials.py',
-             'run_differential.py', 'check_kernels_concurrent.py', 'run_browser.py'}
+             'run_differential.py', 'check_kernels_concurrent.py', 'run_browser.py', 'run_exunit.py'}
     return any(Path(arg).name in names for arg in argv) or ('-m' in argv and 'unittest' in argv)
 
 
@@ -328,8 +426,15 @@ def delegate_parent():
             with connection.makefile('rwb') as stream:
                 stream.write((json.dumps({'operation': 'delegate', 'task': task}) + '\n').encode())
                 stream.flush()
-                if not stream.readline():
+                reply = stream.readline()
+                if not reply:
                     raise InterruptedError('Coordinator lost while delegating parent lease')
+                allocation = json.loads(reply)
+                if allocation['cpu_ids']:
+                    os.sched_setaffinity(0, set(allocation['cpu_ids']))
+                os.environ['HOLD_LEDGER_CPU_BUDGET'] = str(allocation['cpus'])
+                return True
+    return False
 
 
 def lease_command(argv, lease):

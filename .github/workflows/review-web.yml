@@ -58,7 +58,7 @@ jobs:
           mix credo --strict
           mix dialyzer
           mix docs --warnings-as-errors
-          mix test --warnings-as-errors
+          uv run --locked --directory ../.. python scripts/run_exunit.py --project apps/review_web
           mix assets.setup
           mix assets.build
 

@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime as dt
 import os
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -49,7 +50,9 @@ def contents(path: Path) -> bytes:
 
 
 def cmd(argv: list[str], cwd: Path, *, timeout: int, log: Path) -> dict:
-    result = run_command(argv, cwd=cwd, env=worker_environment(int(os.environ.get("HOLD_LEDGER_JOBS", "1")), cwd), log=log, timeout=timeout)
+    jobs = int(os.environ.get("HOLD_LEDGER_JOBS", "1"))
+    result = run_command(argv, cwd=cwd, env=worker_environment(jobs, cwd), log=log, timeout=timeout,
+                         cpu_budget=max(1, math.ceil(resources()['cpus'] / jobs)))
     # Report the command result in the mutation record.
     result.pop("cwd")
     return result

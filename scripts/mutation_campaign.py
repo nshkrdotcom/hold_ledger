@@ -6,6 +6,7 @@ script failure is inconclusive even when ordinary tests already found a witness.
 """
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -94,6 +95,7 @@ def main():
         report['equivalent_edit_control'] = equivalent
         if equivalent['exit'] != 0:
             raise RuntimeError('equivalent source edit was incorrectly detected')
+        os.environ["HOLD_LEDGER_JOBS"] = str(jobs)
         def ordinary(site):
             candidate_dir = Path(folder) / site['id']
             candidate_dir.mkdir()

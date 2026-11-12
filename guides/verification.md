@@ -168,21 +168,21 @@ The duplicate proof uses helper lemmas and generated contracts:
 
 Changing a reducer regenerates its Lean definition and may break helper lemmas before a top-level law is reached. Follow the first failing dependency, check the generated code, then repair the argument against the existing contract. Use the development cache and acceptance commands above for this workflow.
 
-## Detached verification
+## Durable verification jobs
 
-After committing the checkout, start a durable full run with:
+Run the full helper through the common command logger:
 
 ```sh
-uv run --locked python scripts/background_laws.py
+uv run --locked python scripts/logged_job.py --directory tmp/jobs/full-run -- ./scripts/check_full.sh
 ```
 
-The command prints a unique directory under `tmp/verification/`. Its `status.json`
-records the commit, process IDs and final exit status; `output.log` retains progress.
-The worker checks a local snapshot of the committed source, so subsequent checkout
-edits do not change its inputs. On completion it preserves `report.json`, native
-results, logs and exports in the run directory. `passed` requires the complete
-full-stage result, not merely a zero exit from an empty test command. The process
-survives the launching terminal closing; it cannot survive machine shutdown.
+Use a new job directory for each invocation. Its `output.log` retains command
+output and `status.json` records process IDs, final exit code and completion
+time. The full helper creates an isolated working-source snapshot, including
+current edits, and prints its evidence directory. Release acceptance still
+requires `release_complete: true` in the actual formal report; command exit
+alone does not establish that claim. Use your terminal's background-job manager
+or `nohup` when the command must survive closing the launching terminal.
 
 ## Law catalog
 

@@ -2,17 +2,23 @@
 """Execute the complete tutorial blocks and check their deliberate failures."""
 
 import os
+import math
+import sys
 from pathlib import Path
 import re
 import subprocess
+import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
-from check_scheduler import command_lease, managed_run
+from check_scheduler import command_lease, managed_run, lease_command
 from check_resources import GIB, resources
-from check_runtime import worker_environment
+from check_runtime import worker_environment, tracked_process, worker_count
+from run_exunit import copy_test_build
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'tmp/tutorial-checks'
-WRAPPER = ['uv', 'run', '--locked', 'python', str(ROOT / 'scripts/local_run.py')]
+WRAPPER = [sys.executable, str(ROOT / 'scripts/local_run.py')]
+CPU_WIDTH = None
 
 
 def blocks(path, language):
@@ -53,19 +59,34 @@ def normalize(value):
     return '\n'.join(line.strip() for line in value.strip().splitlines())
 
 
+def execute(argv, *, code, env, log, timeout, lease):
+    with log.open('wb') as output:
+        process = subprocess.Popen(lease_command(argv, lease), cwd=ROOT, env=env,
+            stdin=subprocess.PIPE if code is not None else subprocess.DEVNULL,
+            stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+        lease.started(process.pid)
+        with tracked_process(process):
+            process.communicate(code.encode() if code is not None else None, timeout=timeout)
+    return subprocess.CompletedProcess(argv, process.returncode, log.read_text(), '')
+
+
 def run(label, command, code=None, expected=0, fresh=False):
-    environment = os.environ.copy()
-    if fresh:
-        environment.update(LYNX_CACHE='0', LYNX_DEBUG='lean')
-    with command_lease(label, memory=3 * GIB, max_cpu=resources()['cpus'],
-                       exclusive=(str(ROOT / '_build'),)) as lease:
-        environment.update(worker_environment(1, cpu_budget=lease.allocation['cpu']))
+    with command_lease('tutorial:' + label, memory=3 * GIB, max_cpu=CPU_WIDTH or resources()['cpus'],
+                       exclusive=(str(ROOT / '_build'),) if label.startswith('prepare-') else ()) as lease:
+        environment = worker_environment(1, cpu_budget=lease.allocation['cpu'])
+        environment['HOLD_LEDGER_PARENT_LEASE'] = lease.allocation['task']
+        if 'mix' in command and not label.startswith('prepare-'):
+            parent = OUTPUT / 'builds'
+            parent.mkdir(exist_ok=True)
+            build = Path(tempfile.mkdtemp(prefix=label + '-', dir=parent)) / 'build'
+            copy_test_build(ROOT, build)
+            environment['MIX_BUILD_PATH'] = str(build)
+            index = command.index('mix') + 2
+            command = command[:index] + ['--no-compile', '--no-deps-check'] + command[index:]
         if fresh:
             environment.update(LYNX_CACHE='0', LYNX_DEBUG='lean')
-        result = subprocess.run(
-            WRAPPER + command, input=code, text=True, capture_output=True,
-            cwd=ROOT, env=environment, timeout=300,
-        )
+        result = execute(WRAPPER + command, code=code, env=environment,
+                         log=OUTPUT / f'{label}.log', timeout=300, lease=lease)
     output = result.stdout + result.stderr
     (OUTPUT / f'{label}.log').write_text(output)
     if result.returncode != expected:
@@ -87,29 +108,21 @@ def save(name, code):
 
 @managed_run
 def main():
+    global OUTPUT, CPU_WIDTH
     OUTPUT.mkdir(parents=True, exist_ok=True)
+    OUTPUT = Path(tempfile.mkdtemp(prefix='run-', dir=OUTPUT))
     crash = 'guides/formal_verification_crash_course.md'
     deeper = 'guides/reading_deeper_proofs.md'
     agentic = 'guides/agentic_verification.md'
-    lean = standalone_lean_examples()
-    for index, code in enumerate(lean):
-        output = run(f'lean-{index}', ['lean', '--stdin'], code)
-        if 'warning:' in output or 'error:' in output:
-            raise RuntimeError(output)
-
-    examples = [
-        ('README.md', 's0 = Ledger.init('),
-        (crash, 'sent ='),
-        (crash, 'Ledger.request(s, 11, 300)'),
-        (deeper, 'wrong_total ='),
-        (deeper, 'Ledger.request(s, 11, 100)'),
-        (agentic, 'early_release ='),
-    ]
+    tasks = []
+    for index, code in enumerate(standalone_lean_examples()):
+        tasks.append((f'lean-{index}', ['lean', '--stdin'], code, 0, False, []))
+    examples = [('README.md', 's0 = Ledger.init('), (crash, 'sent ='),
+                (crash, 'Ledger.request(s, 11, 300)'), (deeper, 'wrong_total ='),
+                (deeper, 'Ledger.request(s, 11, 100)'), (agentic, 'early_release =')]
     for index, (guide, needle) in enumerate(examples):
-        code = one(blocks(guide, 'elixir'), needle)
-        path = save(f'example-{index}.exs', code)
-        run(f'example-{index}', ['mix', 'run', path])
-
+        path = save(f'example-{index}.exs', one(blocks(guide, 'elixir'), needle))
+        tasks.append((f'example-{index}', ['mix', 'run', path], None, 0, False, []))
     for needle, language, source in [
         ('def valid?', 'elixir', 'lib/hold_ledger/spec.ex'),
         ('have compatible', 'lean', 'test/support/lean/Request.lean'),
@@ -120,30 +133,26 @@ def main():
 
     base = one(blocks(crash, 'elixir'), 'defmodule CrashCourseTest')
     path = save('cap_test.exs', base)
-    output = run('capacity-tests', ['mix', 'test', path, '--exclude', 'laws'])
-    require(output, 'Result: 2 passed (1 property, 1 test), 1 excluded')
-    output = run('capacity-proof', ['mix', 'test', path, '--only', 'laws'], fresh=True)
-    require(output, 'Result: 1 passed, 2 excluded')
-    require(output, 'fits/2')
-
-    # Confirm a tactic failure on the unchanged claim, without claiming a bug.
+    tasks.extend([
+        ('capacity-tests', ['mix', 'test', path, '--exclude', 'laws'], None, 0, False,
+         ['Result: 2 passed (1 property, 1 test), 1 excluded']),
+        ('capacity-proof', ['mix', 'test', path, '--only', 'laws'], None, 0, True,
+         ['Result: 1 passed, 2 excluded', 'fits/2']),
+    ])
     omega = re.sub(r'proof: ~LEAN""".*?"""', 'proof: ~LEAN"""\n      omega\n      """', base, count=1, flags=re.S)
     path = save('omega_test.exs', omega.replace('CrashCourseTest', 'CrashCourseOmegaTest'))
-    output = run('omega-only', ['mix', 'test', path, '--only', 'laws'], expected=2, fresh=True)
-    require(output, one(blocks(crash, 'text'), 'omega could not prove the goal'))
-
-    mutant = base.replace('CrashCourseTest', 'CrashCourseMutantTest').replace(
-        'if amount > remaining', 'if amount >= remaining')
+    tasks.append(('omega-only', ['mix', 'test', path, '--only', 'laws'], None, 2, True,
+                  [one(blocks(crash, 'text'), 'omega could not prove the goal')]))
+    mutant = base.replace('CrashCourseTest', 'CrashCourseMutantTest').replace('if amount > remaining', 'if amount >= remaining')
     if mutant == base or 'if amount >= remaining' not in mutant:
         raise ValueError('Exact-fit mutation did not apply')
     path = save('cap_mutant_test.exs', mutant)
-    output = run('mutant-tests', ['mix', 'test', path, '--exclude', 'laws', '--seed', '12345'], expected=2)
-    require(output, 'Generated: 0')
-    require(output, 'law fits/2 expects returned false')
-    output = run('mutant-proof', ['mix', 'test', path, '--only', 'laws'], expected=2, fresh=True)
-    require(output, one(blocks(crash, 'text'), 'unsolved goals'))
-
-    # The complementary worked example extends the module, preserving its original claim.
+    tasks.extend([
+        ('mutant-tests', ['mix', 'test', path, '--exclude', 'laws', '--seed', '12345'], None, 2, False,
+         ['Generated: 0', 'law fits/2 expects returned false']),
+        ('mutant-proof', ['mix', 'test', path, '--only', 'laws'], None, 2, True,
+         [one(blocks(crash, 'text'), 'unsolved goals')]),
+    ])
     law = one(blocks(crash, 'elixir'), 'law(over_capacity(')
     extended = base.rsplit('  end', 1)
     code = extended[0] + '\n' + law + '\n  end' + extended[1]
@@ -159,12 +168,26 @@ def main():
 
   laws "capacity" do''')
     path = save('extended_test.exs', code)
-    output = run('extended-tests', ['mix', 'test', path, '--exclude', 'laws'])
-    require(output, 'Result: 4 passed (2 properties, 2 tests), 1 excluded')
-    output = run('extended-proofs', ['mix', 'test', path, '--only', 'laws'], fresh=True)
-    require(output, 'Result: 1 passed, 4 excluded')
-    require(output, 'over_capacity/2')
-    print('Tutorial examples and expected failures checked. Logs: tmp/tutorial-checks/')
+    tasks.extend([
+        ('extended-tests', ['mix', 'test', path, '--exclude', 'laws'], None, 0, False,
+         ['Result: 4 passed (2 properties, 2 tests), 1 excluded']),
+        ('extended-proofs', ['mix', 'test', path, '--only', 'laws'], None, 0, True,
+         ['Result: 1 passed, 4 excluded', 'over_capacity/2']),
+    ])
+    run('prepare-dev', ['mix', 'compile', '--warnings-as-errors'])
+    run('prepare-test', ['env', 'MIX_ENV=test', 'mix', 'compile', '--warnings-as-errors'])
+    def check(task):
+        label, command, code, expected, fresh, evidence = task
+        output = run(label, command, code, expected, fresh)
+        if label.startswith('lean-') and ('warning:' in output or 'error:' in output):
+            raise RuntimeError(output)
+        for text in evidence:
+            require(output, text)
+    jobs = worker_count(resources(), len(tasks), 3 * GIB)
+    CPU_WIDTH = max(1, math.ceil(resources()['cpus'] / jobs))
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        list(pool.map(check, tasks))
+    print(f'Tutorial examples and expected failures checked. Logs: {OUTPUT}')
 
 
 if __name__ == '__main__':
