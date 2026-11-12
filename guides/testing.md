@@ -12,35 +12,31 @@ local tool setup. Run them from the repository root or invoke them by path.
 | `./scripts/check_quick.sh` | Root formatting, compilation and ordinary tests/properties with warnings as errors; strict Credo; Dialyzer; Python tooling tests; catalog registration and static mutation patch checks. No formal proof attempts. |
 | `./scripts/check_full.sh` | Every required law group, uncached proof checking, fresh exports, all six independent checker configurations and the axiom audit. Does not repeat quick checks. |
 | `./scripts/check_mutants.sh` | A fresh targeted formal baseline, then all ten isolated mutants. Each runs its correct-source witness, mutated witness, ordinary suite and mapped formal attempt. |
-| `./scripts/check_web.sh` | Phoenix `mix precommit` (compile, format, strict Credo, Dialyzer and tests), documentation, asset setup/build and Python content checks. |
+| `./scripts/check_web.sh` | Phoenix `mix precommit` (compile, format, strict Credo, Dialyzer and tests), documentation, asset setup/build, Python content checks and all three managed browser profiles. |
 | `./scripts/check_all.sh` | Everything above, plus bounded BEAM/Lean differential checks, executable tutorials, demo, root documentation/package builds and original claim-reading production. Runs full formal acceptance once and reuses its validated baseline for mutants. |
 
-The master starts independent groups concurrently, giving the full formal group
-priority. Mutants become eligible as soon as that full baseline passes, without
-waiting for unrelated groups. One shared CPU and estimated-memory budget covers
-both ordinary groups and the mutant pool. Each mutant keeps its witness,
-ordinary suite and formal attempt in order; Lean's shared proof batch retains
-its dependency order.
+The master starts independent group orchestrators concurrently. Each executable
+command stage acquires CPU, estimated memory, a worker slot and exclusive build
+ownership from one run-local coordinator. Nested law, mutation, differential
+and tutorial commands join that coordinator rather than reserving a second
+copy of the parent budget. Mutants become eligible immediately after the full
+baseline passes. Command-stage completion releases the reservation; a group
+waiting for its next stage does not retain CPU or memory tokens.
 
-Automatic selection uses every usable CPU, respecting affinity, effective cpusets,
-cgroup quotas and inherited CPU allocations. Detection resolves cgroup controller
-mount roots and reports fractional CPU capacity, PID headroom, free disk space
-and pressure alongside the integer execution width. Task admission reserves
-CPU, memory and worker slots together; exclusive build owners cannot overlap. There is no four-worker or half-CPU cap. Actual
-concurrency is bounded by runnable tasks and estimated memory. The scheduler
-reserves the larger of 2 GiB or 10% of available memory, then budgets 12 GiB for
-full formal checking, 6 GiB for web, 4 GiB for quick, 3 GiB each for differential,
-tutorials and readings, 2 GiB for packaging, and 6 GiB per mutant. These estimates
-are scheduling reservations, not hard process limits. An oversized single task
-runs alone. Memory estimates should be revised using measured peaks.
+Automatic selection respects affinity, effective cpusets, cgroup quotas and
+inherited allocations. Discovery reports fractional CPU capacity, available
+RAM, PID headroom, disk space and pressure. The scheduler initially reserves
+the larger of 2 GiB or 10% of available RAM. Memory reservations are estimates,
+not hard OS limits. An oversized single command can run alone and is labeled
+in the lease log. Group orchestration slots and executable command slots are
+distinct: a lightweight launcher delegates its command reservations.
 
-On a 24-CPU machine with sufficient memory, up to seven independent groups or
-ten mutants can run concurrently. There are only seven top-level groups and
-ten mutants. BEAM schedulers receive each task's CPU allocation without a fixed
-four-scheduler cap. Nested workers replace runner-generated scheduler settings;
-explicit operator `ERL_FLAGS` remain intact. A single Lynx batch still elaborates
-sequentially in the pinned dependency; adding workers does not parallelize one
-proof. All six checker requirements and cold/source-integrity gates remain.
+Each stage receives a CPU allocation bounded by its request and the run's
+current parallelism. As groups finish, subsequent stages can take wider
+allocations. Generated BEAM flags follow the granted width; explicit operator
+flags remain intact. The pinned Lynx batch is still sequential internally;
+module elaboration parallelism is subsequent implementation work. All six
+checker requirements and cold proof acceptance gates remain.
 
 Every helper accepts the same options:
 
@@ -54,7 +50,8 @@ Every helper accepts the same options:
 
 ### Source copies, logs and reports
 
-Setup finishes before workers start. The runner snapshots the current source,
+The runner holds its checkout lock before synchronizing the Python environment
+and preparing dependencies. Setup finishes before workers start. The runner snapshots the current source,
 including tracked edits and nonignored untracked files. Workers have independent dependency copies, builds, caches,
 exports, reports and assets. Installed tools and the prepared Python environment
 are shared. Temporary copies use reflinks when supported, with ordinary copies
@@ -68,7 +65,8 @@ heartbeats. Concurrent terminal lines carry their group name.
 
 The log identifies `tmp/check-runs/<run>/`, containing:
 
-- `status.json`: detected resources, worker ceiling, per-group CPU/memory allocations and each group's result.
+- `status.json`: detected resources, worker ceiling and each group's result.
+- `leases.jsonl`: queued, granted, started and released command reservations, including CPU/memory allocations and oversized singleton labels.
 - `logs/<group>.log`: command output for that group.
 - `snapshot/`: the source used by every worker.
 - `workers/<group>/`: isolated project and detailed generated evidence.

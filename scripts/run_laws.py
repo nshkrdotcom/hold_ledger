@@ -22,7 +22,9 @@ import sys
 import time
 from pathlib import Path
 
-from check_runtime import stop_tree, tracked_process
+from check_runtime import stop_tree, tracked_process, worker_environment
+from check_scheduler import command_lease, delegates, managed_run
+from check_resources import resources, GIB
 from obligations import check_registration, coverage, orphan_modules, required_inventory
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -112,8 +114,8 @@ def inspect_manifest() -> list[dict]:
     return laws
 
 
-def run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
-        log: Path, timeout: int) -> dict:
+def _run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
+        log: Path, timeout: int, lease=None) -> dict:
     log.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     label = log.stem
@@ -126,6 +128,8 @@ def run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
         process = subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
                                    start_new_session=True, env=env)
+        if lease is not None:
+            lease.started(process.pid)
         with tracked_process(process):
             selector.register(process.stdout, selectors.EVENT_READ)
             decoder = codecs.getincrementaldecoder("utf8")(errors="replace")
@@ -181,53 +185,23 @@ def run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
             "wall_seconds": elapsed, "log": str(log.relative_to(ROOT))}
 
 
+def run(argv: list[str], *, cwd: Path, env: dict[str, str] | None,
+        log: Path, timeout: int) -> dict:
+    if delegates(argv):
+        return _run(argv, cwd=cwd, env=env, log=log, timeout=timeout)
+    with command_lease(log.stem, memory=6 * GIB, max_cpu=resources()['cpus'],
+                       exclusive=(str(cwd / '_build'),)) as lease:
+        # Keep caller-provided proof/cache options; replace only generated runtime flags.
+        child_env = worker_environment(1, cwd, cpu_budget=lease.allocation['cpu'])
+        if env is not None:
+            child_env.update({key: value for key, value in env.items()
+                              if key not in ('ERL_FLAGS', 'HOLD_LEDGER_AUTO_ERL_FLAGS', 'HOLD_LEDGER_CPU_BUDGET')})
+        return _run(argv, cwd=cwd, env=child_env, log=log, timeout=timeout, lease=lease)
+
+
 def exported_checker_record(path: Path, *, label: str, timeout: int) -> dict:
-    path = path.resolve()
-    if not path.is_file() or path.stat().st_size == 0:
-        raise RuntimeError(f"Missing/empty independent export: {path}")
-    argv = [sys.executable, str(LOCAL_RUN), "lake", "--dir", "deps/lynx/Lean",
-            "check", "--paranoid", "--from-export", str(path.resolve())]
-    log = ROOT / "tmp/verification/logs" / f"{label}-paranoid.log"
-    outcome = run(argv, cwd=ROOT, env=None, log=log, timeout=timeout)
-    output = log.read_text(encoding="utf8")
-    observed = {name: f"{name} kernel accepts the solution" in output
-                for name in CHECKERS}
-    axioms_line = re.search(r"^Uses axioms:\s*(.*)$", output, re.MULTILINE)
-    reported_axioms = ([part.strip() for part in axioms_line.group(1).split(",")]
-                       if axioms_line else None)
-    only_nanoda_stack = (not observed["nanoda"] and all(v for k,v in observed.items() if k != "nanoda")
-                         and "stack overflow" in output)
-    if only_nanoda_stack and reported_axioms is None:
-        audit_log = ROOT / "tmp/verification/logs" / f"{label}-axioms.log"
-        audit = run([sys.executable, str(LOCAL_RUN), "lake", "--dir", "deps/lynx/Lean",
-                     "check", "--from-export", str(path)], cwd=ROOT, env=None,
-                    log=audit_log, timeout=timeout)
-        audit_text = audit_log.read_text(encoding="utf8")
-        audit_line = re.search(r"^Uses axioms:\s*(.*)$", audit_text, re.MULTILINE)
-        if audit["exit"] == 0 and audit_line:
-            reported_axioms = [part.strip() for part in audit_line.group(1).split(",")]
-        outcome["axiom_audit"] = audit
-    authorized_axioms = (reported_axioms is not None and bool(reported_axioms)
-                         and set(reported_axioms) <= REQUIRED_AXIOMS)
-    # A stack-overflow crash is a resource failure, not a kernel rejection.
-    # Keep the failed bundled run and require the same pinned Nanoda binary
-    # to actually accept the same export in an equally sandboxed serial run.
-    serial_ok = False
-    if (not observed["nanoda"] and all(v for k, v in observed.items() if k != "nanoda")
-            and "stack overflow" in output and authorized_axioms):
-        serial_log = ROOT / "tmp/verification/logs" / f"{label}-nanoda-serial.log"
-        serial = run([sys.executable, str(ROOT / "scripts/check_nanoda_serial.py"), str(path.resolve())],
-                     cwd=ROOT, env=None, log=serial_log, timeout=timeout)
-        serial_text = serial_log.read_text(encoding="utf8")
-        serial_ok = serial["exit"] == 0 and bool(re.search(r"Checked \d+ declarations with no (?:typechecker )?errors", serial_text))
-        serial["passed"] = serial_ok
-        outcome["bundled_checker_acceptance"] = dict(observed)
-        outcome["nanoda_serial_retry"] = serial
-        observed["nanoda"] = serial_ok
-    outcome.update(path=str(path.relative_to(ROOT)), checker_acceptance=observed,
-                   axiom_list=reported_axioms, allowed_axioms=authorized_axioms,
-                   passed=((outcome["exit"] == 0 or serial_ok) and all(observed.values()) and authorized_axioms))
-    return outcome
+    from check_kernels_concurrent import check_export
+    return check_export(path, label=label, timeout=timeout)
 
 
 def supported_laws(laws: list[dict]) -> list[dict]:
@@ -390,6 +364,7 @@ def execution(laws: list[dict], timeout: int, checker_timeout: int,
     return measurements
 
 
+@managed_run
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inspect-only", action="store_true", help="static validation, no native success claim")

@@ -99,3 +99,17 @@ class MutationBaselineTests(unittest.TestCase):
                 report.write_text(json.dumps(payload))
                 with self.assertRaisesRegex(RuntimeError, 'complete required laws'):
                     run_mutants.accepted_baseline(report, [('M', 'directory', selected)])
+
+
+class CampaignSelectionTests(unittest.TestCase):
+    def test_formal_budget_uses_manifest_survivor_order(self):
+        from mutation_campaign import select_formal
+        records = [
+            {'id': 'first', 'classification': 'executable_counterexample'},
+            {'id': 'second', 'classification': 'ordinary_survivor'},
+            {'id': 'third', 'classification': 'ordinary_timeout'},
+            {'id': 'fourth', 'classification': 'ordinary_survivor'},
+        ]
+        self.assertEqual(select_formal(records, 1), ['second'])
+        self.assertEqual(select_formal(records, 2), ['second', 'fourth'])
+        self.assertEqual(select_formal(records, 0), [])

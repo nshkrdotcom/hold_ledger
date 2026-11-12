@@ -98,6 +98,8 @@ def copy_project(source: Path, destination: Path, *, dependencies: bool = True) 
     if dependencies:
         copy_directory(source / 'deps', destination / 'deps')
         copy_directory(source / 'apps/review_web/deps', destination / 'apps/review_web/deps')
+        copy_directory(source / 'apps/review_web/test/browser/node_modules',
+                       destination / 'apps/review_web/test/browser/node_modules')
     for name in ('.local', '.venv'):
         if (source / name).is_dir():
             (destination / name).symlink_to((source / name).resolve(), target_is_directory=True)

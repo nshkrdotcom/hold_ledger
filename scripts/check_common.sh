@@ -49,8 +49,7 @@ check_main() {
 }
 
 check_execute() {
-  uv sync --locked
-  uv run --locked python scripts/check_suite.py "$check_mode" "${check_options[@]}"
+  uv run --no-sync python scripts/check_suite.py "$check_mode" "${check_options[@]}"
 }
 
 check_finish() {

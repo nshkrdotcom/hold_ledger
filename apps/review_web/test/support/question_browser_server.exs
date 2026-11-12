@@ -1,28 +1,19 @@
 # Explicit controlled browser fixture. No provider is contacted.
 # MIX_ENV=test uv run --locked python scripts/local_run.py --cwd apps/review_web \
 #   mix run --no-start --no-halt test/support/question_browser_server.exs
-alias HoldLedgerReview.{AI, Config}
-root = Config.root()
+alias HoldLedgerReview.AI
+root = System.fetch_env!("HOLD_LEDGER_BROWSER_DIR")
+profile = System.get_env("HOLD_LEDGER_BROWSER_PROFILE", "main")
 
-Application.put_env(
-  :hold_ledger_review_web,
-  :question_store_dir,
-  Path.join(root, "tmp/acceptance_0752/controlled-questions")
-)
+for {key, directory} <- [
+      question_store_dir: "questions",
+      review_store_dir: "reviews",
+      part3_store_dir: "packages"
+    ] do
+  Application.put_env(:hold_ledger_review_web, key, Path.join(root, directory))
+end
 
-Application.put_env(
-  :hold_ledger_review_web,
-  :review_store_dir,
-  Path.join(root, "tmp/acceptance_0752/controlled-traces")
-)
-
-Application.put_env(
-  :hold_ledger_review_web,
-  :part3_store_dir,
-  Path.join(root, "tmp/acceptance_0752/controlled-packages")
-)
-
-Application.put_env(:hold_ledger_review_web, :question_runner, fn packet ->
+runner = fn packet ->
   complete = fn client, _request ->
     cond do
       String.contains?(packet["question"], "[wait]") ->
@@ -49,7 +40,13 @@ Application.put_env(:hold_ledger_review_web, :question_runner, fn packet ->
   end
 
   AI.answer(packet, true, complete: complete, capability_check: fn _ -> true end)
-end)
+end
+
+Application.put_env(
+  :hold_ledger_review_web,
+  :question_runner,
+  if(profile == "questions", do: runner, else: fn _ -> {:error, :browser_provider_disabled} end)
+)
 
 endpoint = Application.get_env(:hold_ledger_review_web, HoldLedgerReviewWeb.Endpoint)
 
@@ -58,10 +55,19 @@ Application.put_env(
   HoldLedgerReviewWeb.Endpoint,
   Keyword.merge(endpoint,
     server: true,
-    url: [host: "127.0.0.1", port: 4001],
-    http: [ip: {127, 0, 0, 1}, port: 4001]
+    url: [host: "127.0.0.1", port: 0],
+    http: [ip: {127, 0, 0, 1}, port: 0]
   )
 )
 
 {:ok, _} = Application.ensure_all_started(:hold_ledger_review_web)
-IO.puts("Controlled question browser fixture listening on 4001; no provider calls.")
+{:ok, {_address, port}} = HoldLedgerReviewWeb.Endpoint.server_info(:http)
+ready = %{port: port, profile: profile, token: System.fetch_env!("HOLD_LEDGER_BROWSER_TOKEN")}
+File.write!(System.fetch_env!("HOLD_LEDGER_BROWSER_READY") <> ".tmp", JSON.encode!(ready))
+
+File.rename!(
+  System.fetch_env!("HOLD_LEDGER_BROWSER_READY") <> ".tmp",
+  System.fetch_env!("HOLD_LEDGER_BROWSER_READY")
+)
+
+IO.puts("Browser fixture ready on #{port}; no provider calls.")

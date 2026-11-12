@@ -123,29 +123,17 @@ class LawRunnerTests(unittest.TestCase):
             "Checked Elixir.HoldLedger.Laws.Example.laws in 1ms (ok)\nResult: 1 passed\n"))
 
     def test_all_six_acknowledgments_and_allowed_axioms_are_required(self):
-        with tempfile.TemporaryDirectory(dir=run_laws.ROOT / "tmp") as folder:
-            export = Path(folder) / "proof.ndjson"
-            export.write_text("{}\n")
-            complete = "\n".join(f"{name} kernel accepts the solution"
-                                 for name in run_laws.CHECKERS)
-            output = complete + "\nUses axioms: propext, Quot.sound, Classical.choice\n"
-
-            def fake_run(argv, *, cwd, env, log, timeout):
-                self.assertIn("--paranoid", argv)
-                log.parent.mkdir(parents=True, exist_ok=True)
-                log.write_text(output)
-                return {"exit": 0, "timeout": False, "log": str(log.relative_to(run_laws.ROOT))}
-
-            with mock.patch.object(run_laws, "run", fake_run):
-                self.assertTrue(run_laws.exported_checker_record(export, label="unit", timeout=1)["passed"])
-                for checker in run_laws.CHECKERS:
-                    output = complete.replace(f"{checker} kernel accepts the solution", "")
-                    output += "\nUses axioms: propext\n"
-                    self.assertFalse(run_laws.exported_checker_record(export, label="unit", timeout=1)["passed"])
-                output = complete + "\nUses axioms: untrusted\n"
-                self.assertFalse(run_laws.exported_checker_record(export, label="unit", timeout=1)["passed"])
-                output = "command exited successfully without checking anything\n"
-                self.assertFalse(run_laws.exported_checker_record(export, label="unit", timeout=1)["passed"])
+        from check_kernels_concurrent import accepted
+        results = {name: {'accepted': True} for name in run_laws.CHECKERS}
+        axioms = ['propext', 'Quot.sound', 'Classical.choice']
+        self.assertTrue(accepted(results, axioms, run_laws.CHECKERS, run_laws.REQUIRED_AXIOMS))
+        for checker in run_laws.CHECKERS:
+            partial = {name: record for name, record in results.items() if name != checker}
+            self.assertFalse(accepted(partial, axioms, run_laws.CHECKERS, run_laws.REQUIRED_AXIOMS))
+            rejected = {name: {'accepted': name != checker} for name in run_laws.CHECKERS}
+            self.assertFalse(accepted(rejected, axioms, run_laws.CHECKERS, run_laws.REQUIRED_AXIOMS))
+        self.assertFalse(accepted(results, ['untrusted'], run_laws.CHECKERS, run_laws.REQUIRED_AXIOMS))
+        self.assertFalse(accepted(results, [], run_laws.CHECKERS, run_laws.REQUIRED_AXIOMS))
 
     def test_empty_exports_fail_even_with_a_successful_law_command(self):
         law = dict(run_laws.inspect_manifest()[0], slug="unit-empty-export")

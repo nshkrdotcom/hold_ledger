@@ -45,6 +45,10 @@ jobs:
           otp-version: '29.1.2'
           elixir-version: '1.20.5'
           version-type: strict
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
+        with:
+          version: '0.12.6'
+          python-version: '3.13.15'
       - name: Locked dependencies, compilation and tests
         run: |
           mix deps.get --check-locked
@@ -57,3 +61,17 @@ jobs:
           mix test --warnings-as-errors
           mix assets.setup
           mix assets.build
+
+      - name: Browser dependencies and isolated browser suites
+        run: |
+          npm ci --prefix test/browser
+          cd test/browser
+          npx --no-install playwright install --with-deps chromium
+          uv run --locked --directory ../../../.. python scripts/run_browser.py all
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: review-browser-evidence
+          path: |
+            tmp/browser-runs/
+            tmp/execution/

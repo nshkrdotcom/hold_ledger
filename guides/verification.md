@@ -31,6 +31,14 @@ acceptance additionally requires fresh exports, all six checker acknowledgments,
 and the permitted-axiom audit. A launched or partially completed run is not
 acceptance. Retain the actual result when reporting a proof run.
 
+The exported proof objects are checked by independent tasks under one shared
+resource budget: five external configurations use the pinned Lake-equivalent
+Bubblewrap setup, and pinned `lake check --from-export` supplies Lean default
+checking plus the axiom audit. Every configuration must accept. Logs and
+per-configuration results are retained under `tmp/verification/checkers/` in
+the executing workspace. The narrow Nanoda worker-stack recovery remains
+explicit in the report and requires a successful sandboxed serial retry.
+
 The permitted foundational axioms are `propext`, `Quot.sound` and
 `Classical.choice`. No admissions or custom axioms are permitted.
 

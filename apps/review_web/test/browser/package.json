@@ -3,9 +3,9 @@
   "name": "hold-ledger-deterministic-workbench-browser",
   "description": "Browser checks for the local review workspace",
   "scripts": {
-    "test": "playwright test",
-    "test:presentation": "playwright test --config presentation.static.config.cjs",
-    "test:questions": "playwright test --config questions.controlled.config.cjs"
+    "test": "uv run --locked --directory ../../../.. python scripts/run_browser.py main",
+    "test:presentation": "uv run --locked --directory ../../../.. python scripts/run_browser.py presentation",
+    "test:questions": "uv run --locked --directory ../../../.. python scripts/run_browser.py questions"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1"

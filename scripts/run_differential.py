@@ -2,11 +2,11 @@
 """Bounded deterministic BEAM/compiled Lean/kernel comparisons on pinned tools."""
 import argparse
 import json
-import os
 from pathlib import Path
-import signal
-import subprocess
 import sys
+
+from run_laws import run as run_command
+from check_scheduler import managed_run
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,6 +31,7 @@ def validate_report(report_path: Path, samples: int) -> tuple[bool, str]:
         return False, f'cannot inspect differential report: {exc}'
 
 
+@managed_run
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=100)
@@ -42,20 +43,15 @@ def main():
     report.unlink(missing_ok=True)
     command = [sys.executable, str(ROOT / 'scripts/local_run.py'), 'env',
                'MIX_ENV=test', 'mix', 'run', 'scripts/differential.exs', str(args.samples)]
-    child = subprocess.Popen(command, cwd=ROOT, start_new_session=True)
-    try:
-        code = child.wait(timeout=args.timeout)
-        if code:
-            print(f'Differential runner exited {code}; no acceptance', file=sys.stderr)
-            return code
-        accepted, message = validate_report(report, args.samples)
-        print(message, file=sys.stdout if accepted else sys.stderr)
-        return 0 if accepted else 1
-    except subprocess.TimeoutExpired:
-        os.killpg(child.pid, signal.SIGKILL)
-        child.wait()
-        print('Differential campaign timed out; no acceptance', file=sys.stderr)
+    outcome = run_command(command, cwd=ROOT, env=None,
+                          log=ROOT / 'tmp/differential/command.log', timeout=args.timeout)
+    if outcome['timeout'] or outcome['exit'] != 0:
+        print('Differential campaign failed or timed out; no acceptance', file=sys.stderr)
         return 1
+    accepted, message = validate_report(report, args.samples)
+    print(message, file=sys.stdout if accepted else sys.stderr)
+    return 0 if accepted else 1
+
 
 
 if __name__ == '__main__':

@@ -1,17 +1,25 @@
 # Verification browser checks
 
-Start Phoenix from the repository root:
-
-```sh
-uv run --locked python scripts/local_run.py --cwd apps/review_web mix phx.server
-```
-
-In this directory:
+From this directory:
 
 ```sh
 npm ci
 npx playwright install chromium
 npm test
+npm run test:presentation
+npm run test:questions
+```
+
+The launcher compiles test code once, then runs file tasks within the detected
+machine's CPU/memory budget. Each application task owns a private Phoenix
+server, ephemeral port and empty stores; no development server is required.
+The controlled questions profile uses the synthetic adapter. No profile invokes
+a live provider. Logs, browser results and final status are retained in the
+repository's ignored `tmp/browser-runs/` directory. To run all three profiles
+from the repository root:
+
+```sh
+uv run --locked python scripts/run_browser.py all
 ```
 
 These tests cover the separate review application's behavior. They are not
@@ -29,9 +37,5 @@ Tests wait for connected LiveViews and concrete outcomes. They exercise creation
 `0810_claim_lens.spec.cjs` covers the two curated, explicitly hypothetical
 claim edits at desktop and narrow viewports, the no-contract-delta control,
 source-reading evidence labels and the trusted comparison chooser deep link.
-The checks need a running Phoenix server; they do not launch Lean, run mutant
-patches, or replace server-side unit/LiveView tests. Run a focused check with:
-
-```sh
-npx playwright test 0810_claim_lens.spec.cjs
-```
+The checks use managed private Phoenix servers; they do not launch Lean, run mutant
+patches, or replace server-side unit/LiveView tests. The launcher retains a separate log/result directory for every spec file.

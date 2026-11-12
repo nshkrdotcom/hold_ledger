@@ -6,6 +6,10 @@ from pathlib import Path
 import re
 import subprocess
 
+from check_scheduler import command_lease, managed_run
+from check_resources import GIB, resources
+from check_runtime import worker_environment
+
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'tmp/tutorial-checks'
 WRAPPER = ['uv', 'run', '--locked', 'python', str(ROOT / 'scripts/local_run.py')]
@@ -53,10 +57,15 @@ def run(label, command, code=None, expected=0, fresh=False):
     environment = os.environ.copy()
     if fresh:
         environment.update(LYNX_CACHE='0', LYNX_DEBUG='lean')
-    result = subprocess.run(
-        WRAPPER + command, input=code, text=True, capture_output=True,
-        cwd=ROOT, env=environment, timeout=300,
-    )
+    with command_lease(label, memory=3 * GIB, max_cpu=resources()['cpus'],
+                       exclusive=(str(ROOT / '_build'),)) as lease:
+        environment.update(worker_environment(1, cpu_budget=lease.allocation['cpu']))
+        if fresh:
+            environment.update(LYNX_CACHE='0', LYNX_DEBUG='lean')
+        result = subprocess.run(
+            WRAPPER + command, input=code, text=True, capture_output=True,
+            cwd=ROOT, env=environment, timeout=300,
+        )
     output = result.stdout + result.stderr
     (OUTPUT / f'{label}.log').write_text(output)
     if result.returncode != expected:
@@ -76,6 +85,7 @@ def save(name, code):
     return str(path.relative_to(ROOT))
 
 
+@managed_run
 def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
     crash = 'guides/formal_verification_crash_course.md'

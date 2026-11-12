@@ -21,7 +21,7 @@ from check_runtime import (cancel_running, cancellation_scope, copy_project,
                            resources, tracked_process, worker_environment,
                            GROUP_MEMORY_GIB, MUTANT_MEMORY_BYTES, GIB)
 
-from check_scheduler import Demand, ResourcePool
+from check_scheduler import command_lease, delegates, execution_scope
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_LOCK = threading.Lock()
@@ -32,8 +32,8 @@ def say(label: str, message: str) -> None:
         print(f'[{label}] {message}', flush=True)
 
 
-def command(argv: list[str], project: Path, label: str, log: Path, jobs: int, *,
-            cpu_budget: int | None = None) -> int:
+def _command(argv: list[str], project: Path, label: str, log: Path, jobs: int, *,
+            cpu_budget: int | None = None, lease=None) -> int:
     env = worker_environment(jobs, project, cpu_budget=cpu_budget)
     say(label, '+ ' + shlex.join(argv))
     started = time.monotonic()
@@ -43,6 +43,8 @@ def command(argv: list[str], project: Path, label: str, log: Path, jobs: int, *,
         output.flush()
         child = subprocess.Popen(argv, cwd=project, env=env, stdout=subprocess.PIPE,
                                  stderr=subprocess.STDOUT, start_new_session=True)
+        if lease is not None:
+            lease.started(child.pid)
         with tracked_process(child), selectors.DefaultSelector() as selector:
             selector.register(child.stdout, selectors.EVENT_READ)
             pending = b''
@@ -75,6 +77,16 @@ def command(argv: list[str], project: Path, label: str, log: Path, jobs: int, *,
         return code
 
 
+def command(argv: list[str], project: Path, label: str, log: Path, jobs: int, *,
+            cpu_budget: int | None = None) -> int:
+    if delegates(argv):
+        return _command(argv, project, label, log, jobs, cpu_budget=cpu_budget)
+    memory = GROUP_MEMORY_GIB.get(label, 2) * GIB
+    with command_lease(label, memory=memory, max_cpu=cpu_budget or resources()['cpus'],
+                       exclusive=(str(project / '_build'),)) as lease:
+        return _command(argv, project, label, log, 1, cpu_budget=lease.allocation['cpu'], lease=lease)
+
+
 def commands(group: str) -> list[list[str]]:
     python = [sys.executable]
     local = python + ['scripts/local_run.py']
@@ -95,9 +107,9 @@ def commands(group: str) -> list[list[str]]:
                           'tmp/verification/mutants.json']]
     if group == 'web':
         return [web + ['precommit'], web + ['docs', '--warnings-as-errors'],
-                web + ['assets.setup'], web + ['assets.build'],
                 python + ['-m', 'unittest', 'discover', '-s', 'apps/review_web/scripts',
-                          '-p', 'test_*.py', '-v']]
+                          '-p', 'test_*.py', '-v'],
+                python + ['scripts/run_browser.py', 'all']]
     if group == 'differential':
         return [python + ['scripts/run_differential.py', '--samples', '100', '--timeout', '300']]
     if group == 'tutorials':
@@ -140,73 +152,29 @@ def run_mutation_group(snapshot: Path, run_dir: Path, jobs: int, cpu_budget: int
 
 def schedule_groups(mode: str, snapshot: Path, run_dir: Path, capacity: dict,
                     jobs: int, report: dict, save) -> None:
-    """Dispatch ready work within shared CPU/estimated-memory budgets."""
+    """Run group orchestrators; every executable stage acquires its own shared lease."""
     pending = (['full', 'quick', 'web', 'differential', 'tutorials', 'package', 'readings']
                if mode == 'all' else [mode])
     active = {}
-    reservations = ResourcePool(capacity, jobs)
     failed = False
-    with ThreadPoolExecutor(max_workers=jobs) as pool:
+    with execution_scope(run_dir, capacity=capacity, jobs=jobs, parallelism=min(jobs, len(pending))) as coordinator, \
+         ThreadPoolExecutor(max_workers=jobs) as pool:
         while pending or active:
-            for group in list(pending):
-                free = reservations.available()
-                free_cpu, free_slots, free_memory = free['cpu'], free['slots'], free['memory']
-                if free_cpu < 1 or free_slots < 1:
-                    break
+            while pending and len(active) < jobs:
+                group = pending.pop(0)
                 if group == 'mutants':
-                    workers = min(10, free_slots, free_cpu,
-                                  max(0, free_memory) // MUTANT_MEMORY_BYTES)
-                    if workers < 1:
-                        if active:
-                            continue
-                        workers = 1  # An oversized task runs alone, never deadlocks.
-                    memory = workers * MUTANT_MEMORY_BYTES
-                    cpu = free_cpu
-                    baseline = (Path(report['groups']['full']['workspace'])
-                                if mode == 'all' else None)
-                    launch = (run_mutation_group, snapshot, run_dir, workers, cpu, baseline)
+                    baseline = (Path(report['groups']['full']['workspace']) if mode == 'all' else None)
+                    future = pool.submit(run_mutation_group, snapshot, run_dir,
+                                         min(10, jobs), capacity['cpus'], baseline)
                 else:
-                    workers = 1
-                    memory = GROUP_MEMORY_GIB[group] * GIB
-                    if memory > free_memory and active:
-                        continue
-                    # Divide free CPUs among work that actually fits, not jobs
-                    # waiting for memory. A lone runnable group gets all CPUs.
-                    remaining_memory = free_memory
-                    ready = 0
-                    for candidate in pending:
-                        cost = (MUTANT_MEMORY_BYTES if candidate == 'mutants'
-                                else GROUP_MEMORY_GIB[candidate] * GIB)
-                        if cost <= remaining_memory:
-                            count = (min(10, remaining_memory // cost)
-                                     if candidate == 'mutants' else 1)
-                            ready += count
-                            remaining_memory -= count * cost
-                    concurrency = max(1, min(free_slots, free_cpu, ready))
-                    cpu = max(1, free_cpu // concurrency)
-                    launch = (run_group, group, snapshot, run_dir, cpu)
-                lease = reservations.try_acquire(group, Demand(cpu, memory, workers))
-                if lease is None:
-                    continue
-                try:
-                    future = pool.submit(*launch)
-                except BaseException:
-                    reservations.release(group)
-                    raise
-                allocation = {'oversized_singleton': lease['oversized_singleton'], 'cpu_budget': cpu, 'memory_estimate_bytes': memory,
-                              'workers': workers}
-                report.setdefault('allocations', {})[group] = allocation
-                active[future] = (group, cpu, memory, workers)
-                pending.remove(group)
+                    future = pool.submit(run_group, group, snapshot, run_dir, capacity['cpus'])
+                active[future] = group
                 save()
-            if not active:
-                if pending:
-                    raise RuntimeError(f'Insufficient resources for pending groups: {pending}')
-                break
             completed, _ = wait(active, return_when=FIRST_COMPLETED)
             for future in completed:
-                group, _, _, _ = active.pop(future)
-                reservations.release(group)
+                group = active.pop(future)
+                if coordinator is not None:
+                    coordinator.parallelism = max(1, min(jobs, len(pending) + len(active)))
                 try:
                     result = future.result()
                 except CancelledError:
@@ -217,13 +185,12 @@ def schedule_groups(mode: str, snapshot: Path, run_dir: Path, capacity: dict,
                 save()
                 if result['state'] != 'passed':
                     failed = True
-                    reservations.cancel()
                     pending.clear()
                     cancel_running()
                     for other in active:
                         other.cancel()
                 elif group == 'full' and mode == 'all' and not failed:
-                    pending.append('mutants')
+                    pending.insert(0, 'mutants')
     if failed:
         raise RuntimeError('Check group failed; see per-group logs')
 
@@ -260,13 +227,19 @@ def main() -> int:
         save()
         try:
             proof_tools = args.mode in ('all', 'full', 'mutants')
-            setup = [[sys.executable, 'scripts/onboard.py', '--profile',
+            setup = [['uv', 'sync', '--locked'],
+                     [sys.executable, 'scripts/onboard.py', '--profile',
                       'proofs' if proof_tools else 'runtime', '--provision'],
                      [sys.executable, 'scripts/local_run.py', 'mix', 'deps.get'],
                      [sys.executable, 'scripts/verify_pins.py']]
             if args.mode in ('all', 'web'):
                 setup.append([sys.executable, 'scripts/local_run.py', '--cwd', 'apps/review_web',
                               'mix', 'deps.get', '--check-locked'])
+                for argv in (['npm', 'ci'],
+                             ['env', 'XDG_CACHE_HOME=' + os.environ.get('XDG_CACHE_HOME', str(Path.home() / '.cache')),
+                              'npx', '--no-install', 'playwright', 'install', 'chromium']):
+                    setup.append([sys.executable, 'scripts/local_run.py', '--cwd',
+                                  'apps/review_web/test/browser', *argv])
             for argv in setup:
                 code = command(argv, ROOT, 'setup', run_dir / 'logs/setup.log', 1,
                                cpu_budget=capacity['cpus'])

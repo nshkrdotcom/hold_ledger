@@ -24,6 +24,7 @@ from check_runtime import cancellation_scope, copy_project, resources, worker_en
 from run_laws import (CHECKERS, REQUIRED_AXIOMS,
                       inspect_manifest, run as run_command)
 from obligations import required_inventory
+from check_scheduler import managed_run
 
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = Path("lib/hold_ledger/ledger.ex")
@@ -49,7 +50,7 @@ def contents(path: Path) -> bytes:
 
 def cmd(argv: list[str], cwd: Path, *, timeout: int, log: Path) -> dict:
     result = run_command(argv, cwd=cwd, env=worker_environment(int(os.environ.get("HOLD_LEDGER_JOBS", "1")), cwd), log=log, timeout=timeout)
-    # Preserve the mutation runner's existing report schema.
+    # Report the command result in the mutation record.
     result.pop("cwd")
     return result
 
@@ -248,6 +249,7 @@ def one_mutant(spec: tuple, original: bytes, spec_bytes: str,
                 "formal_attribution": attribution}
 
 
+@managed_run
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--jobs", type=int, help="worker ceiling (default: all usable CPUs, bounded by memory and mutant count)")

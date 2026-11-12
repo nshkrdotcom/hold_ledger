@@ -117,72 +117,49 @@ class SchedulerTests(unittest.TestCase):
         self.assertLessEqual(observed[0][0], 10)
         self.assertTrue(all(v['state'] == 'passed' for v in report['groups'].values()))
 
-    def test_oversized_single_task_can_run_without_deadlock(self):
-        active = 0
-        peak = 0
-        lock = threading.Lock()
-        report = {'groups': {}}
-        def group(name, *args):
-            nonlocal active, peak
-            with lock:
-                active += 1
-                peak = max(peak, active)
-            with lock:
-                active -= 1
-            return {'state': 'passed', 'workspace': '/fixture'}
-        def save():
-            pass
-        with patch.object(suite, 'run_group', side_effect=group):
-            suite.schedule_groups('web', Path('/fixture'), Path('/fixture'),
-                                  {'cpus': 24, 'memory_budget_bytes': GIB}, 24, report, save)
-        self.assertEqual(peak, 1)
-        self.assertEqual(report['groups']['web']['state'], 'passed')
-
-    def test_full_memory_reservation_blocks_other_groups_until_released(self):
-        full_started = threading.Event()
-        release_full = threading.Event()
-        other_started = threading.Event()
+    def test_nested_clients_share_one_memory_and_slot_budget(self):
+        from check_scheduler import Coordinator, command_lease
+        first = threading.Event()
+        release = threading.Event()
+        second = threading.Event()
         errors = []
-        report = {'groups': {}}
-        def group(name, *args):
-            if name == 'full':
-                full_started.set()
-                if not release_full.wait(5):
-                    raise RuntimeError('test did not release full')
-            else:
-                other_started.set()
-            return {'state': 'passed', 'workspace': '/fixture'}
-        def execute():
-            try:
-                suite.schedule_groups('all', Path('/fixture'), Path('/fixture'),
-                                      {'cpus': 24, 'memory_budget_bytes': 12 * GIB},
-                                      24, report, lambda: None)
-            except Exception as error:
-                errors.append(error)
-        with patch.object(suite, 'run_group', side_effect=group), \
-             patch.object(suite, 'run_mutation_group', return_value={'state': 'passed', 'workspace': '/fixture'}):
-            thread = threading.Thread(target=execute)
-            thread.start()
-            try:
-                self.assertTrue(full_started.wait(5))
-                self.assertFalse(other_started.wait(.1))
-                self.assertEqual(report['allocations']['full']['cpu_budget'], 24)
-            finally:
-                release_full.set()
-                thread.join(5)
-            self.assertFalse(thread.is_alive())
-        self.assertEqual(errors, [])
-        self.assertEqual(len(report['groups']), 8)
+        capacity = {'cpus': 4, 'memory_budget_bytes': 8 * GIB}
+        with tempfile.TemporaryDirectory() as folder, \
+             patch('check_scheduler.resources', return_value=capacity):
+            with Coordinator(Path(folder), capacity, 4) as coordinator, \
+                 patch.dict(os.environ, {'HOLD_LEDGER_COORDINATOR': coordinator.path}):
+                def worker(label, started, wait=False):
+                    try:
+                        with command_lease(label, memory=6 * GIB):
+                            started.set()
+                            if wait:
+                                release.wait(5)
+                    except Exception as error:
+                        errors.append(error)
+                a = threading.Thread(target=worker, args=('first', first, True))
+                b = threading.Thread(target=worker, args=('second', second))
+                a.start()
+                self.assertTrue(first.wait(5))
+                b.start()
+                try:
+                    self.assertFalse(second.wait(.1))
+                finally:
+                    release.set()
+                    a.join(5)
+                    b.join(5)
+                self.assertTrue(second.is_set())
+                self.assertEqual(errors, [])
 
     def test_failed_full_never_dispatches_mutants(self):
         report = {'groups': {}}
         def group(name, *args):
             return {'state': 'failed' if name == 'full' else 'passed', 'workspace': '/fixture'}
-        with patch.object(suite, 'run_group', side_effect=group), \
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(suite, 'run_group', side_effect=group), \
              patch.object(suite, 'run_mutation_group') as mutants, \
              patch.object(suite, 'cancel_running'):
             with self.assertRaisesRegex(RuntimeError, 'Check group failed'):
-                suite.schedule_groups('all', Path('/fixture'), Path('/fixture'),
+                suite.schedule_groups('all', Path(folder), Path(folder),
                                       {'cpus': 24, 'memory_budget_bytes': 80 * GIB}, 24, report, lambda: None)
         mutants.assert_not_called()
 
