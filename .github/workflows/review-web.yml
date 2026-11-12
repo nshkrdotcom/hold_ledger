@@ -32,7 +32,8 @@ permissions:
 jobs:
   review-web:
     runs-on: ubuntu-26.04
-    timeout-minutes: 20
+    # Cold dependency compilation and browser installation share this budget.
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: apps/review_web
