@@ -6,6 +6,8 @@ public import HoldLedgerProof.CoreLookup
 public import HoldLedgerProof.CorePreservation
 
 public section
+
+local notation "numericOrder" => fun a b : Lynx.Term => Lynx.Term.compare (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 4000000
 namespace HoldLedgerProof
 
@@ -27,7 +29,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
   have find_eq (query : Lynx.Term) : Elixir.HoldLedger.Ledger.«find/2» es query = Elixir.HoldLedger.Spec.«lookup/2» es query := by
     obtain ⟨value,hf,hl⟩ := compatible_1 es query proper
     exact hf.trans hl.symm
-  have alias_lookup (n : Int) (equal : (Lynx.Term.integer n).compare key = Ordering.eq) :
+  have alias_lookup (n : Int) (equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq) :
       Elixir.HoldLedger.Spec.«lookup/2» es (Lynx.Term.integer n) =
         Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[stored,amount,frozen]]) := by
     rw [← lookup_equiv_1 es n key proper equal]
@@ -37,7 +39,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
       Elixir.HoldLedger.Ledger.«set_status/3» es (Lynx.Term.integer n) status = Except.ok (changed n status) :=
     (Classical.choose_spec (replaced_3 es n status proper)).1
   have change_unrelated (n : Int) (status : Lynx.Term)
-      (different : (Lynx.Term.integer n).compare key ≠ Ordering.eq) :
+      (different : numericOrder (Lynx.Term.integer n) key ≠ Ordering.eq) :
       Elixir.HoldLedger.Spec.«lookup/2» (changed n status) key =
         Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[stored,amount,frozen]]) := by
     obtain ⟨newer,hl,unchanged | ⟨_,equal⟩⟩ :=
@@ -45,7 +47,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
     · simpa [unchanged] using hl
     · exact False.elim (different equal)
   have fresh_lookup (n : Int) (a : Lynx.Term)
-      (different : (Lynx.Term.integer n).compare key ≠ Ordering.eq) :
+      (different : numericOrder (Lynx.Term.integer n) key ≠ Ordering.eq) :
       Elixir.HoldLedger.Spec.«lookup/2»
         (Lynx.Term.cons (Lynx.Term.tuple #[Lynx.Term.integer n,a,Lynx.Term.atom "reserved"]) es) key =
           Elixir.HoldLedger.Spec.«lookup/2» es key := by
@@ -63,7 +65,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
       cases query <;> try simp [Elixir.HoldLedger.Ledger.«request/3», Erlang.erlang.«>=/2», Erlang.erlang.«>/2», Ordering.isGT_iff_eq_gt,  Erlang.erlang.«is_integer/1»,
         Erlang.erlang.«element/2», lookup, Lynx.Except.guard, Lynx.Except.tryWith, bind, Except.bind]
       rename_i n
-      by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+      by_cases equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq
       · have same := alias_lookup n equal
         cases requested
         all_goals try simp_all [  Erlang.erlang.«=:=/2»]
@@ -83,7 +85,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
       cases query <;> try simp [Elixir.HoldLedger.Ledger.«dispatch/2»,
         Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
-      by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+      by_cases equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq
       · have same := alias_lookup n equal
         simp_all [
               Lynx.Term.true]
@@ -101,7 +103,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
       cases query <;> try simp [Elixir.HoldLedger.Ledger.«timeout/2»,
         Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
-      by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+      by_cases equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq
       · have same := alias_lookup n equal
         simp_all [
               Lynx.Term.true]
@@ -119,7 +121,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
       cases query <;> try simp [Elixir.HoldLedger.Ledger.«retry/2»,
         Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
-      by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+      by_cases equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq
       · have same := alias_lookup n equal
         simp_all [
               Lynx.Term.true]
@@ -137,7 +139,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
       cases query <;> try simp [Elixir.HoldLedger.Ledger.«processor_result/3»,     Erlang.erlang.«is_integer/1»,
         Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
-      by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+      by_cases equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq
       · have same := alias_lookup n equal
         simp_all [
               Lynx.Term.true]
@@ -155,7 +157,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
       cases query <;> try simp [Elixir.HoldLedger.Ledger.«void/2»,
         Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
-      by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+      by_cases equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq
       · have same := alias_lookup n equal
         simp_all [
               Lynx.Term.true]
@@ -173,7 +175,7 @@ theorem terminal_lookup (al hl ua uh : Int) (es event key stored amount frozen :
       cases query <;> try simp [Elixir.HoldLedger.Ledger.«void_confirmed/2»,
         Erlang.erlang.«element/2», lookup,   bind, Except.bind]
       rename_i n
-      by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+      by_cases equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq
       · have same := alias_lookup n equal
         simp_all [
               Lynx.Term.true]
@@ -200,12 +202,12 @@ end HoldLedgerProof
 namespace HoldLedgerProof
 
 theorem lookup_compare_status (stored a st key amount : Lynx.Term) (tag : String) :
-    (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[stored,a,st]]).compare
+    numericOrder (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[stored,a,st]])
       (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[key,amount,Lynx.Term.atom tag]]) = Ordering.eq ↔
-    stored.compare key = Ordering.eq ∧ a.compare amount = Ordering.eq ∧ st = Lynx.Term.atom tag := by
+    numericOrder stored key = Ordering.eq ∧ numericOrder a amount = Ordering.eq ∧ st = Lynx.Term.atom tag := by
   rw [← atom_compare st tag]
   simp only [Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq]
-  cases hk : stored.compare key <;> cases ha : a.compare amount <;> cases hs : st.compare (Lynx.Term.atom tag) <;>
+  cases hk : numericOrder stored key <;> cases ha : numericOrder a amount <;> cases hs : numericOrder st (Lynx.Term.atom tag) <;>
     simp_all [  ]
 
 theorem terminal_comparison (s event key amount : Lynx.Term) (tag : String)
@@ -226,8 +228,8 @@ theorem terminal_comparison (s event key amount : Lynx.Term) (tag : String)
   obtain ⟨al,hl,ua,uh,es,rfl,hp,hu,ha,hc,hals,hhls,huas,huhs,hacap,hhcap⟩ := valid_view_1 s valid
   rcases lookup_shape_1 es key hp with absent | ⟨storedn,storedamt,old,found,known⟩
   · simp [Erlang.erlang.«element/2», absent, Erlang.erlang.«==/2», atom_tuple] at before
-  · by_cases hkey : (Lynx.Term.integer storedn).compare key = Ordering.eq
-    all_goals by_cases hamount : (Lynx.Term.integer storedamt).compare amount = Ordering.eq
+  · by_cases hkey : numericOrder (Lynx.Term.integer storedn) key = Ordering.eq
+    all_goals by_cases hamount : numericOrder (Lynx.Term.integer storedamt) amount = Ordering.eq
     all_goals by_cases hold : old = Lynx.Term.atom tag
     all_goals simp [Erlang.erlang.«element/2», found, Erlang.erlang.«==/2», lookup_compare_status,
       hkey,hamount,hold,Lynx.Term.true,Lynx.Term.false] at before

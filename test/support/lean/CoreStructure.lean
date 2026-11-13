@@ -4,9 +4,11 @@ public import Elixir.HoldLedger.ProofContracts
 public import HoldLedgerProof.Induction
 
 public section
+
+local notation "numericOrder" => fun a b : Lynx.Term => Lynx.Term.compare (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 16000000
 
-theorem HoldLedgerProof.seen_append_1 : ∀ xs k j, ¬ Lynx.Term.compare k j = Ordering.eq →
+theorem HoldLedgerProof.seen_append_1 : ∀ xs k j, ¬ numericOrder k j = Ordering.eq →
     Elixir.HoldLedger.Spec.«seen?/2» (Lynx.Term.list (xs ++ [k])) j =
     Elixir.HoldLedger.Spec.«seen?/2» (Lynx.Term.list xs) j := by
   intro xs k j hn
@@ -33,8 +35,8 @@ theorem HoldLedgerProof.fresh_1 : ∀ es seen k,
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals simp_all [Elixir.HoldLedger.Spec.«unique_keys_seen?/2», bind, Except.bind]
   all_goals have cmp_reverse (a b : Lynx.Term) :
-      a.compare b = Ordering.eq ↔ b.compare a = Ordering.eq :=
-    ⟨Std.OrientedCmp.eq_symm, Std.OrientedCmp.eq_symm⟩
+      numericOrder a b = Ordering.eq ↔ numericOrder b a = Ordering.eq :=
+    ⟨Lynx.Term.compare_eq_symm, Lynx.Term.compare_eq_symm⟩
   all_goals simp_all [HoldLedgerProof.seen_append_1]
   all_goals repeat' (split at * <;> try simp_all [])
 
@@ -118,8 +120,8 @@ theorem HoldLedgerProof.fresh_4 : ∀ es seen k,
   all_goals repeat' (split at * <;> try simp_all [])
   all_goals simp_all [Elixir.HoldLedger.Spec.«unique_keys_seen?/2», bind, Except.bind]
   all_goals have cmp_reverse (a b : Lynx.Term) :
-      a.compare b = Ordering.eq ↔ b.compare a = Ordering.eq :=
-    ⟨Std.OrientedCmp.eq_symm, Std.OrientedCmp.eq_symm⟩
+      numericOrder a b = Ordering.eq ↔ numericOrder b a = Ordering.eq :=
+    ⟨Lynx.Term.compare_eq_symm, Lynx.Term.compare_eq_symm⟩
   all_goals simp_all [HoldLedgerProof.seen_append_1]
   all_goals repeat' (split at * <;> try simp_all [])
 

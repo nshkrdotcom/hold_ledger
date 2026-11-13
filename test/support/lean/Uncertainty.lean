@@ -7,6 +7,8 @@ public import HoldLedgerProof.CorePreservation
 public import HoldLedgerProof.Identity
 
 public section
+
+local notation "numericOrder" => fun a b : Lynx.Term => Lynx.Term.compare (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 16000000
 namespace Elixir.HoldLedger.ProofContracts
 
@@ -49,11 +51,11 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
     · simp [«po_b2:requires/4», Erlang.erlang.«element/2», initial, hn,
         Erlang.erlang.«==/2», HoldLedgerProof.atom_tuple,
         Lynx.Term.true, Lynx.Term.false] at requires
-    · by_cases hkey : (Lynx.Term.integer storedn).compare key = Ordering.eq
-      all_goals by_cases hamount : (Lynx.Term.integer storedamt).compare amount = Ordering.eq
+    · by_cases hkey : numericOrder (Lynx.Term.integer storedn) key = Ordering.eq
+      all_goals by_cases hamount : numericOrder (Lynx.Term.integer storedamt) amount = Ordering.eq
       all_goals by_cases hold : old = Lynx.Term.atom "unknown"
-      all_goals by_cases happ : event.compare (Lynx.Term.tuple #[Lynx.Term.atom "processor_result",key,Lynx.Term.atom "approved"]) = Ordering.eq
-      all_goals by_cases hdecl : event.compare (Lynx.Term.tuple #[Lynx.Term.atom "processor_result",key,Lynx.Term.atom "declined"]) = Ordering.eq
+      all_goals by_cases happ : numericOrder event (Lynx.Term.tuple #[Lynx.Term.atom "processor_result",key,Lynx.Term.atom "approved"]) = Ordering.eq
+      all_goals by_cases hdecl : numericOrder event (Lynx.Term.tuple #[Lynx.Term.atom "processor_result",key,Lynx.Term.atom "declined"]) = Ordering.eq
       all_goals simp [«po_b2:requires/4», Erlang.erlang.«element/2», initial, hlookup,
         Erlang.erlang.«==/2», Erlang.erlang.«/=/2», HoldLedgerProof.lookup_compare,
         hkey,hamount,hold,happ,hdecl,   Lynx.Term.true,Lynx.Term.false] at requires
@@ -63,7 +65,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
           intro k
           obtain ⟨v,hf,hl⟩ := compatible es k hp
           exact hf.trans hl.symm
-        have alias_lookup : ∀ n : Int, (Lynx.Term.integer n).compare key = Ordering.eq →
+        have alias_lookup : ∀ n : Int, numericOrder (Lynx.Term.integer n) key = Ordering.eq →
             Elixir.HoldLedger.Spec.«lookup/2» es (Lynx.Term.integer n) =
               Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[Lynx.Term.integer storedn,Lynx.Term.integer storedamt,Lynx.Term.atom "unknown"]]) := by
           intro n hc
@@ -75,15 +77,15 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
         have change_lookup (n : Int) (st : Lynx.Term) : ∃ newer,
             Elixir.HoldLedger.Spec.«lookup/2» (changed n st) key = Except.ok
               (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[Lynx.Term.integer storedn,Lynx.Term.integer storedamt,newer]]) ∧
-            (newer = Lynx.Term.atom "unknown" ∨ newer = st ∧ (Lynx.Term.integer n).compare key = Ordering.eq) :=
+            (newer = Lynx.Term.atom "unknown" ∨ newer = st ∧ numericOrder (Lynx.Term.integer n) key = Ordering.eq) :=
           (Classical.choose_spec (replaced es n st hp)).2 key _ _ _ hlookup
-        have change_unrelated (n : Int) (st : Lynx.Term) (hne : (Lynx.Term.integer n).compare key ≠ Ordering.eq) :
+        have change_unrelated (n : Int) (st : Lynx.Term) (hne : numericOrder (Lynx.Term.integer n) key ≠ Ordering.eq) :
             Elixir.HoldLedger.Spec.«lookup/2» (changed n st) key = Except.ok
               (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[Lynx.Term.integer storedn,Lynx.Term.integer storedamt,Lynx.Term.atom "unknown"]]) := by
           obtain ⟨newer,hl,hold | ⟨rfl,hc⟩⟩ := change_lookup n st
           · simpa [hold] using hl
           · exact False.elim (hne hc)
-        have fresh_lookup (n a : Int) (hne : (Lynx.Term.integer n).compare key ≠ Ordering.eq) :
+        have fresh_lookup (n a : Int) (hne : numericOrder (Lynx.Term.integer n) key ≠ Ordering.eq) :
             Elixir.HoldLedger.Spec.«lookup/2»
               (Lynx.Term.cons (Lynx.Term.tuple #[Lynx.Term.integer n,Lynx.Term.integer a,Lynx.Term.atom "reserved"]) es) key =
                 Elixir.HoldLedger.Spec.«lookup/2» es key := by
@@ -119,7 +121,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
                 Lynx.Term.compare_tuple, List.compareLex,
                    Lynx.Term.true])
             all_goals rename_i n amountn
-            all_goals cases hc : (Lynx.Term.integer n).compare key
+            all_goals cases hc : numericOrder (Lynx.Term.integer n) key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals try simp [*,
@@ -142,7 +144,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_2 ev k =>
@@ -153,7 +155,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
                    Lynx.Term.true])
             all_goals rename_i n
-            all_goals cases hc : (Lynx.Term.integer n).compare key
+            all_goals cases hc : numericOrder (Lynx.Term.integer n) key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals obtain ⟨newer,hlchange,hclass⟩ := change_lookup n (Lynx.Term.atom "sent")
@@ -177,7 +179,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_3 ev k =>
@@ -188,7 +190,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
                    Lynx.Term.true])
             all_goals rename_i n
-            all_goals cases hc : (Lynx.Term.integer n).compare key
+            all_goals cases hc : numericOrder (Lynx.Term.integer n) key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals obtain ⟨newer,hlchange,hclass⟩ := change_lookup n (Lynx.Term.atom "unknown")
@@ -212,7 +214,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_5 ev k =>
@@ -223,7 +225,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
                    Lynx.Term.true])
             all_goals rename_i n
-            all_goals cases hc : (Lynx.Term.integer n).compare key
+            all_goals cases hc : numericOrder (Lynx.Term.integer n) key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals obtain ⟨newer,hlchange,hclass⟩ := change_lookup n (Lynx.Term.atom "sent")
@@ -247,7 +249,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all []
             all_goals skip
           case h_6 ev k outcome =>
@@ -258,7 +260,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
                 Lynx.Term.compare_tuple, List.compareLex,
                    Lynx.Term.true])
             all_goals rename_i n
-            all_goals cases hc : (Lynx.Term.integer n).compare key
+            all_goals cases hc : numericOrder (Lynx.Term.integer n) key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals try simp [*] at hs
@@ -278,7 +280,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_7 ev k =>
@@ -289,7 +291,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
                    Lynx.Term.true])
             all_goals rename_i n
-            all_goals cases hc : (Lynx.Term.integer n).compare key
+            all_goals cases hc : numericOrder (Lynx.Term.integer n) key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
             all_goals try simp [*] at hs
@@ -311,7 +313,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_4 =>
@@ -338,7 +340,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_8 ev k =>
@@ -349,7 +351,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
                 Lynx.Term.compare_tuple, List.compareLex, Ordering.then_eq_eq,
                    Lynx.Term.true])
             all_goals rename_i n
-            all_goals cases hc : (Lynx.Term.integer n).compare key
+            all_goals cases hc : numericOrder (Lynx.Term.integer n) key
             all_goals try have halias := alias_lookup n (by assumption)
             all_goals have hkeep := change_unrelated n (Lynx.Term.atom "voided")
             all_goals rcases shape_lookup es (Lynx.Term.integer n) hp with hn | ⟨ek,av,st,hlk,hst⟩
@@ -372,7 +374,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_9 =>
@@ -393,7 +395,7 @@ theorem «po_b2/4» (s event key amount : Lynx.Term)
             all_goals subst_vars
             all_goals try simp_all [HoldLedgerProof.atom_compare, HoldLedgerProof.atom_compare_left, Lynx.Term.true,Lynx.Term.false]
             all_goals repeat' (split <;> try simp_all [Lynx.Term.true,Lynx.Term.false])
-            all_goals cases hsent : (Lynx.Term.atom "sent").compare (Lynx.Term.atom "unknown") <;>
+            all_goals cases hsent : numericOrder (Lynx.Term.atom "sent") (Lynx.Term.atom "unknown") <;>
               try simp_all [Lynx.Term.true,Lynx.Term.false]
             all_goals skip
           case h_10 =>

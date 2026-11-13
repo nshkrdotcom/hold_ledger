@@ -5,6 +5,8 @@ import all Lynx.Term.Compare
 import Lean
 
 public section
+
+local notation "exactOrder" => fun a b : Lynx.Term => Lynx.Term.compareExact (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 4000000
 namespace HoldLedgerProof.ExposureFacts
 open HoldLedgerProof.Exposure
@@ -95,13 +97,13 @@ theorem native_lookup_shape (entries : List Exposure.Entry) (key : Int) :
           Lynx.Term.compare_integers,Int.compare_eq_eq,bind,Except.bind] using ih
 
 theorem exact_record (key amount candidate : Int) (status : Lynx.Term) (tag : String) :
-    (Lynx.Term.tuple #[.atom "ok",.tuple #[.integer key,.integer amount,status]]).exactCompare
+    exactOrder (Lynx.Term.tuple #[.atom "ok",.tuple #[.integer key,.integer amount,status]])
       (.tuple #[.atom "ok",.tuple #[.integer key,.integer candidate,.atom tag]]) = Ordering.eq ↔
       amount = candidate ∧ status = .atom tag := by
-  simp only [Lynx.Term.exactCompare_tuple,List.compareLex,Ordering.then_eq_eq]
-  cases ha : (Lynx.Term.integer amount).exactCompare (.integer candidate)
-  all_goals cases hs : status.exactCompare (.atom tag)
-  all_goals simp_all [Lynx.Term.exactCompare_eq_atom]
+  simp only [Lynx.Term.compareExact_tuple,List.compareLex,Ordering.then_eq_eq]
+  cases ha : exactOrder (Lynx.Term.integer amount) (.integer candidate)
+  all_goals cases hs : exactOrder status (.atom tag)
+  all_goals simp_all [Lynx.Term.compareExact_eq_atom]
   all_goals repeat' intro equal
   all_goals subst_vars
   all_goals simp_all
@@ -127,9 +129,10 @@ theorem issued_member (issued : List Exposure.Entry) (entries seen : Lynx.Term)
       all_goals try grind [Int.compare_eq_gt]
 
 theorem absent_comparison (key amount : Int) :
-    (Lynx.Term.atom "not_found").exactCompare
+    exactOrder (Lynx.Term.atom "not_found")
       (.tuple #[.atom "ok",.tuple #[.integer key,.integer amount,.atom "issued"]]) = Ordering.lt := by
-  rw [Lynx.Term.exactCompare_eq_step]
+  dsimp only
+  rw [Lynx.Term.compareExact_step]
   rfl
 
 /-- Each remote record has an exact issued-identity/amount witness. -/

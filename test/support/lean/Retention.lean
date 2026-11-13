@@ -6,6 +6,9 @@ public import HoldLedgerProof.CorePreservation
 import all Lynx.Term.Compare
 
 public section
+
+local notation "numericOrder" => fun a b : Lynx.Term => Lynx.Term.compare (Lynx.Term.fuel a b) a b
+local notation "exactOrder" => fun a b : Lynx.Term => Lynx.Term.compareExact (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 16000000
 namespace HoldLedgerProof
 
@@ -32,7 +35,7 @@ theorem retained_lookup (al hl ua uh k a : Int) (es old event : Lynx.Term)
   have change_lookup (n : Int) (status : Lynx.Term) : ∃ newer,
       Elixir.HoldLedger.Spec.«lookup/2» (changed n status) (.integer k) =
         Except.ok (.tuple #[.atom "ok",.tuple #[.integer k,.integer a,newer]]) ∧
-      (newer = old ∨ newer = status ∧ (.integer n : Lynx.Term).compare (.integer k) = Ordering.eq) :=
+      (newer = old ∨ newer = status ∧ numericOrder (.integer n : Lynx.Term) (.integer k) = Ordering.eq) :=
     (Classical.choose_spec (replaced_3 es n status proper)).2 (.integer k) (.integer k) (.integer a) old initial
   obtain ⟨restarted,hr,hrmap⟩ := marked_3 es proper
   obtain ⟨restarted_status, restart_lookup, restart_cases⟩ := hrmap (.integer k) (.integer k) (.integer a) old initial
@@ -59,7 +62,7 @@ theorem retained_lookup (al hl ua uh k a : Int) (es old event : Lynx.Term)
       Elixir.HoldLedger.Spec.«exposed_entry?/3»
         (Lynx.Term.tuple #[.integer al,.integer hl,x,y,
           .cons (.tuple #[.integer n,.integer b,.atom "reserved"]) es]) (.integer k) (.integer a) = Except.ok Lynx.Term.true := by
-    have unequal : (.integer n : Lynx.Term).compare (.integer k) ≠ Ordering.eq := by
+    have unequal : numericOrder (.integer n : Lynx.Term) (.integer k) ≠ Ordering.eq := by
       simpa [Lynx.Term.compare_integers,Int.compare_eq_eq] using different
     rcases old_status with rfl | rfl | rfl | rfl <;>
       simp [Elixir.HoldLedger.Spec.«exposed_entry?/3»,Elixir.HoldLedger.Spec.«lookup/2»,
@@ -252,9 +255,10 @@ theorem «po_exposure_retain/5» (state event key amount status : Lynx.Term)
   obtain ⟨al,hl,ua,uh,es,rfl,hp,hu,ha,hc,hal,hhl,hua,huh,hacap,hhcap⟩ := HoldLedgerProof.valid_view_1 state valid
   have shape := HoldLedgerProof.lookup_shape_1 es key hp
   rcases shape with absent | ⟨stored,amt,old,found,known⟩
-  · have absent_compare : (Lynx.Term.atom "not_found").exactCompare
+  · have absent_compare : exactOrder (Lynx.Term.atom "not_found")
         (Lynx.Term.tuple #[Lynx.Term.atom "ok",Lynx.Term.tuple #[key,amount,status]]) = Ordering.lt := by
-      rw [Lynx.Term.exactCompare_eq_step]
+      dsimp only
+      rw [Lynx.Term.compareExact_step]
       rfl
     simp [«po_exposure_retain:requires/5»,valid,absent,absent_compare,Erlang.erlang.«element/2»,
       Erlang.erlang.«=:=/2»,bind,Except.bind,Lynx.Term.true,Lynx.Term.false] at requires
@@ -265,16 +269,16 @@ theorem «po_exposure_retain/5» (state event key amount status : Lynx.Term)
       have equal : Erlang.erlang.«=:=/2»
         (Lynx.Term.tuple #[Lynx.Term.atom "ok",Lynx.Term.tuple #[Lynx.Term.integer stored,Lynx.Term.integer amt,old]])
         (Lynx.Term.tuple #[Lynx.Term.atom "ok",Lynx.Term.tuple #[key,amount,status]]) = Except.ok Lynx.Term.true := by assumption
-      simp [Erlang.erlang.«=:=/2»,Lynx.Term.exactCompare_tuple,List.compareLex,
+      simp [Erlang.erlang.«=:=/2»,Lynx.Term.compareExact_tuple,List.compareLex,
         Lynx.Term.true,Lynx.Term.false] at equal
-      cases hk : (Lynx.Term.integer stored).exactCompare key <;> try simp only [hk] at equal
+      cases hk : exactOrder (Lynx.Term.integer stored) key <;> try simp only [hk] at equal
       all_goals try contradiction
-      all_goals cases ham : (Lynx.Term.integer amt).exactCompare amount <;> try simp only [ham] at equal
+      all_goals cases ham : exactOrder (Lynx.Term.integer amt) amount <;> try simp only [ham] at equal
       all_goals try contradiction
-      all_goals cases hst : old.exactCompare status <;> try simp only [hst] at equal
+      all_goals cases hst : exactOrder old status <;> try simp only [hst] at equal
       all_goals try contradiction
-      all_goals have hkey := (Lynx.Term.integer_exactCompare_eq stored key).mp hk
-      all_goals have hamount := (Lynx.Term.integer_exactCompare_eq amt amount).mp ham
+      all_goals have hkey := (Lynx.Term.integer_compareExact_eq stored key).mp hk
+      all_goals have hamount := (Lynx.Term.integer_compareExact_eq amt amount).mp ham
       all_goals have hstatus := HoldLedgerProof.known_exact_1 old status known hst
       all_goals subst key
       all_goals subst amount
@@ -295,7 +299,7 @@ theorem «po_exposure_retain/5» (state event key amount status : Lynx.Term)
           intro bad
           subst event
           simp_all [Elixir.HoldLedger.Spec.«release_evidence?/2»,Erlang.erlang.«=:=/2»,
-            Lynx.Term.exactCompare_tuple,List.compareLex,Lynx.Term.true,Lynx.Term.false]
+            Lynx.Term.compareExact_tuple,List.compareLex,Lynx.Term.true,Lynx.Term.false]
         exact HoldLedgerProof.retained_lookup al hl ua uh stored amt es old event hp found protected_status no_decline no_confirmation
 
 end Elixir.HoldLedger.ProofContracts

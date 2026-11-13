@@ -243,7 +243,7 @@ theorem fold_outcome_allowed (items : List Obligation) (key reason : Lynx.Term)
       by_cases same : key = .integer item.key <;>
         simp [encode,Elixir.HoldLedger.Outbox.«fold/2»,
           Elixir.HoldLedger.Spec.«expected_obligation_update/3»,
-          Erlang.erlang.«=:=/2»,Lynx.Term.exactCompare_eq_integer,member,
+          Erlang.erlang.«=:=/2»,Lynx.Term.compareExact_eq_integer,member,
           same,
           Erlang.erlang.«and/2»,
           bind,Except.bind,Lynx.Term.true,Lynx.Term.false,ih]

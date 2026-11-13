@@ -4,15 +4,19 @@ public import Elixir.HoldLedger.ProofContracts
 public import HoldLedgerProof.Induction
 
 public section
+
+local notation "numericOrder" => fun a b : Lynx.Term => Lynx.Term.compare (Lynx.Term.fuel a b) a b
+local notation "exactOrder" => fun a b : Lynx.Term => Lynx.Term.compareExact (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 16000000
 
 theorem HoldLedgerProof.atom_exact (n : String) (x : Lynx.Term) :
-    (Lynx.Term.atom n).exactCompare x = Ordering.eq ↔ x = Lynx.Term.atom n := by
-  rw [Std.OrientedCmp.eq_swap (cmp := Lynx.Term.exactCompare), Ordering.swap_eq_eq]
-  exact Lynx.Term.exactCompare_eq_atom x n
+    exactOrder (Lynx.Term.atom n) x = Ordering.eq ↔ x = Lynx.Term.atom n := by
+  dsimp only
+  rw [Lynx.Term.compareExact_swap, Ordering.swap_eq_eq]
+  exact Lynx.Term.compareExact_eq_atom x n
 
 theorem HoldLedgerProof.known_exact_1 : ∀ st x, Elixir.HoldLedger.Spec.«known_status?/1» st = Except.ok Lynx.Term.true →
-    st.exactCompare x = Ordering.eq → st = x := by
+    exactOrder st x = Ordering.eq → st = x := by
   intro st x hs he
   simp only [Elixir.HoldLedger.Spec.«known_status?/1»,
     Elixir.HoldLedger.Spec.«holding?/1», Elixir.HoldLedger.Spec.«terminal?/1»] at hs
@@ -125,7 +129,7 @@ theorem HoldLedgerProof.compatible_3 : ∀ es k, Elixir.HoldLedger.Spec.«proper
 
 theorem HoldLedgerProof.lookup_equiv_1 : ∀ es (n : Int) query,
     Elixir.HoldLedger.Spec.«proper_entries?/1» es = Except.ok Lynx.Term.true →
-    (Lynx.Term.integer n).compare query = Ordering.eq →
+    numericOrder (Lynx.Term.integer n) query = Ordering.eq →
     Elixir.HoldLedger.Spec.«lookup/2» es query = Elixir.HoldLedger.Spec.«lookup/2» es (Lynx.Term.integer n) := by
   intro es n query hp he
   fun_induction Elixir.HoldLedger.Spec.«lookup/2» es query generalizing n

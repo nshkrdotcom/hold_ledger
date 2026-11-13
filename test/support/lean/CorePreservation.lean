@@ -5,6 +5,8 @@ public import HoldLedgerProof.Induction
 public import HoldLedgerProof.CoreLookup
 
 public section
+
+local notation "numericOrder" => fun a b : Lynx.Term => Lynx.Term.compare (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 16000000
 
 theorem HoldLedgerProof.replaced_1 : ∀ es k st seen,
@@ -14,7 +16,7 @@ theorem HoldLedgerProof.replaced_1 : ∀ es k st seen,
         Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[q,a,old]]) →
         ∃ newer, Elixir.HoldLedger.Spec.«lookup/2» out q =
           Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[q,a,newer]]) ∧
-          (newer = old ∨ newer = st ∧ k.compare q = Ordering.eq) := by
+          (newer = old ∨ newer = st ∧ numericOrder k q = Ordering.eq) := by
   intro es k st seen h
   fun_induction Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen generalizing k st
   all_goals try simp only [
@@ -30,7 +32,7 @@ theorem HoldLedgerProof.replaced_1 : ∀ es k st seen,
       Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[q,a,old]]) →
       ∃ newer, Elixir.HoldLedger.Spec.«lookup/2» out q =
         Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[q,a,newer]]) ∧
-        (newer = old ∨ newer = st ∧ k.compare q = Ordering.eq)) k st
+        (newer = old ∨ newer = st ∧ numericOrder k q = Ordering.eq)) k st
   all_goals simp only [hm]
   all_goals split
   all_goals refine ⟨_, rfl, ?_⟩
@@ -40,7 +42,7 @@ theorem HoldLedgerProof.replaced_1 : ∀ es k st seen,
       Lynx.Term.true, Lynx.Term.false]
   all_goals repeat' (split <;> try simp_all [Lynx.Term.true, Lynx.Term.false])
 
-  all_goals exact Or.inr (Std.OrientedCmp.eq_symm (cmp := Lynx.Term.compare) (by assumption))
+  all_goals exact Or.inr (Lynx.Term.compare_eq_symm (by assumption))
 
 theorem HoldLedgerProof.explained_1 : ∀ es seen dst ev,
     Elixir.HoldLedger.Spec.«unique_keys_seen?/2» es seen = Except.ok Lynx.Term.true →
@@ -65,7 +67,7 @@ theorem HoldLedgerProof.explained_1 : ∀ es seen dst ev,
     apply ih dst ev
     intro q a old hs hl
     simp only [Elixir.HoldLedger.Spec.«seen?/2», Erlang.erlang.«==/2»] at hs
-    by_cases he : (Lynx.Term.integer n).compare q = Ordering.eq
+    by_cases he : numericOrder (Lynx.Term.integer n) q = Ordering.eq
     · simp [he] at hs
     · have hs' : Elixir.HoldLedger.Spec.«seen?/2» seen q = Except.ok Lynx.Term.false := by
         simpa [he, Lynx.Term.false] using hs
@@ -254,7 +256,7 @@ theorem HoldLedgerProof.identities_1 : ∀ es seen dst,
     apply ih dst
     intro q a old hs hl
     simp only [Elixir.HoldLedger.Spec.«seen?/2», Erlang.erlang.«==/2»] at hs
-    by_cases he : (Lynx.Term.integer n).compare q = Ordering.eq
+    by_cases he : numericOrder (Lynx.Term.integer n) q = Ordering.eq
     · simp [he] at hs
     · have hs' : Elixir.HoldLedger.Spec.«seen?/2» seen q = Except.ok Lynx.Term.false := by
         simpa [he, Lynx.Term.false] using hs
@@ -335,7 +337,7 @@ theorem HoldLedgerProof.replaced_3 : ∀ es (k : Int) to,
         Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[stored,a,old]]) →
         ∃ newer, Elixir.HoldLedger.Spec.«lookup/2» out query =
           Except.ok (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[stored,a,newer]]) ∧
-          (newer = old ∨ newer = to ∧ (Lynx.Term.integer k).compare query = Ordering.eq) := by
+          (newer = old ∨ newer = to ∧ numericOrder (Lynx.Term.integer k) query = Ordering.eq) := by
   intro es k to hp
   fun_induction Elixir.HoldLedger.Spec.«proper_entries?/1» es generalizing k to
   case case1 => simp [Elixir.HoldLedger.Ledger.«set_status/3», Elixir.HoldLedger.Spec.«lookup/2»]

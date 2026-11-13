@@ -5,6 +5,8 @@ public import HoldLedgerProof.CoreLookup
 public import HoldLedgerProof.CorePreservation
 
 public section
+
+local notation "numericOrder" => fun a b : Lynx.Term => Lynx.Term.compare (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 4000000
 namespace HoldLedgerProof
 
@@ -69,7 +71,7 @@ theorem terminal_entries (es seen dst : Lynx.Term)
     apply ih dst
     intro key amount status hs hl ht
     simp only [Elixir.HoldLedger.Spec.«seen?/2»,Erlang.erlang.«==/2»] at hs
-    by_cases equal : (Lynx.Term.integer n).compare key = Ordering.eq
+    by_cases equal : numericOrder (Lynx.Term.integer n) key = Ordering.eq
     · simp [equal] at hs
     · have hs' : Elixir.HoldLedger.Spec.«seen?/2» seen key = Except.ok Lynx.Term.false := by
         simpa [equal,Lynx.Term.false] using hs

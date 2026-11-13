@@ -7,6 +7,8 @@ public import HoldLedgerProof.CoreLookup
 public import HoldLedgerProof.CoreStructure
 
 public section
+
+local notation "exactOrder" => fun a b : Lynx.Term => Lynx.Term.compareExact (Lynx.Term.fuel a b) a b
 set_option maxHeartbeats 16000000
 namespace Elixir.HoldLedger.ProofContracts
 
@@ -16,9 +18,10 @@ theorem «l3_accounting/5» (entries key amount «from» to : Lynx.Term)
   have totals := HoldLedgerProof.totals_1
   have delta := HoldLedgerProof.delta_1
   have atom_exact (n : String) (x : Lynx.Term) :
-      (Lynx.Term.atom n).exactCompare x = Ordering.eq ↔ x = Lynx.Term.atom n := by
-    rw [Std.OrientedCmp.eq_swap (cmp := Lynx.Term.exactCompare), Ordering.swap_eq_eq]
-    exact Lynx.Term.exactCompare_eq_atom x n
+      exactOrder (Lynx.Term.atom n) x = Ordering.eq ↔ x = Lynx.Term.atom n := by
+    dsimp only
+    rw [Lynx.Term.compareExact_swap, Ordering.swap_eq_eq]
+    exact Lynx.Term.compareExact_eq_atom x n
   have known_exact := HoldLedgerProof.known_exact_1
   have lookup_shape := HoldLedgerProof.lookup_shape_1
   simp only [ «l3_accounting:requires/5», bind, Except.bind] at requires
@@ -31,16 +34,16 @@ theorem «l3_accounting/5» (entries key amount «from» to : Lynx.Term)
     have he : Erlang.erlang.«=:=/2»
       (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[Lynx.Term.integer ek, Lynx.Term.integer a, st]])
       (Lynx.Term.tuple #[Lynx.Term.atom "ok", Lynx.Term.tuple #[key, amount, «from»]]) = Except.ok Lynx.Term.true := by simp_all
-  all_goals simp [Erlang.erlang.«=:=/2», Lynx.Term.exactCompare_tuple,
+  all_goals simp [Erlang.erlang.«=:=/2», Lynx.Term.compareExact_tuple,
     List.compareLex,  Lynx.Term.true, Lynx.Term.false] at he
-  all_goals cases hkeycmp : (Lynx.Term.integer ek).exactCompare key <;> try simp only [ hkeycmp] at he
+  all_goals cases hkeycmp : exactOrder (Lynx.Term.integer ek) key <;> try simp only [ hkeycmp] at he
   all_goals try contradiction
-  all_goals cases hamtcmp : (Lynx.Term.integer a).exactCompare amount <;> try simp only [ hamtcmp] at he
+  all_goals cases hamtcmp : exactOrder (Lynx.Term.integer a) amount <;> try simp only [ hamtcmp] at he
   all_goals try contradiction
-  all_goals cases hfrom : st.exactCompare «from» <;> try simp only [ hfrom] at he
+  all_goals cases hfrom : exactOrder st «from» <;> try simp only [ hfrom] at he
   all_goals try contradiction
-  all_goals have hkey := (Lynx.Term.integer_exactCompare_eq ek key).mp hkeycmp
-  all_goals have hamt := (Lynx.Term.integer_exactCompare_eq a amount).mp hamtcmp
+  all_goals have hkey := (Lynx.Term.integer_compareExact_eq ek key).mp hkeycmp
+  all_goals have hamt := (Lynx.Term.integer_compareExact_eq a amount).mp hamtcmp
   all_goals subst key
   all_goals subst amount
   all_goals have same := known_exact st «from» hs hfrom

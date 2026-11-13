@@ -46,7 +46,7 @@
     {
       "module": "HoldLedgerProof.Accounting",
       "path": "test/support/lean/Accounting.lean",
-      "sha256": "4819a1862dbc9a7af5ab9c87b49e0830de712ffc119fbd697b576e47cf1a7078",
+      "sha256": "2eb50f56a0f0253d426daaa49e2dfc9986a5ae9a00e1d0b6a3f56b7ae9332b1b",
       "imports": [
         "HoldLedgerProof.Induction",
         "HoldLedgerProof.CoreAccounting",
@@ -171,7 +171,7 @@
     {
       "module": "HoldLedgerProof.CoreLookup",
       "path": "test/support/lean/CoreLookup.lean",
-      "sha256": "95036abbc747ab906959297121e4b0c72cf5a38a08da10a4c0f931008758d2d9",
+      "sha256": "dfb607dbdf0712c26dbb7f7e8145733bdd084dddb2ff91c370dbcdf6dd069979",
       "imports": [
         "HoldLedgerProof.Induction"
       ],
@@ -195,7 +195,7 @@
     {
       "module": "HoldLedgerProof.CorePreservation",
       "path": "test/support/lean/CorePreservation.lean",
-      "sha256": "14ee9b38c13a9f61f0a97b243588f36cd3b32a7c99246553485e635e3ac05b3f",
+      "sha256": "cf99331e671b487bdd97aaa8c25c958474d0fc6fe9b96f2dcd13ea8aa9fd19cb",
       "imports": [
         "HoldLedgerProof.Induction",
         "HoldLedgerProof.CoreLookup"
@@ -234,7 +234,7 @@
     {
       "module": "HoldLedgerProof.CoreStructure",
       "path": "test/support/lean/CoreStructure.lean",
-      "sha256": "b1b7e30c13f0fc24f3ae37f78fac5319c0151061e538ba2a5b635c6e244e7e95",
+      "sha256": "9b8e1e47294ebff435998930fa847f65068e4a6f3a6c0e585d0656b474731313",
       "imports": [
         "HoldLedgerProof.Induction"
       ],
@@ -294,7 +294,7 @@
     {
       "module": "HoldLedgerProof.ExposureFacts",
       "path": "test/support/lean/ExposureFacts.lean",
-      "sha256": "47e6b2257b750d0d3fa1cba931f0bab320dda397f32d4687c7336859b953c923",
+      "sha256": "7b1d145168ce08129361b6cdee9dd3cf96492dcb7dc1629b9cc46f57a33c7e73",
       "imports": [
         "HoldLedgerProof.CompositeSafety",
         "HoldLedgerProof.ExposureBound"
@@ -395,7 +395,7 @@
     {
       "module": "HoldLedgerProof.HistoryRelations",
       "path": "test/support/lean/HistoryRelations.lean",
-      "sha256": "392542d39e1d6148e85a323987f55e5b850144cb8a81a42e305372106150b941",
+      "sha256": "ec384b0415310c27ad89be89b719761512b5bf4f0bfd7e56157d2341ccf6ab8a",
       "imports": [
         "HoldLedgerProof.CoreLookup",
         "HoldLedgerProof.CorePreservation"
@@ -515,7 +515,7 @@
     {
       "module": "HoldLedgerProof.OutboxTheory",
       "path": "test/support/lean/OutboxTheory.lean",
-      "sha256": "8dd8dc864123c9b85a924b70762aaf4f66b806352c13e9d303525ca756abd8f0",
+      "sha256": "be77df07d52eb210a4facab9aeee97333e77e7fd696b9dc93d296fe94c9f7a19",
       "imports": [],
       "used_by_modules": [
         "HoldLedgerProof.CompositeEntries"
@@ -578,7 +578,7 @@
     {
       "module": "HoldLedgerProof.Retention",
       "path": "test/support/lean/Retention.lean",
-      "sha256": "833ec367379696dd28396e1a1c54642c98255ee537fa0b2f054251942686aded",
+      "sha256": "166bf2d4086ee70c7aca813ef9cf716c6b86e27948afbe78bd79b9cd6e651e2d",
       "imports": [
         "HoldLedgerProof.CoreShape",
         "HoldLedgerProof.CoreLookup",
@@ -630,7 +630,7 @@
     {
       "module": "HoldLedgerProof.Tactics",
       "path": "test/support/lean/Tactics.lean",
-      "sha256": "6bae9e38359ea49d98ac02e7f9de295e147e77e8c79e9bd1def7d74fd9697663",
+      "sha256": "dd31ffa37982ec1c87478192b0764d9d01980097e2f9d275e21899a2b3046dfe",
       "imports": [],
       "used_by_modules": [
         "HoldLedgerProof.Induction"
@@ -646,7 +646,7 @@
     {
       "module": "HoldLedgerProof.Terminal",
       "path": "test/support/lean/Terminal.lean",
-      "sha256": "d87f0a408593b39a31c4d51ec2d5e60d1870cd3057a6a1d4766043530a87b899",
+      "sha256": "ddc8fb23c6a7f3e01d70c062736a5a0c86370786da702fdcf64746bf177951fd",
       "imports": [
         "HoldLedgerProof.CoreShape",
         "HoldLedgerProof.CoreLookup",
@@ -665,7 +665,7 @@
     {
       "module": "HoldLedgerProof.Uncertainty",
       "path": "test/support/lean/Uncertainty.lean",
-      "sha256": "ee3d94d6452cd29d4ca627c9c671695567d152c7ab5379d5c577e4bdc060bbe8",
+      "sha256": "de69bdd8f05341ee3ac9c75446092516036d2f95f2ac61f07f1697f2e998c89d",
       "imports": [
         "HoldLedgerProof.Induction",
         "HoldLedgerProof.CoreLookup",
